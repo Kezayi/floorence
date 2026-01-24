@@ -237,11 +237,11 @@
 
   /* Photo portrait N&B */
   .portrait-memorial {
-    @apply grayscale contrast-105 brightness-95;
-    @apply transition-all duration-700;
+    @apply grayscale transition-all duration-700;
+    filter: grayscale(100%) contrast(1.05) brightness(0.95);
   }
 
   .portrait-memorial:hover {
-    @apply grayscale-0;
+    filter: grayscale(0%) contrast(1) brightness(1);
   }
 }
