@@ -2,95 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* FLOORENCE Design System - "Silence & Dignité"
+   Palette: Noir & Blanc dominant, Typographie Serif élégante
+   All colors MUST be HSL.
 */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* FLOORENCE - Palette Mémorielle */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Noir profond - Couleur principale */
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Gris doux */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Surfaces atténuées */
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent subtil - Gris chaud */
+    --accent: 30 5% 92%;
+    --accent-foreground: 0 0% 12%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructif sobre */
+    --destructive: 0 40% 35%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Bordures délicates */
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 20%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
+    /* Zone sombre - Livre d'Or */
+    --memorial-dark: 0 0% 6%;
+    --memorial-dark-foreground: 0 0% 92%;
+    --memorial-dark-muted: 0 0% 35%;
+
+    /* Gestes symboliques */
+    --candle-glow: 45 80% 55%;
+    --flower-soft: 340 30% 75%;
+
+    /* Sidebar */
     --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-foreground: 0 0% 25%;
+    --sidebar-primary: 0 0% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 20%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 92%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 92%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 92%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 92%;
+    --primary-foreground: 0 0% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 92%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 92%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 50% 40%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 75%;
+
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 92%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 75%;
   }
 }
 
@@ -99,7 +113,135 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  /* Typographie Mémorielle */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl font-light leading-tight;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl font-normal leading-snug;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl font-normal;
+  }
+
+  /* Focus sobre */
+  :focus-visible {
+    @apply outline-none ring-1 ring-ring ring-offset-1 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Carte Mémorial */
+  .memorial-card {
+    @apply relative overflow-hidden bg-card transition-all duration-500 ease-out;
+    @apply hover:shadow-lg hover:shadow-black/5;
+  }
+
+  .memorial-card::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0;
+    @apply transition-opacity duration-500;
+  }
+
+  .memorial-card:hover::after {
+    @apply opacity-100;
+  }
+
+  /* Zone sombre Livre d'Or */
+  .dark-zone {
+    @apply bg-memorial-dark text-memorial-dark-foreground;
+  }
+
+  /* Boutons dignifiés */
+  .btn-memorial {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3;
+    @apply bg-primary text-primary-foreground font-sans text-sm font-medium tracking-wide;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:bg-foreground/90;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2;
+    @apply bg-transparent text-foreground font-sans text-sm;
+    @apply border border-border;
+    @apply transition-all duration-300;
+    @apply hover:bg-muted;
+  }
+
+  /* Séparateur élégant */
+  .divider-elegant {
+    @apply h-px bg-gradient-to-r from-transparent via-border to-transparent;
+  }
+
+  /* Animation fade-in */
+  .fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Glow subtil pour cierges */
+  .candle-glow {
+    @apply relative;
+  }
+
+  .candle-glow::before {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    background: radial-gradient(circle, hsl(var(--candle-glow) / 0.3) 0%, transparent 70%);
+    animation: pulse-soft 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.1); }
+  }
+}
+
+@layer utilities {
+  /* Espacement généreux */
+  .section-padding {
+    @apply px-4 py-12 md:px-8 md:py-20 lg:px-16 lg:py-28;
+  }
+
+  /* Texte mémoriel */
+  .text-memorial {
+    @apply font-serif text-lg md:text-xl leading-relaxed;
+  }
+
+  /* Photo portrait N&B */
+  .portrait-memorial {
+    @apply grayscale contrast-105 brightness-95;
+    @apply transition-all duration-700;
+  }
+
+  .portrait-memorial:hover {
+    @apply grayscale-0;
   }
 }
