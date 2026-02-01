@@ -15,6 +15,12 @@ const mockMemorial = {
   name: "Jean-Baptiste Kouassi",
   birthDate: "12 Mars 1945",
   deathDate: "8 Janvier 2025",
+  publishedAt: "10 Janvier 2025",
+  author: {
+    id: "author-1",
+    name: "Marie Kouassi",
+    relation: "Sa Fille",
+  },
   bio: "Père dévoué, grand-père aimant et homme de foi. Jean-Baptiste a consacré sa vie à sa famille et à sa communauté. Instituteur pendant 35 ans, il a formé des générations d'élèves avec patience et dévouement.",
   photos: [
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=1000&fit=crop&crop=face",
@@ -157,9 +163,26 @@ const Memorial = () => {
             <div className="flex flex-col justify-center">
               <div className="animate-fade-in">
                 <h1 className="mb-2">{memorial.name}</h1>
-                <p className="font-sans text-lg text-muted-foreground mb-6">
+                <p className="font-sans text-lg text-muted-foreground mb-4">
                   {memorial.birthDate} — {memorial.deathDate}
                 </p>
+                
+                {/* Publication Info */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-6 font-sans">
+                  <span>Publié le {memorial.publishedAt}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>
+                    Par{" "}
+                    <Link 
+                      to={`/compte/${memorial.author.id}`} 
+                      className="text-foreground hover:underline"
+                    >
+                      {memorial.author.name}
+                    </Link>
+                    {" "}({memorial.author.relation})
+                  </span>
+                </div>
+
                 <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
                   {memorial.bio}
                 </p>
