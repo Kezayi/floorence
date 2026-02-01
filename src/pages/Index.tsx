@@ -6,6 +6,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getMemorialType } from "@/lib/dateUtils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Données de démonstration enrichies avec les auteurs du livre d'or
 // Note: Le type (RECENT/PAST) est calculé dynamiquement selon la règle des 6 mois
@@ -253,38 +259,54 @@ const Index = () => {
             </div>
             
             {/* Filter Tabs */}
-            <div className="flex items-center gap-2 mb-6">
-              <button
-                onClick={() => setFilterType("all")}
-                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
-                  filterType === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Tous
-              </button>
-              <button
-                onClick={() => setFilterType("RECENT")}
-                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
-                  filterType === "RECENT"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Récents
-              </button>
-              <button
-                onClick={() => setFilterType("PAST")}
-                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
-                  filterType === "PAST"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Passés
-              </button>
-            </div>
+            <TooltipProvider delayDuration={100}>
+              <div className="flex items-center gap-2 mb-6">
+                <button
+                  onClick={() => setFilterType("all")}
+                  className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                    filterType === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Tous
+                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setFilterType("RECENT")}
+                      className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                        filterType === "RECENT"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Récents
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans">
+                    <p>Décès survenus il y a 6 mois ou moins</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setFilterType("PAST")}
+                      className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                        filterType === "PAST"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Passés
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans">
+                    <p>Décès survenus il y a plus de 6 mois</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           </div>
 
             {filteredMemorials.length === 0 ? (
