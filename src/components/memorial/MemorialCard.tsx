@@ -1,6 +1,44 @@
 import { Link } from "react-router-dom";
 import { Flame, Flower2 } from "lucide-react";
 
+// French month names for date parsing
+const frenchMonths: { [key: string]: number } = {
+  "janvier": 0, "février": 1, "mars": 2, "avril": 3,
+  "mai": 4, "juin": 5, "juillet": 6, "août": 7,
+  "septembre": 8, "octobre": 9, "novembre": 10, "décembre": 11
+};
+
+// Parse French date string like "12 Mars 1945"
+const parseFrenchDate = (dateStr: string): Date | null => {
+  const parts = dateStr.toLowerCase().split(" ");
+  if (parts.length !== 3) return null;
+  
+  const day = parseInt(parts[0]);
+  const month = frenchMonths[parts[1]];
+  const year = parseInt(parts[2]);
+  
+  if (isNaN(day) || month === undefined || isNaN(year)) return null;
+  
+  return new Date(year, month, day);
+};
+
+// Calculate age at death
+const calculateAge = (birthDateStr: string, deathDateStr: string): number | null => {
+  const birthDate = parseFrenchDate(birthDateStr);
+  const deathDate = parseFrenchDate(deathDateStr);
+  
+  if (!birthDate || !deathDate) return null;
+  
+  let age = deathDate.getFullYear() - birthDate.getFullYear();
+  const monthDiff = deathDate.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && deathDate.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
 interface MemorialCardProps {
   id: string;
   slug: string;
@@ -27,6 +65,7 @@ const MemorialCard = ({
   type,
   variant = "card",
 }: MemorialCardProps) => {
+  const age = calculateAge(birthDate, deathDate);
   if (variant === "list") {
     return (
       <Link
@@ -57,10 +96,14 @@ const MemorialCard = ({
           )}
         </div>
 
-        {/* Info - Right */}
         <div className="flex-1 p-4 md:p-6 flex flex-col justify-center">
           <h3 className="font-serif text-lg md:text-xl lg:text-2xl leading-tight mb-1 group-hover:text-foreground/80 transition-colors">
             {name}
+            {age !== null && (
+              <span className="text-muted-foreground font-normal text-base md:text-lg ml-2">
+                ({age} ans)
+              </span>
+            )}
           </h3>
           <p className="font-sans text-sm text-muted-foreground mb-3">
             {birthDate} — {deathDate}
@@ -140,6 +183,11 @@ const MemorialCard = ({
       <div className="p-4">
         <h3 className="font-serif text-lg md:text-xl leading-tight mb-1 group-hover:text-foreground/80 transition-colors">
           {name}
+          {age !== null && (
+            <span className="text-muted-foreground font-normal text-sm ml-1">
+              ({age} ans)
+            </span>
+          )}
         </h3>
         <p className="font-sans text-sm text-muted-foreground">
           {birthDate} — {deathDate}
