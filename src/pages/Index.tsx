@@ -185,6 +185,9 @@ const Index = () => {
         </section>
       </main>
 
+      {/* Spacer for mobile bottom nav */}
+      <div className="h-16 md:hidden" />
+
       <Footer />
     </div>
   );
