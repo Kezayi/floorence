@@ -6,6 +6,7 @@ import GestureButton from "@/components/memorial/GestureButton";
 import GuestbookMessage from "@/components/memorial/GuestbookMessage";
 import RelationSelect from "@/components/memorial/RelationSelect";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
+import ShareButtons from "@/components/memorial/ShareButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Calendar, Heart, ChevronLeft, Bell, BellOff } from "lucide-react";
 
@@ -237,7 +238,7 @@ const Memorial = () => {
                 </p>
 
                 {/* Actions */}
-                <div className="flex items-center gap-4 mb-8">
+                <div className="flex items-center gap-3 mb-8 flex-wrap">
                   <button
                     onClick={() => setIsFollowing(!isFollowing)}
                     className={`btn-ghost ${isFollowing ? "bg-muted" : ""}`}
@@ -254,6 +255,12 @@ const Memorial = () => {
                       </>
                     )}
                   </button>
+                  
+                  <ShareButtons
+                    url={`${window.location.origin}/memorial/${memorial.slug}`}
+                    title={`Hommage à ${memorial.name}`}
+                    description={memorial.bio}
+                  />
                 </div>
 
                 {/* Gesture Buttons */}
