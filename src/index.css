@@ -222,6 +222,30 @@
     0%, 100% { opacity: 0.5; transform: scale(1); }
     50% { opacity: 0.8; transform: scale(1.1); }
   }
+
+  /* Animation flamme vacillante */
+  .animate-flicker {
+    animation: flicker 1.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes flicker {
+    0%, 100% { 
+      opacity: 1; 
+      transform: scaleY(1) translateY(0); 
+    }
+    25% { 
+      opacity: 0.9; 
+      transform: scaleY(0.97) translateY(0.5px); 
+    }
+    50% { 
+      opacity: 1; 
+      transform: scaleY(1.02) translateY(-0.5px); 
+    }
+    75% { 
+      opacity: 0.95; 
+      transform: scaleY(0.98) translateY(0.3px); 
+    }
+  }
 }
 
 @layer utilities {
