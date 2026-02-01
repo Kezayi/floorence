@@ -207,7 +207,7 @@ const Index = () => {
                   className="animate-fade-in"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <MemorialCard {...memorial} />
+                  <MemorialCard {...memorial} variant={viewMode === "list" ? "list" : "card"} />
                 </div>
               ))}
             </div>
