@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Flame, Flower2 } from "lucide-react";
+import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
 
 // French month names for date parsing
 const frenchMonths: { [key: string]: number } = {
@@ -112,15 +112,15 @@ const MemorialCard = ({
           {/* Stats */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="text-base">🕊</span>
+              <CrossIcon size={16} className="text-foreground" />
               <span>{ripCount}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-candle-glow" />
+              <FlameIcon size={16} />
               <span>{candleCount}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Flower2 className="w-4 h-4 text-flower-soft" />
+              <ChrysanthemumIcon size={16} />
               <span>{flowerCount}</span>
             </span>
           </div>
@@ -164,15 +164,15 @@ const MemorialCard = ({
         <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           <div className="flex items-center gap-3 text-white text-sm">
             <span className="flex items-center gap-1">
-              <span className="text-xs">🕊</span>
+              <CrossIcon size={14} className="text-white" />
               {ripCount}
             </span>
             <span className="flex items-center gap-1">
-              <Flame className="w-3 h-3 text-candle-glow" />
+              <FlameIcon size={14} />
               {candleCount}
             </span>
             <span className="flex items-center gap-1">
-              <Flower2 className="w-3 h-3 text-flower-soft" />
+              <ChrysanthemumIcon size={14} />
               {flowerCount}
             </span>
           </div>
