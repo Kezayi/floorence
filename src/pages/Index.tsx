@@ -2,7 +2,8 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
 import { LayoutGrid, Grid3X3, List, Square } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Données de démonstration
 const mockMemorials = [
@@ -83,7 +84,17 @@ const mockMemorials = [
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 
 const Index = () => {
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
+
+  // Set default view mode based on device
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode("list");
+    } else {
+      setViewMode("grid-4");
+    }
+  }, [isMobile]);
 
   const getGridClass = () => {
     switch (viewMode) {
