@@ -1,12 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Search, Home, PlusCircle, User } from "lucide-react";
+import { Menu, Search, Home, PlusCircle, User, LogIn, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
+  const { user, signOut } = useAuth();
 
   const navItems = [
     { path: "/", label: "Accueil", icon: Home },
@@ -32,6 +34,11 @@ const Header = () => {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+  };
 
   return (
     <>
@@ -103,6 +110,31 @@ const Header = () => {
                         </Link>
                       );
                     })}
+                    
+                    {/* Auth Section */}
+                    <div className="border-t border-border mt-2 pt-2">
+                      {user ? (
+                        <button
+                          onClick={handleSignOut}
+                          className="flex items-center gap-3 px-4 py-3 font-sans text-sm text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Déconnexion
+                        </button>
+                      ) : (
+                        <Link
+                          to="/auth"
+                          className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
+                            isActive("/auth")
+                              ? "bg-muted text-foreground font-medium"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          <LogIn className="w-4 h-4" />
+                          Connexion
+                        </Link>
+                      )}
+                    </div>
                   </nav>
                 </div>
               )}
