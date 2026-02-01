@@ -144,7 +144,7 @@ const Header = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only (TikTok style) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-sm border-t border-border safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black border-t border-white/10 safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -155,11 +155,11 @@ const Header = () => {
                 to={item.path}
                 className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
                   active
-                    ? "text-foreground"
-                    : "text-muted-foreground"
+                    ? "text-white"
+                    : "text-gray-400"
                 }`}
               >
-                <Icon className={`w-6 h-6 ${active ? "stroke-[2.5px]" : ""}`} />
+                <Icon className={`w-6 h-6 ${active ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />
                 <span className={`text-xs mt-1 font-sans ${active ? "font-medium" : ""}`}>
                   {item.label}
                 </span>
