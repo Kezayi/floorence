@@ -177,12 +177,6 @@ const Index = () => {
       <Header />
 
       <main className="flex-1 pt-20 md:pt-24">
-        {/* Search Bar */}
-        <section className="px-4 py-4 md:px-8 md:py-6">
-          <div className="container mx-auto">
-            <SearchBar memorials={mockMemorials} className="max-w-xl" />
-          </div>
-        </section>
 
         {/* Memorial Grid */}
         <section className="px-4 py-6 md:px-8 md:py-10">
