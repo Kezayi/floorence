@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import GestureButton from "@/components/memorial/GestureButton";
 import GuestbookMessage from "@/components/memorial/GuestbookMessage";
 import RelationSelect from "@/components/memorial/RelationSelect";
+import InferredRelationships from "@/components/memorial/InferredRelationships";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Calendar, Heart, ChevronLeft, Bell, BellOff } from "lucide-react";
 
@@ -433,6 +434,9 @@ const Memorial = () => {
                   </button>
                 </div>
               </form>
+
+              {/* Inferred Relationships */}
+              <InferredRelationships messages={memorial.guestbookMessages} />
 
               {/* Messages List */}
               <div className="divide-y divide-memorial-dark-muted/20">
