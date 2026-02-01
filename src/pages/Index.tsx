@@ -143,10 +143,12 @@ const memorialCards = mockMemorials.map(m => ({
 }));
 
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
+type FilterType = "all" | "RECENT" | "PAST";
 
 const Index = () => {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
+  const [filterType, setFilterType] = useState<FilterType>("all");
 
   // Set default view mode based on device
   useEffect(() => {
@@ -156,6 +158,11 @@ const Index = () => {
       setViewMode("grid-4");
     }
   }, [isMobile]);
+
+  // Filter memorials based on type
+  const filteredMemorials = filterType === "all" 
+    ? memorialCards 
+    : memorialCards.filter(m => m.type === filterType);
 
   const getGridClass = () => {
     switch (viewMode) {
@@ -181,16 +188,18 @@ const Index = () => {
         {/* Memorial Grid */}
         <section className="px-4 py-6 md:px-8 md:py-10">
           <div className="container mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
-                <span className="text-sm text-muted-foreground font-sans">
-                  {memorialCards.length} espace{memorialCards.length > 1 ? "s" : ""}
-                </span>
-              </div>
-              
-              {/* View Mode Switcher */}
-              <div className="flex items-center gap-1 bg-secondary p-1 rounded">
+            {/* Header with title and controls */}
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
+                  <span className="text-sm text-muted-foreground font-sans">
+                    {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+                
+                {/* View Mode Switcher - Desktop only */}
+                <div className="hidden md:flex items-center gap-1 bg-secondary p-1 rounded">
                 <button
                   onClick={() => setViewMode("grid-4")}
                   className={`p-2 rounded transition-colors ${
@@ -241,18 +250,61 @@ const Index = () => {
                 </button>
               </div>
             </div>
-
-            <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
-              {memorialCards.map((memorial, index) => (
-                <div
-                  key={memorial.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <MemorialCard {...memorial} variant={viewMode === "list" ? "list" : "card"} />
-                </div>
-              ))}
+            
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 mb-6">
+              <button
+                onClick={() => setFilterType("all")}
+                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                  filterType === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Tous
+              </button>
+              <button
+                onClick={() => setFilterType("RECENT")}
+                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                  filterType === "RECENT"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Récents
+              </button>
+              <button
+                onClick={() => setFilterType("PAST")}
+                className={`px-4 py-2 text-sm font-sans rounded-sm transition-colors ${
+                  filterType === "PAST"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Passés
+              </button>
             </div>
+          </div>
+
+            {filteredMemorials.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground font-sans">
+                  Aucun mémorial {filterType === "RECENT" ? "récent" : "passé"} trouvé
+                </p>
+              </div>
+            ) : (
+              <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+                {filteredMemorials.map((memorial, index) => (
+                  <div
+                    key={memorial.id}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <MemorialCard {...memorial} variant={viewMode === "list" ? "list" : "card"} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>
