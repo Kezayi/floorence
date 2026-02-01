@@ -1,43 +1,6 @@
 import { Link } from "react-router-dom";
 import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
-
-// French month names for date parsing
-const frenchMonths: { [key: string]: number } = {
-  "janvier": 0, "février": 1, "mars": 2, "avril": 3,
-  "mai": 4, "juin": 5, "juillet": 6, "août": 7,
-  "septembre": 8, "octobre": 9, "novembre": 10, "décembre": 11
-};
-
-// Parse French date string like "12 Mars 1945"
-const parseFrenchDate = (dateStr: string): Date | null => {
-  const parts = dateStr.toLowerCase().split(" ");
-  if (parts.length !== 3) return null;
-  
-  const day = parseInt(parts[0]);
-  const month = frenchMonths[parts[1]];
-  const year = parseInt(parts[2]);
-  
-  if (isNaN(day) || month === undefined || isNaN(year)) return null;
-  
-  return new Date(year, month, day);
-};
-
-// Calculate age at death
-const calculateAge = (birthDateStr: string, deathDateStr: string): number | null => {
-  const birthDate = parseFrenchDate(birthDateStr);
-  const deathDate = parseFrenchDate(deathDateStr);
-  
-  if (!birthDate || !deathDate) return null;
-  
-  let age = deathDate.getFullYear() - birthDate.getFullYear();
-  const monthDiff = deathDate.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && deathDate.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
-};
+import { calculateAge } from "@/lib/dateUtils";
 
 interface MemorialCardProps {
   id: string;

@@ -9,9 +9,10 @@ import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Calendar, Heart, ChevronLeft, Bell, BellOff } from "lucide-react";
+import { calculateAge, getMemorialType } from "@/lib/dateUtils";
 
-// Mock data
-const mockMemorial = {
+// Mock data - type is now calculated dynamically
+const mockMemorialData = {
   id: "1",
   slug: "jean-baptiste-kouassi",
   name: "Jean-Baptiste Kouassi",
@@ -29,7 +30,6 @@ const mockMemorial = {
     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&h=1000&fit=crop&crop=face",
     "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&h=1000&fit=crop&crop=face",
   ],
-  type: "RECENT" as const,
   ripCount: 234,
   candleCount: 89,
   flowerCount: 45,
@@ -85,42 +85,10 @@ const eventTypeLabels = {
   COMMEMORATION: "Commémoration",
 };
 
-// French month names for date parsing
-const frenchMonths: { [key: string]: number } = {
-  "janvier": 0, "février": 1, "mars": 2, "avril": 3,
-  "mai": 4, "juin": 5, "juillet": 6, "août": 7,
-  "septembre": 8, "octobre": 9, "novembre": 10, "décembre": 11
-};
-
-// Parse French date string like "12 Mars 1945"
-const parseFrenchDate = (dateStr: string): Date | null => {
-  const parts = dateStr.toLowerCase().split(" ");
-  if (parts.length !== 3) return null;
-  
-  const day = parseInt(parts[0]);
-  const month = frenchMonths[parts[1]];
-  const year = parseInt(parts[2]);
-  
-  if (isNaN(day) || month === undefined || isNaN(year)) return null;
-  
-  return new Date(year, month, day);
-};
-
-// Calculate age at death
-const calculateAge = (birthDateStr: string, deathDateStr: string): number | null => {
-  const birthDate = parseFrenchDate(birthDateStr);
-  const deathDate = parseFrenchDate(deathDateStr);
-  
-  if (!birthDate || !deathDate) return null;
-  
-  let age = deathDate.getFullYear() - birthDate.getFullYear();
-  const monthDiff = deathDate.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && deathDate.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
+// Add computed type to memorial
+const mockMemorial = {
+  ...mockMemorialData,
+  type: getMemorialType(mockMemorialData.deathDate),
 };
 
 const Memorial = () => {
