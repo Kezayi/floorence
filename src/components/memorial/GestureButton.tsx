@@ -1,4 +1,4 @@
-import { Flame, Flower2 } from "lucide-react";
+import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
 
 interface GestureButtonProps {
   type: "RIP" | "CANDLE" | "FLOWER";
@@ -10,21 +10,16 @@ interface GestureButtonProps {
 
 const gestureConfig = {
   RIP: {
-    icon: "🕊",
     label: "Repos en paix",
     className: "bg-secondary hover:bg-muted",
   },
   CANDLE: {
-    icon: Flame,
     label: "Allumer un cierge",
     className: "bg-secondary hover:bg-muted",
-    iconColor: "text-candle-glow",
   },
   FLOWER: {
-    icon: Flower2,
     label: "Déposer une fleur",
     className: "bg-secondary hover:bg-muted",
-    iconColor: "text-flower-soft",
   },
 };
 
@@ -36,7 +31,6 @@ const GestureButton = ({
   isActive = false,
 }: GestureButtonProps) => {
   const config = gestureConfig[type];
-  const Icon = typeof config.icon === "string" ? null : config.icon;
 
   return (
     <button
@@ -49,13 +43,13 @@ const GestureButton = ({
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
       `}
     >
-      <div className={`relative ${type !== "RIP" ? "candle-glow" : ""}`}>
+      <div className={`relative ${type === "CANDLE" ? "candle-glow" : ""}`}>
         {type === "RIP" ? (
-          <span className="text-2xl">🕊</span>
+          <CrossIcon size={28} className="text-foreground" />
         ) : type === "CANDLE" ? (
-          <Flame className="w-6 h-6 text-candle-glow" />
+          <FlameIcon size={28} />
         ) : (
-          <Flower2 className="w-6 h-6 text-flower-soft" />
+          <ChrysanthemumIcon size={28} />
         )}
       </div>
       <span className="font-sans text-xs text-muted-foreground">
