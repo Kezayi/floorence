@@ -1,14 +1,15 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
-import SearchBar from "@/components/search/SearchBar";
 import { LayoutGrid, Grid3X3, List, Square } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
+import { getMemorialType } from "@/lib/dateUtils";
 
 // Données de démonstration enrichies avec les auteurs du livre d'or
-const mockMemorials: SearchableMemorial[] = [
+// Note: Le type (RECENT/PAST) est calculé dynamiquement selon la règle des 6 mois
+const mockMemorialsData = [
   {
     id: "1",
     slug: "jean-baptiste-kouassi",
@@ -17,7 +18,6 @@ const mockMemorials: SearchableMemorial[] = [
     deathDate: "8 Janvier 2025",
     bio: "Père dévoué, grand-père aimant et homme de foi.",
     photos: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face"],
-    type: "RECENT" as const,
     author: {
       id: "author-1",
       name: "Marie Kouassi",
@@ -38,7 +38,6 @@ const mockMemorials: SearchableMemorial[] = [
     deathDate: "2 Janvier 2025",
     bio: "Mère aimante et femme de cœur.",
     photos: ["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=600&fit=crop&crop=face"],
-    type: "RECENT" as const,
     author: {
       id: "author-2",
       name: "Adjoua Bamba",
@@ -55,10 +54,9 @@ const mockMemorials: SearchableMemorial[] = [
     slug: "paul-yao-akoto",
     name: "Paul Yao Akoto",
     birthDate: "18 Décembre 1938",
-    deathDate: "25 Décembre 2024",
+    deathDate: "15 Mars 2024", // Plus de 6 mois = PAST
     bio: "Homme de sagesse et de paix.",
     photos: ["https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop&crop=face"],
-    type: "PAST" as const,
     author: {
       id: "author-3",
       name: "Emmanuel Yao",
@@ -74,10 +72,9 @@ const mockMemorials: SearchableMemorial[] = [
     slug: "aminata-diallo",
     name: "Aminata Diallo",
     birthDate: "3 Février 1960",
-    deathDate: "15 Novembre 2024",
+    deathDate: "15 Avril 2024", // Plus de 6 mois = PAST
     bio: "Une vie dédiée aux autres.",
     photos: ["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop&crop=face"],
-    type: "PAST" as const,
     author: {
       id: "author-4",
       name: "Fatou Diallo",
@@ -96,7 +93,6 @@ const mockMemorials: SearchableMemorial[] = [
     deathDate: "3 Janvier 2025",
     bio: "Artiste et visionnaire.",
     photos: ["https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop&crop=face"],
-    type: "RECENT" as const,
     author: {
       id: "author-5",
       name: "Ama Mensah",
@@ -115,7 +111,6 @@ const mockMemorials: SearchableMemorial[] = [
     deathDate: "28 Décembre 2024",
     bio: "Étoile partie trop tôt.",
     photos: ["https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=600&fit=crop&crop=face"],
-    type: "RECENT" as const,
     author: {
       id: "author-6",
       name: "Oumar Ndiaye",
@@ -127,6 +122,12 @@ const mockMemorials: SearchableMemorial[] = [
     ],
   },
 ];
+
+// Ajouter le type calculé dynamiquement selon la règle des 6 mois
+const mockMemorials: SearchableMemorial[] = mockMemorialsData.map(m => ({
+  ...m,
+  type: getMemorialType(m.deathDate),
+}));
 
 // Données pour les cartes mémorielles
 const memorialCards = mockMemorials.map(m => ({
