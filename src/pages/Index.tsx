@@ -1,7 +1,7 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
-import { Search } from "lucide-react";
+import { Search, LayoutGrid, Grid3X3, List, Square } from "lucide-react";
 import { useState } from "react";
 
 // Données de démonstration
@@ -80,27 +80,44 @@ const mockMemorials = [
   },
 ];
 
+type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
 
   const filteredMemorials = mockMemorials.filter((memorial) =>
     memorial.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getGridClass = () => {
+    switch (viewMode) {
+      case "grid-4":
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+      case "grid-3":
+        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+      case "grid-2":
+        return "grid-cols-1 md:grid-cols-2";
+      case "list":
+        return "grid-cols-1";
+      default:
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 pt-16 md:pt-20">
-        {/* Hero Section */}
-        <section className="section-padding text-center">
+      <main className="flex-1 pt-16 md:pt-20 space-y-0">
+        {/* Hero Section - Compact */}
+        <section className="px-4 py-6 md:px-8 md:py-10 text-center">
           <div className="max-w-3xl mx-auto animate-fade-in">
-            <h1 className="mb-6">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl mb-4">
               Honorer la mémoire
-              <br />
-              <span className="text-muted-foreground">de ceux qui nous ont quittés</span>
+              <span className="text-muted-foreground"> de ceux qui nous ont quittés</span>
             </h1>
-            <p className="text-memorial font-serif text-muted-foreground mb-10 max-w-2xl mx-auto">
+            <p className="font-serif text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
               Un espace de recueillement numérique pour préserver le souvenir
               et accompagner le deuil avec dignité.
             </p>
@@ -113,25 +130,77 @@ const Index = () => {
                 placeholder="Rechercher un défunt..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-secondary border-0 text-foreground placeholder:text-muted-foreground font-sans text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full pl-12 pr-4 py-3 bg-secondary border-0 text-foreground placeholder:text-muted-foreground font-sans text-base focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
         </section>
 
-        <div className="divider-elegant" />
-
         {/* Memorial Grid */}
-        <section className="section-padding">
+        <section className="px-4 py-6 md:px-8 md:py-10">
           <div className="container mx-auto">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl">Espaces mémoriels</h2>
-              <span className="text-sm text-muted-foreground font-sans">
-                {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
-              </span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
+                <span className="text-sm text-muted-foreground font-sans">
+                  {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              
+              {/* View Mode Switcher */}
+              <div className="flex items-center gap-1 bg-secondary p-1 rounded">
+                <button
+                  onClick={() => setViewMode("grid-4")}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === "grid-4" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="Grille 4 colonnes"
+                  title="Grille compacte"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("grid-3")}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === "grid-3" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="Grille 3 colonnes"
+                  title="Grille standard"
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("grid-2")}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === "grid-2" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="Grille 2 colonnes"
+                  title="Grille large"
+                >
+                  <Square className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === "list" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="Liste"
+                  title="Vue liste"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
               {filteredMemorials.map((memorial, index) => (
                 <div
                   key={memorial.id}
