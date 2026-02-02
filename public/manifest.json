@@ -1,7 +1,7 @@
 {
   "name": "Floorence",
   "short_name": "Floorence",
-  "description": "Plateforme mémorielle numérique - Ne pas laisser les morts sombrer dans l'oubli",
+  "description": "Plateforme mémorielle numérique - Honorer, Relier et Transmettre",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafafa",
