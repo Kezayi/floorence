@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
-import { ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +37,6 @@ const GuestbookPost = ({
   onAddCandles,
   onAddFlowers,
 }: GuestbookPostProps) => {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [candleDialogOpen, setCandleDialogOpen] = useState(false);
   const [flowerDialogOpen, setFlowerDialogOpen] = useState(false);
   const [candleQuantity, setCandleQuantity] = useState(1);
@@ -88,76 +86,21 @@ const GuestbookPost = ({
         "{post.content}"
       </p>
 
-      {/* Photo gallery (max 3 photos) */}
+      {/* Photo thumbnails - small and discrete */}
       {post.photos.length > 0 && (
-        <div className="relative mb-4">
-          <div className="aspect-video overflow-hidden bg-memorial-dark-muted/20 rounded-sm relative group">
-            <img
-              src={post.photos[currentPhotoIndex]}
-              alt={`Photo ${currentPhotoIndex + 1}`}
-              className="w-full h-full object-cover"
-            />
-
-            {/* Navigation arrows */}
-            {post.photos.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setCurrentPhotoIndex((prev) =>
-                      prev === 0 ? post.photos.length - 1 : prev - 1
-                    )
-                  }
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 rounded-full"
-                  aria-label="Photo précédente"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setCurrentPhotoIndex((prev) =>
-                      prev === post.photos.length - 1 ? 0 : prev + 1
-                    )
-                  }
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 rounded-full"
-                  aria-label="Photo suivante"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-
-                {/* Photo counter */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/80 px-2 py-0.5 rounded-full text-xs font-sans">
-                  {currentPhotoIndex + 1} / {post.photos.length}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Thumbnails */}
-          {post.photos.length > 1 && (
-            <div className="flex gap-1 mt-2">
-              {post.photos.map((photo, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPhotoIndex(index)}
-                  className={`w-12 h-12 overflow-hidden rounded-sm transition-all ${
-                    index === currentPhotoIndex
-                      ? "ring-2 ring-primary opacity-100"
-                      : "opacity-60 hover:opacity-100"
-                  }`}
-                >
-                  <img
-                    src={photo}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {post.photos.map((photo, index) => (
+            <div
+              key={index}
+              className="w-14 h-14 overflow-hidden bg-memorial-dark-muted/20 rounded-sm"
+            >
+              <img
+                src={photo}
+                alt={`Photo ${index + 1}`}
+                className="w-full h-full object-cover"
+              />
             </div>
-          )}
+          ))}
         </div>
       )}
 
