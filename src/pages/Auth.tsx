@@ -295,6 +295,10 @@ const Auth = () => {
                               value={field.value}
                               onChange={field.onChange}
                               disabled={otpExpiration === 0}
+                              autoFocus
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              autoComplete="one-time-code"
                             >
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
