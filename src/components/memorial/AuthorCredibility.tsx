@@ -35,7 +35,7 @@ const AuthorCredibility = ({ authorId, initialCount }: AuthorCredibilityProps) =
       }`}
       title={hasVoted ? "Vous avez déjà noté cet auteur" : "Donner un point de crédibilité à l'auteur"}
     >
-      <ThumbsUp className={`w-3 h-3 text-[#800020] ${hasVoted ? "fill-[#800020]" : ""}`} />
+      <ThumbsUp className={`w-3 h-3 ${count === 0 ? "text-red-600" : "text-green-600"} ${hasVoted ? (count === 0 ? "fill-red-600" : "fill-green-600") : ""}`} />
       <span>Crédibilité de l'auteur</span>
       <span className="font-medium text-foreground">{count}</span>
     </button>
