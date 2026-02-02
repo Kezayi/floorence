@@ -1,16 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import GestureButton from "@/components/memorial/GestureButton";
-import GuestbookMessage from "@/components/memorial/GuestbookMessage";
-import RelationSelect from "@/components/memorial/RelationSelect";
+import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
+import GuestbookForm from "@/components/memorial/GuestbookForm";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff } from "lucide-react";
+import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info } from "lucide-react";
 import { calculateAge, getMemorialType } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Mock data - type is now calculated dynamically
 const mockMemorialData = {
@@ -31,9 +36,6 @@ const mockMemorialData = {
     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&h=1000&fit=crop&crop=face",
     "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&h=1000&fit=crop&crop=face",
   ],
-  ripCount: 234,
-  candleCount: 89,
-  flowerCount: 45,
   enableContributions: true,
   contributionGoal: 500000,
   contributionCurrent: 285000,
@@ -55,29 +57,50 @@ const mockMemorialData = {
       gps: "5.3167,-4.0167",
     },
   ],
-  guestbookMessages: [
+  // New guestbook structure with gestures per post
+  guestbookPosts: [
     {
       id: "m1",
+      authorId: "user-1",
       authorName: "Marie Kouassi",
       relationCategory: "Sa Fille",
       content: "Papa, tu as toujours été mon modèle. Ta sagesse et ta bonté resteront gravées dans mon cœur pour toujours. Repose en paix.",
+      photos: [
+        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop",
+        "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400&h=300&fit=crop",
+      ],
       createdAt: "2025-01-10T10:30:00Z",
+      hasRip: true,
+      candleCount: 5,
+      flowerCount: 2,
     },
     {
       id: "m2",
+      authorId: "user-2",
       authorName: "Emmanuel Yao",
       relationCategory: "Son Collègue",
       content: "Un homme d'une grande intégrité. Travailler à ses côtés pendant 20 ans fut un honneur. Tu nous manques déjà.",
+      photos: [],
       createdAt: "2025-01-09T15:45:00Z",
+      hasRip: true,
+      candleCount: 3,
+      flowerCount: 1,
     },
     {
       id: "m3",
+      authorId: "user-3",
       authorName: "Adjoua Bamba",
       relationCategory: "Son Élève",
       content: "Maître Kouassi m'a appris bien plus que les mathématiques. Il m'a appris la persévérance et l'humilité. Merci pour tout.",
+      photos: [
+        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=300&fit=crop",
+      ],
       createdAt: "2025-01-09T09:20:00Z",
+      hasRip: false,
+      candleCount: 2,
+      flowerCount: 0,
     },
-  ],
+  ] as GuestbookPostData[],
 };
 
 const eventTypeLabels = {
@@ -95,36 +118,117 @@ const mockMemorial = {
 const Memorial = () => {
   const { slug } = useParams();
   const [isFollowing, setIsFollowing] = useState(false);
-  const [messageContent, setMessageContent] = useState("");
-  const [selectedRelation, setSelectedRelation] = useState("");
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>(
+    mockMemorial.guestbookPosts
+  );
+
+  // Simulate current user - in real app, get from auth context
+  const currentUserId = "user-current";
+  
+  // Check if current user has already posted
+  const userHasPosted = guestbookPosts.some(
+    (post) => post.authorId === currentUserId
+  );
 
   // In real app, fetch memorial by slug
   const memorial = mockMemorial;
 
-  const handleRIP = () => {
-    console.log("RIP clicked");
+  // Calculate totals from all posts
+  const totals = useMemo(() => {
+    return guestbookPosts.reduce(
+      (acc, post) => ({
+        ripCount: acc.ripCount + (post.hasRip ? 1 : 0),
+        candleCount: acc.candleCount + post.candleCount,
+        flowerCount: acc.flowerCount + post.flowerCount,
+      }),
+      { ripCount: 0, candleCount: 0, flowerCount: 0 }
+    );
+  }, [guestbookPosts]);
+
+  const handleToggleRip = (postId: string) => {
+    setGuestbookPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId ? { ...post, hasRip: !post.hasRip } : post
+      )
+    );
   };
 
-  const handleCandle = () => {
-    console.log("Candle clicked - would open payment");
+  const handleAddCandles = (postId: string, count: number) => {
+    // In real app, this would call Ebilling API first
+    console.log(`Payment for ${count} candles on post ${postId} - calling Ebilling API...`);
+    setGuestbookPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, candleCount: post.candleCount + count }
+          : post
+      )
+    );
   };
 
-  const handleFlower = () => {
-    console.log("Flower clicked - would open payment");
+  const handleAddFlowers = (postId: string, count: number) => {
+    // In real app, this would call Ebilling API first
+    console.log(`Payment for ${count} flowers on post ${postId} - calling Ebilling API...`);
+    setGuestbookPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, flowerCount: post.flowerCount + count }
+          : post
+      )
+    );
   };
 
-  const handleSubmitMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageContent.trim() || !selectedRelation) return;
-    console.log("Submit message:", { messageContent, selectedRelation });
-    setMessageContent("");
-    setSelectedRelation("");
+  const handleSubmitPost = (data: {
+    content: string;
+    relationCategory: string;
+    photos: string[];
+  }) => {
+    const newPost: GuestbookPostData = {
+      id: `m${Date.now()}`,
+      authorId: currentUserId,
+      authorName: "Utilisateur Connecté", // In real app, get from auth
+      relationCategory: data.relationCategory,
+      content: data.content,
+      photos: data.photos,
+      createdAt: new Date().toISOString(),
+      hasRip: false,
+      candleCount: 0,
+      flowerCount: 0,
+    };
+    setGuestbookPosts((prev) => [newPost, ...prev]);
   };
+
+  // Convert posts to messages format for InferredRelationships
+  const messagesForRelationships = guestbookPosts.map((post) => ({
+    authorName: post.authorName,
+    relationCategory: post.relationCategory,
+  }));
 
   const contributionPercentage = Math.round(
     (memorial.contributionCurrent / memorial.contributionGoal) * 100
   );
+
+  // Gesture button handlers (for header summary - non-interactive display)
+  const handleRIPSummary = () => {
+    // Scroll to guestbook
+    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleCandleSummary = () => {
+    if (!userHasPosted) {
+      alert("Vous devez d'abord publier un message dans le livre d'or pour allumer des cierges.");
+      return;
+    }
+    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleFlowerSummary = () => {
+    if (!userHasPosted) {
+      alert("Vous devez d'abord publier un message dans le livre d'or pour déposer des fleurs.");
+      return;
+    }
+    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -276,23 +380,47 @@ const Memorial = () => {
                   />
                 </div>
 
-                {/* Gesture Buttons */}
-                <div className="grid grid-cols-3 gap-3">
-                  <GestureButton
-                    type="RIP"
-                    count={memorial.ripCount}
-                    onClick={handleRIP}
-                  />
-                  <GestureButton
-                    type="CANDLE"
-                    count={memorial.candleCount}
-                    onClick={handleCandle}
-                  />
-                  <GestureButton
-                    type="FLOWER"
-                    count={memorial.flowerCount}
-                    onClick={handleFlower}
-                  />
+                {/* Gesture Buttons - Summary with totals */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                    <span>Hommages reçus</span>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-4 h-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Ces compteurs représentent la somme de tous les gestes 
+                          laissés par les visiteurs dans le livre d'or.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <GestureButton
+                      type="RIP"
+                      count={totals.ripCount}
+                      onClick={handleRIPSummary}
+                    />
+                    <GestureButton
+                      type="CANDLE"
+                      count={totals.candleCount}
+                      onClick={handleCandleSummary}
+                      disabled={!userHasPosted}
+                    />
+                    <GestureButton
+                      type="FLOWER"
+                      count={totals.flowerCount}
+                      onClick={handleFlowerSummary}
+                      disabled={!userHasPosted}
+                    />
+                  </div>
+                  {!userHasPosted && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <Info className="w-3 h-3 inline mr-1" />
+                      Publiez un message dans le livre d'or pour allumer des cierges ou déposer des fleurs.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -432,36 +560,22 @@ const Memorial = () => {
               </p>
 
               {/* Message Form */}
-              <form onSubmit={handleSubmitMessage} className="mb-12">
-                <div className="space-y-4">
-                  <RelationSelect
-                    value={selectedRelation}
-                    onChange={setSelectedRelation}
-                  />
-                  <textarea
-                    value={messageContent}
-                    onChange={(e) => setMessageContent(e.target.value)}
-                    placeholder="Votre message..."
-                    rows={4}
-                    className="w-full p-4 bg-memorial-dark border border-memorial-dark-muted/30 text-memorial-dark-foreground placeholder:text-memorial-dark-muted font-serif resize-none focus:outline-none focus:ring-1 focus:ring-memorial-dark-foreground/30"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!messageContent.trim() || !selectedRelation}
-                    className="btn-memorial bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Publier mon hommage
-                  </button>
-                </div>
-              </form>
+              <GuestbookForm onSubmit={handleSubmitPost} />
 
               {/* Inferred Relationships */}
-              <InferredRelationships messages={memorial.guestbookMessages} />
+              <InferredRelationships messages={messagesForRelationships} />
 
-              {/* Messages List */}
+              {/* Posts List */}
               <div className="divide-y divide-memorial-dark-muted/20">
-                {memorial.guestbookMessages.map((message) => (
-                  <GuestbookMessage key={message.id} {...message} />
+                {guestbookPosts.map((post) => (
+                  <GuestbookPost
+                    key={post.id}
+                    post={post}
+                    isOwner={post.authorId === currentUserId}
+                    onToggleRip={handleToggleRip}
+                    onAddCandles={handleAddCandles}
+                    onAddFlowers={handleAddFlowers}
+                  />
                 ))}
               </div>
             </div>
