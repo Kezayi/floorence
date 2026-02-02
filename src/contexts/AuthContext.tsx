@@ -39,11 +39,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signInWithOtp = async (email: string) => {
+    // Don't include emailRedirectTo to get a 6-digit OTP code instead of a magic link
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      },
     });
     return { error: error as Error | null };
   };
