@@ -19,6 +19,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import Conditions from "./pages/Conditions";
 import Confidentialite from "./pages/Confidentialite";
+import Vision from "./pages/Vision";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/paiement/annule" element={<PaymentCancelled />} />
                 <Route path="/conditions" element={<Conditions />} />
                 <Route path="/confidentialite" element={<Confidentialite />} />
+                <Route path="/a-propos" element={<Vision />} />
 
                 {/* Admin routes */}
                 <Route path="/admin" element={

@@ -68,7 +68,7 @@ const Footer = () => {
             <ul className="space-y-2">
               <li>
                 <Link to="/a-propos" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
-                  Notre mission
+                  Notre vision
                 </Link>
               </li>
               <li>
