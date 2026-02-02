@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      guestbook_posts: {
+        Row: {
+          author_name: string
+          candle_count: number
+          content: string
+          created_at: string
+          flower_count: number
+          id: string
+          memorial_id: string
+          payment_reference: string | null
+          photos: string[] | null
+          relation_category: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          author_name: string
+          candle_count?: number
+          content: string
+          created_at?: string
+          flower_count?: number
+          id?: string
+          memorial_id: string
+          payment_reference?: string | null
+          photos?: string[] | null
+          relation_category: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          author_name?: string
+          candle_count?: number
+          content?: string
+          created_at?: string
+          flower_count?: number
+          id?: string
+          memorial_id?: string
+          payment_reference?: string | null
+          photos?: string[] | null
+          relation_category?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           amount: number
