@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import GestureButton from "@/components/memorial/GestureButton";
@@ -10,96 +10,14 @@ import ShareButtons from "@/components/memorial/ShareButtons";
 import RelationshipGraph from "@/components/memorial/RelationshipGraph";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch } from "lucide-react";
-import { calculateAge, getMemorialType } from "@/lib/dateUtils";
+import { calculateAge } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// Mock data - type is now calculated dynamically
-const mockMemorialData = {
-  id: "1",
-  slug: "jean-baptiste-kouassi",
-  name: "Jean-Baptiste Kouassi",
-  birthDate: "12 Mars 1945",
-  deathDate: "8 Janvier 2025",
-  publishedAt: "10 Janvier 2025",
-  author: {
-    id: "author-1",
-    name: "Marie Kouassi",
-    relation: "Sa Fille",
-  },
-  bio: "Père dévoué, grand-père aimant et homme de foi. Jean-Baptiste a consacré sa vie à sa famille et à sa communauté. Instituteur pendant 35 ans, il a formé des générations d'élèves avec patience et dévouement.",
-  photos: [
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=1000&fit=crop&crop=face",
-    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&h=1000&fit=crop&crop=face",
-    "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&h=1000&fit=crop&crop=face",
-  ],
-  enableContributions: true,
-  contributionGoal: 500000,
-  contributionCurrent: 285000,
-  events: [
-    {
-      id: "e1",
-      type: "WAKE",
-      date: "15 Janvier 2025",
-      time: "14h00 - 22h00",
-      location: "Domicile familial, Cocody",
-      gps: "5.3364,-4.0266",
-    },
-    {
-      id: "e2",
-      type: "BURIAL",
-      date: "18 Janvier 2025",
-      time: "10h00",
-      location: "Église Saint-Paul, Plateau",
-      gps: "5.3167,-4.0167",
-    },
-  ],
-  // New guestbook structure with gestures per post
-  guestbookPosts: [
-    {
-      id: "m1",
-      authorId: "user-1",
-      authorName: "Marie Kouassi",
-      relationCategory: "Sa Fille",
-      content: "Papa, tu as toujours été mon modèle. Ta sagesse et ta bonté resteront gravées dans mon cœur pour toujours. Repose en paix.",
-      photos: [
-        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop",
-        "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400&h=300&fit=crop",
-      ],
-      createdAt: "2025-01-10T10:30:00Z",
-      candleCount: 5,
-      flowerCount: 2,
-    },
-    {
-      id: "m2",
-      authorId: "user-2",
-      authorName: "Emmanuel Yao",
-      relationCategory: "Son Collègue",
-      content: "Un homme d'une grande intégrité. Travailler à ses côtés pendant 20 ans fut un honneur. Tu nous manques déjà.",
-      photos: [],
-      createdAt: "2025-01-09T15:45:00Z",
-      candleCount: 3,
-      flowerCount: 1,
-    },
-    {
-      id: "m3",
-      authorId: "user-3",
-      authorName: "Adjoua Bamba",
-      relationCategory: "Son Élève",
-      content: "Maître Kouassi m'a appris bien plus que les mathématiques. Il m'a appris la persévérance et l'humilité. Merci pour tout.",
-      photos: [
-        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=300&fit=crop",
-      ],
-      createdAt: "2025-01-09T09:20:00Z",
-      candleCount: 2,
-      flowerCount: 0,
-    },
-  ] as GuestbookPostData[],
-};
+import { useMemorials } from "@/contexts/MemorialsContext";
 
 const eventTypeLabels = {
   WAKE: "Veillée",
@@ -107,20 +25,79 @@ const eventTypeLabels = {
   COMMEMORATION: "Commémoration",
 };
 
-// Add computed type to memorial
-const mockMemorial = {
-  ...mockMemorialData,
-  type: getMemorialType(mockMemorialData.deathDate),
-};
+// Default events for demo purposes
+const defaultEvents = [
+  {
+    id: "e1",
+    type: "WAKE",
+    date: "15 Janvier 2025",
+    time: "14h00 - 22h00",
+    location: "Domicile familial",
+    gps: "5.3364,-4.0266",
+  },
+  {
+    id: "e2",
+    type: "BURIAL",
+    date: "18 Janvier 2025",
+    time: "10h00",
+    location: "Église locale",
+    gps: "5.3167,-4.0167",
+  },
+];
 
 const Memorial = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const { memorials } = useMemorials();
+  
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>(
-    mockMemorial.guestbookPosts
-  );
   const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
+
+  // Find the memorial by slug from context
+  const memorialData = useMemo(() => {
+    return memorials.find((m) => m.slug === slug);
+  }, [memorials, slug]);
+
+  // Convert guestbook messages to posts format
+  const initialPosts = useMemo<GuestbookPostData[]>(() => {
+    if (!memorialData) return [];
+    return memorialData.guestbookMessages.map((msg, index) => ({
+      id: msg.id,
+      authorId: `user-${index}`,
+      authorName: msg.authorName,
+      relationCategory: msg.relationCategory,
+      content: msg.content,
+      photos: [],
+      createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+      candleCount: msg.candleCount || 0,
+      flowerCount: msg.flowerCount || 0,
+    }));
+  }, [memorialData]);
+
+  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>(initialPosts);
+
+  // Update posts when memorial data changes
+  useEffect(() => {
+    setGuestbookPosts(initialPosts);
+  }, [initialPosts]);
+
+  // Reset photo index when memorial changes
+  useEffect(() => {
+    setCurrentPhotoIndex(0);
+  }, [slug]);
+
+  // Calculate totals from all posts - must be before conditional return
+  const totals = useMemo(() => {
+    return guestbookPosts.reduce(
+      (acc, post) => ({
+        ripCount: acc.ripCount + 1,
+        candleCount: acc.candleCount + post.candleCount,
+        flowerCount: acc.flowerCount + post.flowerCount,
+      }),
+      { ripCount: 0, candleCount: 0, flowerCount: 0 }
+    );
+  }, [guestbookPosts]);
 
   // Simulate current user - in real app, get from auth context
   const currentUserId = "user-current";
@@ -130,24 +107,38 @@ const Memorial = () => {
     (post) => post.authorId === currentUserId
   );
 
-  // In real app, fetch memorial by slug
-  const memorial = mockMemorial;
-
-  // Calculate totals from all posts
-  // Note: 1 post = 1 RIP automatiquement
-  const totals = useMemo(() => {
-    return guestbookPosts.reduce(
-      (acc, post) => ({
-        ripCount: acc.ripCount + 1, // Chaque post vaut 1 RIP
-        candleCount: acc.candleCount + post.candleCount,
-        flowerCount: acc.flowerCount + post.flowerCount,
-      }),
-      { ripCount: 0, candleCount: 0, flowerCount: 0 }
+  // If memorial not found, show error page
+  if (!memorialData) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 pt-20 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl mb-4">Espace mémoriel introuvable</h1>
+            <p className="text-muted-foreground mb-6">
+              L'espace mémoriel que vous recherchez n'existe pas ou a été supprimé.
+            </p>
+            <Link to="/" className="btn-memorial">
+              Retour à l'accueil
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
     );
-  }, [guestbookPosts]);
+  }
+
+  // Create memorial object with additional computed properties
+  const memorial = {
+    ...memorialData,
+    publishedAt: "Récemment",
+    enableContributions: memorialData.type === "RECENT",
+    contributionGoal: 500000,
+    contributionCurrent: Math.floor(Math.random() * 300000) + 50000,
+    events: defaultEvents,
+  };
 
   const handleAddCandles = (postId: string, count: number) => {
-    // In real app, this would call Ebilling API first
     console.log(`Payment for ${count} candles on post ${postId} - calling Ebilling API...`);
     setGuestbookPosts((prev) =>
       prev.map((post) =>
@@ -159,7 +150,6 @@ const Memorial = () => {
   };
 
   const handleAddFlowers = (postId: string, count: number) => {
-    // In real app, this would call Ebilling API first
     console.log(`Payment for ${count} flowers on post ${postId} - calling Ebilling API...`);
     setGuestbookPosts((prev) =>
       prev.map((post) =>
@@ -180,7 +170,7 @@ const Memorial = () => {
     const newPost: GuestbookPostData = {
       id: `m${Date.now()}`,
       authorId: currentUserId,
-      authorName: "Utilisateur Connecté", // In real app, get from auth
+      authorName: "Utilisateur Connecté",
       relationCategory: data.relationCategory,
       content: data.content,
       photos: data.photos,
@@ -191,7 +181,6 @@ const Memorial = () => {
     setGuestbookPosts((prev) => [newPost, ...prev]);
   };
 
-  // Convert posts to messages format for InferredRelationships
   const messagesForRelationships = guestbookPosts.map((post) => ({
     authorName: post.authorName,
     relationCategory: post.relationCategory,
@@ -201,9 +190,7 @@ const Memorial = () => {
     (memorial.contributionCurrent / memorial.contributionGoal) * 100
   );
 
-  // Gesture button handlers (for header summary - non-interactive display)
   const handleRIPSummary = () => {
-    // Scroll to guestbook
     document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -329,7 +316,7 @@ const Memorial = () => {
                 
                 {/* Publication Info */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-6 font-sans">
-                  <span>Publié le {memorial.publishedAt}</span>
+                  <span>Publié {memorial.publishedAt}</span>
                   <span className="hidden sm:inline">•</span>
                   <span>
                     Par{" "}
