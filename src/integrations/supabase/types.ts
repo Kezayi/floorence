@@ -144,6 +144,39 @@ export type Database = {
           },
         ]
       }
+      otp_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          max_attempts: number
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          max_attempts?: number
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           amount: number
@@ -275,6 +308,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otp_codes: { Args: never; Returns: undefined }
       get_public_guestbook_posts: {
         Args: { p_memorial_id?: string }
         Returns: {
