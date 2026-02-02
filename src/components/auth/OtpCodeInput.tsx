@@ -2,7 +2,10 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type Props = {
+type Props = Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "disabled" | "maxLength" | "className"
+> & {
   value: string;
   onChange: (value: string) => void;
   length?: number;
@@ -12,13 +15,20 @@ type Props = {
 
 const onlyDigits = (s: string) => s.replace(/\D/g, "");
 
-export default function OtpCodeInput({
-  value,
-  onChange,
-  length = 6,
-  disabled,
-  className,
-}: Props) {
+function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+  return (value: T | null) => {
+    for (const ref of refs) {
+      if (!ref) continue;
+      if (typeof ref === "function") ref(value);
+      else (ref as React.MutableRefObject<T | null>).current = value;
+    }
+  };
+}
+
+const OtpCodeInput = React.forwardRef<HTMLInputElement, Props>(function OtpCodeInput(
+  { value, onChange, length = 6, disabled, className, name, id, ...inputProps },
+  forwardedRef
+) {
   // IMPORTANT: multi-input OTP UIs are frequently broken by browser/password-manager autofill.
   // Using a *single* real input (capturing digits + paste) and rendering 6 boxes is far more reliable.
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -80,7 +90,7 @@ export default function OtpCodeInput({
       <div className="relative">
         {/* Real input (captures typing, paste, and OTP suggestions) */}
         <input
-          ref={inputRef}
+          ref={mergeRefs(inputRef, forwardedRef)}
           value={digitsValue}
           onChange={(e) => handleChange(e.target.value)}
           onPaste={handlePaste}
@@ -90,9 +100,10 @@ export default function OtpCodeInput({
           disabled={disabled}
           inputMode="numeric"
           pattern="[0-9]*"
-          type="text"
+          type="tel"
           autoComplete="one-time-code"
-          name="one-time-code"
+          name={name ?? "otp"}
+          id={id}
           spellCheck={false}
           autoCorrect="off"
           autoCapitalize="off"
@@ -101,9 +112,13 @@ export default function OtpCodeInput({
           data-form-type="other"
           aria-label="Code de vérification (6 chiffres)"
           maxLength={length}
+          {...inputProps}
           className={cn(
-            "absolute inset-0 h-full w-full",
-            "opacity-0",
+            "absolute inset-0 h-full w-full z-10",
+            // iOS/Android: fully invisible inputs can sometimes refuse keyboard focus.
+            // Keep it technically visible but imperceptible.
+            "opacity-[0.01]",
+            "text-transparent bg-transparent",
             "caret-transparent",
             "cursor-text",
             "disabled:cursor-not-allowed"
@@ -111,7 +126,7 @@ export default function OtpCodeInput({
         />
 
         {/* Visual boxes */}
-        <div className="flex items-center">
+        <div className="flex items-center pointer-events-none">
           {chars.map((ch, i) => {
             const isActive = isFocused && i === Math.min(digitsValue.length, length - 1);
             return (
@@ -134,4 +149,6 @@ export default function OtpCodeInput({
       </div>
     </div>
   );
-}
+});
+
+export default OtpCodeInput;
