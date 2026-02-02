@@ -133,23 +133,37 @@ const GuestbookPost = ({
           <span className="text-sm font-sans">1 RIP</span>
         </div>
 
-        {/* Candle - Opens quantity dialog (paid) */}
-        <button
-          onClick={() => setCandleDialogOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-memorial-dark-muted transition-all"
-        >
-          <FlameIcon size={18} />
-          <span className="text-sm font-sans">{post.candleCount} Cierges</span>
-        </button>
+        {/* Candle - Affichage du compteur pour tous, bouton cliquable uniquement pour l'auteur */}
+        {isOwner ? (
+          <button
+            onClick={() => setCandleDialogOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-memorial-dark-muted transition-all cursor-pointer"
+          >
+            <FlameIcon size={18} />
+            <span className="text-sm font-sans">{post.candleCount} Cierges</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/10 text-memorial-dark-muted/60">
+            <FlameIcon size={18} />
+            <span className="text-sm font-sans">{post.candleCount} Cierges</span>
+          </div>
+        )}
 
-        {/* Flower - Opens quantity dialog (paid) */}
-        <button
-          onClick={() => setFlowerDialogOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-memorial-dark-muted transition-all"
-        >
-          <ChrysanthemumIcon size={18} />
-          <span className="text-sm font-sans">{post.flowerCount} Fleurs</span>
-        </button>
+        {/* Flower - Affichage du compteur pour tous, bouton cliquable uniquement pour l'auteur */}
+        {isOwner ? (
+          <button
+            onClick={() => setFlowerDialogOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-memorial-dark-muted transition-all cursor-pointer"
+          >
+            <ChrysanthemumIcon size={18} />
+            <span className="text-sm font-sans">{post.flowerCount} Fleurs</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-memorial-dark-muted/10 text-memorial-dark-muted/60">
+            <ChrysanthemumIcon size={18} />
+            <span className="text-sm font-sans">{post.flowerCount} Fleurs</span>
+          </div>
+        )}
       </div>
 
       {/* Candle Dialog */}
