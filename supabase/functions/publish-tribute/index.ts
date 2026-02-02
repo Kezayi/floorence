@@ -1,10 +1,38 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
+
+// Valid relation categories
+const VALID_RELATION_CATEGORIES = [
+  'family',
+  'friend',
+  'colleague',
+  'neighbor',
+  'acquaintance',
+  'other'
+] as const
+
+// Input validation schema
+const TributeInputSchema = z.object({
+  paymentReference: z.string().max(100).optional().nullable(),
+  memorialId: z.string().uuid('Invalid memorial ID format'),
+  content: z.string()
+    .min(1, 'Message content is required')
+    .max(5000, 'Message content exceeds 5000 characters'),
+  relationCategory: z.enum(VALID_RELATION_CATEGORIES, {
+    errorMap: () => ({ message: 'Invalid relation category' })
+  }),
+  photos: z.array(z.string().url().or(z.string().startsWith('data:image/')))
+    .max(3, 'Maximum 3 photos allowed')
+    .default([]),
+  candleCount: z.number().int().min(0).max(100).default(0),
+  flowerCount: z.number().int().min(0).max(100).default(0),
+})
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -48,7 +76,30 @@ serve(async (req) => {
                        userData?.user?.email?.split('@')[0] || 
                        'Utilisateur anonyme'
 
-    // Parse request body
+    // Parse and validate request body
+    let rawBody: unknown
+    try {
+      rawBody = await req.json()
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const validationResult = TributeInputSchema.safeParse(rawBody)
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.issues)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input data',
+          details: validationResult.error.issues.map(i => i.message)
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { 
       paymentReference, 
       memorialId, 
@@ -57,9 +108,9 @@ serve(async (req) => {
       photos, 
       candleCount, 
       flowerCount 
-    } = await req.json()
+    } = validationResult.data
 
-    console.log('Publishing tribute:', { paymentReference, memorialId, userId })
+    console.log('Publishing tribute:', { memorialId, userId, hasPaymentRef: !!paymentReference })
 
     // If there's a payment reference, verify the payment is completed
     if (paymentReference) {
@@ -86,14 +137,14 @@ serve(async (req) => {
 
       // Verify the transaction belongs to this user
       if (transaction.user_id !== userId) {
+        console.error('User mismatch:', { txUserId: transaction.user_id, userId })
         return new Response(
           JSON.stringify({ error: 'Unauthorized: Transaction does not belong to user' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      // For now, we'll allow pending payments to proceed (EBILLING callback might be delayed)
-      // In production, you might want stricter validation
+      // Check payment status
       if (transaction.status === 'failed' || transaction.status === 'cancelled') {
         return new Response(
           JSON.stringify({ error: 'Payment was not successful' }),
@@ -102,7 +153,7 @@ serve(async (req) => {
       }
     }
 
-    // Check if post with this payment reference already exists
+    // Check if post with this payment reference already exists (idempotency)
     if (paymentReference) {
       const { data: existingPost } = await supabase
         .from('guestbook_posts')
@@ -111,6 +162,7 @@ serve(async (req) => {
         .maybeSingle()
 
       if (existingPost) {
+        console.log('Tribute already exists for payment:', paymentReference)
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -131,10 +183,10 @@ serve(async (req) => {
         author_name: authorName,
         relation_category: relationCategory,
         content: content,
-        photos: photos || [],
-        candle_count: candleCount || 0,
-        flower_count: flowerCount || 0,
-        payment_reference: paymentReference
+        photos: photos,
+        candle_count: candleCount,
+        flower_count: flowerCount,
+        payment_reference: paymentReference || null
       })
       .select()
       .single()
