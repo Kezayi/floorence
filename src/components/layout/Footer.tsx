@@ -108,7 +108,7 @@ const Footer = () => {
             <span className="font-serif text-lg">Floorence</span>
           </div>
           <p className="text-sm text-memorial-dark-muted">
-            © {new Date().getFullYear()} Floorence. Tous droits réservés.
+            © {new Date().getFullYear()} Floorence By MNA. Tous droits réservés.
           </p>
         </div>
       </div>
