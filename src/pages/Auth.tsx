@@ -9,7 +9,7 @@ import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import OtpCodeInput from '@/components/auth/OtpCodeInput';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, ArrowLeft, Loader2, Clock } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const emailSchema = z.object({
 });
 
 const otpSchema = z.object({
-  otp: z.string().length(6, { message: "Le code doit contenir 6 chiffres" }),
+  otp: z.string().trim().regex(/^\d{6}$/, { message: "Le code doit contenir 6 chiffres" }),
 });
 
 type EmailFormValues = z.infer<typeof emailSchema>;
@@ -290,31 +290,11 @@ const Auth = () => {
                       render={({ field }) => (
                         <FormItem className="flex flex-col items-center">
                           <FormControl>
-                            <InputOTP
-                              maxLength={6}
+                            <OtpCodeInput
                               value={field.value}
-                              onChange={field.onChange}
+                              onChange={(v) => field.onChange(v.replace(/\D/g, '').slice(0, 6))}
                               disabled={otpExpiration === 0}
-                              autoFocus
-                              name="otp-code"
-                              onPaste={(e) => {
-                                const text = e.clipboardData?.getData('text') ?? '';
-                                const digits = text.replace(/\D/g, '').slice(0, 6);
-                                if (digits.length) {
-                                  e.preventDefault();
-                                  field.onChange(digits);
-                                }
-                              }}
-                            >
-                              <InputOTPGroup>
-                                <InputOTPSlot index={0} />
-                                <InputOTPSlot index={1} />
-                                <InputOTPSlot index={2} />
-                                <InputOTPSlot index={3} />
-                                <InputOTPSlot index={4} />
-                                <InputOTPSlot index={5} />
-                              </InputOTPGroup>
-                            </InputOTP>
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
