@@ -26,17 +26,17 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border">
+    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
       <div className="p-6 flex flex-col items-center">
-        {/* Logo Bordeaux */}
-        <div className="w-16 h-16 rounded-full bg-admin-burgundy flex items-center justify-center mb-3">
-          <span className="font-serif text-2xl text-white font-medium">F</span>
+        {/* Logo Bordeaux - Plus gros, au-dessus du nom */}
+        <div className="w-20 h-20 rounded-full bg-admin-burgundy flex items-center justify-center mb-4 shadow-lg">
+          <span className="font-serif text-3xl text-white font-medium">F</span>
         </div>
-        <h1 className="text-xl font-bold text-foreground">Floorence Admin</h1>
-        <p className="text-sm text-muted-foreground">Back-office</p>
+        <h1 className="text-xl font-bold text-foreground">Floorence</h1>
+        <p className="text-sm text-muted-foreground">Administration</p>
       </div>
 
-      <nav className="px-3">
+      <nav className="px-3 flex-1">
         {navItems
           .filter(item => !item.adminOnly || isAdmin)
           .map((item) => (
@@ -59,7 +59,8 @@ const AdminSidebar = () => {
           ))}
       </nav>
 
-      <div className="absolute bottom-0 left-0 w-64 p-3 border-t border-border bg-admin-burgundy">
+      {/* Section Retour au site - Fond rouge foncé */}
+      <div className="p-3 border-t border-border bg-admin-burgundy">
         <NavLink
           to="/"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors"
