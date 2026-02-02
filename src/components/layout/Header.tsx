@@ -11,11 +11,18 @@ const Header = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
 
-  const navItems = [
-    { path: "/", label: "Accueil", icon: Home },
-    { path: "/creer", label: "Créer", icon: PlusCircle },
-    { path: "/compte", label: "Compte", icon: User },
-  ];
+  // Menu items selon l'état de connexion
+  const navItems = user
+    ? [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/creer", label: "Créer", icon: PlusCircle },
+        { path: "/compte", label: "Compte", icon: User },
+      ]
+    : [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/creer", label: "Créer", icon: PlusCircle },
+        { path: "/auth", label: "Connexion", icon: LogIn },
+      ];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -106,9 +113,9 @@ const Header = () => {
                       );
                     })}
                     
-                    {/* Auth Section */}
-                    <div className="border-t border-border mt-2 pt-2">
-                      {user ? (
+                    {/* Déconnexion - uniquement si connecté */}
+                    {user && (
+                      <div className="border-t border-border mt-2 pt-2">
                         <button
                           onClick={handleSignOut}
                           className="flex items-center gap-3 px-4 py-3 font-sans text-sm text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors"
@@ -116,20 +123,8 @@ const Header = () => {
                           <LogOut className="w-4 h-4" />
                           Déconnexion
                         </button>
-                      ) : (
-                        <Link
-                          to="/auth"
-                          className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
-                            isActive("/auth")
-                              ? "bg-muted text-foreground font-medium"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                          }`}
-                        >
-                          <LogIn className="w-4 h-4" />
-                          Connexion
-                        </Link>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </nav>
                 </div>
               )}
