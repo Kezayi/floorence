@@ -242,10 +242,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_view_guestbook_post: {
-        Args: { post_user_id: string }
-        Returns: boolean
-      }
       get_public_guestbook_posts: {
         Args: { p_memorial_id?: string }
         Returns: {

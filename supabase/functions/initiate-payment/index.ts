@@ -1,12 +1,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-// EBILLING API endpoint (adjust based on actual EBILLING documentation)
+// Input validation schema
+const PaymentInputSchema = z.object({
+  amount: z.number().int().positive().max(10000000, 'Amount exceeds maximum allowed'),
+  paymentType: z.enum(['tribute', 'donation']).default('tribute'),
+  memorialId: z.string().uuid().optional().nullable(),
+  metadata: z.object({
+    candleCount: z.number().int().min(0).max(100).optional(),
+    flowerCount: z.number().int().min(0).max(100).optional(),
+    relationCategory: z.string().max(50).optional(),
+    messagePreview: z.string().max(200).optional(),
+  }).optional().default({})
+})
+
+// EBILLING API endpoint
 const EBILLING_API_URL = 'https://api.ebilling.digitech.africa/v1/payments'
 
 serve(async (req) => {
@@ -56,23 +70,31 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub
 
-    // Parse request body
-    const { amount, paymentType, memorialId, metadata } = await req.json()
-
-    if (!amount || amount <= 0) {
+    // Parse and validate request body
+    let rawBody: unknown
+    try {
+      rawBody = await req.json()
+    } catch {
       return new Response(
-        JSON.stringify({ error: 'Invalid amount' }),
+        JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Validate memorialId is a valid UUID or null
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    const validMemorialId = memorialId && uuidRegex.test(memorialId) ? memorialId : null
+    const validationResult = PaymentInputSchema.safeParse(rawBody)
     
-    if (memorialId && !validMemorialId) {
-      console.warn(`Invalid memorial_id format received: ${memorialId}, setting to null`)
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.issues)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input data',
+          details: validationResult.error.issues.map(i => i.message)
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+
+    const { amount, paymentType, memorialId, metadata } = validationResult.data
 
     // Generate unique reference for this transaction
     const reference = `FLO-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
@@ -88,13 +110,13 @@ serve(async (req) => {
       .from('payment_transactions')
       .insert({
         user_id: userId,
-        memorial_id: validMemorialId,
+        memorial_id: memorialId || null,
         amount: amount,
         currency: 'XOF',
         status: 'pending',
         ebilling_reference: reference,
-        payment_type: paymentType || 'tribute',
-        metadata: metadata || {}
+        payment_type: paymentType,
+        metadata: metadata
       })
       .select()
       .single()
@@ -107,7 +129,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('Transaction created:', transaction)
+    console.log('Transaction created:', transaction.id)
 
     // Call EBILLING API to initiate payment
     const ebillingPayload = {
@@ -129,7 +151,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('Calling EBILLING API with payload:', JSON.stringify(ebillingPayload))
+    console.log('Calling EBILLING API')
 
     const ebillingResponse = await fetch(EBILLING_API_URL, {
       method: 'POST',
@@ -142,7 +164,6 @@ serve(async (req) => {
     })
 
     const ebillingData = await ebillingResponse.json()
-    console.log('EBILLING API response:', JSON.stringify(ebillingData))
 
     if (!ebillingResponse.ok) {
       console.error('EBILLING API error:', ebillingData)
@@ -154,7 +175,7 @@ serve(async (req) => {
         .eq('id', transaction.id)
 
       return new Response(
-        JSON.stringify({ error: 'Payment initiation failed', details: ebillingData }),
+        JSON.stringify({ error: 'Payment initiation failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
