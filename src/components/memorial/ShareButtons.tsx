@@ -71,7 +71,7 @@ const ShareButtons = ({ url, title, description = "" }: ShareButtonsProps) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-50">
       <button
         onClick={handleNativeShare}
         className="btn-ghost"
@@ -86,12 +86,12 @@ const ShareButtons = ({ url, title, description = "" }: ShareButtonsProps) => {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[60]"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Share menu */}
-          <div className="absolute top-full left-0 mt-2 bg-background border border-border rounded-sm shadow-lg z-50 min-w-[200px] animate-fade-in">
+          <div className="absolute top-full left-0 mt-2 bg-background border border-border rounded-sm shadow-lg z-[70] min-w-[200px] animate-fade-in">
             <div className="p-2">
               <div className="flex items-center justify-between px-3 py-2 border-b border-border mb-2">
                 <span className="text-sm font-sans text-muted-foreground">Partager via</span>
