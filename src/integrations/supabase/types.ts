@@ -106,51 +106,29 @@ export type Database = {
       }
     }
     Views: {
-      guestbook_posts_public: {
-        Row: {
-          author_name: string | null
-          candle_count: number | null
-          content: string | null
-          created_at: string | null
-          flower_count: number | null
-          id: string | null
-          memorial_id: string | null
-          photos: string[] | null
-          relation_category: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          author_name?: string | null
-          candle_count?: number | null
-          content?: string | null
-          created_at?: string | null
-          flower_count?: number | null
-          id?: string | null
-          memorial_id?: string | null
-          photos?: string[] | null
-          relation_category?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          author_name?: string | null
-          candle_count?: number | null
-          content?: string | null
-          created_at?: string | null
-          flower_count?: number | null
-          id?: string | null
-          memorial_id?: string | null
-          photos?: string[] | null
-          relation_category?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_view_guestbook_post: {
+        Args: { post_user_id: string }
+        Returns: boolean
+      }
+      get_public_guestbook_posts: {
+        Args: { p_memorial_id?: string }
+        Returns: {
+          author_name: string
+          candle_count: number
+          content: string
+          created_at: string
+          flower_count: number
+          id: string
+          memorial_id: string
+          photos: string[]
+          relation_category: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
