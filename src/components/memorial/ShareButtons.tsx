@@ -55,6 +55,8 @@ const ShareButtons = ({ url, title, description = "" }: ShareButtonsProps) => {
   };
 
   const handleNativeShare = async () => {
+    console.log("Share button clicked, navigator.share available:", !!navigator.share);
+    
     if (navigator.share) {
       try {
         await navigator.share({
@@ -62,10 +64,14 @@ const ShareButtons = ({ url, title, description = "" }: ShareButtonsProps) => {
           text: description,
           url,
         });
+        console.log("Native share completed");
       } catch (err) {
-        // User cancelled or error
+        console.log("Native share cancelled or failed:", err);
+        // If native share fails, fallback to dropdown
+        setIsOpen(true);
       }
     } else {
+      console.log("Opening dropdown menu, current state:", isOpen);
       setIsOpen(!isOpen);
     }
   };
