@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,25 @@ const GuestbookPost = ({
   const [flowerDialogOpen, setFlowerDialogOpen] = useState(false);
   const [candleQuantity, setCandleQuantity] = useState(1);
   const [flowerQuantity, setFlowerQuantity] = useState(1);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState(0);
+
+  const openLightbox = (index: number) => {
+    setLightboxPhotoIndex(index);
+    setLightboxOpen(true);
+  };
+
+  const nextPhoto = () => {
+    setLightboxPhotoIndex((prev) => 
+      prev === post.photos.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevPhoto = () => {
+    setLightboxPhotoIndex((prev) => 
+      prev === 0 ? post.photos.length - 1 : prev - 1
+    );
+  };
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -86,20 +106,21 @@ const GuestbookPost = ({
         "{post.content}"
       </p>
 
-      {/* Photo thumbnails - small and discrete */}
+      {/* Photo thumbnails - small and clickable */}
       {post.photos.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {post.photos.map((photo, index) => (
-            <div
+            <button
               key={index}
-              className="w-14 h-14 overflow-hidden bg-memorial-dark-muted/20 rounded-sm"
+              onClick={() => openLightbox(index)}
+              className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-memorial-dark-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-memorial-dark-foreground/30 transition-all"
             >
               <img
                 src={photo}
                 alt={`Photo ${index + 1}`}
                 className="w-full h-full object-cover"
               />
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -220,6 +241,58 @@ const GuestbookPost = ({
               Payer et déposer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Lightbox */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="bg-black/95 border-none p-0 max-w-[95vw] max-h-[95vh] sm:max-w-4xl">
+          <div className="relative flex items-center justify-center min-h-[50vh] sm:min-h-[70vh]">
+            {/* Close button */}
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </button>
+
+            {/* Navigation - Previous */}
+            {post.photos.length > 1 && (
+              <button
+                onClick={prevPhoto}
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Photo précédente"
+              >
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+            )}
+
+            {/* Photo */}
+            <img
+              src={post.photos[lightboxPhotoIndex]}
+              alt={`Photo ${lightboxPhotoIndex + 1}`}
+              className="max-w-full max-h-[80vh] object-contain px-12 sm:px-16"
+            />
+
+            {/* Navigation - Next */}
+            {post.photos.length > 1 && (
+              <button
+                onClick={nextPhoto}
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Photo suivante"
+              >
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+            )}
+
+            {/* Photo counter */}
+            {post.photos.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-sans">
+                {lightboxPhotoIndex + 1} / {post.photos.length}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </article>
