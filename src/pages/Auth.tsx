@@ -35,7 +35,7 @@ const Auth = () => {
   const [otpExpiration, setOtpExpiration] = useState(0);
   const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const expirationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { user, signInWithOtp, verifyOtp } = useAuth();
+  const { user, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -104,7 +104,7 @@ const Auth = () => {
 
   const handleEmailSubmit = async (values: EmailFormValues) => {
     setIsLoading(true);
-    const { error } = await signInWithOtp(values.email);
+    const { error } = await sendOtp(values.email);
     setIsLoading(false);
 
     if (error) {
@@ -122,7 +122,7 @@ const Auth = () => {
     startExpirationTimer();
     toast({
       title: "Code envoyé",
-      description: `Un code de vérification a été envoyé à ${values.email}`,
+      description: `Un code de vérification à 6 chiffres a été envoyé à ${values.email}`,
     });
   };
 
@@ -137,24 +137,32 @@ const Auth = () => {
     }
 
     setIsLoading(true);
-    const { error } = await verifyOtp(email, values.otp);
+    const { error, verificationUrl } = await verifyOtp(email, values.otp);
     setIsLoading(false);
 
     if (error) {
       toast({
         variant: "destructive",
         title: "Code invalide",
-        description: "Le code saisi est incorrect ou a expiré. Veuillez réessayer.",
+        description: error.message,
       });
       return;
     }
 
-    toast({
-      title: "Connexion réussie",
-      description: "Complétez votre profil pour continuer.",
-    });
-    // Always redirect to account page to complete/verify profile
-    navigate('/compte');
+    // Redirect to verification URL which will complete the sign-in
+    if (verificationUrl) {
+      toast({
+        title: "Vérification réussie",
+        description: "Connexion en cours...",
+      });
+      window.location.href = verificationUrl;
+    } else {
+      toast({
+        title: "Connexion réussie",
+        description: "Redirection vers votre compte...",
+      });
+      navigate('/compte');
+    }
   };
 
   const handleBack = () => {
@@ -170,7 +178,7 @@ const Auth = () => {
     if (resendCooldown > 0) return;
     
     setIsLoading(true);
-    const { error } = await signInWithOtp(email);
+    const { error } = await sendOtp(email);
     setIsLoading(false);
 
     if (error) {
@@ -206,7 +214,7 @@ const Auth = () => {
                   </div>
                   <h1 className="font-serif text-2xl md:text-3xl mb-2">Connexion</h1>
                   <p className="text-muted-foreground text-sm">
-                    Entrez votre email pour recevoir un code de vérification
+                    Entrez votre email pour recevoir un code de vérification à 6 chiffres
                   </p>
                 </div>
 

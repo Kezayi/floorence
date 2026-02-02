@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  sendOtp: (email: string) => Promise<{ error: Error | null; isNewUser?: boolean }>;
+  verifyOtp: (email: string, code: string) => Promise<{ error: Error | null; verificationUrl?: string; isNewUser?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -38,21 +38,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithOtp = async (email: string) => {
-    // Don't include emailRedirectTo to get a 6-digit OTP code instead of a magic link
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-    });
-    return { error: error as Error | null };
+  // Custom OTP: Call our generate-otp edge function
+  const sendOtp = async (email: string): Promise<{ error: Error | null; isNewUser?: boolean }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-otp', {
+        body: { email },
+      });
+
+      if (error) {
+        console.error('Error sending OTP:', error);
+        return { error: new Error(error.message || "Erreur lors de l'envoi du code") };
+      }
+
+      if (data?.error) {
+        return { error: new Error(data.error) };
+      }
+
+      return { error: null, isNewUser: data?.isNewUser };
+    } catch (err: any) {
+      console.error('Exception sending OTP:', err);
+      return { error: new Error(err.message || "Une erreur est survenue") };
+    }
   };
 
-  const verifyOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
-    return { error: error as Error | null };
+  // Custom OTP: Call our verify-otp edge function
+  const verifyOtp = async (email: string, code: string): Promise<{ error: Error | null; verificationUrl?: string; isNewUser?: boolean }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { email, code },
+      });
+
+      if (error) {
+        console.error('Error verifying OTP:', error);
+        return { error: new Error(error.message || "Erreur lors de la vérification") };
+      }
+
+      if (data?.error) {
+        return { error: new Error(data.error) };
+      }
+
+      return { 
+        error: null, 
+        verificationUrl: data?.verificationUrl,
+        isNewUser: data?.isNewUser 
+      };
+    } catch (err: any) {
+      console.error('Exception verifying OTP:', err);
+      return { error: new Error(err.message || "Une erreur est survenue") };
+    }
   };
 
   const signOut = async () => {
@@ -60,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithOtp, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, sendOtp, verifyOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
