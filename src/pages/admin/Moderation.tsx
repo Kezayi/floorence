@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
+import ExportCSVButton from '@/components/admin/ExportCSVButton';
 
 interface GuestbookPost {
   id: string;
@@ -137,9 +138,37 @@ const Moderation = () => {
     return <div className="text-center py-8">Chargement...</div>;
   }
 
+  const fetchAllPosts = async () => {
+    const { data, error } = await supabase
+      .from('guestbook_posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as GuestbookPost[];
+  };
+
+  const postColumns: { key: keyof GuestbookPost; label: string }[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'author_name', label: 'Auteur' },
+    { key: 'relation_category', label: 'Relation' },
+    { key: 'content', label: 'Contenu' },
+    { key: 'is_hidden', label: 'Masqué' },
+    { key: 'hidden_reason', label: 'Raison' },
+    { key: 'created_at', label: 'Date de création' },
+    { key: 'memorial_id', label: 'ID Mémorial' },
+  ];
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-foreground mb-8">Modération</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Modération</h1>
+        <ExportCSVButton
+          fetchData={fetchAllPosts}
+          columns={postColumns}
+          filename={`moderation-${format(new Date(), 'yyyy-MM-dd')}`}
+          label="Exporter les messages"
+        />
+      </div>
 
       <div className="space-y-4">
         {posts?.map((post) => (

@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
+import ExportCSVButton from '@/components/admin/ExportCSVButton';
 
 interface Memorial {
   id: string;
@@ -169,9 +170,37 @@ const Memorials = () => {
     return <div className="text-center py-8">Chargement...</div>;
   }
 
+  const fetchAllMemorials = async () => {
+    const { data, error } = await supabase
+      .from('memorials')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Memorial[];
+  };
+
+  const memorialColumns: { key: keyof Memorial; label: string }[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'slug', label: 'Slug' },
+    { key: 'first_name', label: 'Prénom' },
+    { key: 'last_name', label: 'Nom' },
+    { key: 'death_date', label: 'Date de décès' },
+    { key: 'is_active', label: 'Actif' },
+    { key: 'merged_into', label: 'Fusionné dans' },
+    { key: 'created_at', label: 'Date de création' },
+  ];
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-foreground mb-8">Gestion des mémoriaux</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Gestion des mémoriaux</h1>
+        <ExportCSVButton
+          fetchData={fetchAllMemorials}
+          columns={memorialColumns}
+          filename={`memoriaux-${format(new Date(), 'yyyy-MM-dd')}`}
+          label="Exporter les mémoriaux"
+        />
+      </div>
 
       <div className="mb-6">
         <div className="relative max-w-md">
