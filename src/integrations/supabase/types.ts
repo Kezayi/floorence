@@ -72,7 +72,7 @@ export type Database = {
           payment_type: string
           status: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           amount: number
@@ -86,7 +86,7 @@ export type Database = {
           payment_type: string
           status?: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           amount?: number
@@ -100,13 +100,54 @@ export type Database = {
           payment_type?: string
           status?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      guestbook_posts_public: {
+        Row: {
+          author_name: string | null
+          candle_count: number | null
+          content: string | null
+          created_at: string | null
+          flower_count: number | null
+          id: string | null
+          memorial_id: string | null
+          photos: string[] | null
+          relation_category: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          candle_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          flower_count?: number | null
+          id?: string | null
+          memorial_id?: string | null
+          photos?: string[] | null
+          relation_category?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          candle_count?: number | null
+          content?: string | null
+          created_at?: string | null
+          flower_count?: number | null
+          id?: string | null
+          memorial_id?: string | null
+          photos?: string[] | null
+          relation_category?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
