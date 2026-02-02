@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ImagePlus, X, Plus, Minus, Loader2 } from "lucide-react";
+import { ImagePlus, X, Plus, Minus, Loader2, AlertCircle } from "lucide-react";
 import RelationSelect from "./RelationSelect";
 import { Button } from "@/components/ui/button";
 import { FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { initiatePayment } from "@/lib/paymentService";
 import { toast } from "sonner";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
@@ -32,6 +33,7 @@ const MAX_PHOTOS = 3;
 
 const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   const { user } = useAuth();
+  const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { data: settings } = useSystemSettings();
   const { isAdminOrMod } = useAdminRole();
   const [messageContent, setMessageContent] = useState("");
@@ -45,6 +47,43 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
 
   const CANDLE_PRICE = settings?.candle_price?.amount ?? 500;
   const FLOWER_PRICE = settings?.flower_price?.amount ?? 1000;
+
+  // Block non-authenticated users - must sign in to post
+  if (!user) {
+    return (
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm text-center">
+        <p className="text-memorial-dark-foreground font-serif mb-4">
+          Connectez-vous pour rédiger un hommage
+        </p>
+        <a 
+          href="/auth" 
+          className="inline-block px-6 py-3 bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90 transition-colors font-sans text-sm"
+        >
+          Se connecter
+        </a>
+      </div>
+    );
+  }
+
+  // Block users with incomplete profile - must complete profile first
+  if (user && !profileLoading && !isProfileComplete) {
+    return (
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm text-center">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <AlertCircle className="w-5 h-5 text-amber-500" />
+          <p className="text-memorial-dark-foreground font-serif">
+            Veuillez compléter votre profil pour rédiger un hommage
+          </p>
+        </div>
+        <a 
+          href="/compte" 
+          className="inline-block px-6 py-3 bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90 transition-colors font-sans text-sm"
+        >
+          Compléter mon profil
+        </a>
+      </div>
+    );
+  }
 
   // Block admins/moderators from posting
   if (isAdminOrMod) {

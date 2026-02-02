@@ -87,7 +87,8 @@ const Auth = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // Always redirect to account page first - profile check happens there
+      navigate('/compte');
     }
   }, [user, navigate]);
 
@@ -150,9 +151,10 @@ const Auth = () => {
 
     toast({
       title: "Connexion réussie",
-      description: "Vous êtes maintenant connecté.",
+      description: "Complétez votre profil pour continuer.",
     });
-    navigate('/');
+    // Always redirect to account page to complete/verify profile
+    navigate('/compte');
   };
 
   const handleBack = () => {
