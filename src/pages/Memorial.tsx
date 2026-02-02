@@ -8,6 +8,7 @@ import GuestbookForm from "@/components/memorial/GuestbookForm";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
 import RelationshipGraph from "@/components/memorial/RelationshipGraph";
+import AuthorCredibility from "@/components/memorial/AuthorCredibility";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch } from "lucide-react";
 import { calculateAge } from "@/lib/dateUtils";
@@ -315,7 +316,7 @@ const Memorial = () => {
                 </p>
                 
                 {/* Publication Info */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-6 font-sans">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2 font-sans">
                   <span>Publié {memorial.publishedAt}</span>
                   <span className="hidden sm:inline">•</span>
                   <span>
@@ -329,6 +330,12 @@ const Memorial = () => {
                     {" "}({memorial.author.relation})
                   </span>
                 </div>
+                
+                {/* Author Credibility */}
+                <AuthorCredibility 
+                  authorId={memorial.author.id} 
+                  initialCount={Math.floor(Math.random() * 20) + 5}
+                />
 
                 <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
                   {memorial.bio}
