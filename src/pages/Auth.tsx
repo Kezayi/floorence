@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -295,10 +296,8 @@ const Auth = () => {
                               value={field.value}
                               onChange={field.onChange}
                               disabled={otpExpiration === 0}
+                              pattern={REGEXP_ONLY_DIGITS}
                               autoFocus
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              autoComplete="one-time-code"
                             >
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
