@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, ArrowLeft, Loader2, Clock } from 'lucide-react';
 
 const emailSchema = z.object({
   email: z.string().trim().email({ message: "Adresse email invalide" }).max(255),
@@ -24,13 +24,65 @@ const otpSchema = z.object({
 type EmailFormValues = z.infer<typeof emailSchema>;
 type OtpFormValues = z.infer<typeof otpSchema>;
 
+const RESEND_COOLDOWN = 60; // seconds
+const OTP_EXPIRATION = 300; // 5 minutes in seconds
+
 const Auth = () => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpExpiration, setOtpExpiration] = useState(0);
+  const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const expirationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { user, signInWithOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+      if (expirationIntervalRef.current) clearInterval(expirationIntervalRef.current);
+    };
+  }, []);
+
+  // Start resend cooldown timer
+  const startResendCooldown = useCallback(() => {
+    setResendCooldown(RESEND_COOLDOWN);
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Start OTP expiration timer
+  const startExpirationTimer = useCallback(() => {
+    setOtpExpiration(OTP_EXPIRATION);
+    if (expirationIntervalRef.current) clearInterval(expirationIntervalRef.current);
+    expirationIntervalRef.current = setInterval(() => {
+      setOtpExpiration((prev) => {
+        if (prev <= 1) {
+          if (expirationIntervalRef.current) clearInterval(expirationIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Redirect if already logged in
   useEffect(() => {
@@ -65,6 +117,8 @@ const Auth = () => {
 
     setEmail(values.email);
     setStep('otp');
+    startResendCooldown();
+    startExpirationTimer();
     toast({
       title: "Code envoyé",
       description: `Un code de vérification a été envoyé à ${values.email}`,
@@ -72,6 +126,15 @@ const Auth = () => {
   };
 
   const handleOtpSubmit = async (values: OtpFormValues) => {
+    if (otpExpiration === 0) {
+      toast({
+        variant: "destructive",
+        title: "Code expiré",
+        description: "Votre code a expiré. Veuillez demander un nouveau code.",
+      });
+      return;
+    }
+
     setIsLoading(true);
     const { error } = await verifyOtp(email, values.otp);
     setIsLoading(false);
@@ -95,9 +158,15 @@ const Auth = () => {
   const handleBack = () => {
     setStep('email');
     otpForm.reset();
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    if (expirationIntervalRef.current) clearInterval(expirationIntervalRef.current);
+    setResendCooldown(0);
+    setOtpExpiration(0);
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    
     setIsLoading(true);
     const { error } = await signInWithOtp(email);
     setIsLoading(false);
@@ -111,6 +180,9 @@ const Auth = () => {
       return;
     }
 
+    startResendCooldown();
+    startExpirationTimer();
+    otpForm.reset();
     toast({
       title: "Code renvoyé",
       description: `Un nouveau code a été envoyé à ${email}`,
@@ -184,6 +256,20 @@ const Auth = () => {
                     Entrez le code à 6 chiffres envoyé à
                   </p>
                   <p className="text-foreground font-medium mt-1">{email}</p>
+                  
+                  {/* Expiration timer */}
+                  {otpExpiration > 0 ? (
+                    <div className="mt-3 flex items-center justify-center gap-2 text-sm">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className={otpExpiration <= 60 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                        Code expire dans {formatTime(otpExpiration)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-destructive font-medium">
+                      Code expiré - Veuillez demander un nouveau code
+                    </p>
+                  )}
                 </div>
 
                 <Form {...otpForm}>
@@ -198,6 +284,7 @@ const Auth = () => {
                               maxLength={6}
                               value={field.value}
                               onChange={field.onChange}
+                              disabled={otpExpiration === 0}
                             >
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
@@ -214,7 +301,11 @@ const Auth = () => {
                       )}
                     />
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={isLoading || otpExpiration === 0}
+                    >
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -230,10 +321,17 @@ const Auth = () => {
                 <div className="mt-6 text-center">
                   <button
                     onClick={handleResendCode}
-                    disabled={isLoading}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    disabled={isLoading || resendCooldown > 0}
+                    className={`text-sm transition-colors ${
+                      resendCooldown > 0 
+                        ? "text-muted-foreground/50 cursor-not-allowed" 
+                        : "text-muted-foreground hover:text-primary"
+                    }`}
                   >
-                    Renvoyer le code
+                    {resendCooldown > 0 
+                      ? `Renvoyer le code (${resendCooldown}s)` 
+                      : "Renvoyer le code"
+                    }
                   </button>
                 </div>
               </>
