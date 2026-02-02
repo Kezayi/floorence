@@ -17,6 +17,7 @@ import Auth from "./pages/Auth";
 import Search from "./pages/Search";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
+import Conditions from "./pages/Conditions";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -52,6 +53,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/paiement/succes" element={<PaymentSuccess />} />
                 <Route path="/paiement/annule" element={<PaymentCancelled />} />
+                <Route path="/conditions" element={<Conditions />} />
 
                 {/* Admin routes */}
                 <Route path="/admin" element={
