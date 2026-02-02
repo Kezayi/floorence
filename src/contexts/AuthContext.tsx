@@ -6,8 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  sendOtp: (email: string) => Promise<{ error: Error | null; isNewUser?: boolean }>;
-  verifyOtp: (email: string, code: string) => Promise<{ error: Error | null; verificationUrl?: string; isNewUser?: boolean }>;
+  sendMagicLink: (email: string) => Promise<{ error: Error | null; isNewUser?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -38,16 +37,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Custom OTP: Call our generate-otp edge function
-  const sendOtp = async (email: string): Promise<{ error: Error | null; isNewUser?: boolean }> => {
+  // Send magic link via edge function
+  const sendMagicLink = async (email: string): Promise<{ error: Error | null; isNewUser?: boolean }> => {
     try {
-      const { data, error } = await supabase.functions.invoke('generate-otp', {
+      const { data, error } = await supabase.functions.invoke('send-magic-link', {
         body: { email },
       });
 
       if (error) {
-        console.error('Error sending OTP:', error);
-        return { error: new Error(error.message || "Erreur lors de l'envoi du code") };
+        console.error('Error sending magic link:', error);
+        return { error: new Error(error.message || "Erreur lors de l'envoi du lien") };
       }
 
       if (data?.error) {
@@ -56,34 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return { error: null, isNewUser: data?.isNewUser };
     } catch (err: any) {
-      console.error('Exception sending OTP:', err);
-      return { error: new Error(err.message || "Une erreur est survenue") };
-    }
-  };
-
-  // Custom OTP: Call our verify-otp edge function
-  const verifyOtp = async (email: string, code: string): Promise<{ error: Error | null; verificationUrl?: string; isNewUser?: boolean }> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-otp', {
-        body: { email, code },
-      });
-
-      if (error) {
-        console.error('Error verifying OTP:', error);
-        return { error: new Error(error.message || "Erreur lors de la vérification") };
-      }
-
-      if (data?.error) {
-        return { error: new Error(data.error) };
-      }
-
-      return { 
-        error: null, 
-        verificationUrl: data?.verificationUrl,
-        isNewUser: data?.isNewUser 
-      };
-    } catch (err: any) {
-      console.error('Exception verifying OTP:', err);
+      console.error('Exception sending magic link:', err);
       return { error: new Error(err.message || "Une erreur est survenue") };
     }
   };
@@ -93,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, sendOtp, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, sendMagicLink, signOut }}>
       {children}
     </AuthContext.Provider>
   );
