@@ -311,12 +311,12 @@ const Memorial = () => {
                     ) : null;
                   })()}
                 </h1>
-                <p className="font-sans text-lg text-muted-foreground mb-4">
+                <p className="font-sans text-lg text-muted-foreground mb-1">
                   {memorial.birthDate} — {memorial.deathDate}
                 </p>
                 
                 {/* Publication Info */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2 font-sans">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-1 font-sans">
                   <span>Publié {memorial.publishedAt}</span>
                   <span className="hidden sm:inline">•</span>
                   <span>
