@@ -284,7 +284,7 @@ const Auth = () => {
                 </div>
 
                 <Form {...otpForm}>
-                  <form onSubmit={otpForm.handleSubmit(handleOtpSubmit)} className="space-y-6">
+                  <form onSubmit={otpForm.handleSubmit(handleOtpSubmit)} className="space-y-6" autoComplete="off">
                     <FormField
                       control={otpForm.control}
                       name="otp"
@@ -292,18 +292,28 @@ const Auth = () => {
                         <FormItem className="flex flex-col items-center">
                           <FormControl>
                             <InputOTP
-                              key="otp-input"
                               maxLength={6}
                               value={field.value}
-                              onChange={(value) => {
-                                // Filtrer pour n'accepter que les chiffres
-                                const digitsOnly = value.replace(/[^0-9]/g, '');
-                                field.onChange(digitsOnly);
-                              }}
+                              onChange={field.onChange}
                               disabled={otpExpiration === 0}
                               pattern={REGEXP_ONLY_DIGITS}
                               autoFocus
                               inputMode="numeric"
+                              autoComplete="one-time-code"
+                              name="otp"
+                              spellCheck={false}
+                              autoCorrect="off"
+                              autoCapitalize="none"
+                              data-lpignore="true"
+                              data-1p-ignore
+                              onPaste={(e) => {
+                                const text = e.clipboardData?.getData('text') ?? '';
+                                const digits = text.replace(/\D/g, '').slice(0, 6);
+                                if (digits.length) {
+                                  e.preventDefault();
+                                  field.onChange(digits);
+                                }
+                              }}
                             >
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
