@@ -289,13 +289,12 @@ const Auth = () => {
                       name="otp"
                       render={({ field }) => (
                         <FormItem className="flex flex-col items-center">
-                          <FormControl>
-                            <OtpCodeInput
-                              value={field.value}
-                              onChange={(v) => field.onChange(v.replace(/\D/g, '').slice(0, 6))}
-                              disabled={otpExpiration === 0}
-                            />
-                          </FormControl>
+                          {/* NOTE: Do not wrap custom OTP UI in <FormControl> (Radix Slot) */}
+                          <OtpCodeInput
+                            value={field.value}
+                            onChange={(v) => field.onChange(v.replace(/\D/g, '').slice(0, 6))}
+                            disabled={otpExpiration === 0}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
