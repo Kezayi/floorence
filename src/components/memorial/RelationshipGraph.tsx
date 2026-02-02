@@ -135,12 +135,15 @@ const RelationshipGraph = ({
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
   const [animationProgress, setAnimationProgress] = useState(0);
   const animationStartTime = useRef<number | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<RelationshipNode | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   // Reset animation when dialog opens
   useEffect(() => {
     if (open) {
       setAnimationProgress(0);
       animationStartTime.current = null;
+      setHoveredNode(null);
     }
   }, [open]);
 
@@ -345,6 +348,61 @@ const RelationshipGraph = ({
   const handleZoomOut = () => setScale((s) => Math.max(s - 0.2, 0.5));
   const handleReset = () => setScale(1);
 
+  // Handle mouse move for hover detection
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const centerX = dimensions.width / 2;
+    const centerY = dimensions.height / 2;
+    
+    // Check if hovering over center node (deceased)
+    const centerDist = Math.sqrt(
+      Math.pow((mouseX - centerX) / scale, 2) + 
+      Math.pow((mouseY - centerY) / scale, 2)
+    );
+    
+    if (centerDist <= 30) {
+      setHoveredNode({
+        id: "deceased",
+        name: deceasedName,
+        category: "Défunt",
+        x: centerX,
+        y: centerY,
+        vx: 0,
+        vy: 0,
+      });
+      setTooltipPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
+    
+    // Check if hovering over any author node
+    for (const node of nodes) {
+      const adjustedNodeX = centerX + (node.x - centerX) * scale;
+      const adjustedNodeY = centerY + (node.y - centerY) * scale;
+      const dist = Math.sqrt(
+        Math.pow(mouseX - adjustedNodeX, 2) + 
+        Math.pow(mouseY - adjustedNodeY, 2)
+      );
+      
+      if (dist <= 20 * scale) {
+        setHoveredNode(node);
+        setTooltipPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        return;
+      }
+    }
+    
+    setHoveredNode(null);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredNode(null);
+  };
+
   // Legend items
   const legendItems = [
     { color: "#000000", label: "Défunt" },
@@ -407,12 +465,42 @@ const RelationshipGraph = ({
                 </p>
               </div>
             ) : (
-              <canvas
-                ref={canvasRef}
-                width={dimensions.width}
-                height={dimensions.height}
-                className="cursor-move"
-              />
+              <>
+                <canvas
+                  ref={canvasRef}
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  className="cursor-pointer"
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                />
+                
+                {/* Tooltip */}
+                {hoveredNode && (
+                  <div
+                    className="absolute pointer-events-none z-10 bg-background border border-border shadow-lg rounded-md px-3 py-2 text-sm"
+                    style={{
+                      left: Math.min(tooltipPosition.x + 10, dimensions.width - 150),
+                      top: Math.max(tooltipPosition.y - 60, 10),
+                    }}
+                  >
+                    <div className="font-serif font-medium text-foreground">
+                      {hoveredNode.name}
+                    </div>
+                    <div className="text-muted-foreground text-xs flex items-center gap-1.5 mt-0.5">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ 
+                          backgroundColor: hoveredNode.category === "Défunt" 
+                            ? "#000000" 
+                            : getCategoryColor(hoveredNode.category) 
+                        }}
+                      />
+                      {hoveredNode.category}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
