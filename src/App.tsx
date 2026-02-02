@@ -20,6 +20,7 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import Conditions from "./pages/Conditions";
 import Confidentialite from "./pages/Confidentialite";
 import Vision from "./pages/Vision";
+import Mission from "./pages/Mission";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/conditions" element={<Conditions />} />
                 <Route path="/confidentialite" element={<Confidentialite />} />
                 <Route path="/a-propos" element={<Vision />} />
+                <Route path="/mission" element={<Mission />} />
 
                 {/* Admin routes */}
                 <Route path="/admin" element={
