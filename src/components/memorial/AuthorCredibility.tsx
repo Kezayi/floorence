@@ -28,7 +28,7 @@ const AuthorCredibility = ({ authorId, initialCount }: AuthorCredibilityProps) =
     <button
       onClick={handleClick}
       disabled={hasVoted}
-      className={`inline-flex items-center gap-1.5 text-xs font-sans mb-6 transition-all ${
+      className={`inline-flex items-center gap-1.5 text-xs font-sans mb-4 transition-all ${
         hasVoted
           ? "text-primary cursor-default"
           : "text-muted-foreground hover:text-primary cursor-pointer"
