@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { SearchResult, SearchableMemorial } from "@/lib/searchWithRelations";
-import { User, Heart, BookOpen, Link2, ChevronRight, FileText } from "lucide-react";
-import { useMemo } from "react";
+import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface SearchResultsProps {
@@ -9,6 +9,18 @@ interface SearchResultsProps {
   query: string;
   memorials: SearchableMemorial[];
   onClose: () => void;
+}
+
+// Types pour la désambiguïsation
+interface PersonMatch {
+  id: string;
+  name: string;
+  type: "deceased" | "author";
+  memorialId: string;
+  memorialSlug: string;
+  memorialName: string;
+  photo?: string;
+  relation?: string;
 }
 
 // Types pour organiser les résultats
@@ -30,7 +42,6 @@ interface AuthorGuestbookEntry {
 }
 
 interface OrganizedResults {
-  // Si la personne recherchée est un défunt
   isDeceased: boolean;
   deceasedMemorial?: {
     id: string;
@@ -38,11 +49,9 @@ interface OrganizedResults {
     slug: string;
     photo?: string;
   };
-  // Si la personne recherchée est un auteur
   authorName: string;
   publications: AuthorPublications[];
   guestbookEntries: AuthorGuestbookEntry[];
-  // Lien avec l'utilisateur connecté
   connectionWithUser?: {
     type: "direct" | "indirect" | "none";
     description: string;
@@ -50,38 +59,108 @@ interface OrganizedResults {
   };
 }
 
-const organizeResultsByPerson = (
+// Trouve toutes les personnes correspondant à la recherche
+const findAllMatchingPersons = (
   query: string,
-  memorials: SearchableMemorial[],
-  currentUserName?: string
-): OrganizedResults => {
+  memorials: SearchableMemorial[]
+): PersonMatch[] => {
   const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  
-  const publications: AuthorPublications[] = [];
-  const guestbookEntries: AuthorGuestbookEntry[] = [];
-  let authorName = query;
-  let isDeceased = false;
-  let deceasedMemorial: OrganizedResults["deceasedMemorial"];
+  const matches: PersonMatch[] = [];
+  const seen = new Set<string>();
 
   for (const memorial of memorials) {
     const memorialNameNormalized = memorial.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
-    // Vérifier si la recherche correspond à un défunt
+    // Défunts
     if (memorialNameNormalized.includes(normalizedQuery)) {
-      isDeceased = true;
-      deceasedMemorial = {
-        id: memorial.id,
-        name: memorial.name,
-        slug: memorial.slug,
-        photo: memorial.photos[0],
-      };
-      authorName = memorial.name;
+      const key = `deceased-${memorial.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        matches.push({
+          id: memorial.id,
+          name: memorial.name,
+          type: "deceased",
+          memorialId: memorial.id,
+          memorialSlug: memorial.slug,
+          memorialName: memorial.name,
+          photo: memorial.photos[0],
+        });
+      }
     }
 
-    // Vérifier si l'auteur du mémorial correspond
+    // Auteur du mémorial
     const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (authorNameNormalized.includes(normalizedQuery)) {
-      authorName = memorial.author.name;
+      const key = `author-${memorial.author.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        matches.push({
+          id: memorial.author.id,
+          name: memorial.author.name,
+          type: "author",
+          memorialId: memorial.id,
+          memorialSlug: memorial.slug,
+          memorialName: memorial.name,
+          photo: memorial.photos[0],
+          relation: memorial.author.relation,
+        });
+      }
+    }
+
+    // Auteurs du livre d'or
+    for (const message of memorial.guestbookMessages) {
+      const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (msgAuthorNormalized.includes(normalizedQuery)) {
+        const key = `guestbook-${message.authorName}-${memorial.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          matches.push({
+            id: message.id,
+            name: message.authorName,
+            type: "author",
+            memorialId: memorial.id,
+            memorialSlug: memorial.slug,
+            memorialName: memorial.name,
+            photo: memorial.photos[0],
+            relation: message.relationCategory,
+          });
+        }
+      }
+    }
+  }
+
+  return matches;
+};
+
+const organizeResultsForPerson = (
+  person: PersonMatch,
+  memorials: SearchableMemorial[],
+  currentUserName?: string
+): OrganizedResults => {
+  const publications: AuthorPublications[] = [];
+  const guestbookEntries: AuthorGuestbookEntry[] = [];
+  
+  if (person.type === "deceased") {
+    return {
+      isDeceased: true,
+      deceasedMemorial: {
+        id: person.memorialId,
+        name: person.name,
+        slug: person.memorialSlug,
+        photo: person.photo,
+      },
+      authorName: person.name,
+      publications: [],
+      guestbookEntries: [],
+    };
+  }
+
+  // Pour un auteur, chercher toutes ses contributions
+  const personNameNormalized = person.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  for (const memorial of memorials) {
+    const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (authorNameNormalized === personNameNormalized) {
       publications.push({
         memorialId: memorial.id,
         memorialName: memorial.name,
@@ -91,11 +170,9 @@ const organizeResultsByPerson = (
       });
     }
 
-    // Vérifier les messages du livre d'or
     for (const message of memorial.guestbookMessages) {
       const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (msgAuthorNormalized.includes(normalizedQuery)) {
-        authorName = message.authorName;
+      if (msgAuthorNormalized === personNameNormalized) {
         guestbookEntries.push({
           memorialId: memorial.id,
           memorialName: memorial.name,
@@ -114,39 +191,27 @@ const organizeResultsByPerson = (
   if (currentUserName) {
     const userNameNormalized = currentUserName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
-    // Vérifier si l'utilisateur et la personne recherchée ont contribué aux mêmes mémoriaux
     for (const memorial of memorials) {
       const allContributors = [
-        memorial.author.name,
-        ...memorial.guestbookMessages.map(m => m.authorName)
+        { name: memorial.author.name, relation: memorial.author.relation },
+        ...memorial.guestbookMessages.map(m => ({ name: m.authorName, relation: m.relationCategory }))
       ];
       
-      const queryPersonInMemorial = allContributors.some(name => 
-        name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(normalizedQuery)
+      const personContrib = allContributors.find(c => 
+        c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === personNameNormalized
       );
       
-      const userInMemorial = allContributors.some(name =>
-        name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(userNameNormalized)
+      const userContrib = allContributors.find(c =>
+        c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(userNameNormalized)
       );
 
-      if (queryPersonInMemorial && userInMemorial) {
-        // Trouver les relations respectives
-        const queryPersonRelation = memorial.guestbookMessages.find(m => 
-          m.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(normalizedQuery)
-        )?.relationCategory || (memorial.author.name.toLowerCase().includes(normalizedQuery) ? memorial.author.relation : undefined);
-        
-        const userRelation = memorial.guestbookMessages.find(m =>
-          m.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(userNameNormalized)
-        )?.relationCategory || (memorial.author.name.toLowerCase().includes(userNameNormalized) ? memorial.author.relation : undefined);
-
-        if (queryPersonRelation && userRelation) {
-          connectionWithUser = {
-            type: "indirect",
-            description: `Vous êtes ${userRelation} et ${authorName} est ${queryPersonRelation} de ${memorial.name}`,
-            via: memorial.name,
-          };
-          break;
-        }
+      if (personContrib && userContrib) {
+        connectionWithUser = {
+          type: "indirect",
+          description: `Vous êtes ${userContrib.relation} et ${person.name} est ${personContrib.relation} de ${memorial.name}`,
+          via: memorial.name,
+        };
+        break;
       }
     }
 
@@ -159,9 +224,8 @@ const organizeResultsByPerson = (
   }
 
   return {
-    isDeceased,
-    deceasedMemorial,
-    authorName,
+    isDeceased: false,
+    authorName: person.name,
     publications,
     guestbookEntries,
     connectionWithUser,
@@ -170,13 +234,18 @@ const organizeResultsByPerson = (
 
 const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProps) => {
   const { user } = useAuth();
+  const [selectedPerson, setSelectedPerson] = useState<PersonMatch | null>(null);
   
-  // Pour l'instant, on utilise le nom du profil utilisateur (à connecter avec le vrai profil)
-  const currentUserName = user?.email?.split("@")[0]; // Temporaire - utiliser le display_name du profil
+  const currentUserName = user?.email?.split("@")[0];
+
+  const matchingPersons = useMemo(
+    () => findAllMatchingPersons(query, memorials),
+    [query, memorials]
+  );
 
   const organized = useMemo(
-    () => organizeResultsByPerson(query, memorials, currentUserName),
-    [query, memorials, currentUserName]
+    () => selectedPerson ? organizeResultsForPerson(selectedPerson, memorials, currentUserName) : null,
+    [selectedPerson, memorials, currentUserName]
   );
 
   if (results.length === 0) {
@@ -189,20 +258,109 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
     );
   }
 
+  // Si plusieurs personnes correspondent, afficher la liste de désambiguïsation
+  if (matchingPersons.length > 1 && !selectedPerson) {
+    return (
+      <div className="max-h-[70vh] overflow-y-auto">
+        <div className="p-4 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2 text-primary mb-2">
+            <Users className="w-4 h-4" />
+            <h3 className="font-serif text-lg text-foreground">
+              Plusieurs résultats pour "{query}"
+            </h3>
+          </div>
+          <p className="text-sm text-muted-foreground font-sans">
+            Sélectionnez la personne recherchée
+          </p>
+        </div>
+        
+        <div className="divide-y divide-border">
+          {matchingPersons.map((person) => (
+            <button
+              key={`${person.type}-${person.id}`}
+              onClick={() => setSelectedPerson(person)}
+              className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left group"
+            >
+              <div className="w-12 h-14 overflow-hidden rounded-sm bg-muted shrink-0">
+                {person.photo && (
+                  <img
+                    src={person.photo}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-serif text-foreground group-hover:text-primary transition-colors">
+                    {person.name}
+                  </span>
+                  <span className={`px-2 py-0.5 text-xs font-sans rounded ${
+                    person.type === "deceased" 
+                      ? "bg-primary/10 text-primary" 
+                      : "bg-secondary text-muted-foreground"
+                  }`}>
+                    {person.type === "deceased" ? "Défunt" : "Auteur"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground font-sans truncate">
+                  {person.type === "deceased" 
+                    ? "Espace mémorial" 
+                    : `${person.relation} de ${person.memorialName}`
+                  }
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Si une seule personne ou une personne sélectionnée, afficher les détails
+  const displayPerson = selectedPerson || matchingPersons[0];
+  const displayOrganized = organized || organizeResultsForPerson(displayPerson, memorials, currentUserName);
+
   return (
     <div className="max-h-[70vh] overflow-y-auto">
-      {/* Header */}
+      {/* Header avec bouton retour si sélection */}
       <div className="p-4 border-b border-border bg-muted/30">
-        <h3 className="font-serif text-lg text-foreground">
-          Résultats pour "{organized.authorName}"
-        </h3>
-        <p className="text-sm text-muted-foreground font-sans mt-1">
-          {results.length} résultat{results.length > 1 ? "s" : ""} trouvé{results.length > 1 ? "s" : ""}
-        </p>
+        {selectedPerson && matchingPersons.length > 1 && (
+          <button
+            onClick={() => setSelectedPerson(null)}
+            className="text-sm text-primary hover:underline font-sans mb-2 flex items-center gap-1"
+          >
+            ← Retour aux résultats
+          </button>
+        )}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-12 overflow-hidden rounded-sm bg-muted shrink-0">
+            {displayPerson.photo && (
+              <img
+                src={displayPerson.photo}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+          <div>
+            <h3 className="font-serif text-lg text-foreground">
+              {displayOrganized.authorName}
+            </h3>
+            <span className={`inline-block px-2 py-0.5 text-xs font-sans rounded ${
+              displayPerson.type === "deceased" 
+                ? "bg-primary/10 text-primary" 
+                : "bg-secondary text-muted-foreground"
+            }`}>
+              {displayPerson.type === "deceased" ? "Défunt" : "Auteur"}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 1. Si c'est un défunt - afficher uniquement le mémorial */}
-      {organized.isDeceased && organized.deceasedMemorial && (
+      {displayOrganized.isDeceased && displayOrganized.deceasedMemorial && (
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3 text-primary">
             <Heart className="w-4 h-4" />
@@ -211,14 +369,14 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
             </h4>
           </div>
           <Link
-            to={`/memorial/${organized.deceasedMemorial.slug}`}
+            to={`/memorial/${displayOrganized.deceasedMemorial.slug}`}
             onClick={onClose}
             className="flex items-center gap-4 p-3 rounded-sm bg-secondary/50 hover:bg-secondary transition-colors group"
           >
             <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0">
-              {organized.deceasedMemorial.photo && (
+              {displayOrganized.deceasedMemorial.photo && (
                 <img
-                  src={organized.deceasedMemorial.photo}
+                  src={displayOrganized.deceasedMemorial.photo}
                   alt=""
                   className="w-full h-full object-cover"
                 />
@@ -226,7 +384,7 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">
-                {organized.deceasedMemorial.name}
+                {displayOrganized.deceasedMemorial.name}
               </p>
               <p className="text-sm text-muted-foreground font-sans">
                 Accéder à l'espace mémorial
@@ -238,19 +396,19 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
       )}
 
       {/* 2. Publications (Mémoriaux créés par cette personne) */}
-      {organized.publications.length > 0 && (
+      {displayOrganized.publications.length > 0 && (
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3 text-primary">
             <FileText className="w-4 h-4" />
             <h4 className="font-sans text-sm font-medium uppercase tracking-wide">
-              Publications ({organized.publications.length})
+              Publications ({displayOrganized.publications.length})
             </h4>
           </div>
           <p className="text-xs text-muted-foreground font-sans mb-3">
-            Espaces mémoriels créés par {organized.authorName}
+            Espaces mémoriels créés par {displayOrganized.authorName}
           </p>
           <div className="space-y-2">
-            {organized.publications.map((pub) => (
+            {displayOrganized.publications.map((pub) => (
               <Link
                 key={pub.memorialId}
                 to={`/memorial/${pub.memorialSlug}`}
@@ -282,19 +440,19 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
       )}
 
       {/* 3. Messages dans le Livre d'Or */}
-      {organized.guestbookEntries.length > 0 && (
+      {displayOrganized.guestbookEntries.length > 0 && (
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3 text-primary">
             <BookOpen className="w-4 h-4" />
             <h4 className="font-sans text-sm font-medium uppercase tracking-wide">
-              Messages Livre d'Or ({organized.guestbookEntries.length})
+              Messages Livre d'Or ({displayOrganized.guestbookEntries.length})
             </h4>
           </div>
           <p className="text-xs text-muted-foreground font-sans mb-3">
-            Contributions de {organized.authorName} aux livres d'or
+            Contributions de {displayOrganized.authorName} aux livres d'or
           </p>
           <div className="space-y-3">
-            {organized.guestbookEntries.map((entry, idx) => (
+            {displayOrganized.guestbookEntries.map((entry, idx) => (
               <Link
                 key={`${entry.memorialId}-${idx}`}
                 to={`/memorial/${entry.memorialSlug}`}
@@ -323,65 +481,67 @@ const SearchResults = ({ results, query, memorials, onClose }: SearchResultsProp
       )}
 
       {/* 4. Lien avec l'utilisateur connecté */}
-      <div className="p-4 bg-secondary/30">
-        <div className="flex items-center gap-2 mb-3 text-primary">
-          <Link2 className="w-4 h-4" />
-          <h4 className="font-sans text-sm font-medium uppercase tracking-wide">
-            Votre lien avec {organized.authorName}
-          </h4>
-        </div>
-        
-        {!user ? (
-          <div className="p-3 rounded-sm bg-muted/50 text-center">
-            <p className="text-sm text-muted-foreground font-sans">
-              Connectez-vous pour voir vos liens avec cette personne
-            </p>
-            <Link
-              to="/auth"
-              onClick={onClose}
-              className="inline-block mt-2 text-sm text-primary hover:underline font-sans"
-            >
-              Se connecter
-            </Link>
+      {!displayOrganized.isDeceased && (
+        <div className="p-4 bg-secondary/30">
+          <div className="flex items-center gap-2 mb-3 text-primary">
+            <Link2 className="w-4 h-4" />
+            <h4 className="font-sans text-sm font-medium uppercase tracking-wide">
+              Votre lien avec {displayOrganized.authorName}
+            </h4>
           </div>
-        ) : organized.connectionWithUser ? (
-          <div className={`p-3 rounded-sm ${
-            organized.connectionWithUser.type === "indirect" 
-              ? "bg-green-500/10 border border-green-500/20" 
-              : "bg-muted/50"
-          }`}>
-            {organized.connectionWithUser.type === "indirect" ? (
-              <>
-                <p className="text-sm font-sans text-foreground">
-                  {organized.connectionWithUser.description}
-                </p>
-                {organized.connectionWithUser.via && (
-                  <p className="text-xs text-muted-foreground mt-1 font-sans">
-                    Via le mémorial de {organized.connectionWithUser.via}
-                  </p>
-                )}
-              </>
-            ) : (
+          
+          {!user ? (
+            <div className="p-3 rounded-sm bg-muted/50 text-center">
               <p className="text-sm text-muted-foreground font-sans">
-                {organized.connectionWithUser.description}
+                Connectez-vous pour voir vos liens avec cette personne
               </p>
-            )}
-          </div>
-        ) : (
-          <div className="p-3 rounded-sm bg-muted/50">
-            <p className="text-sm text-muted-foreground font-sans">
-              Complétez votre profil pour découvrir vos liens familiaux
-            </p>
-            <Link
-              to="/account"
-              onClick={onClose}
-              className="inline-block mt-2 text-sm text-primary hover:underline font-sans"
-            >
-              Modifier mon profil
-            </Link>
-          </div>
-        )}
-      </div>
+              <Link
+                to="/auth"
+                onClick={onClose}
+                className="inline-block mt-2 text-sm text-primary hover:underline font-sans"
+              >
+                Se connecter
+              </Link>
+            </div>
+          ) : displayOrganized.connectionWithUser ? (
+            <div className={`p-3 rounded-sm ${
+              displayOrganized.connectionWithUser.type === "indirect" 
+                ? "bg-green-500/10 border border-green-500/20" 
+                : "bg-muted/50"
+            }`}>
+              {displayOrganized.connectionWithUser.type === "indirect" ? (
+                <>
+                  <p className="text-sm font-sans text-foreground">
+                    {displayOrganized.connectionWithUser.description}
+                  </p>
+                  {displayOrganized.connectionWithUser.via && (
+                    <p className="text-xs text-muted-foreground mt-1 font-sans">
+                      Via le mémorial de {displayOrganized.connectionWithUser.via}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground font-sans">
+                  {displayOrganized.connectionWithUser.description}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 rounded-sm bg-muted/50">
+              <p className="text-sm text-muted-foreground font-sans">
+                Complétez votre profil pour découvrir vos liens familiaux
+              </p>
+              <Link
+                to="/account"
+                onClick={onClose}
+                className="inline-block mt-2 text-sm text-primary hover:underline font-sans"
+              >
+                Modifier mon profil
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
