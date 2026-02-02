@@ -2,14 +2,16 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert } from "lucide-react";
 import RelationSelect from "@/components/memorial/RelationSelect";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
 
 const CreateMemorial = () => {
   const navigate = useNavigate();
+  const { isAdminOrMod, loading: roleLoading } = useAdminRole();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
@@ -166,6 +168,35 @@ const CreateMemorial = () => {
       </p>
     );
   };
+
+  // Block admins/moderators from creating memorials
+  if (!roleLoading && isAdminOrMod) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 pt-16 md:pt-20">
+          <section className="section-padding">
+            <div className="container mx-auto">
+              <div className="max-w-lg mx-auto text-center">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+                  <ShieldAlert className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h1 className="mb-4">Accès restreint</h1>
+                <p className="font-serif text-muted-foreground mb-8">
+                  En tant qu'administrateur ou modérateur, vous ne pouvez pas créer d'espace mémoriel avec ce compte.
+                  Veuillez utiliser un compte personnel.
+                </p>
+                <button onClick={() => navigate("/")} className="btn-memorial">
+                  Retour à l'accueil
+                </button>
+              </div>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

@@ -76,6 +76,9 @@ export default {
         flower: {
           soft: "hsl(var(--flower-soft))",
         },
+        admin: {
+          burgundy: "hsl(var(--admin-burgundy))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -14,9 +14,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { initiatePayment } from "@/lib/paymentService";
 import { toast } from "sonner";
-
-const CANDLE_PRICE = 500; // FCFA
-const FLOWER_PRICE = 1000; // FCFA
+import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 interface GuestbookFormProps {
   memorialId?: string;
@@ -33,6 +32,8 @@ const MAX_PHOTOS = 3;
 
 const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   const { user } = useAuth();
+  const { data: settings } = useSystemSettings();
+  const { isAdminOrMod } = useAdminRole();
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
@@ -41,6 +42,20 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const CANDLE_PRICE = settings?.candle_price?.amount ?? 500;
+  const FLOWER_PRICE = settings?.flower_price?.amount ?? 1000;
+
+  // Block admins/moderators from posting
+  if (isAdminOrMod) {
+    return (
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm">
+        <p className="text-memorial-dark-muted text-center font-serif">
+          En tant qu'administrateur ou modérateur, vous ne pouvez pas rédiger d'hommage avec ce compte.
+        </p>
+      </div>
+    );
+  }
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
