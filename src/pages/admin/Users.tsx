@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
+import ExportCSVButton from '@/components/admin/ExportCSVButton';
 
 interface UserRole {
   id: string;
@@ -132,14 +133,38 @@ const Users = () => {
     return <div className="text-center py-8">Chargement...</div>;
   }
 
+  const fetchAllRoles = async () => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as UserRole[];
+  };
+
+  const roleColumns: { key: keyof UserRole; label: string }[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'user_id', label: 'ID Utilisateur' },
+    { key: 'role', label: 'Rôle' },
+    { key: 'created_at', label: 'Date de création' },
+  ];
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-foreground">Gestion des utilisateurs</h1>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Ajouter un rôle
-        </Button>
+        <div className="flex gap-2">
+          <ExportCSVButton
+            fetchData={fetchAllRoles}
+            columns={roleColumns}
+            filename={`utilisateurs-${format(new Date(), 'yyyy-MM-dd')}`}
+            label="Exporter"
+          />
+          <Button onClick={() => setShowAddDialog(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Ajouter un rôle
+          </Button>
+        </div>
       </div>
 
       <Card>
