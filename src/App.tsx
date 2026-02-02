@@ -18,6 +18,7 @@ import Search from "./pages/Search";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import Conditions from "./pages/Conditions";
+import Confidentialite from "./pages/Confidentialite";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/paiement/succes" element={<PaymentSuccess />} />
                 <Route path="/paiement/annule" element={<PaymentCancelled />} />
                 <Route path="/conditions" element={<Conditions />} />
+                <Route path="/confidentialite" element={<Confidentialite />} />
 
                 {/* Admin routes */}
                 <Route path="/admin" element={
