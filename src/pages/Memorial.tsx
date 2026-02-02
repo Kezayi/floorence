@@ -7,8 +7,9 @@ import GuestbookPost, { GuestbookPostData } from "@/components/memorial/Guestboo
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
+import RelationshipGraph from "@/components/memorial/RelationshipGraph";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info } from "lucide-react";
+import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch } from "lucide-react";
 import { calculateAge, getMemorialType } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,6 +120,7 @@ const Memorial = () => {
   const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>(
     mockMemorial.guestbookPosts
   );
+  const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
 
   // Simulate current user - in real app, get from auth context
   const currentUserId = "user-current";
@@ -369,7 +371,28 @@ const Memorial = () => {
                     title={`Hommage à ${memorial.name}`}
                     description={memorial.bio}
                   />
+                  
+                  <button
+                    onClick={() => setShowRelationshipGraph(true)}
+                    className="btn-ghost"
+                    aria-label="Voir le maillage relationnel"
+                  >
+                    <GitBranch className="w-4 h-4" />
+                    <span>Maillage</span>
+                  </button>
                 </div>
+                
+                {/* Relationship Graph Dialog */}
+                <RelationshipGraph
+                  open={showRelationshipGraph}
+                  onOpenChange={setShowRelationshipGraph}
+                  deceasedName={memorial.name}
+                  posts={guestbookPosts.map((post) => ({
+                    authorId: post.authorId,
+                    authorName: post.authorName,
+                    relationCategory: post.relationCategory,
+                  }))}
+                />
 
                 {/* Gesture Buttons - Summary with totals */}
                 <div className="space-y-2">
