@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { SearchResult, RelationshipEdge } from "@/lib/searchWithRelations";
 import { User, Heart, Link2, ArrowRight } from "lucide-react";
+import { useMemo } from "react";
 
 interface SearchResultsProps {
   results: SearchResult[];
@@ -16,7 +17,57 @@ const confidenceColors = {
   low: "bg-muted/50 text-muted-foreground border-muted",
 };
 
+// Groupe les relations par label et type
+interface GroupedRelationship {
+  label: string;
+  relationshipType: string;
+  confidence: "high" | "medium" | "low";
+  count: number;
+  pairs: Array<{
+    from: SearchResult;
+    to: SearchResult;
+    memorialSlug: string;
+    memorialName: string;
+  }>;
+}
+
+const groupRelationships = (relationships: RelationshipEdge[]): GroupedRelationship[] => {
+  const grouped = new Map<string, GroupedRelationship>();
+
+  for (const rel of relationships) {
+    const key = `${rel.label}-${rel.relationshipType}`;
+    
+    if (grouped.has(key)) {
+      const existing = grouped.get(key)!;
+      existing.count++;
+      existing.pairs.push({
+        from: rel.from,
+        to: rel.to,
+        memorialSlug: rel.to.type === "memorial" ? rel.to.memorialSlug : rel.from.memorialSlug,
+        memorialName: rel.to.type === "memorial" ? rel.to.memorialName : rel.from.memorialName,
+      });
+    } else {
+      grouped.set(key, {
+        label: rel.label,
+        relationshipType: rel.relationshipType,
+        confidence: rel.confidence,
+        count: 1,
+        pairs: [{
+          from: rel.from,
+          to: rel.to,
+          memorialSlug: rel.to.type === "memorial" ? rel.to.memorialSlug : rel.from.memorialSlug,
+          memorialName: rel.to.type === "memorial" ? rel.to.memorialName : rel.from.memorialName,
+        }],
+      });
+    }
+  }
+
+  return Array.from(grouped.values());
+};
+
 const SearchResults = ({ results, relationships, clusters, query, onClose }: SearchResultsProps) => {
+  const groupedRelationships = useMemo(() => groupRelationships(relationships), [relationships]);
+
   if (results.length === 0) {
     return (
       <div className="p-6 text-center">
@@ -36,22 +87,21 @@ const SearchResults = ({ results, relationships, clusters, query, onClose }: Sea
         </p>
       </div>
 
-      {/* Relationship Network */}
-      {relationships.length > 0 && (
+      {/* Relationship Network - Grouped */}
+      {groupedRelationships.length > 0 && (
         <div className="p-4 border-b border-border bg-secondary/50">
           <h4 className="font-serif text-sm font-medium mb-3 flex items-center gap-2">
             <Link2 className="w-4 h-4 text-primary" />
             Maillage des relations ({relationships.length})
           </h4>
-          <div className="space-y-2">
-            {relationships.slice(0, 5).map((rel, idx) => (
-              <RelationshipBadge key={idx} relationship={rel} />
+          <div className="space-y-3">
+            {groupedRelationships.map((group, idx) => (
+              <GroupedRelationshipBadge 
+                key={idx} 
+                group={group} 
+                onClose={onClose}
+              />
             ))}
-            {relationships.length > 5 && (
-              <p className="text-xs text-muted-foreground font-sans">
-                +{relationships.length - 5} autres relations
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -66,20 +116,59 @@ const SearchResults = ({ results, relationships, clusters, query, onClose }: Sea
   );
 };
 
-const RelationshipBadge = ({ relationship }: { relationship: RelationshipEdge }) => {
+const GroupedRelationshipBadge = ({ 
+  group, 
+  onClose 
+}: { 
+  group: GroupedRelationship; 
+  onClose: () => void;
+}) => {
+  // Dédupliquer les mémoriaux
+  const uniqueMemorials = useMemo(() => {
+    const seen = new Set<string>();
+    return group.pairs.filter(pair => {
+      if (seen.has(pair.memorialSlug)) return false;
+      seen.add(pair.memorialSlug);
+      return true;
+    });
+  }, [group.pairs]);
+
   return (
-    <div className="flex items-center gap-2 text-sm flex-wrap">
-      <span className="font-serif text-foreground truncate max-w-[120px]">
-        {relationship.from.name}
-      </span>
-      <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs border ${confidenceColors[relationship.confidence]}`}>
-        <ArrowRight className="w-3 h-3" />
-        <span className="font-sans">{relationship.label}</span>
-        <ArrowRight className="w-3 h-3" />
+    <div className="space-y-2">
+      {/* Relation Label with Count */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border ${confidenceColors[group.confidence]}`}>
+          <ArrowRight className="w-3 h-3" />
+          <span className="font-sans font-medium">{group.label}</span>
+          {group.count > 1 && (
+            <span className="ml-1 px-1.5 py-0.5 bg-background/50 rounded-full text-[10px]">
+              {group.count}
+            </span>
+          )}
+        </div>
       </div>
-      <span className="font-serif text-foreground truncate max-w-[120px]">
-        {relationship.to.name}
-      </span>
+
+      {/* Associated Memorials */}
+      <div className="ml-4 pl-3 border-l-2 border-border/50 space-y-1">
+        {uniqueMemorials.map((pair, idx) => (
+          <Link
+            key={idx}
+            to={`/memorial/${pair.memorialSlug}`}
+            onClick={onClose}
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group py-1"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+            <span className="font-sans truncate">
+              {pair.from.name}
+              <span className="text-muted-foreground/60 mx-1">→</span>
+              {pair.to.name}
+            </span>
+            <span className="text-muted-foreground/50 text-[10px] ml-auto shrink-0">
+              ({pair.memorialName})
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 };
