@@ -24,6 +24,7 @@ const PaymentSuccess = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [memorialId, setMemorialId] = useState<string | null>(null);
 
   useEffect(() => {
     const publishPendingTribute = async () => {
@@ -38,6 +39,11 @@ const PaymentSuccess = () => {
 
       try {
         const pendingTribute: PendingTribute = JSON.parse(pendingTributeData);
+        
+        // Store the memorial ID for the return button
+        if (pendingTribute.memorialId) {
+          setMemorialId(pendingTribute.memorialId);
+        }
         
         // Verify the reference matches
         if (reference && pendingTribute.reference !== reference) {
@@ -161,6 +167,17 @@ const PaymentSuccess = () => {
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            {memorialId && isPublished && (
+              <Button
+                asChild
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Link to={`/memorial/${memorialId}`}>
+                  <ArrowLeft className="w-4 h-4" />
+                  Retour au mémorial
+                </Link>
+              </Button>
+            )}
             <Button
               asChild
               variant="outline"
@@ -173,10 +190,10 @@ const PaymentSuccess = () => {
             </Button>
             <Button
               asChild
-              className="gap-2 bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90"
+              variant="secondary"
+              className="gap-2"
             >
               <Link to="/recherche">
-                <ArrowLeft className="w-4 h-4" />
                 Continuer à explorer
               </Link>
             </Button>
