@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payment_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          ebilling_reference: string | null
+          ebilling_transaction_id: string | null
+          id: string
+          memorial_id: string | null
+          metadata: Json | null
+          payment_type: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          ebilling_reference?: string | null
+          ebilling_transaction_id?: string | null
+          id?: string
+          memorial_id?: string | null
+          metadata?: Json | null
+          payment_type: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          ebilling_reference?: string | null
+          ebilling_transaction_id?: string | null
+          id?: string
+          memorial_id?: string | null
+          metadata?: Json | null
+          payment_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

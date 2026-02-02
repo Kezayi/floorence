@@ -13,6 +13,8 @@ import Account from "./pages/Account";
 import CreateMemorial from "./pages/CreateMemorial";
 import Auth from "./pages/Auth";
 import Search from "./pages/Search";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const App = () => (
                   </RequireAuth>
                 } />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/paiement/succes" element={<PaymentSuccess />} />
+                <Route path="/paiement/annule" element={<PaymentCancelled />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
