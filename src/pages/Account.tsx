@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, FileText, Heart, Calendar, Bell, Settings, LogOut, ChevronRight } from "lucide-react";
+import { User, FileText, Heart, Calendar, Bell, Settings, LogOut, ChevronRight, Flame, Flower2 } from "lucide-react";
+import { FlameIcon, ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 
 // Mock user data
 const mockUser = {
   fullName: "Amadou Diallo",
   email: "amadou.diallo@email.com",
   phone: "+225 07 00 00 00",
+  credibilityScore: 15,
 };
 
 const mockPublications = [
@@ -30,6 +32,54 @@ const mockHommages = [
     slug: "marie-therese-bamba",
     message: "Une femme d'exception qui a marqué notre communauté...",
     createdAt: "2025-01-09",
+    relation: "Son Ami(e)",
+  },
+  {
+    id: "2",
+    memorialName: "Marcus James Washington",
+    slug: "marcus-james-washington",
+    message: "Pastor Washington a toujours eu un mot gentil pour chacun...",
+    createdAt: "2025-01-15",
+    relation: "Son Voisin(e)",
+  },
+];
+
+const mockContributions = [
+  {
+    id: "c1",
+    memorialName: "Marcus James Washington",
+    slug: "marcus-james-washington",
+    type: "CANDLE" as const,
+    quantity: 5,
+    amount: 2500,
+    createdAt: "2025-01-20",
+  },
+  {
+    id: "c2",
+    memorialName: "Gloria Mae Johnson",
+    slug: "gloria-mae-johnson",
+    type: "FLOWER" as const,
+    quantity: 3,
+    amount: 3000,
+    createdAt: "2025-01-18",
+  },
+  {
+    id: "c3",
+    memorialName: "Jaylen Christopher Davis",
+    slug: "jaylen-christopher-davis",
+    type: "CANDLE" as const,
+    quantity: 10,
+    amount: 5000,
+    createdAt: "2025-01-15",
+  },
+  {
+    id: "c4",
+    memorialName: "Patricia Ann Thompson",
+    slug: "patricia-ann-thompson",
+    type: "FLOWER" as const,
+    quantity: 2,
+    amount: 2000,
+    createdAt: "2025-01-12",
   },
 ];
 
@@ -58,6 +108,11 @@ const mockSuivis = [
   },
 ];
 
+// Calculate totals
+const totalContributions = mockContributions.reduce((sum, c) => sum + c.amount, 0);
+const totalCandles = mockContributions.filter(c => c.type === "CANDLE").reduce((sum, c) => sum + c.quantity, 0);
+const totalFlowers = mockContributions.filter(c => c.type === "FLOWER").reduce((sum, c) => sum + c.quantity, 0);
+
 const Account = () => {
   const [activeTab, setActiveTab] = useState("profil");
 
@@ -85,6 +140,9 @@ const Account = () => {
                   </TabsTrigger>
                   <TabsTrigger value="hommages" className="flex-1 text-xs px-2">
                     Hommages
+                  </TabsTrigger>
+                  <TabsTrigger value="contributions" className="flex-1 text-xs px-2">
+                    Gestes
                   </TabsTrigger>
                   <TabsTrigger value="suivis" className="flex-1 text-xs px-2">
                     Suivis
@@ -127,6 +185,17 @@ const Account = () => {
                       >
                         <Heart className="w-4 h-4" />
                         Mes hommages
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("contributions")}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left font-sans text-sm transition-colors rounded-sm ${
+                          activeTab === "contributions"
+                            ? "bg-secondary text-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Flame className="w-4 h-4" />
+                        Mes gestes
                       </button>
                       <button
                         onClick={() => setActiveTab("recueillements")}
@@ -262,10 +331,17 @@ const Account = () => {
                               to={`/memorial/${hommage.slug}`}
                               className="block bg-card border border-border rounded-sm p-4 hover:border-foreground/20 transition-colors"
                             >
-                              <h4 className="font-serif text-lg mb-1">{hommage.memorialName}</h4>
-                              <p className="text-sm text-muted-foreground font-serif italic line-clamp-2">
-                                "{hommage.message}"
-                              </p>
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h4 className="font-serif text-lg mb-1">{hommage.memorialName}</h4>
+                                  <p className="text-sm text-muted-foreground font-serif italic line-clamp-2">
+                                    "{hommage.message}"
+                                  </p>
+                                </div>
+                                <span className="px-2 py-1 bg-muted text-xs font-sans shrink-0">
+                                  {hommage.relation}
+                                </span>
+                              </div>
                               <p className="text-xs text-muted-foreground font-sans mt-2">
                                 {new Date(hommage.createdAt).toLocaleDateString("fr-FR")}
                               </p>
@@ -274,6 +350,77 @@ const Account = () => {
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore laissé d'hommage
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contributions" className="mt-0">
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="mb-2">Mes gestes symboliques</h3>
+                          <p className="text-sm text-muted-foreground font-sans mb-6">
+                            Historique de vos cierges et fleurs déposés
+                          </p>
+                        </div>
+
+                        {/* Stats Summary */}
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                          <div className="bg-secondary p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <FlameIcon size={20} className="text-amber-500" />
+                            </div>
+                            <p className="font-serif text-2xl font-medium">{totalCandles}</p>
+                            <p className="text-xs text-muted-foreground font-sans">Cierges</p>
+                          </div>
+                          <div className="bg-secondary p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <ChrysanthemumIcon size={20} className="text-green-600" />
+                            </div>
+                            <p className="font-serif text-2xl font-medium">{totalFlowers}</p>
+                            <p className="text-xs text-muted-foreground font-sans">Fleurs</p>
+                          </div>
+                          <div className="bg-secondary p-4 text-center">
+                            <p className="font-serif text-2xl font-medium mb-2">
+                              {totalContributions.toLocaleString("fr-FR")}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-sans">FCFA dépensés</p>
+                          </div>
+                        </div>
+
+                        {/* Contributions List */}
+                        {mockContributions.length > 0 ? (
+                          <div className="space-y-3">
+                            {mockContributions.map((contrib) => (
+                              <Link
+                                key={contrib.id}
+                                to={`/memorial/${contrib.slug}`}
+                                className="flex items-center gap-4 bg-card border border-border rounded-sm p-4 hover:border-foreground/20 transition-colors"
+                              >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  contrib.type === "CANDLE" ? "bg-amber-500/20" : "bg-green-600/20"
+                                }`}>
+                                  {contrib.type === "CANDLE" ? (
+                                    <FlameIcon size={20} className="text-amber-500" />
+                                  ) : (
+                                    <ChrysanthemumIcon size={20} className="text-green-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-serif text-base">{contrib.memorialName}</h4>
+                                  <p className="text-xs text-muted-foreground font-sans">
+                                    {contrib.quantity} {contrib.type === "CANDLE" ? "cierge(s)" : "fleur(s)"} • {new Date(contrib.createdAt).toLocaleDateString("fr-FR")}
+                                  </p>
+                                </div>
+                                <span className="font-sans text-sm font-medium">
+                                  {contrib.amount.toLocaleString("fr-FR")} FCFA
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground font-serif py-8 text-center">
+                            Vous n'avez pas encore fait de geste symbolique
                           </p>
                         )}
                       </div>

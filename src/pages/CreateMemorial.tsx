@@ -1,21 +1,25 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle } from "lucide-react";
+import RelationSelect from "@/components/memorial/RelationSelect";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
 
 const CreateMemorial = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
     deathDate: "",
     bio: "",
+    authorRelation: "",
     heirEmail: "",
     enableContributions: false,
     photos: [] as string[],
@@ -28,14 +32,72 @@ const CreateMemorial = () => {
     { number: 4, title: "Confirmation" },
   ];
 
+  const validateStep = (step: Step): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (step === 1) {
+      if (!memorialType) {
+        newErrors.memorialType = "Veuillez choisir un type d'espace";
+      }
+    }
+
+    if (step === 2) {
+      if (!formData.name.trim()) {
+        newErrors.name = "Le nom est obligatoire";
+      } else if (formData.name.trim().length < 3) {
+        newErrors.name = "Le nom doit contenir au moins 3 caractères";
+      } else if (formData.name.trim().length > 100) {
+        newErrors.name = "Le nom ne doit pas dépasser 100 caractères";
+      }
+
+      if (!formData.birthDate) {
+        newErrors.birthDate = "La date de naissance est obligatoire";
+      }
+
+      if (!formData.deathDate) {
+        newErrors.deathDate = "La date de décès est obligatoire";
+      }
+
+      if (formData.birthDate && formData.deathDate) {
+        const birth = new Date(formData.birthDate);
+        const death = new Date(formData.deathDate);
+        if (death < birth) {
+          newErrors.deathDate = "La date de décès doit être après la naissance";
+        }
+      }
+
+      if (!formData.authorRelation) {
+        newErrors.authorRelation = "Votre lien avec le défunt est obligatoire";
+      }
+
+      if (formData.bio.length > 1000) {
+        newErrors.bio = "La biographie ne doit pas dépasser 1000 caractères";
+      }
+
+      if (formData.heirEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.heirEmail)) {
+        newErrors.heirEmail = "Format d'email invalide";
+      }
+    }
+
+    if (step === 3) {
+      if (formData.photos.length === 0) {
+        newErrors.photos = "Au moins une photo est requise";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (validateStep(currentStep) && currentStep < 4) {
       setCurrentStep((prev) => (prev + 1) as Step);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setErrors({});
       setCurrentStep((prev) => (prev - 1) as Step);
     }
   };
@@ -46,14 +108,45 @@ const CreateMemorial = () => {
     navigate("/");
   };
 
-  const handlePhotoUpload = () => {
-    // Mock photo upload
-    const mockUrl = `https://images.unsplash.com/photo-${Date.now()}?w=400&h=600&fit=crop`;
-    if (formData.photos.length < 3) {
-      setFormData((prev) => ({
-        ...prev,
-        photos: [...prev.photos, mockUrl],
-      }));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (formData.photos.length >= 3) return;
+      
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({ ...prev, photos: "Seules les images sont acceptées" }));
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({ ...prev, photos: "La taille maximum est de 5 Mo par image" }));
+        return;
+      }
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData((prev) => ({
+            ...prev,
+            photos: [...prev.photos, event.target!.result as string],
+          }));
+          setErrors((prev) => {
+            const { photos, ...rest } = prev;
+            return rest;
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -62,6 +155,16 @@ const CreateMemorial = () => {
       ...prev,
       photos: prev.photos.filter((_, i) => i !== index),
     }));
+  };
+
+  const ErrorMessage = ({ message }: { message?: string }) => {
+    if (!message) return null;
+    return (
+      <p className="flex items-center gap-1 text-destructive text-xs font-sans mt-1">
+        <AlertCircle className="w-3 h-3" />
+        {message}
+      </p>
+    );
   };
 
   return (
@@ -77,7 +180,7 @@ const CreateMemorial = () => {
                 {steps.map((step, index) => (
                   <div key={step.number} className="flex items-center">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-sans text-sm ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-sans text-sm transition-all ${
                         currentStep >= step.number
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
@@ -87,7 +190,7 @@ const CreateMemorial = () => {
                     </div>
                     {index < steps.length - 1 && (
                       <div
-                        className={`w-12 h-px mx-2 ${
+                        className={`w-12 h-px mx-2 transition-all ${
                           currentStep > step.number ? "bg-primary" : "bg-muted"
                         }`}
                       />
@@ -106,7 +209,10 @@ const CreateMemorial = () => {
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <button
-                      onClick={() => setMemorialType("RECENT")}
+                      onClick={() => {
+                        setMemorialType("RECENT");
+                        setErrors({});
+                      }}
                       className={`p-8 border text-left transition-all ${
                         memorialType === "RECENT"
                           ? "border-primary bg-secondary"
@@ -121,7 +227,10 @@ const CreateMemorial = () => {
                     </button>
 
                     <button
-                      onClick={() => setMemorialType("PAST")}
+                      onClick={() => {
+                        setMemorialType("PAST");
+                        setErrors({});
+                      }}
                       className={`p-8 border text-left transition-all ${
                         memorialType === "PAST"
                           ? "border-primary bg-secondary"
@@ -136,11 +245,12 @@ const CreateMemorial = () => {
                     </button>
                   </div>
 
+                  <ErrorMessage message={errors.memorialType} />
+
                   <div className="mt-12 flex justify-center">
                     <button
                       onClick={handleNext}
-                      disabled={!memorialType}
-                      className="btn-memorial disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-memorial"
                     >
                       Continuer
                       <ChevronRight className="w-4 h-4" />
@@ -169,8 +279,11 @@ const CreateMemorial = () => {
                           setFormData((prev) => ({ ...prev, name: e.target.value }))
                         }
                         placeholder="Prénom et Nom"
-                        className="w-full p-4 bg-secondary border-0 font-serif text-lg focus:outline-none focus:ring-1 focus:ring-ring"
+                        className={`w-full p-4 bg-secondary border-0 font-serif text-lg focus:outline-none focus:ring-1 focus:ring-ring ${
+                          errors.name ? "ring-1 ring-destructive" : ""
+                        }`}
                       />
+                      <ErrorMessage message={errors.name} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -187,8 +300,11 @@ const CreateMemorial = () => {
                               birthDate: e.target.value,
                             }))
                           }
-                          className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
+                          className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
+                            errors.birthDate ? "ring-1 ring-destructive" : ""
+                          }`}
                         />
+                        <ErrorMessage message={errors.birthDate} />
                       </div>
                       <div>
                         <label className="block text-sm font-sans text-muted-foreground mb-2">
@@ -203,9 +319,25 @@ const CreateMemorial = () => {
                               deathDate: e.target.value,
                             }))
                           }
-                          className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
+                          className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
+                            errors.deathDate ? "ring-1 ring-destructive" : ""
+                          }`}
                         />
+                        <ErrorMessage message={errors.deathDate} />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-sans text-muted-foreground mb-2">
+                        Votre lien avec le défunt *
+                      </label>
+                      <RelationSelect
+                        value={formData.authorRelation}
+                        onChange={(value) =>
+                          setFormData((prev) => ({ ...prev, authorRelation: value }))
+                        }
+                      />
+                      <ErrorMessage message={errors.authorRelation} />
                     </div>
 
                     <div>
@@ -219,8 +351,16 @@ const CreateMemorial = () => {
                         }
                         placeholder="Quelques mots sur la vie du défunt..."
                         rows={5}
-                        className="w-full p-4 bg-secondary border-0 font-serif resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                        className={`w-full p-4 bg-secondary border-0 font-serif resize-none focus:outline-none focus:ring-1 focus:ring-ring ${
+                          errors.bio ? "ring-1 ring-destructive" : ""
+                        }`}
                       />
+                      <div className="flex justify-between mt-1">
+                        <ErrorMessage message={errors.bio} />
+                        <span className="text-xs text-muted-foreground font-sans">
+                          {formData.bio.length}/1000
+                        </span>
+                      </div>
                     </div>
 
                     <div className="pt-4 border-t border-border">
@@ -237,8 +377,11 @@ const CreateMemorial = () => {
                           }))
                         }
                         placeholder="email@exemple.com"
-                        className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
+                        className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
+                          errors.heirEmail ? "ring-1 ring-destructive" : ""
+                        }`}
                       />
+                      <ErrorMessage message={errors.heirEmail} />
                       <p className="text-xs text-muted-foreground mt-2 font-sans">
                         Cette personne pourra gérer l'espace après validation par l'administrateur
                       </p>
@@ -273,8 +416,7 @@ const CreateMemorial = () => {
                     </button>
                     <button
                       onClick={handleNext}
-                      disabled={!formData.name || !formData.birthDate || !formData.deathDate}
-                      className="btn-memorial disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-memorial"
                     >
                       Continuer
                       <ChevronRight className="w-4 h-4" />
@@ -291,11 +433,23 @@ const CreateMemorial = () => {
                     Ajoutez jusqu'à 3 photos pour illustrer l'espace mémoriel
                   </p>
 
-                  <div className="grid grid-cols-3 gap-4 mb-8">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     {[0, 1, 2].map((index) => (
                       <div
                         key={index}
-                        className="aspect-[3/4] bg-secondary border border-dashed border-border flex items-center justify-center relative"
+                        className={`aspect-[3/4] bg-secondary border border-dashed flex items-center justify-center relative transition-all ${
+                          errors.photos ? "border-destructive" : "border-border"
+                        }`}
                       >
                         {formData.photos[index] ? (
                           <>
@@ -306,15 +460,20 @@ const CreateMemorial = () => {
                             />
                             <button
                               onClick={() => removePhoto(index)}
-                              className="absolute top-2 right-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                              className="absolute top-2 right-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors"
                             >
                               <X className="w-4 h-4" />
                             </button>
+                            {index === 0 && (
+                              <span className="absolute bottom-2 left-2 text-xs bg-black/70 text-white px-2 py-0.5 font-sans">
+                                Principal
+                              </span>
+                            )}
                           </>
                         ) : (
                           <button
-                            onClick={handlePhotoUpload}
-                            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full h-full justify-center"
                           >
                             <Upload className="w-6 h-6" />
                             <span className="text-xs font-sans">Ajouter</span>
@@ -324,8 +483,10 @@ const CreateMemorial = () => {
                     ))}
                   </div>
 
-                  <p className="text-center text-sm text-muted-foreground font-sans mb-12">
-                    La première photo sera utilisée comme portrait principal
+                  <ErrorMessage message={errors.photos} />
+
+                  <p className="text-center text-sm text-muted-foreground font-sans mb-12 mt-4">
+                    Formats acceptés : JPG, PNG, WEBP • Taille max : 5 Mo par image
                   </p>
 
                   <div className="flex justify-between">
@@ -335,8 +496,7 @@ const CreateMemorial = () => {
                     </button>
                     <button
                       onClick={handleNext}
-                      disabled={formData.photos.length === 0}
-                      className="btn-memorial disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-memorial"
                     >
                       Continuer
                       <ChevronRight className="w-4 h-4" />
@@ -364,14 +524,19 @@ const CreateMemorial = () => {
                           />
                         </div>
                       )}
-                      <div>
+                      <div className="flex-1">
                         <h3 className="mb-2">{formData.name || "Nom du défunt"}</h3>
                         <p className="font-sans text-sm text-muted-foreground mb-2">
                           {formData.birthDate} — {formData.deathDate}
                         </p>
-                        <span className="inline-block px-2 py-1 bg-primary text-primary-foreground text-xs font-sans">
-                          {memorialType === "RECENT" ? "Décès récent" : "Mémoire passée"}
-                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="inline-block px-2 py-1 bg-primary text-primary-foreground text-xs font-sans">
+                            {memorialType === "RECENT" ? "Décès récent" : "Mémoire passée"}
+                          </span>
+                          <span className="inline-block px-2 py-1 bg-muted text-muted-foreground text-xs font-sans">
+                            Par {formData.authorRelation}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -379,6 +544,20 @@ const CreateMemorial = () => {
                       <p className="mt-6 font-serif text-foreground/80 italic line-clamp-3">
                         "{formData.bio}"
                       </p>
+                    )}
+
+                    {formData.photos.length > 1 && (
+                      <div className="mt-4 flex gap-2">
+                        {formData.photos.slice(1).map((photo, index) => (
+                          <div key={index} className="w-12 h-16">
+                            <img
+                              src={photo}
+                              alt=""
+                              className="w-full h-full object-cover grayscale"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 
