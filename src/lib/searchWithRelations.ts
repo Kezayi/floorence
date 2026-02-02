@@ -19,6 +19,8 @@ export interface SearchableMemorial {
     authorName: string;
     relationCategory: string;
     content: string;
+    candleCount?: number;
+    flowerCount?: number;
   }>;
 }
 
