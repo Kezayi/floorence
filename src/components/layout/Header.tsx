@@ -1,14 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Search, Home, PlusCircle, User, LogIn, LogOut } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemorials } from "@/contexts/MemorialsContext";
+import SearchBar from "@/components/search/SearchBar";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
+  const { memorials } = useMemorials();
 
   const navItems = [
     { path: "/", label: "Accueil", icon: Home },
@@ -66,16 +68,7 @@ const Header = () => {
 
             {/* Search Bar - Center */}
             <div className="flex-1 max-w-md mx-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-background/80 border border-border/50 rounded text-sm text-foreground placeholder:text-muted-foreground font-sans focus:outline-none focus:ring-1 focus:ring-ring focus:bg-background transition-colors"
-                />
-              </div>
+              <SearchBar memorials={memorials} />
             </div>
 
             {/* Hamburger Menu - Desktop Only */}
