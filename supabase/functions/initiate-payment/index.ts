@@ -66,6 +66,14 @@ serve(async (req) => {
       )
     }
 
+    // Validate memorialId is a valid UUID or null
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    const validMemorialId = memorialId && uuidRegex.test(memorialId) ? memorialId : null
+    
+    if (memorialId && !validMemorialId) {
+      console.warn(`Invalid memorial_id format received: ${memorialId}, setting to null`)
+    }
+
     // Generate unique reference for this transaction
     const reference = `FLO-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
 
@@ -80,7 +88,7 @@ serve(async (req) => {
       .from('payment_transactions')
       .insert({
         user_id: userId,
-        memorial_id: memorialId,
+        memorial_id: validMemorialId,
         amount: amount,
         currency: 'XOF',
         status: 'pending',
