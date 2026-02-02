@@ -21,7 +21,11 @@ export type Database = {
           content: string
           created_at: string
           flower_count: number
+          hidden_at: string | null
+          hidden_by: string | null
+          hidden_reason: string | null
           id: string
+          is_hidden: boolean
           memorial_id: string
           payment_reference: string | null
           photos: string[] | null
@@ -35,7 +39,11 @@ export type Database = {
           content: string
           created_at?: string
           flower_count?: number
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
           id?: string
+          is_hidden?: boolean
           memorial_id: string
           payment_reference?: string | null
           photos?: string[] | null
@@ -49,7 +57,11 @@ export type Database = {
           content?: string
           created_at?: string
           flower_count?: number
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
           id?: string
+          is_hidden?: boolean
           memorial_id?: string
           payment_reference?: string | null
           photos?: string[] | null
@@ -57,7 +69,80 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorials: {
+        Row: {
+          biography: string | null
+          birth_date: string | null
+          created_at: string
+          created_by: string
+          death_date: string | null
+          donation_enabled: boolean
+          first_name: string
+          funeral_date: string | null
+          funeral_location: string | null
+          id: string
+          is_active: boolean
+          last_name: string
+          merged_into: string | null
+          photo_url: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          biography?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by: string
+          death_date?: string | null
+          donation_enabled?: boolean
+          first_name: string
+          funeral_date?: string | null
+          funeral_location?: string | null
+          id?: string
+          is_active?: boolean
+          last_name: string
+          merged_into?: string | null
+          photo_url?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          biography?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string
+          death_date?: string | null
+          donation_enabled?: boolean
+          first_name?: string
+          funeral_date?: string | null
+          funeral_location?: string | null
+          id?: string
+          is_active?: boolean
+          last_name?: string
+          merged_into?: string | null
+          photo_url?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_transactions: {
         Row: {
@@ -104,6 +189,54 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -129,9 +262,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -258,6 +399,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator"],
+    },
   },
 } as const
