@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ImagePlus, X, Plus, Minus } from "lucide-react";
+import { ImagePlus, X, Plus, Minus, Loader2 } from "lucide-react";
 import RelationSelect from "./RelationSelect";
 import { Button } from "@/components/ui/button";
 import { FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
@@ -11,11 +11,15 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { initiatePayment } from "@/lib/paymentService";
+import { toast } from "sonner";
 
 const CANDLE_PRICE = 500; // FCFA
 const FLOWER_PRICE = 1000; // FCFA
 
 interface GuestbookFormProps {
+  memorialId?: string;
   onSubmit: (data: {
     content: string;
     relationCategory: string;
@@ -27,13 +31,15 @@ interface GuestbookFormProps {
 
 const MAX_PHOTOS = 3;
 
-const GuestbookForm = ({ onSubmit }: GuestbookFormProps) => {
+const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
+  const { user } = useAuth();
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [candleCount, setCandleCount] = useState(0);
   const [flowerCount, setFlowerCount] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,7 +79,57 @@ const GuestbookForm = ({ onSubmit }: GuestbookFormProps) => {
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
+    // If there's a payment required, initiate it first
+    if (totalAmount > 0) {
+      if (!user) {
+        toast.error("Vous devez être connecté pour effectuer un paiement");
+        setShowConfirmDialog(false);
+        return;
+      }
+
+      setIsProcessingPayment(true);
+      
+      try {
+        const response = await initiatePayment({
+          amount: totalAmount,
+          paymentType: 'tribute',
+          memorialId: memorialId,
+          metadata: {
+            candleCount,
+            flowerCount,
+            relationCategory: selectedRelation,
+            messagePreview: messageContent.substring(0, 100)
+          }
+        });
+
+        if (response.success && response.paymentUrl) {
+          // Store form data in sessionStorage before redirecting
+          sessionStorage.setItem('pendingTribute', JSON.stringify({
+            content: messageContent.trim(),
+            relationCategory: selectedRelation,
+            photos,
+            candleCount,
+            flowerCount,
+            reference: response.reference
+          }));
+          
+          // Redirect to payment page
+          window.location.href = response.paymentUrl;
+          return;
+        } else {
+          toast.error(response.error || "Erreur lors de l'initiation du paiement");
+          setIsProcessingPayment(false);
+        }
+      } catch (error) {
+        console.error('Payment error:', error);
+        toast.error("Une erreur est survenue lors du paiement");
+        setIsProcessingPayment(false);
+      }
+      return;
+    }
+
+    // No payment required, submit directly
     onSubmit({
       content: messageContent.trim(),
       relationCategory: selectedRelation,
@@ -284,15 +340,26 @@ const GuestbookForm = ({ onSubmit }: GuestbookFormProps) => {
             <Button
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}
+              disabled={isProcessingPayment}
               className="bg-transparent border-memorial-dark-muted/30 text-memorial-dark-foreground hover:bg-memorial-dark-muted/20"
             >
               Annuler
             </Button>
             <Button
               onClick={handleConfirmSubmit}
+              disabled={isProcessingPayment}
               className="bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90"
             >
-              {totalAmount > 0 ? `Payer ${totalAmount} FCFA` : "Publier"}
+              {isProcessingPayment ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Traitement...
+                </>
+              ) : totalAmount > 0 ? (
+                `Payer ${totalAmount} FCFA`
+              ) : (
+                "Publier"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
