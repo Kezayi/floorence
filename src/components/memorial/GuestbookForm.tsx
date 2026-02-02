@@ -111,7 +111,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
             photos,
             candleCount,
             flowerCount,
-            reference: response.reference
+            reference: response.reference,
+            memorialId: memorialId
           }));
           
           // Redirect to payment page
