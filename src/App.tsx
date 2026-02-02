@@ -11,6 +11,7 @@ import Memorial from "./pages/Memorial";
 import Account from "./pages/Account";
 import CreateMemorial from "./pages/CreateMemorial";
 import Auth from "./pages/Auth";
+import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/recherche" element={<Search />} />
               <Route path="/memorial/:slug" element={<Memorial />} />
               <Route path="/compte" element={<Account />} />
               <Route path="/creer" element={
