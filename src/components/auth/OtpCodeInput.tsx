@@ -29,31 +29,9 @@ const OtpCodeInput = React.forwardRef<HTMLInputElement, Props>(function OtpCodeI
   { value, onChange, length = 6, disabled, className, name, id, ...inputProps },
   forwardedRef
 ) {
-  // IMPORTANT: multi-input OTP UIs are frequently broken by browser/password-manager autofill.
-  // Using a *single* real input (capturing digits + paste) and rendering 6 boxes is far more reliable.
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [isFocused, setIsFocused] = React.useState(false);
-
+  // IMPORTANT: keep this as a normal visible input.
+  // Hidden/overlay inputs are often non-focusable on iOS/Android and break paste.
   const digitsValue = React.useMemo(() => onlyDigits(value).slice(0, length), [value, length]);
-  const chars = React.useMemo(
-    () => Array.from({ length }, (_, i) => digitsValue[i] ?? ""),
-    [digitsValue, length]
-  );
-
-  const focusInput = React.useCallback(() => {
-    if (disabled) return;
-    inputRef.current?.focus();
-    // Keep caret at end (simplest UX and avoids weird mid-string edits on mobile)
-    const el = inputRef.current;
-    if (el) {
-      const end = el.value.length;
-      try {
-        el.setSelectionRange(end, end);
-      } catch {
-        // no-op (some input types / browsers)
-      }
-    }
-  }, [disabled]);
 
   const handleChange = (raw: string) => {
     if (disabled) return;
@@ -67,87 +45,41 @@ const OtpCodeInput = React.forwardRef<HTMLInputElement, Props>(function OtpCodeI
     if (!next) return;
     e.preventDefault();
     onChange(next);
-    // ensure caret ends
-    requestAnimationFrame(() => focusInput());
-  };
-
-  const handleBeforeInput = (e: React.FormEvent<HTMLInputElement>) => {
-    // Defensive: some mobile keyboards can emit non-digit before change.
-    const inputEvent = e.nativeEvent as InputEvent;
-    const data = inputEvent.data;
-    if (disabled) return;
-    if (typeof data === "string" && data.length === 1 && !/\d/.test(data)) {
-      e.preventDefault();
-    }
   };
 
   return (
-    <div
-      className={cn("flex items-center justify-center", className)}
-      onClick={focusInput}
-      aria-label="Code de vérification"
-    >
-      <div className="relative">
-        {/* Real input (captures typing, paste, and OTP suggestions) */}
-        <input
-          ref={mergeRefs(inputRef, forwardedRef)}
-          value={digitsValue}
-          onChange={(e) => handleChange(e.target.value)}
-          onPaste={handlePaste}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onBeforeInput={handleBeforeInput}
-          disabled={disabled}
-          inputMode="numeric"
-          pattern="[0-9]*"
-          type="tel"
-          autoComplete="one-time-code"
-          name={name ?? "otp"}
-          id={id}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-          data-lpignore="true"
-          data-1p-ignore="true"
-          data-form-type="other"
-          aria-label="Code de vérification (6 chiffres)"
-          maxLength={length}
-          {...inputProps}
-          className={cn(
-            "absolute inset-0 h-full w-full z-10",
-            // iOS/Android: fully invisible inputs can sometimes refuse keyboard focus.
-            // Keep it technically visible but imperceptible.
-            "opacity-[0.01]",
-            "text-transparent bg-transparent",
-            "caret-transparent",
-            "cursor-text",
-            "disabled:cursor-not-allowed"
-          )}
-        />
-
-        {/* Visual boxes */}
-        <div className="flex items-center pointer-events-none">
-          {chars.map((ch, i) => {
-            const isActive = isFocused && i === Math.min(digitsValue.length, length - 1);
-            return (
-              <div
-                key={i}
-                aria-hidden="true"
-                className={cn(
-                  "h-10 w-10 select-none text-center text-sm leading-10",
-                  "border-y border-r border-input first:rounded-l-md first:border-l last:rounded-r-md",
-                  "transition-all",
-                  isActive && "ring-2 ring-ring ring-offset-2 ring-offset-background",
-                  disabled && "opacity-50"
-                )}
-              >
-                {ch}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+    <input
+      ref={mergeRefs(forwardedRef)}
+      value={digitsValue}
+      onChange={(e) => handleChange(e.target.value)}
+      onPaste={handlePaste}
+      disabled={disabled}
+      inputMode="numeric"
+      pattern="[0-9]*"
+      type="tel"
+      autoComplete="one-time-code"
+      name={name ?? "otp"}
+      id={id}
+      spellCheck={false}
+      autoCorrect="off"
+      autoCapitalize="off"
+      data-lpignore="true"
+      data-1p-ignore="true"
+      data-form-type="other"
+      aria-label="Code de vérification (6 chiffres)"
+      maxLength={length}
+      {...inputProps}
+      className={cn(
+        "h-12 w-full rounded-md border border-input bg-background px-3 text-center text-lg",
+        // Make entering 6 digits comfortable + visually segmented
+        "font-mono tracking-[0.6em]",
+        "placeholder:text-muted-foreground",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      placeholder={"\u2022\u2022\u2022\u2022\u2022\u2022"}
+    />
   );
 });
 
