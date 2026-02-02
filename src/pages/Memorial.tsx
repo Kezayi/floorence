@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -11,7 +11,7 @@ import ShareButtons from "@/components/memorial/ShareButtons";
 import RelationshipGraph from "@/components/memorial/RelationshipGraph";
 import AuthorCredibility from "@/components/memorial/AuthorCredibility";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch } from "lucide-react";
+import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch, Feather } from "lucide-react";
 import { calculateAge } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,9 @@ import {
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 const eventTypeLabels = {
   WAKE: "Veillée",
@@ -55,6 +58,10 @@ const Memorial = () => {
   const { memorials } = useMemorials();
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isProfileComplete, loading: profileLoading } = useProfile();
+  const { isAdminOrMod, loading: roleLoading } = useAdminRole();
+  const guestbookFormRef = useRef<HTMLDivElement>(null);
   
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
@@ -357,6 +364,19 @@ const Memorial = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 mb-8 flex-wrap">
+                  {/* Bouton Rédiger un hommage - Visible si connecté, profil complet, pas admin/mod */}
+                  {user && !profileLoading && !roleLoading && isProfileComplete && !isAdminOrMod && (
+                    <button
+                      onClick={() => {
+                        guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-sans text-sm font-medium transition-all duration-300 hover:bg-accent-green hover:text-accent-green-foreground"
+                    >
+                      <Feather className="w-4 h-4" />
+                      <span>Rédiger un hommage</span>
+                    </button>
+                  )}
+                  
                   <button
                     onClick={() => {
                       toggleFollow({
@@ -597,7 +617,9 @@ const Memorial = () => {
               </p>
 
               {/* Message Form */}
-              <GuestbookForm memorialId={memorialData.id} onSubmit={handleSubmitPost} />
+              <div ref={guestbookFormRef}>
+                <GuestbookForm memorialId={memorialData.id} onSubmit={handleSubmitPost} />
+              </div>
 
               {/* Inferred Relationships */}
               <InferredRelationships messages={messagesForRelationships} />

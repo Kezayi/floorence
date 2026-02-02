@@ -79,6 +79,10 @@ export default {
         admin: {
           burgundy: "hsl(var(--admin-burgundy))",
         },
+        "accent-green": {
+          DEFAULT: "hsl(var(--accent-green))",
+          foreground: "hsl(var(--accent-green-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

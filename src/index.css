@@ -57,6 +57,10 @@
     --candle-glow: 45 80% 55%;
     --flower-soft: 340 30% 75%;
 
+    /* Accent vert pour interactions */
+    --accent-green: 142 70% 45%;
+    --accent-green-foreground: 0 0% 100%;
+
     /* Admin theme */
     --admin-burgundy: 0 60% 25%;
 
