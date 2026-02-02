@@ -2,152 +2,15 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
 import { LayoutGrid, Grid3X3, List, Square } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SearchableMemorial } from "@/lib/searchWithRelations";
-import { getMemorialType } from "@/lib/dateUtils";
+import { useMemorials } from "@/contexts/MemorialsContext";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// Données de démonstration enrichies avec les auteurs du livre d'or
-// Note: Le type (RECENT/PAST) est calculé dynamiquement selon la règle des 6 mois
-const mockMemorialsData = [
-  {
-    id: "1",
-    slug: "jean-baptiste-kouassi",
-    name: "Jean-Baptiste Kouassi",
-    birthDate: "12 Mars 1945",
-    deathDate: "8 Janvier 2025",
-    bio: "Père dévoué, grand-père aimant et homme de foi.",
-    photos: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-1",
-      name: "Marie Kouassi",
-      relation: "Sa Fille",
-    },
-    guestbookMessages: [
-      { id: "m1", authorName: "Marie Kouassi", relationCategory: "Sa Fille", content: "Papa, tu nous manques." },
-      { id: "m2", authorName: "Emmanuel Yao", relationCategory: "Son Collègue", content: "Un grand homme." },
-      { id: "m3", authorName: "Adjoua Bamba", relationCategory: "Son Élève", content: "Merci pour tout." },
-      { id: "m4", authorName: "Pierre Kouassi", relationCategory: "Son Fils", content: "Repose en paix papa." },
-    ],
-  },
-  {
-    id: "2",
-    slug: "marie-therese-bamba",
-    name: "Marie-Thérèse Bamba",
-    birthDate: "5 Août 1952",
-    deathDate: "2 Janvier 2025",
-    bio: "Mère aimante et femme de cœur.",
-    photos: ["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-2",
-      name: "Adjoua Bamba",
-      relation: "Sa Fille",
-    },
-    guestbookMessages: [
-      { id: "m5", authorName: "Adjoua Bamba", relationCategory: "Sa Fille", content: "Maman, tu es dans mon cœur." },
-      { id: "m6", authorName: "Kouadio Bamba", relationCategory: "Son Fils", content: "Merci pour tout maman." },
-      { id: "m7", authorName: "Yao Bamba", relationCategory: "Son Époux", content: "Mon amour éternel." },
-    ],
-  },
-  {
-    id: "3",
-    slug: "paul-yao-akoto",
-    name: "Paul Yao Akoto",
-    birthDate: "18 Décembre 1938",
-    deathDate: "15 Mars 2024", // Plus de 6 mois = PAST
-    bio: "Homme de sagesse et de paix.",
-    photos: ["https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-3",
-      name: "Emmanuel Yao",
-      relation: "Son Fils",
-    },
-    guestbookMessages: [
-      { id: "m8", authorName: "Emmanuel Yao", relationCategory: "Son Fils", content: "Tu restes mon modèle." },
-      { id: "m9", authorName: "Awa Yao", relationCategory: "Sa Fille", content: "Papa adoré." },
-    ],
-  },
-  {
-    id: "4",
-    slug: "aminata-diallo",
-    name: "Aminata Diallo",
-    birthDate: "3 Février 1960",
-    deathDate: "15 Avril 2024", // Plus de 6 mois = PAST
-    bio: "Une vie dédiée aux autres.",
-    photos: ["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-4",
-      name: "Fatou Diallo",
-      relation: "Sa Nièce",
-    },
-    guestbookMessages: [
-      { id: "m10", authorName: "Fatou Diallo", relationCategory: "Sa Nièce", content: "Tantine, tu nous manques." },
-      { id: "m11", authorName: "Marie Kouassi", relationCategory: "Son Ami(e)", content: "Une amie précieuse." },
-    ],
-  },
-  {
-    id: "5",
-    slug: "kofi-mensah",
-    name: "Kofi Mensah",
-    birthDate: "22 Juillet 1970",
-    deathDate: "3 Janvier 2025",
-    bio: "Artiste et visionnaire.",
-    photos: ["https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-5",
-      name: "Ama Mensah",
-      relation: "Son Épouse",
-    },
-    guestbookMessages: [
-      { id: "m12", authorName: "Ama Mensah", relationCategory: "Son Épouse", content: "Mon amour à jamais." },
-      { id: "m13", authorName: "Kwame Mensah", relationCategory: "Son Fils", content: "Papa, ton art vit en nous." },
-    ],
-  },
-  {
-    id: "6",
-    slug: "fatou-ndiaye",
-    name: "Fatou Ndiaye",
-    birthDate: "9 Avril 1985",
-    deathDate: "28 Décembre 2024",
-    bio: "Étoile partie trop tôt.",
-    photos: ["https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=600&fit=crop&crop=face"],
-    author: {
-      id: "author-6",
-      name: "Oumar Ndiaye",
-      relation: "Son Frère",
-    },
-    guestbookMessages: [
-      { id: "m14", authorName: "Oumar Ndiaye", relationCategory: "Son Frère", content: "Ma sœur adorée." },
-      { id: "m15", authorName: "Aissatou Ndiaye", relationCategory: "Sa Sœur", content: "Tu restes dans nos cœurs." },
-    ],
-  },
-];
-
-// Ajouter le type calculé dynamiquement selon la règle des 6 mois
-const mockMemorials: SearchableMemorial[] = mockMemorialsData.map(m => ({
-  ...m,
-  type: getMemorialType(m.deathDate),
-}));
-
-// Données pour les cartes mémorielles
-const memorialCards = mockMemorials.map(m => ({
-  id: m.id,
-  slug: m.slug,
-  name: m.name,
-  birthDate: m.birthDate,
-  deathDate: m.deathDate,
-  photoUrl: m.photos[0],
-  ripCount: Math.floor(Math.random() * 900) + 100,
-  candleCount: Math.floor(Math.random() * 400) + 50,
-  flowerCount: Math.floor(Math.random() * 200) + 30,
-  type: m.type,
-}));
 
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
@@ -156,6 +19,7 @@ const Index = () => {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const { memorialCards } = useMemorials();
 
   // Set default view mode based on device
   useEffect(() => {
@@ -312,28 +176,32 @@ const Index = () => {
             {filteredMemorials.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground font-sans">
-                  Aucun mémorial {filterType === "RECENT" ? "récent" : "passé"} trouvé
+                  Aucun espace mémoriel {filterType === "RECENT" ? "récent" : "passé"} trouvé.
                 </p>
               </div>
             ) : (
               <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
-                {filteredMemorials.map((memorial, index) => (
-                  <div
+                {filteredMemorials.map((memorial) => (
+                  <MemorialCard
                     key={memorial.id}
-                    className="animate-fade-in"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <MemorialCard {...memorial} variant={viewMode === "list" ? "list" : "card"} />
-                  </div>
+                    id={memorial.id}
+                    slug={memorial.slug}
+                    name={memorial.name}
+                    birthDate={memorial.birthDate}
+                    deathDate={memorial.deathDate}
+                    photoUrl={memorial.photoUrl}
+                    ripCount={memorial.ripCount}
+                    candleCount={memorial.candleCount}
+                    flowerCount={memorial.flowerCount}
+                    type={memorial.type}
+                    variant={viewMode === "list" ? "list" : "card"}
+                  />
                 ))}
               </div>
             )}
           </div>
         </section>
       </main>
-
-      {/* Spacer for mobile bottom nav */}
-      <div className="h-16 md:hidden" />
 
       <Footer />
     </div>
