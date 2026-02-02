@@ -172,6 +172,8 @@ const Memorial = () => {
     content: string;
     relationCategory: string;
     photos: string[];
+    candleCount: number;
+    flowerCount: number;
   }) => {
     const newPost: GuestbookPostData = {
       id: `m${Date.now()}`,
@@ -181,8 +183,8 @@ const Memorial = () => {
       content: data.content,
       photos: data.photos,
       createdAt: new Date().toISOString(),
-      candleCount: 0,
-      flowerCount: 0,
+      candleCount: data.candleCount,
+      flowerCount: data.flowerCount,
     };
     setGuestbookPosts((prev) => [newPost, ...prev]);
   };
