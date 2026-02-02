@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
-import { searchWithRelations, SearchableMemorial, SearchWithRelationsResult } from "@/lib/searchWithRelations";
+import { searchMemorialsAndAuthors, SearchableMemorial, SearchResult } from "@/lib/searchWithRelations";
 import SearchResults from "./SearchResults";
 
 interface SearchBarProps {
@@ -11,7 +11,7 @@ interface SearchBarProps {
 const SearchBar = ({ memorials, className = "" }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<SearchWithRelationsResult | null>(null);
+  const [results, setResults] = useState<SearchResult[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +23,7 @@ const SearchBar = ({ memorials, className = "" }: SearchBarProps) => {
     }
 
     const timer = setTimeout(() => {
-      const searchResults = searchWithRelations(query, memorials);
+      const searchResults = searchMemorialsAndAuthors(query, memorials);
       setResults(searchResults);
     }, 300);
 
@@ -104,10 +104,9 @@ const SearchBar = ({ memorials, className = "" }: SearchBarProps) => {
       {isOpen && query && results && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-sm shadow-xl z-50 overflow-hidden">
           <SearchResults
-            results={results.results}
-            relationships={results.relationships}
-            clusters={results.clusters}
+            results={results}
             query={query}
+            memorials={memorials}
             onClose={handleClose}
           />
         </div>
