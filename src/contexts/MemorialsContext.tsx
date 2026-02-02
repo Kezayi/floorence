@@ -66,9 +66,9 @@ const mockMemorialsData = [
     deathDate: "28 Décembre 2024",
     bio: "Petit ange parti trop tôt. Jaylen aimait le basketball, les jeux vidéo et faire rire ses amis. Sa joie de vivre touchait tous ceux qui le connaissaient.",
     photos: [
-      "https://images.unsplash.com/photo-1595016193350-f3e4a8c9d8c9?w=400&h=600&fit=crop&crop=face",
-      "https://images.unsplash.com/photo-1595016279289-bf7ce7a84a2a?w=400&h=600&fit=crop&crop=face",
-      "https://images.unsplash.com/photo-1595016279128-04a5b11cd7d4?w=400&h=600&fit=crop&crop=face"
+      "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=400&h=600&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=400&h=600&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=400&h=600&fit=crop&crop=face"
     ],
     author: {
       id: "author-3",
