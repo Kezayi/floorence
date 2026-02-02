@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import GestureButton from "@/components/memorial/GestureButton";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
+import GuestbookPagination from "@/components/memorial/GuestbookPagination";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
 import RelationshipGraph from "@/components/memorial/RelationshipGraph";
@@ -19,6 +20,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMemorials } from "@/contexts/MemorialsContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { useToast } from "@/hooks/use-toast";
 
 const eventTypeLabels = {
   WAKE: "Veillée",
@@ -50,10 +53,13 @@ const Memorial = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { memorials } = useMemorials();
+  const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
+  const { toast } = useToast();
   
-  const [isFollowing, setIsFollowing] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
+  const [currentGuestbookPage, setCurrentGuestbookPage] = useState(1);
+  const POSTS_PER_PAGE = 5;
 
   // Find the memorial by slug from context
   const memorialData = useMemo(() => {
@@ -83,10 +89,18 @@ const Memorial = () => {
     setGuestbookPosts(initialPosts);
   }, [initialPosts]);
 
-  // Reset photo index when memorial changes
+  // Reset photo index and page when memorial changes
   useEffect(() => {
     setCurrentPhotoIndex(0);
+    setCurrentGuestbookPage(1);
   }, [slug]);
+
+  // Pagination calculations
+  const totalGuestbookPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentGuestbookPage - 1) * POSTS_PER_PAGE;
+    return guestbookPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [guestbookPosts, currentGuestbookPage, POSTS_PER_PAGE]);
 
   // Calculate totals from all posts - must be before conditional return
   const totals = useMemo(() => {
@@ -344,10 +358,22 @@ const Memorial = () => {
                 {/* Actions */}
                 <div className="flex items-center gap-3 mb-8 flex-wrap">
                   <button
-                    onClick={() => setIsFollowing(!isFollowing)}
-                    className={`btn-ghost ${isFollowing ? "bg-muted" : ""}`}
+                    onClick={() => {
+                      toggleFollow({
+                        slug: memorial.slug,
+                        name: memorial.name,
+                        photoUrl: memorial.photos[0],
+                      });
+                      toast({
+                        title: checkIsFollowing(memorial.slug) ? "Mémorial retiré des suivis" : "Mémorial suivi",
+                        description: checkIsFollowing(memorial.slug) 
+                          ? "Vous ne recevrez plus de notifications" 
+                          : "Vous recevrez des notifications pour ce mémorial",
+                      });
+                    }}
+                    className={`btn-ghost ${checkIsFollowing(memorial.slug) ? "bg-muted" : ""}`}
                   >
-                    {isFollowing ? (
+                    {checkIsFollowing(memorial.slug) ? (
                       <>
                         <BellOff className="w-4 h-4" />
                         <span>Ne plus suivre</span>
@@ -563,8 +589,11 @@ const Memorial = () => {
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <h2 className="text-memorial-dark-foreground mb-2">Livre d'or</h2>
-              <p className="font-serif text-memorial-dark-muted mb-8">
+              <p className="font-serif text-memorial-dark-muted mb-1">
                 Partagez un souvenir ou un message de soutien à la famille
+              </p>
+              <p className="text-xs text-memorial-dark-muted/70 mb-8 font-sans">
+                {guestbookPosts.length} message{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
               {/* Message Form */}
@@ -573,9 +602,9 @@ const Memorial = () => {
               {/* Inferred Relationships */}
               <InferredRelationships messages={messagesForRelationships} />
 
-              {/* Posts List */}
+              {/* Posts List - Paginated */}
               <div className="divide-y divide-memorial-dark-muted/20">
-                {guestbookPosts.map((post) => (
+                {paginatedPosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
                     post={post}
@@ -585,6 +614,13 @@ const Memorial = () => {
                   />
                 ))}
               </div>
+
+              {/* Pagination */}
+              <GuestbookPagination
+                currentPage={currentGuestbookPage}
+                totalPages={totalGuestbookPages}
+                onPageChange={setCurrentGuestbookPage}
+              />
             </div>
           </div>
         </section>

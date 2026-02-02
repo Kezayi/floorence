@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, PlusCircle, User, LogIn, LogOut } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut, Bell } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import SearchBar from "@/components/search/SearchBar";
+import NotificationBell from "./NotificationBell";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -69,16 +70,19 @@ const Header = () => {
               <SearchBar />
             </div>
 
-            {/* Hamburger Menu - Desktop Only */}
-            <div className="relative hidden md:block" ref={menuRef}>
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2.5 text-foreground hover:bg-background/50 rounded transition-colors"
-                aria-label="Menu"
-                aria-expanded={isMenuOpen}
-              >
-                <Menu className="w-6 h-6" />
-              </button>
+            {/* Notification Bell + Hamburger Menu - Desktop Only */}
+            <div className="hidden md:flex items-center gap-2">
+              <NotificationBell />
+              
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2.5 text-foreground hover:bg-background/50 rounded transition-colors"
+                  aria-label="Menu"
+                  aria-expanded={isMenuOpen}
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
 
               {/* Dropdown Menu */}
               {isMenuOpen && (
@@ -129,6 +133,7 @@ const Header = () => {
                   </nav>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>
