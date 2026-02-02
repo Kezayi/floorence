@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,10 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, UserPlus, Trash2, Shield, ShieldCheck } from 'lucide-react';
+import { UserPlus, Trash2, Shield, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useServerPagination } from '@/hooks/useServerPagination';
+import AdminPagination from '@/components/admin/AdminPagination';
 
 interface UserRole {
   id: string;
@@ -33,18 +35,39 @@ interface UserRole {
 
 const Users = () => {
   const queryClient = useQueryClient();
-  const [searchEmail, setSearchEmail] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'moderator'>('moderator');
 
+  const pagination = useServerPagination(10);
+
+  // Fetch total count
+  const { data: countData } = useQuery({
+    queryKey: ['admin-user-roles-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  useEffect(() => {
+    if (countData !== undefined) {
+      pagination.setTotalCount(countData);
+    }
+  }, [countData, pagination.setTotalCount]);
+
   const { data: userRoles, isLoading } = useQuery({
-    queryKey: ['admin-user-roles'],
+    queryKey: ['admin-user-roles', pagination.page, pagination.pageSize],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_roles')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pagination.from, pagination.to);
 
       if (error) throw error;
       return data as UserRole[];
@@ -59,6 +82,7 @@ const Users = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-roles-count'] });
       toast.success('Rôle ajouté');
       setShowAddDialog(false);
       setNewUserEmail('');
@@ -79,6 +103,7 @@ const Users = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-roles-count'] });
       toast.success('Rôle supprimé');
     },
     onError: () => {
@@ -89,7 +114,7 @@ const Users = () => {
   const getRoleBadge = (role: string) => {
     if (role === 'admin') {
       return (
-        <Badge className="bg-red-500">
+        <Badge className="bg-destructive text-destructive-foreground">
           <ShieldCheck className="w-3 h-3 mr-1" />
           Admin
         </Badge>
@@ -154,6 +179,17 @@ const Users = () => {
               Aucun utilisateur avec des rôles administratifs.
             </p>
           )}
+
+          <AdminPagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalCount={pagination.totalCount}
+            totalPages={pagination.totalPages}
+            hasNextPage={pagination.hasNextPage}
+            hasPreviousPage={pagination.hasPreviousPage}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
         </CardContent>
       </Card>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,8 @@ import { Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useServerPagination } from '@/hooks/useServerPagination';
+import AdminPagination from '@/components/admin/AdminPagination';
 
 interface GuestbookPost {
   id: string;
@@ -36,13 +38,35 @@ const Moderation = () => {
   const [hideReason, setHideReason] = useState('');
   const [showHideDialog, setShowHideDialog] = useState(false);
 
+  const pagination = useServerPagination(10);
+
+  // Fetch total count
+  const { data: countData } = useQuery({
+    queryKey: ['admin-guestbook-posts-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('guestbook_posts')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  useEffect(() => {
+    if (countData !== undefined) {
+      pagination.setTotalCount(countData);
+    }
+  }, [countData, pagination.setTotalCount]);
+
   const { data: posts, isLoading } = useQuery({
-    queryKey: ['admin-guestbook-posts'],
+    queryKey: ['admin-guestbook-posts', pagination.page, pagination.pageSize],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pagination.from, pagination.to);
 
       if (error) throw error;
       return data as GuestbookPost[];
@@ -181,6 +205,17 @@ const Moderation = () => {
           </Card>
         )}
       </div>
+
+      <AdminPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalCount={pagination.totalCount}
+        totalPages={pagination.totalPages}
+        hasNextPage={pagination.hasNextPage}
+        hasPreviousPage={pagination.hasPreviousPage}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
 
       <Dialog open={showHideDialog} onOpenChange={setShowHideDialog}>
         <DialogContent>
