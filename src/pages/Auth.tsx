@@ -292,12 +292,18 @@ const Auth = () => {
                         <FormItem className="flex flex-col items-center">
                           <FormControl>
                             <InputOTP
+                              key="otp-input"
                               maxLength={6}
                               value={field.value}
-                              onChange={field.onChange}
+                              onChange={(value) => {
+                                // Filtrer pour n'accepter que les chiffres
+                                const digitsOnly = value.replace(/[^0-9]/g, '');
+                                field.onChange(digitsOnly);
+                              }}
                               disabled={otpExpiration === 0}
                               pattern={REGEXP_ONLY_DIGITS}
                               autoFocus
+                              inputMode="numeric"
                             >
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
