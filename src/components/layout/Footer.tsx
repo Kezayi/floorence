@@ -72,6 +72,11 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/mission" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
+                  Notre mission
+                </Link>
+              </li>
+              <li>
                 <Link to="/confidentialite" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
                   Confidentialité
                 </Link>
