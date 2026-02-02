@@ -7,7 +7,7 @@ const Footer = () => {
         {/* Mission Statement */}
         <div className="max-w-2xl mx-auto text-center mb-12">
           <p className="font-serif text-2xl md:text-3xl font-light italic leading-relaxed">
-            "Ne pas laisser les morts sombrer dans l'oubli"
+            "Honorer, Relier et Transmettre"
           </p>
         </div>
 
