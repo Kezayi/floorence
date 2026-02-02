@@ -70,7 +70,6 @@ const mockMemorialData = {
         "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400&h=300&fit=crop",
       ],
       createdAt: "2025-01-10T10:30:00Z",
-      hasRip: true,
       candleCount: 5,
       flowerCount: 2,
     },
@@ -82,7 +81,6 @@ const mockMemorialData = {
       content: "Un homme d'une grande intégrité. Travailler à ses côtés pendant 20 ans fut un honneur. Tu nous manques déjà.",
       photos: [],
       createdAt: "2025-01-09T15:45:00Z",
-      hasRip: true,
       candleCount: 3,
       flowerCount: 1,
     },
@@ -96,7 +94,6 @@ const mockMemorialData = {
         "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=300&fit=crop",
       ],
       createdAt: "2025-01-09T09:20:00Z",
-      hasRip: false,
       candleCount: 2,
       flowerCount: 0,
     },
@@ -135,24 +132,17 @@ const Memorial = () => {
   const memorial = mockMemorial;
 
   // Calculate totals from all posts
+  // Note: 1 post = 1 RIP automatiquement
   const totals = useMemo(() => {
     return guestbookPosts.reduce(
       (acc, post) => ({
-        ripCount: acc.ripCount + (post.hasRip ? 1 : 0),
+        ripCount: acc.ripCount + 1, // Chaque post vaut 1 RIP
         candleCount: acc.candleCount + post.candleCount,
         flowerCount: acc.flowerCount + post.flowerCount,
       }),
       { ripCount: 0, candleCount: 0, flowerCount: 0 }
     );
   }, [guestbookPosts]);
-
-  const handleToggleRip = (postId: string) => {
-    setGuestbookPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId ? { ...post, hasRip: !post.hasRip } : post
-      )
-    );
-  };
 
   const handleAddCandles = (postId: string, count: number) => {
     // In real app, this would call Ebilling API first
@@ -191,7 +181,6 @@ const Memorial = () => {
       content: data.content,
       photos: data.photos,
       createdAt: new Date().toISOString(),
-      hasRip: false,
       candleCount: 0,
       flowerCount: 0,
     };
@@ -572,7 +561,6 @@ const Memorial = () => {
                     key={post.id}
                     post={post}
                     isOwner={post.authorId === currentUserId}
-                    onToggleRip={handleToggleRip}
                     onAddCandles={handleAddCandles}
                     onAddFlowers={handleAddFlowers}
                   />

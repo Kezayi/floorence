@@ -20,7 +20,7 @@ export interface GuestbookPostData {
   content: string;
   photos: string[];
   createdAt: string;
-  hasRip: boolean;
+  // Note: Chaque post vaut automatiquement 1 RIP
   candleCount: number;
   flowerCount: number;
 }
@@ -28,7 +28,6 @@ export interface GuestbookPostData {
 interface GuestbookPostProps {
   post: GuestbookPostData;
   isOwner: boolean;
-  onToggleRip: (postId: string) => void;
   onAddCandles: (postId: string, count: number) => void;
   onAddFlowers: (postId: string, count: number) => void;
 }
@@ -36,7 +35,6 @@ interface GuestbookPostProps {
 const GuestbookPost = ({
   post,
   isOwner,
-  onToggleRip,
   onAddCandles,
   onAddFlowers,
 }: GuestbookPostProps) => {
@@ -165,20 +163,11 @@ const GuestbookPost = ({
 
       {/* Gesture buttons for this post */}
       <div className="flex items-center gap-4 mt-4">
-        {/* RIP - Simple toggle (1 per user) */}
-        <button
-          onClick={() => onToggleRip(post.id)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-sm transition-all ${
-            post.hasRip
-              ? "bg-primary/20 text-primary"
-              : "bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-memorial-dark-muted"
-          }`}
-        >
-          <CrossIcon size={18} className={post.hasRip ? "text-primary" : "text-memorial-dark-foreground"} />
-          <span className="text-sm font-sans">
-            {post.hasRip ? "1" : "0"} RIP
-          </span>
-        </button>
+        {/* RIP - Automatique: 1 post = 1 RIP (non cliquable) */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-primary/20 text-primary">
+          <CrossIcon size={18} className="text-primary" />
+          <span className="text-sm font-sans">1 RIP</span>
+        </div>
 
         {/* Candle - Opens quantity dialog (paid) */}
         <button
