@@ -171,8 +171,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email via Resend
     console.log(`Sending OTP email to ${normalizedEmail}, isNewUser: ${isNewUser}`);
     
+    // Use Resend test domain until floorence.com is verified
+    // Change to "Floorence <noreply@floorence.com>" once domain is verified at https://resend.com/domains
     const emailResponse = await resend.emails.send({
-      from: "Floorence <noreply@floorence.com>",
+      from: "Floorence <onboarding@resend.dev>",
       to: [normalizedEmail],
       subject: isNewUser 
         ? "🕯️ Bienvenue sur Floorence - Votre code de vérification"
