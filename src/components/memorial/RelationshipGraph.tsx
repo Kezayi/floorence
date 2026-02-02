@@ -101,6 +101,28 @@ const getCategoryLabel = (color: string): string => {
   }
 };
 
+// Bounce easing function
+const bounceOut = (t: number): number => {
+  const n1 = 7.5625;
+  const d1 = 2.75;
+
+  if (t < 1 / d1) {
+    return n1 * t * t;
+  } else if (t < 2 / d1) {
+    return n1 * (t -= 1.5 / d1) * t + 0.75;
+  } else if (t < 2.5 / d1) {
+    return n1 * (t -= 2.25 / d1) * t + 0.9375;
+  } else {
+    return n1 * (t -= 2.625 / d1) * t + 0.984375;
+  }
+};
+
+// Elastic easing for more spring-like effect
+const elasticOut = (t: number): number => {
+  const p = 0.3;
+  return Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+};
+
 const RelationshipGraph = ({
   open,
   onOpenChange,
@@ -111,6 +133,16 @@ const RelationshipGraph = ({
   const animationRef = useRef<number>();
   const [scale, setScale] = useState(1);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const animationStartTime = useRef<number | null>(null);
+
+  // Reset animation when dialog opens
+  useEffect(() => {
+    if (open) {
+      setAnimationProgress(0);
+      animationStartTime.current = null;
+    }
+  }, [open]);
 
   // Create unique nodes from posts
   const nodes = useMemo(() => {
@@ -165,7 +197,7 @@ const RelationshipGraph = ({
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
-  // Draw the graph
+  // Animated draw function
   useEffect(() => {
     if (!open || !canvasRef.current) return;
 
@@ -175,8 +207,19 @@ const RelationshipGraph = ({
 
     const centerX = dimensions.width / 2;
     const centerY = dimensions.height / 2;
+    const totalAnimationDuration = 1500; // 1.5 seconds total
+    const centerNodeDuration = 400; // Center node appears first
+    const staggerDelay = 150; // Delay between each node
 
-    const draw = () => {
+    const animate = (timestamp: number) => {
+      if (animationStartTime.current === null) {
+        animationStartTime.current = timestamp;
+      }
+
+      const elapsed = timestamp - animationStartTime.current;
+      const progress = Math.min(elapsed / totalAnimationDuration, 1);
+      setAnimationProgress(progress);
+
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
       ctx.save();
       
@@ -185,69 +228,111 @@ const RelationshipGraph = ({
       ctx.scale(scale, scale);
       ctx.translate(-centerX, -centerY);
 
-      // Draw connections
-      nodes.forEach((node) => {
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(node.x, node.y);
-        ctx.strokeStyle = getCategoryColor(node.category);
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+      // Calculate center node animation (appears first with bounce)
+      const centerProgress = Math.min(elapsed / centerNodeDuration, 1);
+      const centerScale = bounceOut(centerProgress);
+
+      // Draw connections with progressive reveal
+      nodes.forEach((node, index) => {
+        const nodeDelay = centerNodeDuration + index * staggerDelay;
+        const nodeElapsed = Math.max(0, elapsed - nodeDelay);
+        const nodeProgress = Math.min(nodeElapsed / 400, 1);
+        
+        if (nodeProgress > 0) {
+          const lineProgress = Math.min(nodeElapsed / 200, 1);
+          
+          // Animated line from center to node position
+          const currentX = centerX + (node.x - centerX) * lineProgress;
+          const currentY = centerY + (node.y - centerY) * lineProgress;
+          
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(currentX, currentY);
+          ctx.strokeStyle = getCategoryColor(node.category);
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.6 * lineProgress;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
       });
 
-      // Draw center node (deceased)
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
-      ctx.fillStyle = "#000000";
-      ctx.fill();
-      ctx.strokeStyle = "#333333";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Draw deceased name
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 10px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      
-      // Split name if too long
-      const nameParts = deceasedName.split(" ");
-      if (nameParts.length > 1 && deceasedName.length > 12) {
-        ctx.fillText(nameParts[0], centerX, centerY - 5);
-        ctx.fillText(nameParts.slice(1).join(" ").substring(0, 10), centerX, centerY + 7);
-      } else {
-        ctx.fillText(deceasedName.substring(0, 12), centerX, centerY);
-      }
-
-      // Draw author nodes
-      nodes.forEach((node) => {
-        const color = getCategoryColor(node.category);
+      // Draw center node (deceased) with bounce animation
+      if (centerScale > 0) {
+        const actualCenterRadius = 30 * centerScale;
         
-        // Node circle
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
-        ctx.fillStyle = color;
+        ctx.arc(centerX, centerY, actualCenterRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = "#000000";
         ctx.fill();
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#333333";
+        ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Node label
-        ctx.fillStyle = "#1F2937";
-        ctx.font = "11px sans-serif";
+        // Draw deceased name with fade in
+        ctx.globalAlpha = centerProgress;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = `bold ${10 * centerScale}px sans-serif`;
         ctx.textAlign = "center";
-        ctx.textBaseline = "top";
+        ctx.textBaseline = "middle";
         
-        const firstName = node.name.split(" ")[0];
-        ctx.fillText(firstName, node.x, node.y + 25);
+        const nameParts = deceasedName.split(" ");
+        if (nameParts.length > 1 && deceasedName.length > 12) {
+          ctx.fillText(nameParts[0], centerX, centerY - 5 * centerScale);
+          ctx.fillText(nameParts.slice(1).join(" ").substring(0, 10), centerX, centerY + 7 * centerScale);
+        } else {
+          ctx.fillText(deceasedName.substring(0, 12), centerX, centerY);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // Draw author nodes with staggered bounce animation
+      nodes.forEach((node, index) => {
+        const nodeDelay = centerNodeDuration + index * staggerDelay;
+        const nodeElapsed = Math.max(0, elapsed - nodeDelay);
+        const nodeProgress = Math.min(nodeElapsed / 400, 1);
+        
+        if (nodeProgress > 0) {
+          const nodeScale = elasticOut(nodeProgress);
+          const color = getCategoryColor(node.category);
+          const actualNodeRadius = 20 * nodeScale;
+          
+          // Node circle with bounce
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, actualNodeRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = nodeProgress;
+          ctx.fill();
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Node label with fade in
+          if (nodeProgress > 0.5) {
+            const labelOpacity = (nodeProgress - 0.5) * 2;
+            ctx.globalAlpha = labelOpacity;
+            ctx.fillStyle = "#1F2937";
+            ctx.font = "11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            
+            const firstName = node.name.split(" ")[0];
+            ctx.fillText(firstName, node.x, node.y + 25);
+            ctx.globalAlpha = 1;
+          }
+        }
       });
 
       ctx.restore();
+
+      // Continue animation if not complete
+      const totalDuration = centerNodeDuration + nodes.length * staggerDelay + 400;
+      if (elapsed < totalDuration) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
     };
 
-    draw();
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationRef.current) {
