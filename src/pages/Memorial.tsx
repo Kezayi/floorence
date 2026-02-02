@@ -597,7 +597,7 @@ const Memorial = () => {
               </p>
 
               {/* Message Form */}
-              <GuestbookForm onSubmit={handleSubmitPost} />
+              <GuestbookForm memorialId={memorialData.id} onSubmit={handleSubmitPost} />
 
               {/* Inferred Relationships */}
               <InferredRelationships messages={messagesForRelationships} />
