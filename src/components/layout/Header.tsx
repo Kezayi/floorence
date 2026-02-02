@@ -2,7 +2,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, Home, PlusCircle, User, LogIn, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMemorials } from "@/contexts/MemorialsContext";
 import SearchBar from "@/components/search/SearchBar";
 
 const Header = () => {
@@ -10,7 +9,6 @@ const Header = () => {
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
-  const { memorials } = useMemorials();
 
   const navItems = [
     { path: "/", label: "Accueil", icon: Home },
@@ -68,7 +66,7 @@ const Header = () => {
 
             {/* Search Bar - Center */}
             <div className="flex-1 max-w-md mx-4">
-              <SearchBar memorials={memorials} />
+              <SearchBar />
             </div>
 
             {/* Hamburger Menu - Desktop Only */}
