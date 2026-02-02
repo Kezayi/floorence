@@ -8,8 +8,9 @@ import RelationSelect from "@/components/memorial/RelationSelect";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
 import ShareButtons from "@/components/memorial/ShareButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Heart, ChevronLeft, Bell, BellOff } from "lucide-react";
+import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff } from "lucide-react";
 import { calculateAge, getMemorialType } from "@/lib/dateUtils";
+import { Button } from "@/components/ui/button";
 
 // Mock data - type is now calculated dynamically
 const mockMemorialData = {
@@ -96,6 +97,7 @@ const Memorial = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState("");
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   // In real app, fetch memorial by slug
   const memorial = mockMemorial;
@@ -145,23 +147,66 @@ const Memorial = () => {
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             {/* Photo Gallery */}
             <div className="relative">
-              <div className="aspect-[3/4] overflow-hidden">
+              <div className="aspect-[3/4] overflow-hidden relative group">
                 <img
-                  src={memorial.photos[0]}
+                  src={memorial.photos[currentPhotoIndex]}
                   alt={`Portrait de ${memorial.name}`}
-                  className="w-full h-full object-cover portrait-memorial"
+                  className="w-full h-full object-cover portrait-memorial transition-opacity duration-300"
                 />
+                
+                {/* Navigation Arrows */}
+                {memorial.photos.length > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPhotoIndex((prev) => 
+                        prev === 0 ? memorial.photos.length - 1 : prev - 1
+                      )}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
+                      aria-label="Photo précédente"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPhotoIndex((prev) => 
+                        prev === memorial.photos.length - 1 ? 0 : prev + 1
+                      )}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
+                      aria-label="Photo suivante"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                    
+                    {/* Photo Counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans">
+                      {currentPhotoIndex + 1} / {memorial.photos.length}
+                    </div>
+                  </>
+                )}
               </div>
+              
+              {/* Thumbnails */}
               {memorial.photos.length > 1 && (
                 <div className="flex gap-2 mt-2">
-                  {memorial.photos.slice(1, 3).map((photo, index) => (
-                    <div key={index} className="w-16 h-20 overflow-hidden">
+                  {memorial.photos.map((photo, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPhotoIndex(index)}
+                      className={`w-16 h-20 overflow-hidden transition-all ${
+                        index === currentPhotoIndex 
+                          ? "ring-2 ring-primary opacity-100" 
+                          : "opacity-60 hover:opacity-100"
+                      }`}
+                    >
                       <img
                         src={photo}
                         alt=""
-                        className="w-full h-full object-cover portrait-memorial opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+                        className="w-full h-full object-cover portrait-memorial"
                       />
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
