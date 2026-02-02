@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -296,16 +295,8 @@ const Auth = () => {
                               value={field.value}
                               onChange={field.onChange}
                               disabled={otpExpiration === 0}
-                              pattern={REGEXP_ONLY_DIGITS}
                               autoFocus
-                              inputMode="numeric"
-                              autoComplete="one-time-code"
-                              name="otp"
-                              spellCheck={false}
-                              autoCorrect="off"
-                              autoCapitalize="none"
-                              data-lpignore="true"
-                              data-1p-ignore
+                              name="otp-code"
                               onPaste={(e) => {
                                 const text = e.clipboardData?.getData('text') ?? '';
                                 const digits = text.replace(/\D/g, '').slice(0, 6);
