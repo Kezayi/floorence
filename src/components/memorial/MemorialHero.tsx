@@ -137,10 +137,10 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
         {/* Info */}
         <div className="flex flex-col justify-center">
           <div className="animate-fade-in">
-            <h1 className="mb-2">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl mb-2">
               {memorial.name}
               {age !== null && (
-                <span className="text-muted-foreground font-normal text-2xl md:text-3xl ml-3">
+                <span className="text-muted-foreground font-normal text-3xl md:text-4xl ml-3">
                   ({age} ans)
                 </span>
               )}
