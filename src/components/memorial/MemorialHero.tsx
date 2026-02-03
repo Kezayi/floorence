@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Bell, BellOff, GitBranch, Feather, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Bell, BellOff, Feather } from "lucide-react";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import AuthorCredibility from "./AuthorCredibility";
 import ShareButtons from "./ShareButtons";
-import RelationshipGraph from "./RelationshipGraph";
 import GestureSummary from "./GestureSummary";
 import { calculateAge } from "@/lib/dateUtils";
 import { useNotifications } from "@/contexts/NotificationsContext";
@@ -13,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
-
 interface GestureTotals {
   ripCount: number;
   candleCount: number;
@@ -48,7 +46,6 @@ interface MemorialHeroProps {
 
 const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick }: MemorialHeroProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
   
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
   const { toast } = useToast();
@@ -57,12 +54,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
 
   const age = calculateAge(memorial.birthDate, memorial.deathDate);
-
-  const guestbookPosts = memorial.guestbookMessages.map((msg, index) => ({
-    authorId: `user-${index}`,
-    authorName: msg.authorName,
-    relationCategory: msg.relationCategory,
-  }));
 
   return (
     <section className="container mx-auto px-4 pb-8">
@@ -222,15 +213,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 title={`Hommage à ${memorial.name}`}
                 description={memorial.bio}
               />
-              
-              <button
-                onClick={() => setShowRelationshipGraph(true)}
-                className="btn-ghost"
-                aria-label="Voir le maillage relationnel"
-              >
-                <GitBranch className="w-4 h-4" />
-                <span>Maillage</span>
-              </button>
             </div>
             
             {/* Gesture Summary - Hommages reçus */}
@@ -246,14 +228,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 />
               </div>
             )}
-            
-            {/* Relationship Graph Dialog */}
-            <RelationshipGraph
-              open={showRelationshipGraph}
-              onOpenChange={setShowRelationshipGraph}
-              deceasedName={memorial.name}
-              posts={guestbookPosts}
-            />
           </div>
         </div>
       </div>
