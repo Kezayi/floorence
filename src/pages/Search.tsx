@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchMemorialsAndAuthors, SearchableMemorial } from "@/lib/searchWithRelations";
+import { getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search } from "lucide-react";
@@ -199,7 +200,7 @@ const organizeResultsForPerson = (
       if (personContrib && userContrib) {
         connectionWithUser = {
           type: "indirect",
-          description: `Vous êtes ${userContrib.relation} et ${person.name} est ${personContrib.relation} de ${memorial.name}`,
+          description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.name} est ${getCleanRelationName(personContrib.relation)} de ${memorial.name}`,
           via: memorial.name,
         };
         break;
@@ -349,7 +350,7 @@ const SearchPage = () => {
                       <p className="text-sm text-muted-foreground font-sans truncate">
                         {person.type === "deceased" 
                           ? "Espace mémorial" 
-                          : `${person.relation} de ${person.memorialName}`
+                          : `${getCleanRelationName(person.relation || "")} de ${person.memorialName}`
                         }
                       </p>
                     </div>
@@ -497,7 +498,7 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
                     {pub.memorialName}
                   </p>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-sans rounded">
-                    {pub.relation}
+                    {getRelationWithDeceased(pub.relation)}
                   </span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -537,7 +538,7 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
                   </span>
                   <span className="text-muted-foreground">•</span>
                   <span className="px-2 py-0.5 bg-secondary text-muted-foreground text-xs rounded font-sans">
-                    {entry.relationCategory}
+                    {getRelationWithDeceased(entry.relationCategory)}
                   </span>
                 </div>
                 <p className="text-muted-foreground font-serif italic ml-10">
