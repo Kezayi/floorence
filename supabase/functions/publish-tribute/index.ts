@@ -53,28 +53,38 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      global: { headers: { Authorization: authHeader } }
-    })
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Verify user token
+    // Verify user token using getUser (getClaims is deprecated)
     const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token)
+    const { data: userData, error: userError } = await supabase.auth.getUser(token)
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !userData?.user) {
+      console.error('Auth error:', userError)
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const userId = claimsData.claims.sub
-
-    // Get user profile for author name
-    const { data: userData } = await supabase.auth.getUser(token)
-    const authorName = userData?.user?.user_metadata?.full_name || 
-                       userData?.user?.email?.split('@')[0] || 
-                       'Utilisateur anonyme'
+    const userId = userData.user.id
+    
+    // Get author name from user metadata or profile
+    let authorName = userData.user.user_metadata?.full_name || 
+                     userData.user.user_metadata?.display_name ||
+                     userData.user.email?.split('@')[0] || 
+                     'Utilisateur anonyme'
+    
+    // Try to get display name from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (profile?.display_name) {
+      authorName = profile.display_name
+    }
 
     // Parse and validate request body
     let rawBody: unknown
