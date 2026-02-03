@@ -235,7 +235,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
             {/* Gesture Summary - Hommages reçus */}
             {gestureTotals && onGestureClick && (
               <div className="mt-6">
-                <div className="h-px bg-admin-burgundy/40 mb-4" />
+                <div className="h-px bg-admin-burgundy/25 mb-4" />
                 <GestureSummary
                   totals={gestureTotals}
                   userHasPosted={userHasPosted || false}
