@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
 import { Button } from "@/components/ui/button";
+import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import {
   Dialog,
   DialogContent,
@@ -93,7 +94,7 @@ const GuestbookPost = ({
             {post.authorName}
           </h4>
           <span className="inline-block mt-1 px-2 py-0.5 bg-memorial-dark-muted/20 text-memorial-dark-muted text-xs font-sans">
-            {post.relationCategory}
+            {getRelationWithDeceased(post.relationCategory)}
           </span>
         </div>
         <time className="text-xs text-memorial-dark-muted font-sans">
