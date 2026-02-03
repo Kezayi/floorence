@@ -22,6 +22,7 @@ const Auth = () => {
   const [step, setStep] = useState<'email' | 'sent'>('email');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [testMagicLink, setTestMagicLink] = useState<string | null>(null);
   const { user, sendMagicLink } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,7 +41,8 @@ const Auth = () => {
 
   const handleEmailSubmit = async (values: EmailFormValues) => {
     setIsLoading(true);
-    const { error } = await sendMagicLink(values.email);
+    setTestMagicLink(null);
+    const { error, magicLink } = await sendMagicLink(values.email);
     setIsLoading(false);
 
     if (error) {
@@ -54,10 +56,20 @@ const Auth = () => {
 
     setEmail(values.email);
     setStep('sent');
-    toast({
-      title: "Lien envoyé",
-      description: `Un lien de connexion a été envoyé à ${values.email}`,
-    });
+    
+    // If test mode, store the magic link for display
+    if (magicLink) {
+      setTestMagicLink(magicLink);
+      toast({
+        title: "Mode test activé",
+        description: "Le lien de connexion est affiché ci-dessous (pas d'email envoyé)",
+      });
+    } else {
+      toast({
+        title: "Lien envoyé",
+        description: `Un lien de connexion a été envoyé à ${values.email}`,
+      });
+    }
   };
 
   const handleResend = async () => {
@@ -152,14 +164,31 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
-                    <p className="mb-2">
-                      <strong>Cliquez sur le lien dans l'email</strong> pour vous connecter.
-                    </p>
-                    <p>
-                      Le lien expire dans 1 heure. Pensez à vérifier vos spams si vous ne le voyez pas.
-                    </p>
-                  </div>
+                  {testMagicLink ? (
+                    <div className="bg-accent/20 border border-accent/30 rounded-lg p-4 text-sm">
+                      <p className="font-semibold text-accent-foreground mb-2">
+                        🧪 Mode Test Activé
+                      </p>
+                      <p className="text-muted-foreground mb-3">
+                        Cliquez sur le bouton ci-dessous pour vous connecter directement :
+                      </p>
+                      <a
+                        href={testMagicLink}
+                        className="inline-block w-full bg-primary text-primary-foreground text-center py-3 px-4 rounded-md font-medium hover:bg-primary/90 transition-colors"
+                      >
+                        Se connecter maintenant
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
+                      <p className="mb-2">
+                        <strong>Cliquez sur le lien dans l'email</strong> pour vous connecter.
+                      </p>
+                      <p>
+                        Le lien expire dans 1 heure. Pensez à vérifier vos spams si vous ne le voyez pas.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-3">
                     <Button

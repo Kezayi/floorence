@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  sendMagicLink: (email: string) => Promise<{ error: Error | null; isNewUser?: boolean }>;
+  sendMagicLink: (email: string) => Promise<{ error: Error | null; isNewUser?: boolean; magicLink?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Send magic link via edge function
-  const sendMagicLink = async (email: string): Promise<{ error: Error | null; isNewUser?: boolean }> => {
+  const sendMagicLink = async (email: string): Promise<{ error: Error | null; isNewUser?: boolean; magicLink?: string }> => {
     try {
       const { data, error } = await supabase.functions.invoke('send-magic-link', {
         body: { email },
@@ -53,7 +53,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: new Error(data.error) };
       }
 
-      return { error: null, isNewUser: data?.isNewUser };
+      // Return magic link if in test mode
+      return { 
+        error: null, 
+        isNewUser: data?.isNewUser,
+        magicLink: data?.testMode ? data.magicLink : undefined
+      };
     } catch (err: any) {
       console.error('Exception sending magic link:', err);
       return { error: new Error(err.message || "Une erreur est survenue") };
