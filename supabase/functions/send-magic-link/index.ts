@@ -163,7 +163,13 @@ const handler = async (req: Request): Promise<Response> => {
     const magicLink = linkData.properties.action_link;
 
     // Check if we're in test mode (bypass email sending)
-    const testMode = Deno.env.get("TEST_MODE") === "true";
+    // Note: secrets can sometimes include quotes or be set as TRUE/1.
+    const testModeRaw = (Deno.env.get("TEST_MODE") ?? "").trim();
+    const testModeNormalized = testModeRaw.replace(/^["']|["']$/g, "").toLowerCase();
+    const testMode = ["true", "1", "yes", "on"].includes(testModeNormalized);
+    console.log(
+      `TEST_MODE raw='${testModeRaw}' normalized='${testModeNormalized}' -> testMode=${testMode}`
+    );
 
     if (testMode) {
       // In test mode, return the magic link directly without sending email
@@ -194,6 +200,12 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Magic link email sent:", emailResponse);
+
+    // If Resend returns an error, bubble it up so the frontend can display a proper message.
+    if ((emailResponse as any)?.error) {
+      const err = (emailResponse as any).error;
+      throw new Error(err?.message || "Erreur lors de l'envoi de l'email");
+    }
 
     return new Response(
       JSON.stringify({
