@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, PlusCircle, User, LogIn, LogOut, Bell } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import SearchBar from "@/components/search/SearchBar";
 import NotificationBell from "./NotificationBell";
 
@@ -10,6 +11,7 @@ const Header = () => {
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
+  const { isAdminOrMod } = useAdminRole();
 
   // Menu items selon l'état de connexion
   const navItems = user
@@ -112,6 +114,21 @@ const Header = () => {
                         </Link>
                       );
                     })}
+                    
+                    {/* BackOffice - uniquement pour admin/modérateur */}
+                    {user && isAdminOrMod && (
+                      <Link
+                        to="/admin"
+                        className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
+                          location.pathname.startsWith("/admin")
+                            ? "bg-admin-burgundy/20 text-admin-burgundy font-medium"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Settings className="w-4 h-4" />
+                        BackOffice
+                      </Link>
+                    )}
                     
                     {/* Déconnexion - uniquement si connecté */}
                     {user && (
