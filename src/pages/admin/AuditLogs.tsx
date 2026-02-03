@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   History, 
   Shield, 
@@ -17,7 +25,9 @@ import {
   ShieldOff,
   Ban, 
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  Filter,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -34,15 +44,28 @@ interface AuditLog {
   created_at: string;
 }
 
-const actionConfig: Record<string, { label: string; icon: React.ReactNode; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  add_role: { label: 'Ajout de rôle', icon: <ShieldCheck className="w-3 h-3" />, variant: 'default' },
-  remove_role: { label: 'Retrait de rôle', icon: <ShieldOff className="w-3 h-3" />, variant: 'secondary' },
-  ban_user: { label: 'Blocage', icon: <Ban className="w-3 h-3" />, variant: 'destructive' },
-  unban_user: { label: 'Déblocage', icon: <UserCheck className="w-3 h-3" />, variant: 'outline' },
-  update_setting: { label: 'Modification paramètre', icon: <History className="w-3 h-3" />, variant: 'secondary' },
+const actionConfig: Record<string, { label: string; icon: React.ReactNode; variant: 'default' | 'secondary' | 'destructive' | 'outline'; category: 'users' | 'settings' }> = {
+  add_role: { label: 'Ajout de rôle', icon: <ShieldCheck className="w-3 h-3" />, variant: 'default', category: 'users' },
+  remove_role: { label: 'Retrait de rôle', icon: <ShieldOff className="w-3 h-3" />, variant: 'secondary', category: 'users' },
+  ban_user: { label: 'Blocage', icon: <Ban className="w-3 h-3" />, variant: 'destructive', category: 'users' },
+  unban_user: { label: 'Déblocage', icon: <UserCheck className="w-3 h-3" />, variant: 'outline', category: 'users' },
+  update_setting: { label: 'Modification paramètre', icon: <Settings className="w-3 h-3" />, variant: 'secondary', category: 'settings' },
 };
 
+const filterOptions = [
+  { value: 'all', label: 'Toutes les actions' },
+  { value: 'users', label: 'Gestion utilisateurs', icon: <Shield className="w-4 h-4" /> },
+  { value: 'settings', label: 'Paramètres & prix', icon: <Settings className="w-4 h-4" /> },
+  { value: 'add_role', label: 'Ajout de rôle' },
+  { value: 'remove_role', label: 'Retrait de rôle' },
+  { value: 'ban_user', label: 'Blocage' },
+  { value: 'unban_user', label: 'Déblocage' },
+  { value: 'update_setting', label: 'Modification paramètre' },
+];
+
 const AuditLogs = () => {
+  const [actionFilter, setActionFilter] = useState<string>('all');
+
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => {
@@ -57,11 +80,23 @@ const AuditLogs = () => {
     },
   });
 
+  const filteredLogs = logs?.filter((log) => {
+    if (actionFilter === 'all') return true;
+    if (actionFilter === 'users') {
+      return actionConfig[log.action_type]?.category === 'users';
+    }
+    if (actionFilter === 'settings') {
+      return actionConfig[log.action_type]?.category === 'settings';
+    }
+    return log.action_type === actionFilter;
+  });
+
   const getActionDisplay = (actionType: string) => {
     const config = actionConfig[actionType] || { 
       label: actionType, 
       icon: <Shield className="w-3 h-3" />, 
-      variant: 'secondary' as const 
+      variant: 'secondary' as const,
+      category: 'users' as const
     };
     return config;
   };
@@ -107,6 +142,38 @@ const AuditLogs = () => {
         </Button>
       </div>
 
+      {/* Filter */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">Filtrer par :</span>
+            </div>
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Toutes les actions" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      {option.icon}
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {actionFilter !== 'all' && (
+              <Button variant="ghost" size="sm" onClick={() => setActionFilter('all')}>
+                Réinitialiser
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -114,7 +181,7 @@ const AuditLogs = () => {
             Actions récentes
           </CardTitle>
           <CardDescription>
-            Les 100 dernières actions effectuées par les administrateurs
+            {filteredLogs?.length ?? 0} action(s) affichée(s) sur {logs?.length ?? 0}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,7 +189,7 @@ const AuditLogs = () => {
             <div className="text-center py-8 text-muted-foreground">
               Chargement de l'historique...
             </div>
-          ) : !logs || logs.length === 0 ? (
+          ) : !filteredLogs || filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Aucune action enregistrée
             </div>
@@ -138,7 +205,7 @@ const AuditLogs = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.map((log) => {
+                {filteredLogs.map((log) => {
                   const actionDisplay = getActionDisplay(log.action_type);
                   const details = formatDetails(log.action_type, log.details);
                   
