@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { inferAllRelationships, InferredRelationship } from "@/lib/relationshipInference";
+import { inferAllRelationships, InferredRelationship, getRelationWithDeceased } from "@/lib/relationshipInference";
 import { Users, Link2 } from "lucide-react";
 
 interface InferredRelationshipsProps {
@@ -62,7 +62,7 @@ const RelationshipCard = ({ relationship }: { relationship: InferredRelationship
             {relationship.fromAuthor}
           </span>
           <span className="text-xs text-memorial-dark-muted font-sans">
-            ({relationship.fromRelation})
+            ({getRelationWithDeceased(relationship.fromRelation)})
           </span>
         </div>
       </div>
@@ -78,7 +78,7 @@ const RelationshipCard = ({ relationship }: { relationship: InferredRelationship
       <div className="flex-1 min-w-0 text-right">
         <div className="flex items-center justify-end gap-2 flex-wrap">
           <span className="text-xs text-memorial-dark-muted font-sans">
-            ({relationship.toRelation})
+            ({getRelationWithDeceased(relationship.toRelation)})
           </span>
           <span className="font-serif text-memorial-dark-foreground truncate">
             {relationship.toAuthor}
