@@ -9,11 +9,8 @@ verify_jwt = false
 [functions.publish-tribute]
 verify_jwt = false
 
-[functions.send-otp-email]
+[functions.send-magic-link]
 verify_jwt = false
 
-[functions.generate-otp]
-verify_jwt = false
-
-[functions.verify-otp]
+[functions.admin-users]
 verify_jwt = false
