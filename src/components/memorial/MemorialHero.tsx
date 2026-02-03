@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Bell, BellOff, GitBranch, Feather, Share2 } from "lucide-react";
+import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import AuthorCredibility from "./AuthorCredibility";
 import ShareButtons from "./ShareButtons";
 import RelationshipGraph from "./RelationshipGraph";
@@ -160,7 +161,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 >
                   {memorial.author.name}
                 </Link>
-                {" "}({memorial.author.relation})
+                {" "}({getRelationWithDeceased(memorial.author.relation)})
               </span>
             </div>
             

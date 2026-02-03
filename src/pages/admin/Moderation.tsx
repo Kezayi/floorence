@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getRelationWithDeceased } from '@/lib/relationshipInference';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -177,7 +178,7 @@ const Moderation = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-base">{post.author_name}</CardTitle>
-                  <Badge variant="secondary">{post.relation_category}</Badge>
+                  <Badge variant="secondary">{getRelationWithDeceased(post.relation_category)}</Badge>
                   {post.is_hidden && (
                     <Badge variant="destructive">Masqué</Badge>
                   )}

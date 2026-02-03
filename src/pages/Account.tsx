@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -478,7 +479,7 @@ const Account = () => {
                                   </p>
                                 </div>
                                 <span className="px-2 py-1 bg-muted text-xs font-sans shrink-0">
-                                  {post.relation_category}
+                                  {getRelationWithDeceased(post.relation_category)}
                                 </span>
                               </div>
                               <p className="text-xs text-muted-foreground font-sans mt-2">
