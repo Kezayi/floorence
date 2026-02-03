@@ -11,7 +11,7 @@ import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GuestbookPagination from "@/components/memorial/GuestbookPagination";
-import InferredRelationships from "@/components/memorial/InferredRelationships";
+import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch } from "lucide-react";
 import { useMemorials } from "@/contexts/MemorialsContext";
@@ -216,11 +216,6 @@ const Memorial = () => {
     setGuestbookPosts((prev) => [newPost, ...prev]);
   };
 
-  const messagesForRelationships = guestbookPosts.map((post) => ({
-    authorName: post.authorName,
-    relationCategory: post.relationCategory,
-  }));
-
   const scrollToGuestbook = () => {
     guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -394,12 +389,15 @@ const Memorial = () => {
 
             {/* Maillage relationnel */}
             <TabsContent value="relationships" className="mt-0">
-              <div className="max-w-2xl">
-                <h3 className="mb-4">Liens relationnels</h3>
-                <p className="font-serif text-muted-foreground mb-6">
-                  Découvrez les relations et liens de parenté établis à partir des hommages déposés.
-                </p>
-                <InferredRelationships messages={messagesForRelationships} />
+              <div className="max-w-3xl">
+                <RelationshipMaillage 
+                  deceasedName={memorial.name}
+                  posts={guestbookPosts.map(post => ({
+                    authorId: post.authorId,
+                    authorName: post.authorName,
+                    relationCategory: post.relationCategory,
+                  }))}
+                />
               </div>
             </TabsContent>
 
