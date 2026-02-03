@@ -22,6 +22,13 @@ export interface SearchableMemorial {
     candleCount?: number;
     flowerCount?: number;
   }>;
+  // Extended fields from database
+  createdBy?: string;
+  donationEnabled?: boolean;
+  funeralDate?: string;
+  funeralLocation?: string;
+  heirUserId?: string;
+  heirEmail?: string;
 }
 
 export interface SearchResult {

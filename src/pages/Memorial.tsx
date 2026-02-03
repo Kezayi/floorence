@@ -1,77 +1,75 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GestureButton from "@/components/memorial/GestureButton";
+import MemorialHero from "@/components/memorial/MemorialHero";
+import DeathNotice from "@/components/memorial/DeathNotice";
+import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
+import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
+import GestureSummary from "@/components/memorial/GestureSummary";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GuestbookPagination from "@/components/memorial/GuestbookPagination";
 import InferredRelationships from "@/components/memorial/InferredRelationships";
-import ShareButtons from "@/components/memorial/ShareButtons";
-import RelationshipGraph from "@/components/memorial/RelationshipGraph";
-import AuthorCredibility from "@/components/memorial/AuthorCredibility";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Heart, ChevronLeft, ChevronRight, Bell, BellOff, Info, GitBranch, Feather } from "lucide-react";
-import { calculateAge } from "@/lib/dateUtils";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch } from "lucide-react";
 import { useMemorials } from "@/contexts/MemorialsContext";
-import { useNotifications } from "@/contexts/NotificationsContext";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/useProfile";
-import { useAdminRole } from "@/hooks/useAdminRole";
+import { supabase } from "@/integrations/supabase/client";
 
-const eventTypeLabels = {
-  WAKE: "Veillée",
-  BURIAL: "Inhumation",
-  COMMEMORATION: "Commémoration",
-};
-
-// Default events for demo purposes
-const defaultEvents = [
-  {
-    id: "e1",
-    type: "WAKE",
-    date: "15 Janvier 2025",
-    time: "14h00 - 22h00",
-    location: "Domicile familial",
-    gps: "5.3364,-4.0266",
-  },
-  {
-    id: "e2",
-    type: "BURIAL",
-    date: "18 Janvier 2025",
-    time: "10h00",
-    location: "Église locale",
-    gps: "5.3167,-4.0167",
-  },
-];
+interface MemorialEvent {
+  id: string;
+  event_type: string;
+  event_date: string;
+  event_end_time?: string;
+  location?: string;
+  description?: string;
+  is_public: boolean;
+}
 
 const Memorial = () => {
   const { slug } = useParams();
-  const navigate = useNavigate();
   const { memorials } = useMemorials();
-  const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
-  const { toast } = useToast();
   const { user } = useAuth();
-  const { isProfileComplete, loading: profileLoading } = useProfile();
-  const { isAdminOrMod, loading: roleLoading } = useAdminRole();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
   
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
   const [currentGuestbookPage, setCurrentGuestbookPage] = useState(1);
+  const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const POSTS_PER_PAGE = 5;
 
   // Find the memorial by slug from context
   const memorialData = useMemo(() => {
     return memorials.find((m) => m.slug === slug);
   }, [memorials, slug]);
+
+  // Fetch events from database
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!memorialData?.id) return;
+      
+      setEventsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('memorial_events')
+          .select('*')
+          .eq('memorial_id', memorialData.id)
+          .order('event_date', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching events:', error);
+        } else {
+          setMemorialEvents(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [memorialData?.id]);
 
   // Convert guestbook messages to posts format
   const initialPosts = useMemo<GuestbookPostData[]>(() => {
@@ -96,9 +94,8 @@ const Memorial = () => {
     setGuestbookPosts(initialPosts);
   }, [initialPosts]);
 
-  // Reset photo index and page when memorial changes
+  // Reset page when memorial changes
   useEffect(() => {
-    setCurrentPhotoIndex(0);
     setCurrentGuestbookPage(1);
   }, [slug]);
 
@@ -109,7 +106,7 @@ const Memorial = () => {
     return guestbookPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
   }, [guestbookPosts, currentGuestbookPage, POSTS_PER_PAGE]);
 
-  // Calculate totals from all posts - must be before conditional return
+  // Calculate totals from all posts
   const totals = useMemo(() => {
     return guestbookPosts.reduce(
       (acc, post) => ({
@@ -121,13 +118,11 @@ const Memorial = () => {
     );
   }, [guestbookPosts]);
 
-  // Simulate current user - in real app, get from auth context
   const currentUserId = "user-current";
-  
-  // Check if current user has already posted
-  const userHasPosted = guestbookPosts.some(
-    (post) => post.authorId === currentUserId
-  );
+  const userHasPosted = guestbookPosts.some((post) => post.authorId === currentUserId);
+
+  // Check if current user is the memorial owner
+  const isOwner = user?.id === memorialData?.createdBy || false;
 
   // If memorial not found, show error page
   if (!memorialData) {
@@ -154,14 +149,15 @@ const Memorial = () => {
   const memorial = {
     ...memorialData,
     publishedAt: "Récemment",
-    enableContributions: memorialData.type === "RECENT",
+    enableContributions: memorialData.type === "RECENT" && (memorialData.donationEnabled ?? true),
     contributionGoal: 500000,
     contributionCurrent: Math.floor(Math.random() * 300000) + 50000,
-    events: defaultEvents,
+    funeralDate: memorialData.funeralDate,
+    funeralLocation: memorialData.funeralLocation,
   };
 
   const handleAddCandles = (postId: string, count: number) => {
-    console.log(`Payment for ${count} candles on post ${postId} - calling Ebilling API...`);
+    console.log(`Payment for ${count} candles on post ${postId}`);
     setGuestbookPosts((prev) =>
       prev.map((post) =>
         post.id === postId
@@ -172,7 +168,7 @@ const Memorial = () => {
   };
 
   const handleAddFlowers = (postId: string, count: number) => {
-    console.log(`Payment for ${count} flowers on post ${postId} - calling Ebilling API...`);
+    console.log(`Payment for ${count} flowers on post ${postId}`);
     setGuestbookPosts((prev) =>
       prev.map((post) =>
         post.id === postId
@@ -212,25 +208,18 @@ const Memorial = () => {
     (memorial.contributionCurrent / memorial.contributionGoal) * 100
   );
 
-  const handleRIPSummary = () => {
+  const scrollToGuestbook = () => {
+    guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToDarkZone = () => {
     document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleCandleSummary = () => {
-    if (!userHasPosted) {
-      alert("Vous devez d'abord publier un message dans le livre d'or pour allumer des cierges.");
-      return;
-    }
-    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleFlowerSummary = () => {
-    if (!userHasPosted) {
-      alert("Vous devez d'abord publier un message dans le livre d'or pour déposer des fleurs.");
-      return;
-    }
-    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Convert death date for anniversary component
+  const deathDateISO = memorialData.deathDate 
+    ? new Date(memorialData.deathDate).toISOString() 
+    : "";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -249,313 +238,151 @@ const Memorial = () => {
         </div>
 
         {/* Hero Section */}
-        <section className="container mx-auto px-4 pb-12">
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-            {/* Photo Gallery */}
-            <div className="relative">
-              <div className="aspect-[3/4] overflow-hidden relative group">
-                <img
-                  src={memorial.photos[currentPhotoIndex]}
-                  alt={`Portrait de ${memorial.name}`}
-                  className="w-full h-full object-cover portrait-memorial transition-opacity duration-300"
-                />
-                
-                {/* Navigation Arrows */}
-                {memorial.photos.length > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPhotoIndex((prev) => 
-                        prev === 0 ? memorial.photos.length - 1 : prev - 1
-                      )}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                      aria-label="Photo précédente"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPhotoIndex((prev) => 
-                        prev === memorial.photos.length - 1 ? 0 : prev + 1
-                      )}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                      aria-label="Photo suivante"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </Button>
-                    
-                    {/* Photo Counter */}
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans">
-                      {currentPhotoIndex + 1} / {memorial.photos.length}
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* Thumbnails */}
-              {memorial.photos.length > 1 && (
-                <div className="flex gap-2 mt-2">
-                  {memorial.photos.map((photo, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPhotoIndex(index)}
-                      className={`w-16 h-20 overflow-hidden transition-all ${
-                        index === currentPhotoIndex 
-                          ? "ring-2 ring-primary opacity-100" 
-                          : "opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      <img
-                        src={photo}
-                        alt=""
-                        className="w-full h-full object-cover portrait-memorial"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        <MemorialHero 
+          memorial={{
+            id: memorial.id,
+            slug: memorial.slug,
+            name: memorial.name,
+            birthDate: memorial.birthDate,
+            deathDate: memorial.deathDate,
+            bio: memorial.bio,
+            photos: memorial.photos,
+            author: memorial.author,
+            publishedAt: memorial.publishedAt,
+            guestbookMessages: memorial.guestbookMessages.map(msg => ({
+              authorName: msg.authorName,
+              relationCategory: msg.relationCategory,
+            })),
+          }}
+          onScrollToGuestbook={scrollToGuestbook}
+        />
 
-            {/* Info */}
-            <div className="flex flex-col justify-center">
-              <div className="animate-fade-in">
-                <h1 className="mb-2">
-                  {memorial.name}
-                  {(() => {
-                    const age = calculateAge(memorial.birthDate, memorial.deathDate);
-                    return age !== null ? (
-                      <span className="text-muted-foreground font-normal text-2xl md:text-3xl ml-3">
-                        ({age} ans)
-                      </span>
-                    ) : null;
-                  })()}
-                </h1>
-                <p className="font-sans text-lg text-muted-foreground mb-1">
-                  {memorial.birthDate} — {memorial.deathDate}
-                </p>
-                
-                {/* Publication Info */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-1 font-sans">
-                  <span>Publié {memorial.publishedAt}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span>
-                    Par{" "}
-                    <Link 
-                      to={`/compte/${memorial.author.id}`} 
-                      className="text-foreground hover:underline"
-                    >
-                      {memorial.author.name}
-                    </Link>
-                    {" "}({memorial.author.relation})
-                  </span>
-                </div>
-                
-                {/* Author Credibility */}
-                <AuthorCredibility 
-                  authorId={memorial.author.id} 
-                  initialCount={Math.floor(Math.random() * 20) + 5}
-                />
-
-                <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
-                  {memorial.bio}
-                </p>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 mb-8 flex-wrap">
-                  {/* Bouton Rédiger un hommage - Visible si connecté, profil complet, pas admin/mod */}
-                  {user && !profileLoading && !roleLoading && isProfileComplete && !isAdminOrMod && (
-                    <button
-                      onClick={() => {
-                        guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-sans text-sm font-medium transition-all duration-300 hover:bg-accent-green hover:text-accent-green-foreground"
-                    >
-                      <Feather className="w-4 h-4" />
-                      <span>Rédiger un hommage</span>
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={() => {
-                      toggleFollow({
-                        slug: memorial.slug,
-                        name: memorial.name,
-                        photoUrl: memorial.photos[0],
-                      });
-                      toast({
-                        title: checkIsFollowing(memorial.slug) ? "Mémorial retiré des suivis" : "Mémorial suivi",
-                        description: checkIsFollowing(memorial.slug) 
-                          ? "Vous ne recevrez plus de notifications" 
-                          : "Vous recevrez des notifications pour ce mémorial",
-                      });
-                    }}
-                    className={`btn-ghost ${checkIsFollowing(memorial.slug) ? "bg-muted" : ""}`}
-                  >
-                    {checkIsFollowing(memorial.slug) ? (
-                      <>
-                        <BellOff className="w-4 h-4" />
-                        <span>Ne plus suivre</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="w-4 h-4" />
-                        <span>Suivre</span>
-                      </>
-                    )}
-                  </button>
-                  
-                  <ShareButtons
-                    url={`${window.location.origin}/memorial/${memorial.slug}`}
-                    title={`Hommage à ${memorial.name}`}
-                    description={memorial.bio}
-                  />
-                  
-                  <button
-                    onClick={() => setShowRelationshipGraph(true)}
-                    className="btn-ghost"
-                    aria-label="Voir le maillage relationnel"
-                  >
-                    <GitBranch className="w-4 h-4" />
-                    <span>Maillage</span>
-                  </button>
-                </div>
-                
-                {/* Relationship Graph Dialog */}
-                <RelationshipGraph
-                  open={showRelationshipGraph}
-                  onOpenChange={setShowRelationshipGraph}
-                  deceasedName={memorial.name}
-                  posts={guestbookPosts.map((post) => ({
-                    authorId: post.authorId,
-                    authorName: post.authorName,
-                    relationCategory: post.relationCategory,
-                  }))}
-                />
-
-                {/* Gesture Buttons - Summary with totals */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <span>Hommages reçus</span>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="w-4 h-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">
-                          Ces compteurs représentent la somme de tous les gestes 
-                          laissés par les visiteurs dans le livre d'or.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <GestureButton
-                      type="RIP"
-                      count={totals.ripCount}
-                      onClick={handleRIPSummary}
-                    />
-                    <GestureButton
-                      type="CANDLE"
-                      count={totals.candleCount}
-                      onClick={handleCandleSummary}
-                      disabled={!userHasPosted}
-                    />
-                    <GestureButton
-                      type="FLOWER"
-                      count={totals.flowerCount}
-                      onClick={handleFlowerSummary}
-                      disabled={!userHasPosted}
-                    />
-                  </div>
-                  {!userHasPosted && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      <Info className="w-3 h-3 inline mr-1" />
-                      Publiez un message dans le livre d'or pour allumer des cierges ou déposer des fleurs.
-                    </p>
-                  )}
-                </div>
-              </div>
+        {/* Anniversary Reminder - shown if death date exists */}
+        {deathDateISO && (
+          <div className="container mx-auto px-4 pb-6">
+            <div className="max-w-2xl">
+              <AnniversaryReminder 
+                deathDate={deathDateISO} 
+                name={memorial.name} 
+              />
             </div>
           </div>
-        </section>
+        )}
+
+        {/* Gesture Summary */}
+        <div className="container mx-auto px-4 pb-8">
+          <div className="max-w-md">
+            <GestureSummary
+              totals={totals}
+              userHasPosted={userHasPosted}
+              onRIPClick={scrollToDarkZone}
+              onCandleClick={() => {
+                if (!userHasPosted) {
+                  alert("Vous devez d'abord publier un message dans le livre d'or pour allumer des cierges.");
+                  return;
+                }
+                scrollToDarkZone();
+              }}
+              onFlowerClick={() => {
+                if (!userHasPosted) {
+                  alert("Vous devez d'abord publier un message dans le livre d'or pour déposer des fleurs.");
+                  return;
+                }
+                scrollToDarkZone();
+              }}
+            />
+          </div>
+        </div>
 
         <div className="divider-elegant" />
 
         {/* Tabs Content */}
         <section className="container mx-auto px-4 py-12">
-          <Tabs defaultValue="events" className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8">
-              {memorial.type === "RECENT" ? (
-                <>
-                  <TabsTrigger
-                    value="events"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 font-sans"
-                  >
-                    Programme Obsèques
-                  </TabsTrigger>
-                  {memorial.enableContributions && (
-                    <TabsTrigger
-                      value="contributions"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 font-sans"
-                    >
-                      Contributions
-                    </TabsTrigger>
-                  )}
-                </>
-              ) : (
-                <>
-                  <TabsTrigger
-                    value="events"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 font-sans"
-                  >
-                    Recueillements
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="archives"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 font-sans"
-                  >
-                    Archives
-                  </TabsTrigger>
-                </>
+          <Tabs defaultValue="notice" className="w-full">
+            <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto flex-nowrap">
+              <TabsTrigger
+                value="notice"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Avis de décès</span>
+                <span className="sm:hidden">Avis</span>
+              </TabsTrigger>
+              
+              <TabsTrigger
+                value="gatherings"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+              >
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">Recueillements</span>
+                <span className="sm:hidden">Calendrier</span>
+              </TabsTrigger>
+              
+              <TabsTrigger
+                value="relationships"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+              >
+                <GitBranch className="w-4 h-4" />
+                <span className="hidden sm:inline">Maillage</span>
+                <span className="sm:hidden">Liens</span>
+              </TabsTrigger>
+              
+              {memorial.enableContributions && (
+                <TabsTrigger
+                  value="contributions"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Heart className="w-4 h-4" />
+                  <span className="hidden sm:inline">Contributions</span>
+                  <span className="sm:hidden">Aider</span>
+                </TabsTrigger>
               )}
             </TabsList>
 
-            <TabsContent value="events" className="mt-0">
+            {/* Avis de décès + Programme obsèques */}
+            <TabsContent value="notice" className="mt-0">
               <div className="max-w-2xl">
-                <h3 className="mb-6">
-                  {memorial.type === "RECENT" ? "Programme des obsèques" : "Prochains recueillements"}
-                </h3>
-                <div className="space-y-6">
-                  {memorial.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="p-6 bg-secondary rounded-sm"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-sans">
-                          {eventTypeLabels[event.type as keyof typeof eventTypeLabels]}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-foreground">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-sans">
-                            {event.date} à {event.time}
-                          </span>
-                        </div>
-                        <div className="flex items-start gap-2 text-foreground">
-                          <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                          <span className="font-sans">{event.location}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <DeathNotice
+                  memorial={{
+                    name: memorial.name,
+                    birthDate: memorial.birthDate,
+                    deathDate: memorial.deathDate,
+                    bio: memorial.bio,
+                    funeralDate: memorial.funeralDate,
+                    funeralLocation: memorial.funeralLocation,
+                  }}
+                  events={memorialEvents}
+                />
               </div>
             </TabsContent>
 
+            {/* Recueillements / Calendrier */}
+            <TabsContent value="gatherings" className="mt-0">
+              <div className="max-w-2xl">
+                <GatheringsCalendar
+                  events={memorialEvents}
+                  memorialName={memorial.name}
+                  isOwner={isOwner}
+                  onAddEvent={() => {
+                    // TODO: Open add event modal
+                    console.log("Add event clicked");
+                  }}
+                />
+              </div>
+            </TabsContent>
+
+            {/* Maillage relationnel */}
+            <TabsContent value="relationships" className="mt-0">
+              <div className="max-w-2xl">
+                <h3 className="mb-4">Liens relationnels</h3>
+                <p className="font-serif text-muted-foreground mb-6">
+                  Découvrez les relations et liens de parenté établis à partir des hommages déposés.
+                </p>
+                <InferredRelationships messages={messagesForRelationships} />
+              </div>
+            </TabsContent>
+
+            {/* Contributions */}
             {memorial.enableContributions && (
               <TabsContent value="contributions" className="mt-0">
                 <div className="max-w-2xl">
@@ -578,7 +405,7 @@ const Memorial = () => {
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary transition-all duration-500"
-                        style={{ width: `${contributionPercentage}%` }}
+                        style={{ width: `${Math.min(contributionPercentage, 100)}%` }}
                       />
                     </div>
                     <p className="text-sm text-muted-foreground mt-2 font-sans">
@@ -593,14 +420,6 @@ const Memorial = () => {
                 </div>
               </TabsContent>
             )}
-
-            <TabsContent value="archives" className="mt-0">
-              <div className="max-w-2xl">
-                <p className="font-serif text-muted-foreground">
-                  Les archives photographiques et documents seront bientôt disponibles.
-                </p>
-              </div>
-            </TabsContent>
           </Tabs>
         </section>
 
@@ -608,7 +427,10 @@ const Memorial = () => {
         <section className="dark-zone section-padding">
           <div className="container mx-auto">
             <div className="max-w-2xl">
-              <h2 className="text-memorial-dark-foreground mb-2">Livre d'or</h2>
+              <div className="flex items-center gap-3 mb-2">
+                <Book className="w-6 h-6 text-memorial-dark-foreground" />
+                <h2 className="text-memorial-dark-foreground">Livre d'or</h2>
+              </div>
               <p className="font-serif text-memorial-dark-muted mb-1">
                 Partagez un souvenir ou un message de soutien à la famille
               </p>
@@ -621,11 +443,8 @@ const Memorial = () => {
                 <GuestbookForm memorialId={memorialData.id} onSubmit={handleSubmitPost} />
               </div>
 
-              {/* Inferred Relationships */}
-              <InferredRelationships messages={messagesForRelationships} />
-
               {/* Posts List - Paginated */}
-              <div className="divide-y divide-memorial-dark-muted/20">
+              <div className="divide-y divide-memorial-dark-muted/20 mt-8">
                 {paginatedPosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
