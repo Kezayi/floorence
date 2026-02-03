@@ -69,12 +69,13 @@ export const useUpdateSetting = () => {
 
   return useMutation({
     mutationFn: async ({ key, value }: { key: string; value: unknown }) => {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({ value: value as any, updated_at: new Date().toISOString() })
-        .eq('key', key);
+      const { data, error } = await supabase.functions.invoke('admin-settings', {
+        body: { key, value },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });

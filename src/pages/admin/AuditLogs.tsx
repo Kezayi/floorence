@@ -39,6 +39,7 @@ const actionConfig: Record<string, { label: string; icon: React.ReactNode; varia
   remove_role: { label: 'Retrait de rôle', icon: <ShieldOff className="w-3 h-3" />, variant: 'secondary' },
   ban_user: { label: 'Blocage', icon: <Ban className="w-3 h-3" />, variant: 'destructive' },
   unban_user: { label: 'Déblocage', icon: <UserCheck className="w-3 h-3" />, variant: 'outline' },
+  update_setting: { label: 'Modification paramètre', icon: <History className="w-3 h-3" />, variant: 'secondary' },
 };
 
 const AuditLogs = () => {
@@ -69,6 +70,24 @@ const AuditLogs = () => {
     if (actionType === 'add_role' || actionType === 'remove_role') {
       const role = details.role as string;
       return role === 'admin' ? 'Administrateur' : 'Modérateur';
+    }
+    if (actionType === 'update_setting') {
+      const label = details.setting_label as string;
+      const oldValue = details.old_value as { amount?: number; enabled?: boolean; url?: string } | null;
+      const newValue = details.new_value as { amount?: number; enabled?: boolean; url?: string };
+      
+      // Format price changes
+      if (newValue?.amount !== undefined) {
+        const oldAmount = oldValue?.amount ?? '—';
+        return `${label}: ${oldAmount} → ${newValue.amount} FCFA`;
+      }
+      
+      // Format enabled toggle
+      if (newValue?.enabled !== undefined) {
+        return `${label}: ${newValue.enabled ? 'Activé' : 'Désactivé'}`;
+      }
+      
+      return label;
     }
     return null;
   };
