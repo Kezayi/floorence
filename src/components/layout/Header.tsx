@@ -174,6 +174,23 @@ const Header = () => {
               </Link>
             );
           })}
+          
+          {/* BackOffice - Mobile - uniquement pour admin/modérateur */}
+          {user && isAdminOrMod && (
+            <Link
+              to="/admin"
+              className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
+                location.pathname.startsWith("/admin")
+                  ? "text-admin-burgundy"
+                  : "text-gray-400"
+              }`}
+            >
+              <Settings className={`w-6 h-6 ${location.pathname.startsWith("/admin") ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />
+              <span className={`text-xs mt-1 font-sans ${location.pathname.startsWith("/admin") ? "font-medium" : ""}`}>
+                Admin
+              </span>
+            </Link>
+          )}
         </div>
       </nav>
     </>
