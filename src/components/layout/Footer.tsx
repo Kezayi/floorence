@@ -95,8 +95,8 @@ const Footer = () => {
             </h4>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:contact@floorence.com" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
-                  contact@floorence.com
+                <a href="mailto:contact@floorence.org" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
+                  contact@floorence.org
                 </a>
               </li>
             </ul>
