@@ -2,7 +2,7 @@ import { useRef, useState, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Text, Billboard, Html, Stars } from "@react-three/drei";
 import * as THREE from "three";
-import { getCleanRelationName } from "@/lib/relationshipInference";
+import { getRelationWithDeceased } from "@/lib/relationshipInference";
 
 interface RelationshipNode {
   id: string;
@@ -293,7 +293,7 @@ const AnimatedNode = ({
             <div className="font-serif font-medium text-foreground">{name}</div>
             <div className="text-muted-foreground text-xs flex items-center gap-2 mt-1">
               <div className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50" style={{ backgroundColor: color }} />
-              {getCleanRelationName(category)}
+              {getRelationWithDeceased(category)}
             </div>
           </div>
         </Html>
