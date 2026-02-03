@@ -1,9 +1,9 @@
-import { useMemo, Suspense } from "react";
-import { Users, Link2, GitBranch, ArrowRight } from "lucide-react";
+import { useMemo, Suspense, useState } from "react";
+import { Users, Link2, GitBranch, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
 import RelationshipGraph3D from "./RelationshipGraph3D";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import { Button } from "@/components/ui/button";
 interface RelationshipMaillageProps {
   deceasedName: string;
   posts: Array<{
@@ -234,23 +234,9 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
         )}
       </div>
 
-      {/* Inferred Relationships */}
+      {/* Inferred Relationships with Pagination */}
       {inferredRelationships.length > 0 && (
-        <div className="bg-secondary p-6 rounded-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Link2 className="w-5 h-5 text-primary" />
-            <h4>Relations inférées entre les proches</h4>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4 font-sans">
-            Liens déduits automatiquement à partir des relations avec le défunt
-          </p>
-          
-          <div className="space-y-3">
-            {inferredRelationships.map((rel, index) => (
-              <InferredRelationshipCard key={index} relationship={rel} />
-            ))}
-          </div>
-        </div>
+        <InferredRelationshipsSection relationships={inferredRelationships} />
       )}
 
       {/* Empty state for inferences */}
@@ -260,6 +246,72 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
           <p className="text-sm text-muted-foreground">
             Pas assez d'informations pour inférer des relations entre les proches.
           </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Pagination constants
+const INFERENCES_PER_PAGE = 5;
+
+// Inferred Relationships Section with Pagination
+const InferredRelationshipsSection = ({ relationships }: { relationships: InferredRelationship[] }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const totalPages = Math.ceil(relationships.length / INFERENCES_PER_PAGE);
+  const startIndex = (currentPage - 1) * INFERENCES_PER_PAGE;
+  const endIndex = startIndex + INFERENCES_PER_PAGE;
+  const paginatedRelationships = relationships.slice(startIndex, endIndex);
+  
+  return (
+    <div className="bg-secondary p-6 rounded-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <Link2 className="w-5 h-5 text-primary" />
+        <h4>Relations inférées entre les proches</h4>
+        <span className="text-sm text-muted-foreground font-sans">
+          ({relationships.length})
+        </span>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4 font-sans">
+        Liens déduits automatiquement à partir des relations avec le défunt
+      </p>
+      
+      <div className="space-y-3">
+        {paginatedRelationships.map((rel, index) => (
+          <InferredRelationshipCard key={startIndex + index} relationship={rel} />
+        ))}
+      </div>
+      
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+          <span className="text-sm text-muted-foreground font-sans">
+            {startIndex + 1}-{Math.min(endIndex, relationships.length)} sur {relationships.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-sans px-2">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>
