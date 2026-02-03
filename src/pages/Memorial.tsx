@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
+import { toast } from "sonner";
 
 interface MemorialEvent {
   id: string;
@@ -91,28 +92,78 @@ const Memorial = () => {
     fetchEvents();
   }, [memorialData?.id]);
 
-  // Convert guestbook messages to posts format
-  const initialPosts = useMemo<GuestbookPostData[]>(() => {
-    if (!memorialData) return [];
-    return memorialData.guestbookMessages.map((msg, index) => ({
-      id: msg.id,
-      authorId: `user-${index}`,
-      authorName: msg.authorName,
-      relationCategory: msg.relationCategory,
-      content: msg.content,
-      photos: [],
-      createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-      candleCount: msg.candleCount || 0,
-      flowerCount: msg.flowerCount || 0,
-    }));
-  }, [memorialData]);
+  // State for guestbook posts from database
+  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
 
-  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>(initialPosts);
+  // Fetch guestbook posts from Supabase
+  const fetchGuestbookPosts = useCallback(async () => {
+    if (!memorialData?.id) return;
+    
+    // Skip database fetch for mock data (non-UUID IDs)
+    if (!isValidUUID(memorialData.id)) {
+      // For mock data, use the local messages
+      const mockPosts: GuestbookPostData[] = memorialData.guestbookMessages.map((msg, index) => ({
+        id: msg.id,
+        authorId: `user-${index}`,
+        authorName: msg.authorName,
+        relationCategory: msg.relationCategory,
+        content: msg.content,
+        photos: [],
+        createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+        candleCount: msg.candleCount || 0,
+        flowerCount: msg.flowerCount || 0,
+      }));
+      setGuestbookPosts(mockPosts);
+      setPostsLoading(false);
+      return;
+    }
 
-  // Update posts when memorial data changes
+    setPostsLoading(true);
+    try {
+      // Use the RPC function to get public guestbook posts
+      const { data, error } = await supabase
+        .rpc('get_public_guestbook_posts', { p_memorial_id: memorialData.id });
+
+      if (error) {
+        console.error('Error fetching guestbook posts:', error);
+        setGuestbookPosts([]);
+      } else {
+        const posts: GuestbookPostData[] = (data || []).map((post: {
+          id: string;
+          user_id: string | null;
+          author_name: string;
+          relation_category: string;
+          content: string;
+          photos: string[] | null;
+          created_at: string;
+          candle_count: number;
+          flower_count: number;
+        }) => ({
+          id: post.id,
+          authorId: post.user_id || 'anonymous',
+          authorName: post.author_name,
+          relationCategory: post.relation_category,
+          content: post.content,
+          photos: post.photos || [],
+          createdAt: post.created_at,
+          candleCount: post.candle_count,
+          flowerCount: post.flower_count,
+        }));
+        setGuestbookPosts(posts);
+      }
+    } catch (err) {
+      console.error('Error fetching guestbook posts:', err);
+      setGuestbookPosts([]);
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [memorialData?.id, memorialData?.guestbookMessages]);
+
+  // Fetch posts when memorial changes
   useEffect(() => {
-    setGuestbookPosts(initialPosts);
-  }, [initialPosts]);
+    fetchGuestbookPosts();
+  }, [fetchGuestbookPosts]);
 
   // Reset page when memorial changes
   useEffect(() => {
@@ -207,25 +258,72 @@ const Memorial = () => {
     );
   };
 
-  const handleSubmitPost = (data: {
+  const handleSubmitPost = async (data: {
     content: string;
     relationCategory: string;
     photos: string[];
     candleCount: number;
     flowerCount: number;
   }) => {
-    const newPost: GuestbookPostData = {
-      id: `m${Date.now()}`,
-      authorId: currentUserId,
-      authorName: "Utilisateur Connecté",
-      relationCategory: data.relationCategory,
-      content: data.content,
-      photos: data.photos,
-      createdAt: new Date().toISOString(),
-      candleCount: data.candleCount,
-      flowerCount: data.flowerCount,
-    };
-    setGuestbookPosts((prev) => [newPost, ...prev]);
+    if (!memorialData?.id || !user) {
+      toast.error("Erreur: Vous devez être connecté pour publier");
+      return;
+    }
+
+    // For mock data, just update local state
+    if (!isValidUUID(memorialData.id)) {
+      const newPost: GuestbookPostData = {
+        id: `m${Date.now()}`,
+        authorId: user.id,
+        authorName: user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur",
+        relationCategory: data.relationCategory,
+        content: data.content,
+        photos: data.photos,
+        createdAt: new Date().toISOString(),
+        candleCount: data.candleCount,
+        flowerCount: data.flowerCount,
+      };
+      setGuestbookPosts((prev) => [newPost, ...prev]);
+      toast.success("Votre hommage a été publié");
+      return;
+    }
+
+    // For real memorials, call the edge function
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error("Session expirée. Veuillez vous reconnecter.");
+        return;
+      }
+
+      const response = await supabase.functions.invoke('publish-tribute', {
+        body: {
+          memorialId: memorialData.id,
+          content: data.content,
+          relationCategory: data.relationCategory,
+          photos: data.photos,
+          candleCount: data.candleCount,
+          flowerCount: data.flowerCount,
+        },
+      });
+
+      if (response.error) {
+        console.error('Publish error:', response.error);
+        toast.error(response.error.message || "Erreur lors de la publication");
+        return;
+      }
+
+      if (response.data?.success) {
+        toast.success("Votre hommage a été publié avec succès");
+        // Refresh the posts from database
+        await fetchGuestbookPosts();
+      } else {
+        toast.error(response.data?.error || "Erreur lors de la publication");
+      }
+    } catch (error) {
+      console.error('Publish error:', error);
+      toast.error("Une erreur est survenue lors de la publication");
+    }
   };
 
   const scrollToGuestbook = () => {
