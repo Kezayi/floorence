@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MemorialsProvider } from "./contexts/MemorialsContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
+import ScrollToTop from "./components/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -43,6 +44,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ScrollToTop />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/recherche" element={<Search />} />
