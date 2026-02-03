@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import {
   Dialog,
   DialogContent,
@@ -496,7 +497,7 @@ const RelationshipGraph = ({
                             : getCategoryColor(hoveredNode.category) 
                         }}
                       />
-                      {hoveredNode.category}
+                      {getRelationWithDeceased(hoveredNode.category)}
                     </div>
                   </div>
                 )}
