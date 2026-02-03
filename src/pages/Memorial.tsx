@@ -7,6 +7,7 @@ import DeathNotice from "@/components/memorial/DeathNotice";
 import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
 import GestureSummary from "@/components/memorial/GestureSummary";
+import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GuestbookPagination from "@/components/memorial/GuestbookPagination";
@@ -16,6 +17,7 @@ import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch } from "lucide-
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 interface MemorialEvent {
   id: string;
@@ -36,7 +38,11 @@ const Memorial = () => {
   const [currentGuestbookPage, setCurrentGuestbookPage] = useState(1);
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const { data: settings } = useSystemSettings();
   const POSTS_PER_PAGE = 5;
+  
+  // Check if contributions are enabled globally
+  const contributionsEnabled = settings?.contribution_link_template.enabled && settings?.contribution_link_template.url;
 
   // Find the memorial by slug from context
   const memorialData = useMemo(() => {
@@ -150,8 +156,6 @@ const Memorial = () => {
     ...memorialData,
     publishedAt: "Récemment",
     enableContributions: memorialData.type === "RECENT" && (memorialData.donationEnabled ?? true),
-    contributionGoal: 500000,
-    contributionCurrent: Math.floor(Math.random() * 300000) + 50000,
     funeralDate: memorialData.funeralDate,
     funeralLocation: memorialData.funeralLocation,
   };
@@ -203,10 +207,6 @@ const Memorial = () => {
     authorName: post.authorName,
     relationCategory: post.relationCategory,
   }));
-
-  const contributionPercentage = Math.round(
-    (memorial.contributionCurrent / memorial.contributionGoal) * 100
-  );
 
   const scrollToGuestbook = () => {
     guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -327,7 +327,7 @@ const Memorial = () => {
                 <span className="sm:hidden">Liens</span>
               </TabsTrigger>
               
-              {memorial.enableContributions && (
+              {memorial.enableContributions && contributionsEnabled && (
                 <TabsTrigger
                   value="contributions"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
@@ -382,41 +382,11 @@ const Memorial = () => {
               </div>
             </TabsContent>
 
-            {/* Contributions */}
-            {memorial.enableContributions && (
+            {/* Contributions - External Link */}
+            {memorial.enableContributions && contributionsEnabled && (
               <TabsContent value="contributions" className="mt-0">
                 <div className="max-w-2xl">
-                  <h3 className="mb-4">Aider la famille</h3>
-                  <p className="font-serif text-muted-foreground mb-6">
-                    Participez aux frais d'obsèques pour soutenir la famille
-                    dans cette épreuve difficile.
-                  </p>
-
-                  {/* Progress */}
-                  <div className="mb-8">
-                    <div className="flex justify-between text-sm font-sans mb-2">
-                      <span>
-                        {memorial.contributionCurrent.toLocaleString("fr-FR")} FCFA
-                      </span>
-                      <span className="text-muted-foreground">
-                        Objectif: {memorial.contributionGoal.toLocaleString("fr-FR")} FCFA
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all duration-500"
-                        style={{ width: `${Math.min(contributionPercentage, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2 font-sans">
-                      {contributionPercentage}% de l'objectif atteint
-                    </p>
-                  </div>
-
-                  <button className="btn-memorial w-full md:w-auto">
-                    <Heart className="w-4 h-4" />
-                    Contribuer
-                  </button>
+                  <ContributionLink deceasedName={memorial.name} />
                 </div>
               </TabsContent>
             )}
