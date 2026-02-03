@@ -115,7 +115,7 @@ const Header = () => {
                       );
                     })}
                     
-                    {/* BackOffice - uniquement pour admin/modérateur */}
+                    {/* Admin - uniquement pour admin/modérateur */}
                     {user && isAdminOrMod && (
                       <Link
                         to="/admin"
@@ -126,7 +126,7 @@ const Header = () => {
                         }`}
                       >
                         <Settings className="w-4 h-4" />
-                        BackOffice
+                        Admin
                       </Link>
                     )}
                     
