@@ -10,10 +10,18 @@ export interface DonationSetting {
   enabled: boolean;
 }
 
+export interface ContributionLinkSetting {
+  url: string;
+  enabled: boolean;
+}
+
 export interface SystemSettings {
   candle_price: PriceSetting;
   flower_price: PriceSetting;
   donation_enabled: DonationSetting;
+  memorial_price_future: PriceSetting;
+  memorial_price_past: PriceSetting;
+  contribution_link_template: ContributionLinkSetting;
 }
 
 export const useSystemSettings = () => {
@@ -30,6 +38,9 @@ export const useSystemSettings = () => {
         candle_price: { amount: 500, currency: 'XOF' },
         flower_price: { amount: 1000, currency: 'XOF' },
         donation_enabled: { enabled: true },
+        memorial_price_future: { amount: 15000, currency: 'XOF' },
+        memorial_price_past: { amount: 10000, currency: 'XOF' },
+        contribution_link_template: { url: '', enabled: false },
       };
 
       data?.forEach((row) => {
@@ -39,6 +50,12 @@ export const useSystemSettings = () => {
           settings.flower_price = row.value as unknown as PriceSetting;
         } else if (row.key === 'donation_enabled') {
           settings.donation_enabled = row.value as unknown as DonationSetting;
+        } else if (row.key === 'memorial_price_future') {
+          settings.memorial_price_future = row.value as unknown as PriceSetting;
+        } else if (row.key === 'memorial_price_past') {
+          settings.memorial_price_past = row.value as unknown as PriceSetting;
+        } else if (row.key === 'contribution_link_template') {
+          settings.contribution_link_template = row.value as unknown as ContributionLinkSetting;
         }
       });
 

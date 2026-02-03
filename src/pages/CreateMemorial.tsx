@@ -2,9 +2,10 @@ import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Gift, CreditCard, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, CreditCard, Info, Loader2 } from "lucide-react";
 import RelationSelect from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import {
   Tooltip,
   TooltipContent,
@@ -15,11 +16,10 @@ import { isFuture, parseISO, isValid } from "date-fns";
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
 
-const CREATION_PRICE = 10000; // 10 000 FCFA
-
 const CreateMemorial = () => {
   const navigate = useNavigate();
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
+  const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
@@ -44,16 +44,32 @@ const CreateMemorial = () => {
     { number: 4, title: "Confirmation" },
   ];
 
-  // Determine if creation is free (funeral date in future)
-  const isCreationFree = useMemo(() => {
-    if (!formData.funeralDate) return false;
+  // Determine if funeral is in the future (higher price) or past (lower price)
+  const isFuneralInFuture = useMemo(() => {
+    if (!formData.funeralDate) return null;
     try {
       const funeralDateParsed = parseISO(formData.funeralDate);
       return isValid(funeralDateParsed) && isFuture(funeralDateParsed);
     } catch {
-      return false;
+      return null;
     }
   }, [formData.funeralDate]);
+
+  // Get the appropriate creation price based on funeral date
+  const creationPrice = useMemo(() => {
+    if (!settings) return 0;
+    // RECENT type: check if funeral is in future or past
+    if (memorialType === "RECENT" && isFuneralInFuture !== null) {
+      return isFuneralInFuture 
+        ? settings.memorial_price_future.amount 
+        : settings.memorial_price_past.amount;
+    }
+    // PAST type: always use past price
+    if (memorialType === "PAST") {
+      return settings.memorial_price_past.amount;
+    }
+    return 0;
+  }, [settings, memorialType, isFuneralInFuture]);
 
   const validateStep = (step: Step): boolean => {
     const newErrors: Record<string, string> = {};
@@ -410,22 +426,12 @@ const CreateMemorial = () => {
                           <ErrorMessage message={errors.funeralDate} />
                           
                           {/* Pricing indicator */}
-                          {formData.funeralDate && (
-                            <div className={`mt-2 p-2 rounded-sm text-xs font-sans flex items-center gap-2 ${
-                              isCreationFree 
-                                ? "bg-accent-green/10 text-accent-green" 
-                                : "bg-primary/10 text-primary"
-                            }`}>
-                              {isCreationFree ? (
-                                <>
-                                  <Gift className="w-3 h-3" />
-                                  Création gratuite (obsèques à venir)
-                                </>
-                              ) : (
-                                <>
-                                  <CreditCard className="w-3 h-3" />
-                                  Création payante ({CREATION_PRICE.toLocaleString("fr-FR")} FCFA)
-                                </>
+                          {formData.funeralDate && isFuneralInFuture !== null && (
+                            <div className="mt-2 p-2 rounded-sm text-xs font-sans flex items-center gap-2 bg-primary/10 text-primary">
+                              <CreditCard className="w-3 h-3" />
+                              Création : {creationPrice.toLocaleString("fr-FR")} FCFA
+                              {isFuneralInFuture && (
+                                <span className="text-muted-foreground ml-1">(obsèques à venir)</span>
                               )}
                             </div>
                           )}
@@ -702,25 +708,27 @@ const CreateMemorial = () => {
                       Récapitulatif du paiement
                     </h4>
                     
-                    {isCreationFree ? (
-                      <div className="py-4 text-center">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-green/10 text-accent-green rounded-sm mb-2">
-                          <Gift className="w-5 h-5" />
-                          <span className="font-sans font-medium">Création gratuite</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground font-sans">
-                          Les obsèques étant prévues dans le futur, la publication de l'avis est offerte.
-                        </p>
+                    {settingsLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin" />
                       </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center py-2 border-b border-border">
-                          <span className="font-sans text-sm">Publication de l'avis</span>
-                          <span className="font-sans font-medium">{CREATION_PRICE.toLocaleString("fr-FR")} FCFA</span>
+                          <span className="font-sans text-sm">
+                            Publication de l'avis
+                            {memorialType === "RECENT" && isFuneralInFuture && (
+                              <span className="text-muted-foreground ml-1">(obsèques futures)</span>
+                            )}
+                            {memorialType === "RECENT" && isFuneralInFuture === false && (
+                              <span className="text-muted-foreground ml-1">(obsèques passées)</span>
+                            )}
+                          </span>
+                          <span className="font-sans font-medium">{creationPrice.toLocaleString("fr-FR")} FCFA</span>
                         </div>
                         <div className="flex justify-between items-center py-4">
                           <span className="font-sans font-medium">Total</span>
-                          <span className="font-serif text-xl">{CREATION_PRICE.toLocaleString("fr-FR")} FCFA</span>
+                          <span className="font-serif text-xl">{creationPrice.toLocaleString("fr-FR")} FCFA</span>
                         </div>
                       </>
                     )}
@@ -741,8 +749,8 @@ const CreateMemorial = () => {
                       <ChevronLeft className="w-4 h-4" />
                       Retour
                     </button>
-                    <button onClick={handleSubmit} className="btn-memorial">
-                      {isCreationFree ? "Publier l'espace mémoriel" : "Procéder au paiement"}
+                    <button onClick={handleSubmit} className="btn-memorial" disabled={settingsLoading}>
+                      Procéder au paiement
                     </button>
                   </div>
                 </div>
