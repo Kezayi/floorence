@@ -18,6 +18,7 @@ import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useSEO } from "@/hooks/useSEO";
 
 interface MemorialEvent {
   id: string;
@@ -142,6 +143,17 @@ const Memorial = () => {
 
   // Check if current user is the memorial owner
   const isOwner = user?.id === memorialData?.createdBy || false;
+
+  // SEO: Update meta tags for this memorial
+  useSEO({
+    title: memorialData ? `Hommage à ${memorialData.name}` : undefined,
+    description: memorialData 
+      ? `${memorialData.bio.substring(0, 150)}${memorialData.bio.length > 150 ? "..." : ""}`
+      : undefined,
+    image: memorialData?.photos?.[0],
+    type: "article",
+    url: memorialData ? `${window.location.origin}/memorial/${memorialData.slug}` : undefined,
+  });
 
   // If memorial not found, show error page
   if (!memorialData) {
