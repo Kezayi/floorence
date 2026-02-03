@@ -1,8 +1,10 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
+import MemorialPagination from "@/components/home/MemorialPagination";
+import UpcomingEvents from "@/components/home/UpcomingEvents";
 import { LayoutGrid, Grid3X3, List, Square } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import {
@@ -15,10 +17,13 @@ import {
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
 
+const ITEMS_PER_PAGE = 8;
+
 const Index = () => {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const { memorialCards } = useMemorials();
 
   // Set default view mode based on device
@@ -30,10 +35,22 @@ const Index = () => {
     }
   }, [isMobile]);
 
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType]);
+
   // Filter memorials based on type
   const filteredMemorials = filterType === "all" 
     ? memorialCards 
     : memorialCards.filter(m => m.type === filterType);
+
+  // Paginated memorials
+  const totalPages = Math.ceil(filteredMemorials.length / ITEMS_PER_PAGE);
+  const paginatedMemorials = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredMemorials.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredMemorials, currentPage]);
 
   const getGridClass = () => {
     switch (viewMode) {
@@ -180,25 +197,43 @@ const Index = () => {
                 </p>
               </div>
             ) : (
-              <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
-                {filteredMemorials.map((memorial) => (
-                  <MemorialCard
-                    key={memorial.id}
-                    id={memorial.id}
-                    slug={memorial.slug}
-                    name={memorial.name}
-                    birthDate={memorial.birthDate}
-                    deathDate={memorial.deathDate}
-                    photoUrl={memorial.photoUrl}
-                    ripCount={memorial.ripCount}
-                    candleCount={memorial.candleCount}
-                    flowerCount={memorial.flowerCount}
-                    type={memorial.type}
-                    variant={viewMode === "list" ? "list" : "card"}
-                  />
-                ))}
-              </div>
+              <>
+                <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+                  {paginatedMemorials.map((memorial) => (
+                    <MemorialCard
+                      key={memorial.id}
+                      id={memorial.id}
+                      slug={memorial.slug}
+                      name={memorial.name}
+                      birthDate={memorial.birthDate}
+                      deathDate={memorial.deathDate}
+                      photoUrl={memorial.photoUrl}
+                      ripCount={memorial.ripCount}
+                      candleCount={memorial.candleCount}
+                      flowerCount={memorial.flowerCount}
+                      type={memorial.type}
+                      variant={viewMode === "list" ? "list" : "card"}
+                    />
+                  ))}
+                </div>
+                
+                <MemorialPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
             )}
+          </div>
+        </section>
+
+        {/* Upcoming Events Section */}
+        <section className="px-4 py-6 md:px-8 md:py-10 border-t border-border">
+          <div className="container mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+              <UpcomingEvents type="funerals" title="Prochains Obsèques" />
+              <UpcomingEvents type="gatherings" title="Prochains Recueillements" />
+            </div>
           </div>
         </section>
       </main>
