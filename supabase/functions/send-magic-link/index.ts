@@ -191,7 +191,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending magic link to ${normalizedEmail}, isNewUser: ${isNewUser}`);
 
     const emailResponse = await resend.emails.send({
-      from: "Floorence <onboarding@resend.dev>",
+      from: "Floorence <noreply@floorence.org>",
+      reply_to: "contact@floorence.org",
       to: [normalizedEmail],
       subject: isNewUser
         ? "🕯️ Bienvenue sur Floorence - Activez votre compte"
