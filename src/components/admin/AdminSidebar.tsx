@@ -8,7 +8,8 @@ import {
   DollarSign,
   Flower2,
   LogOut,
-  User
+  User,
+  History
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,7 @@ const AdminSidebar = () => {
     { to: '/admin/statistiques', icon: BarChart3, label: 'Statistiques' },
     { to: '/admin/revenus', icon: DollarSign, label: 'Chiffre d\'affaires', adminOnly: true },
     { to: '/admin/utilisateurs', icon: Users, label: 'Utilisateurs', adminOnly: true },
+    { to: '/admin/historique', icon: History, label: 'Historique', adminOnly: true },
     { to: '/admin/parametres', icon: Settings, label: 'Paramètres', adminOnly: true },
   ];
 

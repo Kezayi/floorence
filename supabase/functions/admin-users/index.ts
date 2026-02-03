@@ -19,6 +19,36 @@ interface AdminRequest {
   pageSize?: number;
 }
 
+// Audit log helper - uses any type to avoid complex generic issues
+async function logAuditAction(
+  supabaseAdmin: any,
+  actionType: string,
+  performedBy: string,
+  performedByEmail: string | undefined,
+  targetUserId?: string,
+  targetUserEmail?: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.from("audit_logs").insert({
+      action_type: actionType,
+      target_user_id: targetUserId,
+      target_user_email: targetUserEmail,
+      performed_by: performedBy,
+      performed_by_email: performedByEmail,
+      details: details || {},
+    });
+
+    if (error) {
+      console.error("Failed to log audit action:", error);
+    } else {
+      console.log(`Audit log created: ${actionType} by ${performedByEmail}`);
+    }
+  } catch (err) {
+    console.error("Error creating audit log:", err);
+  }
+}
+
 // Email notification for ban/unban
 async function sendBanNotification(userEmail: string, isBanned: boolean): Promise<void> {
   try {
@@ -260,6 +290,17 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Role ${role} added to user ${targetUser.id} (${email})`);
 
+        // Log audit action
+        await logAuditAction(
+          supabaseAdmin,
+          "add_role",
+          user.id,
+          user.email,
+          targetUser.id,
+          email,
+          { role }
+        );
+
         return new Response(
           JSON.stringify({ success: true, message: `Rôle ${role} ajouté à ${email}` }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -282,6 +323,10 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
+        // Get target user email for audit
+        const { data: targetUserData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const targetEmail = targetUserData?.user?.email;
+
         const { error: deleteError } = await supabaseAdmin
           .from("user_roles")
           .delete()
@@ -294,6 +339,17 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         console.log(`Role ${role} removed from user ${userId}`);
+
+        // Log audit action
+        await logAuditAction(
+          supabaseAdmin,
+          "remove_role",
+          user.id,
+          user.email,
+          userId,
+          targetEmail,
+          { role }
+        );
 
         return new Response(
           JSON.stringify({ success: true, message: "Rôle supprimé" }),
@@ -336,6 +392,17 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`User ${userId} banned by admin ${user.id}`);
 
+        // Log audit action
+        await logAuditAction(
+          supabaseAdmin,
+          "ban_user",
+          user.id,
+          user.email,
+          userId,
+          targetEmail,
+          { ban_duration: "876000h" }
+        );
+
         // Send email notification (async, don't wait)
         if (targetEmail) {
           sendBanNotification(targetEmail, true);
@@ -369,6 +436,17 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         console.log(`User ${userId} unbanned by admin ${user.id}`);
+
+        // Log audit action
+        await logAuditAction(
+          supabaseAdmin,
+          "unban_user",
+          user.id,
+          user.email,
+          userId,
+          targetEmail,
+          {}
+        );
 
         // Send email notification (async, don't wait)
         if (targetEmail) {

@@ -31,6 +31,7 @@ import AdminMemorials from "./pages/admin/Memorials";
 import AdminStatistics from "./pages/admin/Statistics";
 import AdminRevenue from "./pages/admin/Revenue";
 import AdminUsers from "./pages/admin/Users";
+import AdminAuditLogs from "./pages/admin/AuditLogs";
 import AdminSettings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,11 @@ const App = () => (
                 <Route path="/admin/utilisateurs" element={
                   <RequireAdmin requireAdmin>
                     <AdminLayout><AdminUsers /></AdminLayout>
+                  </RequireAdmin>
+                } />
+                <Route path="/admin/historique" element={
+                  <RequireAdmin requireAdmin>
+                    <AdminLayout><AdminAuditLogs /></AdminLayout>
                   </RequireAdmin>
                 } />
                 <Route path="/admin/parametres" element={
