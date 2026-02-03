@@ -69,12 +69,12 @@ const getCategoryType = (category: string): string => {
   return "autre";
 };
 
-// Subtle grayscale palette for elegant display
-const categoryStyles: Record<string, { fill: string; stroke: string }> = {
-  famille: { fill: "hsl(var(--foreground))", stroke: "hsl(var(--foreground))" },
-  allies: { fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--muted-foreground))" },
-  amis: { fill: "hsl(var(--muted-foreground) / 0.7)", stroke: "hsl(var(--muted-foreground) / 0.7)" },
-  autre: { fill: "hsl(var(--muted-foreground) / 0.5)", stroke: "hsl(var(--muted-foreground) / 0.5)" },
+// Category colors for central dots and legend only
+const categoryColors: Record<string, string> = {
+  famille: "#3B82F6",   // Blue
+  allies: "#22C55E",    // Green
+  amis: "#EAB308",      // Yellow
+  autre: "#EF4444",     // Red
 };
 
 const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) => {
@@ -230,7 +230,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         
         {/* Author nodes */}
         {nodes.map((node) => {
-          const style = categoryStyles[node.categoryType];
+          const color = categoryColors[node.categoryType];
           const isHovered = hoveredNode === node.id;
           
           return (
@@ -240,23 +240,23 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
               onMouseEnter={() => setHoveredNode(node.id)}
               onMouseLeave={() => setHoveredNode(null)}
             >
-              {/* Node circle */}
+              {/* Node circle - neutral stroke */}
               <circle
                 cx={center + node.x}
                 cy={center + node.y}
                 r={isHovered ? 14 : 12}
                 fill="hsl(var(--background))"
-                stroke={style.stroke}
+                stroke="hsl(var(--border))"
                 strokeWidth={isHovered ? 2 : 1.5}
                 className="transition-all duration-300"
               />
               
-              {/* Inner dot */}
+              {/* Inner dot - colored by category */}
               <circle
                 cx={center + node.x}
                 cy={center + node.y}
                 r={isHovered ? 5 : 4}
-                fill={style.fill}
+                fill={color}
                 className="transition-all duration-300"
               />
               
@@ -289,22 +289,22 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </div>
       )}
       
-      {/* Legend */}
+      {/* Legend with category colors */}
       <div className="flex flex-wrap justify-center gap-4 mt-4 text-xs font-sans text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-foreground" />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
           <span>Famille</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground" />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
           <span>Alliés</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/70" />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
           <span>Amis</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/50" />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
           <span>Autres</span>
         </div>
       </div>
