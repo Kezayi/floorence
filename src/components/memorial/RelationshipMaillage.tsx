@@ -1,9 +1,9 @@
-import { useMemo, Suspense, useState } from "react";
+import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
-import RelationshipGraph3D from "./RelationshipGraph3D";
-import { Skeleton } from "@/components/ui/skeleton";
+import RelationshipGraph2D from "./RelationshipGraph2D";
 import { Button } from "@/components/ui/button";
+
 interface RelationshipMaillageProps {
   deceasedName: string;
   posts: Array<{
@@ -130,16 +130,9 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
         </p>
       </div>
 
-      {/* 3D Graph */}
-      <div className="relative">
-        <Suspense fallback={
-          <Skeleton className="h-[400px] w-full rounded-sm" />
-        }>
-          <RelationshipGraph3D deceasedName={deceasedName} posts={posts} />
-        </Suspense>
-        <p className="text-xs text-muted-foreground mt-2 text-center font-sans">
-          Faites glisser pour faire pivoter • Scroll pour zoomer
-        </p>
+      {/* 2D Graph */}
+      <div className="relative bg-card border border-border rounded-sm p-4">
+        <RelationshipGraph2D deceasedName={deceasedName} posts={posts} />
       </div>
 
       {/* Direct Relations with Deceased */}
