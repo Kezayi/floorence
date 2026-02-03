@@ -49,10 +49,23 @@ const Memorial = () => {
     return memorials.find((m) => m.slug === slug);
   }, [memorials, slug]);
 
-  // Fetch events from database
+  // Helper to check if string is valid UUID
+  const isValidUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Fetch events from database (only for real UUIDs, not mock data)
   useEffect(() => {
     const fetchEvents = async () => {
       if (!memorialData?.id) return;
+      
+      // Skip database fetch for mock data (non-UUID IDs)
+      if (!isValidUUID(memorialData.id)) {
+        setEventsLoading(false);
+        setMemorialEvents([]);
+        return;
+      }
       
       setEventsLoading(true);
       try {
