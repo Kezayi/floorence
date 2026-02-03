@@ -162,6 +162,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     const magicLink = linkData.properties.action_link;
 
+    // Check if we're in test mode (bypass email sending)
+    const testMode = Deno.env.get("TEST_MODE") === "true";
+
+    if (testMode) {
+      // In test mode, return the magic link directly without sending email
+      console.log(`[TEST MODE] Magic link for ${normalizedEmail}: ${magicLink}`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Mode test: lien de connexion généré",
+          isNewUser,
+          testMode: true,
+          magicLink, // Return the link for testing
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Send email via Resend
     console.log(`Sending magic link to ${normalizedEmail}, isNewUser: ${isNewUser}`);
 
