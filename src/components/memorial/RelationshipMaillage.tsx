@@ -1,6 +1,6 @@
 import { useMemo, Suspense } from "react";
 import { Users, Link2, GitBranch, ArrowRight } from "lucide-react";
-import { inferAllRelationships, InferredRelationship } from "@/lib/relationshipInference";
+import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
 import RelationshipGraph3D from "./RelationshipGraph3D";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -167,7 +167,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                       <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({rel.category})</span>
+                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
                     </div>
                   ))}
                 </div>
@@ -186,7 +186,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                       <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({rel.category})</span>
+                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
                     </div>
                   ))}
                 </div>
@@ -205,7 +205,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                       <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({rel.category})</span>
+                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
                     </div>
                   ))}
                 </div>
@@ -224,7 +224,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                       <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({rel.category})</span>
+                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
                     </div>
                   ))}
                 </div>
@@ -274,7 +274,7 @@ const InferredRelationshipCard = ({ relationship }: { relationship: InferredRela
       {/* From person */}
       <div className="flex-1 min-w-0">
         <div className="font-serif text-foreground truncate">{relationship.fromAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{relationship.fromRelation}</div>
+        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.fromRelation)}</div>
       </div>
       
       {/* Inferred link */}
@@ -292,7 +292,7 @@ const InferredRelationshipCard = ({ relationship }: { relationship: InferredRela
       {/* To person */}
       <div className="flex-1 min-w-0 sm:text-right">
         <div className="font-serif text-foreground truncate">{relationship.toAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{relationship.toRelation}</div>
+        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.toRelation)}</div>
       </div>
     </div>
   );

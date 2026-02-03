@@ -5,49 +5,68 @@ interface RelationshipMap {
     gender: "M" | "F" | "N";
     generation: number; // 0 = same gen as deceased, positive = older, negative = younger
     lineage: "direct" | "in-law" | "extended" | "other";
+    cleanName: string; // Name without possessive pronoun
+    withDeceased: string; // Format "X du/de la défunt(e)"
   };
 }
 
 const relationshipData: RelationshipMap = {
   // Famille directe
-  "Son Père": { gender: "M", generation: 1, lineage: "direct" },
-  "Sa Mère": { gender: "F", generation: 1, lineage: "direct" },
-  "Son Fils": { gender: "M", generation: -1, lineage: "direct" },
-  "Sa Fille": { gender: "F", generation: -1, lineage: "direct" },
-  "Son Frère": { gender: "M", generation: 0, lineage: "direct" },
-  "Sa Sœur": { gender: "F", generation: 0, lineage: "direct" },
-  "Son Grand-père": { gender: "M", generation: 2, lineage: "direct" },
-  "Sa Grand-mère": { gender: "F", generation: 2, lineage: "direct" },
-  "Son Petit-fils": { gender: "M", generation: -2, lineage: "direct" },
-  "Sa Petite-fille": { gender: "F", generation: -2, lineage: "direct" },
-  "Son Oncle": { gender: "M", generation: 1, lineage: "extended" },
-  "Sa Tante": { gender: "F", generation: 1, lineage: "extended" },
-  "Son Neveu": { gender: "M", generation: -1, lineage: "extended" },
-  "Sa Nièce": { gender: "F", generation: -1, lineage: "extended" },
-  "Son Cousin": { gender: "M", generation: 0, lineage: "extended" },
-  "Sa Cousine": { gender: "F", generation: 0, lineage: "extended" },
+  "Son Père": { gender: "M", generation: 1, lineage: "direct", cleanName: "Père", withDeceased: "Père du défunt" },
+  "Sa Mère": { gender: "F", generation: 1, lineage: "direct", cleanName: "Mère", withDeceased: "Mère du défunt" },
+  "Son Fils": { gender: "M", generation: -1, lineage: "direct", cleanName: "Fils", withDeceased: "Fils du défunt" },
+  "Sa Fille": { gender: "F", generation: -1, lineage: "direct", cleanName: "Fille", withDeceased: "Fille du défunt" },
+  "Son Frère": { gender: "M", generation: 0, lineage: "direct", cleanName: "Frère", withDeceased: "Frère du défunt" },
+  "Sa Sœur": { gender: "F", generation: 0, lineage: "direct", cleanName: "Sœur", withDeceased: "Sœur du défunt" },
+  "Son Grand-père": { gender: "M", generation: 2, lineage: "direct", cleanName: "Grand-père", withDeceased: "Grand-père du défunt" },
+  "Sa Grand-mère": { gender: "F", generation: 2, lineage: "direct", cleanName: "Grand-mère", withDeceased: "Grand-mère du défunt" },
+  "Son Petit-fils": { gender: "M", generation: -2, lineage: "direct", cleanName: "Petit-fils", withDeceased: "Petit-fils du défunt" },
+  "Sa Petite-fille": { gender: "F", generation: -2, lineage: "direct", cleanName: "Petite-fille", withDeceased: "Petite-fille du défunt" },
+  "Son Oncle": { gender: "M", generation: 1, lineage: "extended", cleanName: "Oncle", withDeceased: "Oncle du défunt" },
+  "Sa Tante": { gender: "F", generation: 1, lineage: "extended", cleanName: "Tante", withDeceased: "Tante du défunt" },
+  "Son Neveu": { gender: "M", generation: -1, lineage: "extended", cleanName: "Neveu", withDeceased: "Neveu du défunt" },
+  "Sa Nièce": { gender: "F", generation: -1, lineage: "extended", cleanName: "Nièce", withDeceased: "Nièce du défunt" },
+  "Son Cousin": { gender: "M", generation: 0, lineage: "extended", cleanName: "Cousin", withDeceased: "Cousin du défunt" },
+  "Sa Cousine": { gender: "F", generation: 0, lineage: "extended", cleanName: "Cousine", withDeceased: "Cousine du défunt" },
   // Alliés
-  "Son Époux": { gender: "M", generation: 0, lineage: "in-law" },
-  "Son Épouse": { gender: "F", generation: 0, lineage: "in-law" },
-  "Son Beau-père": { gender: "M", generation: 1, lineage: "in-law" },
-  "Sa Belle-mère": { gender: "F", generation: 1, lineage: "in-law" },
-  "Son Beau-frère": { gender: "M", generation: 0, lineage: "in-law" },
-  "Sa Belle-sœur": { gender: "F", generation: 0, lineage: "in-law" },
-  "Son Gendre": { gender: "M", generation: -1, lineage: "in-law" },
-  "Sa Belle-fille": { gender: "F", generation: -1, lineage: "in-law" },
+  "Son Époux": { gender: "M", generation: 0, lineage: "in-law", cleanName: "Époux", withDeceased: "Époux de la défunte" },
+  "Son Épouse": { gender: "F", generation: 0, lineage: "in-law", cleanName: "Épouse", withDeceased: "Épouse du défunt" },
+  "Son Beau-père": { gender: "M", generation: 1, lineage: "in-law", cleanName: "Beau-père", withDeceased: "Beau-père du défunt" },
+  "Sa Belle-mère": { gender: "F", generation: 1, lineage: "in-law", cleanName: "Belle-mère", withDeceased: "Belle-mère du défunt" },
+  "Son Beau-frère": { gender: "M", generation: 0, lineage: "in-law", cleanName: "Beau-frère", withDeceased: "Beau-frère du défunt" },
+  "Sa Belle-sœur": { gender: "F", generation: 0, lineage: "in-law", cleanName: "Belle-sœur", withDeceased: "Belle-sœur du défunt" },
+  "Son Gendre": { gender: "M", generation: -1, lineage: "in-law", cleanName: "Gendre", withDeceased: "Gendre du défunt" },
+  "Sa Belle-fille": { gender: "F", generation: -1, lineage: "in-law", cleanName: "Belle-fille", withDeceased: "Belle-fille du défunt" },
   // Proches
-  "Son Ami(e)": { gender: "N", generation: 0, lineage: "other" },
-  "Son Collègue": { gender: "N", generation: 0, lineage: "other" },
-  "Son Voisin(e)": { gender: "N", generation: 0, lineage: "other" },
-  "Son Professeur": { gender: "N", generation: 0, lineage: "other" },
-  "Son Élève": { gender: "N", generation: 0, lineage: "other" },
-  "Son Mentor": { gender: "N", generation: 0, lineage: "other" },
-  "Son Filleul(e)": { gender: "N", generation: -1, lineage: "other" },
-  "Son Parrain/Marraine": { gender: "N", generation: 1, lineage: "other" },
+  "Son Ami(e)": { gender: "N", generation: 0, lineage: "other", cleanName: "Ami(e)", withDeceased: "Ami(e) du défunt" },
+  "Son Collègue": { gender: "N", generation: 0, lineage: "other", cleanName: "Collègue", withDeceased: "Collègue du défunt" },
+  "Son Voisin(e)": { gender: "N", generation: 0, lineage: "other", cleanName: "Voisin(e)", withDeceased: "Voisin(e) du défunt" },
+  "Son Professeur": { gender: "N", generation: 0, lineage: "other", cleanName: "Professeur", withDeceased: "Professeur du défunt" },
+  "Son Élève": { gender: "N", generation: 0, lineage: "other", cleanName: "Élève", withDeceased: "Élève du défunt" },
+  "Son Mentor": { gender: "N", generation: 0, lineage: "other", cleanName: "Mentor", withDeceased: "Mentor du défunt" },
+  "Son Filleul(e)": { gender: "N", generation: -1, lineage: "other", cleanName: "Filleul(e)", withDeceased: "Filleul(e) du défunt" },
+  "Son Parrain/Marraine": { gender: "N", generation: 1, lineage: "other", cleanName: "Parrain/Marraine", withDeceased: "Parrain/Marraine du défunt" },
   // Autres
-  "Une connaissance": { gender: "N", generation: 0, lineage: "other" },
-  "Un admirateur": { gender: "N", generation: 0, lineage: "other" },
-  "Un anonyme": { gender: "N", generation: 0, lineage: "other" },
+  "Une connaissance": { gender: "N", generation: 0, lineage: "other", cleanName: "Connaissance", withDeceased: "Connaissance du défunt" },
+  "Un admirateur": { gender: "N", generation: 0, lineage: "other", cleanName: "Admirateur", withDeceased: "Admirateur du défunt" },
+  "Un anonyme": { gender: "N", generation: 0, lineage: "other", cleanName: "Anonyme", withDeceased: "Anonyme" },
+};
+
+// Helper function to get clean relation name without possessive
+export const getCleanRelationName = (relation: string): string => {
+  const data = relationshipData[relation];
+  if (data) return data.cleanName;
+  // Fallback: remove common possessive prefixes
+  return relation.replace(/^(Son |Sa |Une |Un )/i, "");
+};
+
+// Helper function to format relation with "du défunt"
+export const getRelationWithDeceased = (relation: string): string => {
+  const data = relationshipData[relation];
+  if (data) return data.withDeceased;
+  // Fallback
+  const clean = getCleanRelationName(relation);
+  return `${clean} du défunt`;
 };
 
 export interface InferredRelationship {
