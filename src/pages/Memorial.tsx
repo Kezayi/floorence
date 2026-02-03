@@ -6,7 +6,7 @@ import MemorialHero from "@/components/memorial/MemorialHero";
 import DeathNotice from "@/components/memorial/DeathNotice";
 import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
-import GestureSummary from "@/components/memorial/GestureSummary";
+
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
@@ -271,6 +271,25 @@ const Memorial = () => {
             })),
           }}
           onScrollToGuestbook={scrollToGuestbook}
+          gestureTotals={totals}
+          userHasPosted={userHasPosted}
+          onGestureClick={(type) => {
+            if (type === 'rip') {
+              scrollToDarkZone();
+            } else if (type === 'candle') {
+              if (!userHasPosted) {
+                alert("Vous devez d'abord publier un message dans le livre d'or pour allumer des cierges.");
+                return;
+              }
+              scrollToDarkZone();
+            } else if (type === 'flower') {
+              if (!userHasPosted) {
+                alert("Vous devez d'abord publier un message dans le livre d'or pour déposer des fleurs.");
+                return;
+              }
+              scrollToDarkZone();
+            }
+          }}
         />
 
         {/* Anniversary Reminder - shown if death date exists */}
@@ -284,31 +303,6 @@ const Memorial = () => {
             </div>
           </div>
         )}
-
-        {/* Gesture Summary */}
-        <div className="container mx-auto px-4 pb-8">
-          <div className="max-w-md">
-            <GestureSummary
-              totals={totals}
-              userHasPosted={userHasPosted}
-              onRIPClick={scrollToDarkZone}
-              onCandleClick={() => {
-                if (!userHasPosted) {
-                  alert("Vous devez d'abord publier un message dans le livre d'or pour allumer des cierges.");
-                  return;
-                }
-                scrollToDarkZone();
-              }}
-              onFlowerClick={() => {
-                if (!userHasPosted) {
-                  alert("Vous devez d'abord publier un message dans le livre d'or pour déposer des fleurs.");
-                  return;
-                }
-                scrollToDarkZone();
-              }}
-            />
-          </div>
-        </div>
 
         <div className="divider-elegant" />
 

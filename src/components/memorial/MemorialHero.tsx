@@ -5,12 +5,19 @@ import { ChevronLeft, ChevronRight, Bell, BellOff, GitBranch, Feather, Share2 } 
 import AuthorCredibility from "./AuthorCredibility";
 import ShareButtons from "./ShareButtons";
 import RelationshipGraph from "./RelationshipGraph";
+import GestureSummary from "./GestureSummary";
 import { calculateAge } from "@/lib/dateUtils";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
+
+interface GestureTotals {
+  ripCount: number;
+  candleCount: number;
+  flowerCount: number;
+}
 
 interface MemorialHeroProps {
   memorial: {
@@ -33,9 +40,12 @@ interface MemorialHeroProps {
     }>;
   };
   onScrollToGuestbook: () => void;
+  gestureTotals?: GestureTotals;
+  userHasPosted?: boolean;
+  onGestureClick?: (type: 'rip' | 'candle' | 'flower') => void;
 }
 
-const MemorialHero = ({ memorial, onScrollToGuestbook }: MemorialHeroProps) => {
+const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick }: MemorialHeroProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showRelationshipGraph, setShowRelationshipGraph] = useState(false);
   
@@ -221,6 +231,19 @@ const MemorialHero = ({ memorial, onScrollToGuestbook }: MemorialHeroProps) => {
                 <span>Maillage</span>
               </button>
             </div>
+            
+            {/* Gesture Summary - Hommages reçus */}
+            {gestureTotals && onGestureClick && (
+              <div className="mt-6">
+                <GestureSummary
+                  totals={gestureTotals}
+                  userHasPosted={userHasPosted || false}
+                  onRIPClick={() => onGestureClick('rip')}
+                  onCandleClick={() => onGestureClick('candle')}
+                  onFlowerClick={() => onGestureClick('flower')}
+                />
+              </div>
+            )}
             
             {/* Relationship Graph Dialog */}
             <RelationshipGraph
