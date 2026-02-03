@@ -79,10 +79,61 @@ export type Database = {
           },
         ]
       }
+      memorial_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          event_end_time: string | null
+          event_type: string
+          gps_coordinates: string | null
+          id: string
+          is_public: boolean
+          location: string | null
+          memorial_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date: string
+          event_end_time?: string | null
+          event_type: string
+          gps_coordinates?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          memorial_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_end_time?: string | null
+          event_type?: string
+          gps_coordinates?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          memorial_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_events_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memorials: {
         Row: {
           biography: string | null
           birth_date: string | null
+          contributions_disabled_at: string | null
           created_at: string
           created_by: string
           death_date: string | null
@@ -90,6 +141,8 @@ export type Database = {
           first_name: string
           funeral_date: string | null
           funeral_location: string | null
+          heir_email: string | null
+          heir_user_id: string | null
           id: string
           is_active: boolean
           last_name: string
@@ -101,6 +154,7 @@ export type Database = {
         Insert: {
           biography?: string | null
           birth_date?: string | null
+          contributions_disabled_at?: string | null
           created_at?: string
           created_by: string
           death_date?: string | null
@@ -108,6 +162,8 @@ export type Database = {
           first_name: string
           funeral_date?: string | null
           funeral_location?: string | null
+          heir_email?: string | null
+          heir_user_id?: string | null
           id?: string
           is_active?: boolean
           last_name: string
@@ -119,6 +175,7 @@ export type Database = {
         Update: {
           biography?: string | null
           birth_date?: string | null
+          contributions_disabled_at?: string | null
           created_at?: string
           created_by?: string
           death_date?: string | null
@@ -126,6 +183,8 @@ export type Database = {
           first_name?: string
           funeral_date?: string | null
           funeral_location?: string | null
+          heir_email?: string | null
+          heir_user_id?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
@@ -275,6 +334,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      disable_contributions_after_funeral: { Args: never; Returns: undefined }
       get_public_guestbook_posts: {
         Args: { p_memorial_id?: string }
         Returns: {
@@ -299,6 +359,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
+      is_memorial_creation_free: {
+        Args: { p_funeral_date: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator"

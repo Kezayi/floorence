@@ -1,13 +1,21 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Gift, CreditCard, Info } from "lucide-react";
 import RelationSelect from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { isFuture, parseISO, isValid } from "date-fns";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
+
+const CREATION_PRICE = 10000; // 10 000 FCFA
 
 const CreateMemorial = () => {
   const navigate = useNavigate();
@@ -20,6 +28,8 @@ const CreateMemorial = () => {
     name: "",
     birthDate: "",
     deathDate: "",
+    funeralDate: "",
+    funeralLocation: "",
     bio: "",
     authorRelation: "",
     heirEmail: "",
@@ -33,6 +43,17 @@ const CreateMemorial = () => {
     { number: 3, title: "Photos" },
     { number: 4, title: "Confirmation" },
   ];
+
+  // Determine if creation is free (funeral date in future)
+  const isCreationFree = useMemo(() => {
+    if (!formData.funeralDate) return false;
+    try {
+      const funeralDateParsed = parseISO(formData.funeralDate);
+      return isValid(funeralDateParsed) && isFuture(funeralDateParsed);
+    } catch {
+      return false;
+    }
+  }, [formData.funeralDate]);
 
   const validateStep = (step: Step): boolean => {
     const newErrors: Record<string, string> = {};
@@ -68,6 +89,11 @@ const CreateMemorial = () => {
         }
       }
 
+      // Funeral date required for RECENT type
+      if (memorialType === "RECENT" && !formData.funeralDate) {
+        newErrors.funeralDate = "La date des obsèques est obligatoire pour un décès récent";
+      }
+
       if (!formData.authorRelation) {
         newErrors.authorRelation = "Votre lien avec le défunt est obligatoire";
       }
@@ -76,7 +102,10 @@ const CreateMemorial = () => {
         newErrors.bio = "La biographie ne doit pas dépasser 1000 caractères";
       }
 
-      if (formData.heirEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.heirEmail)) {
+      // Heir email is now required
+      if (!formData.heirEmail) {
+        newErrors.heirEmail = "L'email de l'héritier numérique est obligatoire";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.heirEmail)) {
         newErrors.heirEmail = "Format d'email invalide";
       }
     }
@@ -358,6 +387,69 @@ const CreateMemorial = () => {
                       </div>
                     </div>
 
+                    {/* Funeral date and location - for RECENT type */}
+                    {memorialType === "RECENT" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+                        <div>
+                          <label className="block text-sm font-sans text-muted-foreground mb-2">
+                            Date des obsèques *
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={formData.funeralDate}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                funeralDate: e.target.value,
+                              }))
+                            }
+                            className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
+                              errors.funeralDate ? "ring-1 ring-destructive" : ""
+                            }`}
+                          />
+                          <ErrorMessage message={errors.funeralDate} />
+                          
+                          {/* Pricing indicator */}
+                          {formData.funeralDate && (
+                            <div className={`mt-2 p-2 rounded-sm text-xs font-sans flex items-center gap-2 ${
+                              isCreationFree 
+                                ? "bg-accent-green/10 text-accent-green" 
+                                : "bg-primary/10 text-primary"
+                            }`}>
+                              {isCreationFree ? (
+                                <>
+                                  <Gift className="w-3 h-3" />
+                                  Création gratuite (obsèques à venir)
+                                </>
+                              ) : (
+                                <>
+                                  <CreditCard className="w-3 h-3" />
+                                  Création payante ({CREATION_PRICE.toLocaleString("fr-FR")} FCFA)
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-sans text-muted-foreground mb-2">
+                            Lieu des obsèques
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.funeralLocation}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                funeralLocation: e.target.value,
+                              }))
+                            }
+                            placeholder="Église, cimetière, domicile..."
+                            className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-sans text-muted-foreground mb-2">
                         Votre lien avec le défunt *
@@ -395,9 +487,22 @@ const CreateMemorial = () => {
                     </div>
 
                     <div className="pt-4 border-t border-border">
-                      <label className="block text-sm font-sans text-muted-foreground mb-2">
-                        Email de l'héritier numérique (optionnel)
-                      </label>
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-sm font-sans text-muted-foreground">
+                          Email de l'héritier numérique *
+                        </label>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-4 h-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>
+                              L'héritier numérique pourra reprendre la gestion de cet espace mémoriel 
+                              si vous n'êtes plus en mesure de le faire. Cette désignation est obligatoire.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
                       <input
                         type="email"
                         value={formData.heirEmail}
@@ -596,14 +701,39 @@ const CreateMemorial = () => {
                     <h4 className="font-sans text-sm font-medium mb-4">
                       Récapitulatif du paiement
                     </h4>
-                    <div className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="font-sans text-sm">Publication de l'avis</span>
-                      <span className="font-sans font-medium">10 000 FCFA</span>
-                    </div>
-                    <div className="flex justify-between items-center py-4">
-                      <span className="font-sans font-medium">Total</span>
-                      <span className="font-serif text-xl">10 000 FCFA</span>
-                    </div>
+                    
+                    {isCreationFree ? (
+                      <div className="py-4 text-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-green/10 text-accent-green rounded-sm mb-2">
+                          <Gift className="w-5 h-5" />
+                          <span className="font-sans font-medium">Création gratuite</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground font-sans">
+                          Les obsèques étant prévues dans le futur, la publication de l'avis est offerte.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center py-2 border-b border-border">
+                          <span className="font-sans text-sm">Publication de l'avis</span>
+                          <span className="font-sans font-medium">{CREATION_PRICE.toLocaleString("fr-FR")} FCFA</span>
+                        </div>
+                        <div className="flex justify-between items-center py-4">
+                          <span className="font-sans font-medium">Total</span>
+                          <span className="font-serif text-xl">{CREATION_PRICE.toLocaleString("fr-FR")} FCFA</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Heir email reminder */}
+                  <div className="bg-muted/50 p-4 rounded-sm mb-8">
+                    <p className="text-sm font-sans">
+                      <strong>Héritier numérique désigné :</strong> {formData.heirEmail}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cette personne recevra un email pour confirmer son rôle d'héritier numérique.
+                    </p>
                   </div>
 
                   <div className="flex justify-between">
@@ -612,7 +742,7 @@ const CreateMemorial = () => {
                       Retour
                     </button>
                     <button onClick={handleSubmit} className="btn-memorial">
-                      Procéder au paiement
+                      {isCreationFree ? "Publier l'espace mémoriel" : "Procéder au paiement"}
                     </button>
                   </div>
                 </div>
