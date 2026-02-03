@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +17,77 @@ interface AdminRequest {
   role?: "admin" | "moderator";
   page?: number;
   pageSize?: number;
+}
+
+// Email notification for ban/unban
+async function sendBanNotification(userEmail: string, isBanned: boolean): Promise<void> {
+  try {
+    const subject = isBanned
+      ? "Votre compte Floorence a été suspendu"
+      : "Votre compte Floorence a été réactivé";
+
+    const html = isBanned
+      ? `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #800020; font-size: 24px; margin-bottom: 20px;">Compte suspendu</h1>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Bonjour,
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Nous vous informons que votre compte Floorence a été temporairement suspendu par notre équipe de modération.
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Durant cette suspension, vous ne pourrez pas vous connecter à votre compte ni accéder à vos espaces mémoriels.
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Si vous pensez qu'il s'agit d'une erreur ou souhaitez contester cette décision, veuillez nous contacter à l'adresse : 
+            <a href="mailto:contact@floorence.org" style="color: #800020;">contact@floorence.org</a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #888; font-size: 14px;">
+            L'équipe Floorence
+          </p>
+        </div>
+      `
+      : `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2e7d32; font-size: 24px; margin-bottom: 20px;">Compte réactivé</h1>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Bonjour,
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Bonne nouvelle ! Votre compte Floorence a été réactivé par notre équipe de modération.
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Vous pouvez désormais vous reconnecter et accéder à l'ensemble de vos espaces mémoriels.
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            <a href="https://floorence.org" style="display: inline-block; background-color: #800020; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
+              Se connecter
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #888; font-size: 14px;">
+            L'équipe Floorence
+          </p>
+        </div>
+      `;
+
+    const { error } = await resend.emails.send({
+      from: "Floorence <noreply@floorence.org>",
+      to: [userEmail],
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("Failed to send ban notification email:", error);
+    } else {
+      console.log(`Ban notification email sent to ${userEmail} (isBanned: ${isBanned})`);
+    }
+  } catch (err) {
+    console.error("Error sending ban notification:", err);
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -243,6 +317,10 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
+        // Get user email before banning
+        const { data: targetUserData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const targetEmail = targetUserData?.user?.email;
+
         // Ban for 100 years (effectively permanent but reversible)
         const banUntil = new Date();
         banUntil.setFullYear(banUntil.getFullYear() + 100);
@@ -258,6 +336,11 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`User ${userId} banned by admin ${user.id}`);
 
+        // Send email notification (async, don't wait)
+        if (targetEmail) {
+          sendBanNotification(targetEmail, true);
+        }
+
         return new Response(
           JSON.stringify({ success: true, message: "Utilisateur bloqué" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -272,6 +355,10 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
+        // Get user email before unbanning
+        const { data: targetUserData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const targetEmail = targetUserData?.user?.email;
+
         const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
           ban_duration: "none",
         });
@@ -282,6 +369,11 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         console.log(`User ${userId} unbanned by admin ${user.id}`);
+
+        // Send email notification (async, don't wait)
+        if (targetEmail) {
+          sendBanNotification(targetEmail, false);
+        }
 
         return new Response(
           JSON.stringify({ success: true, message: "Utilisateur débloqué" }),
