@@ -1,8 +1,17 @@
-import { useMemo, Suspense } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { Users, Link2, GitBranch, ArrowRight } from "lucide-react";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
 import RelationshipGraph3D from "./RelationshipGraph3D";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 interface RelationshipMaillageProps {
   deceasedName: string;
@@ -12,6 +21,8 @@ interface RelationshipMaillageProps {
     relationCategory: string;
   }>;
 }
+
+const INFERRED_RELATIONS_PER_PAGE = 10;
 
 // Category colors for display
 const categoryColors: Record<string, string> = {
@@ -236,21 +247,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
 
       {/* Inferred Relationships */}
       {inferredRelationships.length > 0 && (
-        <div className="bg-secondary p-6 rounded-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Link2 className="w-5 h-5 text-primary" />
-            <h4>Relations inférées entre les proches</h4>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4 font-sans">
-            Liens déduits automatiquement à partir des relations avec le défunt
-          </p>
-          
-          <div className="space-y-3">
-            {inferredRelationships.map((rel, index) => (
-              <InferredRelationshipCard key={index} relationship={rel} />
-            ))}
-          </div>
-        </div>
+        <InferredRelationshipsSection relationships={inferredRelationships} />
       )}
 
       {/* Empty state for inferences */}
@@ -260,6 +257,116 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
           <p className="text-sm text-muted-foreground">
             Pas assez d'informations pour inférer des relations entre les proches.
           </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const InferredRelationshipsSection = ({ relationships }: { relationships: InferredRelationship[] }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(relationships.length / INFERRED_RELATIONS_PER_PAGE);
+  
+  const paginatedRelationships = useMemo(() => {
+    const start = (currentPage - 1) * INFERRED_RELATIONS_PER_PAGE;
+    const end = start + INFERRED_RELATIONS_PER_PAGE;
+    return relationships.slice(start, end);
+  }, [relationships, currentPage]);
+
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      items.push(
+        <PaginationItem key={1}>
+          <PaginationLink onClick={() => setCurrentPage(1)} isActive={currentPage === 1}>
+            1
+          </PaginationLink>
+        </PaginationItem>
+      );
+      if (startPage > 2) {
+        items.push(
+          <PaginationItem key="ellipsis-start">
+            <PaginationEllipsis />
+          </PaginationItem>
+        );
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink onClick={() => setCurrentPage(i)} isActive={currentPage === i}>
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        items.push(
+          <PaginationItem key="ellipsis-end">
+            <PaginationEllipsis />
+          </PaginationItem>
+        );
+      }
+      items.push(
+        <PaginationItem key={totalPages}>
+          <PaginationLink onClick={() => setCurrentPage(totalPages)} isActive={currentPage === totalPages}>
+            {totalPages}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    return items;
+  };
+
+  return (
+    <div className="bg-secondary p-6 rounded-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <Link2 className="w-5 h-5 text-primary" />
+        <h4>Relations inférées entre les proches</h4>
+        <span className="text-xs text-muted-foreground font-sans">({relationships.length})</span>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4 font-sans">
+        Liens déduits automatiquement à partir des relations avec le défunt
+      </p>
+      
+      <div className="space-y-3">
+        {paginatedRelationships.map((rel, index) => (
+          <InferredRelationshipCard key={index} relationship={rel} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {renderPaginationItems()}
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
     </div>
