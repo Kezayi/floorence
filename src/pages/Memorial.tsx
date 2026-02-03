@@ -229,10 +229,18 @@ const Memorial = () => {
     document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Convert death date for anniversary component
-  const deathDateISO = memorialData.deathDate 
-    ? new Date(memorialData.deathDate).toISOString() 
-    : "";
+  // Convert death date for anniversary component (safely handle invalid dates)
+  const deathDateISO = (() => {
+    if (!memorialData.deathDate) return "";
+    try {
+      const date = new Date(memorialData.deathDate);
+      // Check if date is valid before calling toISOString
+      if (isNaN(date.getTime())) return "";
+      return date.toISOString();
+    } catch {
+      return "";
+    }
+  })();
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
