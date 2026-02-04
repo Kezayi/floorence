@@ -111,15 +111,15 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
       byCategory[type].push({ id, ...data });
     });
     
-    // Arrange in concentric circles
+    // Arrange in concentric circles - reduced radius to fit in viewBox
     const categoryOrder = ["famille", "allies", "amis", "autre"];
-    const baseRadius = 100;
+    const baseRadius = 70;
     
     categoryOrder.forEach((catType, ringIndex) => {
       const items = byCategory[catType];
       if (items.length === 0) return;
       
-      const radius = baseRadius + ringIndex * 60;
+      const radius = baseRadius + ringIndex * 45;
       
       items.forEach((item, idx) => {
         // Calculate starting angle offset for each ring
@@ -166,7 +166,8 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     );
   }
 
-  const viewBoxSize = 400;
+  // Increased viewBox to accommodate nodes + labels
+  const viewBoxSize = 500;
   const center = viewBoxSize / 2;
 
   return (
@@ -187,8 +188,8 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3" />
         
-        {/* Concentric circle guides */}
-        {[100, 160, 220, 280].map((radius, idx) => (
+        {/* Concentric circle guides - adjusted for new radius */}
+        {[70, 115, 160, 205].map((radius, idx) => (
           <circle
             key={radius}
             cx={center}
