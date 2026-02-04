@@ -56,23 +56,24 @@ interface OrganizedResults {
   };
 }
 
-// Trouve toutes les personnes correspondant à la recherche
+// Trouve toutes les personnes correspondant à la recherche (dédoublonnées)
 const findAllMatchingPersons = (
   query: string,
   memorials: SearchableMemorial[]
 ): PersonMatch[] => {
   const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const matches: PersonMatch[] = [];
-  const seen = new Set<string>();
+  
+  // Group by normalized name to deduplicate
+  const personsByName = new Map<string, PersonMatch>();
 
   for (const memorial of memorials) {
     const memorialNameNormalized = memorial.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
+    // Check deceased
     if (memorialNameNormalized.includes(normalizedQuery)) {
-      const key = `deceased-${memorial.id}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        matches.push({
+      const key = `deceased-${memorialNameNormalized}`;
+      if (!personsByName.has(key)) {
+        personsByName.set(key, {
           id: memorial.id,
           name: memorial.name,
           type: "deceased",
@@ -84,12 +85,13 @@ const findAllMatchingPersons = (
       }
     }
 
+    // Check memorial author
     const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (authorNameNormalized.includes(normalizedQuery)) {
-      const key = `author-${memorial.author.id}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        matches.push({
+      const key = `author-${authorNameNormalized}`;
+      // If already exists, keep the first one (or update with better data)
+      if (!personsByName.has(key)) {
+        personsByName.set(key, {
           id: memorial.author.id,
           name: memorial.author.name,
           type: "author",
@@ -102,13 +104,14 @@ const findAllMatchingPersons = (
       }
     }
 
+    // Check guestbook messages
     for (const message of memorial.guestbookMessages) {
       const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       if (msgAuthorNormalized.includes(normalizedQuery)) {
-        const key = `guestbook-${message.authorName}-${memorial.id}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          matches.push({
+        const key = `author-${msgAuthorNormalized}`;
+        // Only add if not already present (deduplicate by normalized name)
+        if (!personsByName.has(key)) {
+          personsByName.set(key, {
             id: message.id,
             name: message.authorName,
             type: "author",
@@ -123,7 +126,7 @@ const findAllMatchingPersons = (
     }
   }
 
-  return matches;
+  return Array.from(personsByName.values());
 };
 
 const organizeResultsForPerson = (

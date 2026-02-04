@@ -178,6 +178,7 @@ export type Database = {
           heir_user_id: string | null
           id: string
           is_active: boolean
+          is_published: boolean
           last_name: string
           merged_into: string | null
           photo_url: string | null
@@ -199,6 +200,7 @@ export type Database = {
           heir_user_id?: string | null
           id?: string
           is_active?: boolean
+          is_published?: boolean
           last_name: string
           merged_into?: string | null
           photo_url?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           heir_user_id?: string | null
           id?: string
           is_active?: boolean
+          is_published?: boolean
           last_name?: string
           merged_into?: string | null
           photo_url?: string | null

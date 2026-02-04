@@ -6,6 +6,9 @@ import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, CreditC
 import RelationSelect from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -13,17 +16,32 @@ import {
 } from "@/components/ui/tooltip";
 import { isFuture, parseISO, isValid } from "date-fns";
 
+// Noms interdits pour les auteurs
+const FORBIDDEN_NAMES = [
+  'super admin',
+  'admin',
+  'administrateur',
+  'test',
+  'utilisateur',
+  'anonymous',
+  'anonyme',
+  'system',
+  'système',
+];
+
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
 
 const CreateMemorial = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
   const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
@@ -149,10 +167,101 @@ const CreateMemorial = () => {
     }
   };
 
-  const handleSubmit = () => {
-    console.log("Submit memorial:", { memorialType, ...formData });
-    // Would redirect to payment
-    navigate("/");
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    
+    // Validate user profile name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', user?.id)
+      .single();
+
+    if (profile?.display_name) {
+      const normalizedName = profile.display_name.toLowerCase().trim();
+      if (FORBIDDEN_NAMES.some(fn => normalizedName.includes(fn))) {
+        toast.error("Veuillez mettre à jour votre profil avec votre vrai nom avant de créer un espace mémoriel.");
+        navigate("/compte");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Split name into first and last name
+      const nameParts = formData.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "";
+
+      // Step 1: Create the memorial (unpublished)
+      const { data: createData, error: createError } = await supabase.functions.invoke('create-memorial', {
+        body: {
+          firstName,
+          lastName,
+          birthDate: formData.birthDate,
+          deathDate: formData.deathDate,
+          funeralDate: formData.funeralDate || undefined,
+          funeralLocation: formData.funeralLocation || undefined,
+          biography: formData.bio || undefined,
+          authorRelation: formData.authorRelation,
+          heirEmail: formData.heirEmail,
+          enableContributions: formData.enableContributions,
+          photoUrl: formData.photos[0] || undefined,
+        }
+      });
+
+      if (createError || !createData?.success) {
+        console.error('Create memorial error:', createError || createData?.error);
+        toast.error(createData?.error || "Erreur lors de la création de l'espace mémoriel");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const memorialId = createData.memorial.id;
+      console.log('Memorial created:', memorialId);
+
+      // Step 2: Store data for payment flow
+      sessionStorage.setItem('pending_memorial', JSON.stringify({
+        memorialId,
+        slug: createData.memorial.slug,
+        amount: creationPrice,
+        paymentType: 'memorial_creation',
+      }));
+
+      // Step 3: Initiate payment
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('initiate-payment', {
+        body: {
+          amount: creationPrice,
+          paymentType: 'memorial_creation',
+          memorialId,
+          metadata: {
+            firstName: createData.memorial.firstName,
+            lastName: createData.memorial.lastName,
+          }
+        }
+      });
+
+      if (paymentError || !paymentData?.success) {
+        console.error('Payment initiation error:', paymentError || paymentData?.error);
+        toast.error(paymentData?.error || "Erreur lors de l'initiation du paiement");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Redirect to payment URL
+      if (paymentData.paymentUrl) {
+        window.location.href = paymentData.paymentUrl;
+      } else {
+        toast.error("URL de paiement non disponible");
+        setIsSubmitting(false);
+      }
+
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error("Une erreur est survenue");
+      setIsSubmitting(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -750,8 +859,19 @@ const CreateMemorial = () => {
                       <ChevronLeft className="w-4 h-4" />
                       Retour
                     </button>
-                    <button onClick={handleSubmit} className="btn-memorial" disabled={settingsLoading}>
-                      Procéder au paiement
+                    <button 
+                      onClick={handleSubmit} 
+                      className="btn-memorial" 
+                      disabled={settingsLoading || isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Création en cours...
+                        </>
+                      ) : (
+                        "Procéder au paiement"
+                      )}
                     </button>
                   </div>
                 </div>
