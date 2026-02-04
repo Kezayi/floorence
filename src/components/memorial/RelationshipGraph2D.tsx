@@ -111,15 +111,15 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
       byCategory[type].push({ id, ...data });
     });
     
-    // Arrange in concentric circles - reduced radius to fit in viewBox
+    // Arrange in concentric circles
     const categoryOrder = ["famille", "allies", "amis", "autre"];
-    const baseRadius = 70;
+    const baseRadius = 100;
     
     categoryOrder.forEach((catType, ringIndex) => {
       const items = byCategory[catType];
       if (items.length === 0) return;
       
-      const radius = baseRadius + ringIndex * 45;
+      const radius = baseRadius + ringIndex * 60;
       
       items.forEach((item, idx) => {
         // Calculate starting angle offset for each ring
@@ -156,44 +156,6 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     return map;
   }, [nodes]);
 
-  // Increased viewBox to accommodate nodes + labels
-  const viewBoxSize = 500;
-  const center = viewBoxSize / 2;
-
-  /**
-   * Zoom-to-fit (auto): ensure nodes + labels always stay within the SVG viewport
-   * to avoid any horizontal scrolling/truncation on all screen sizes.
-   */
-  const graphScale = useMemo(() => {
-    const NODE_R = 12;
-    const LABEL_DY = 24;
-    const PADDING = 28;
-
-    const maxLabelHalfWidth = nodes.reduce((acc, n) => {
-      const firstName = (n.name || "").split(" ")[0] ?? "";
-      // Rough width approximation for serif labels.
-      const approx = Math.min(70, Math.max(18, firstName.length * 3.8));
-      return Math.max(acc, approx);
-    }, 0);
-
-    const maxAbsX = nodes.reduce((acc, n) => Math.max(acc, Math.abs(n.x)), 0);
-    const maxAbsY = nodes.reduce((acc, n) => Math.max(acc, Math.abs(n.y)), 0);
-
-    const requiredHalf = Math.max(
-      maxAbsX + NODE_R + maxLabelHalfWidth,
-      maxAbsY + NODE_R + LABEL_DY,
-    );
-
-    const availableHalf = center - PADDING;
-    if (requiredHalf <= 0) return 1;
-
-    // Only shrink; never upscale.
-    return Math.min(1, availableHalf / requiredHalf);
-  }, [nodes, center]);
-
-  const labelFontSize = graphScale < 0.92 ? 7 : 8;
-  const labelFontSizeHover = graphScale < 0.92 ? 9 : 10;
-
   if (posts.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] bg-muted/30 rounded-sm">
@@ -204,15 +166,17 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     );
   }
 
+  const viewBoxSize = 400;
+  const center = viewBoxSize / 2;
+
   return (
-    <div className="relative w-full overflow-visible">
-      {/* Container responsive - s'adapte à tous les écrans */}
-      <div className="w-full aspect-square max-w-full md:max-w-[450px] lg:max-w-[500px] mx-auto">
+    <div className="relative w-full overflow-hidden">
+      {/* Container responsive avec aspect-ratio */}
+      <div className="w-full aspect-square max-w-[500px] mx-auto">
         <svg
           viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
           className="w-full h-full"
           preserveAspectRatio="xMidYMid meet"
-          style={{ minHeight: "280px" }}
         >
         {/* Background subtle grid */}
         <defs>
@@ -221,154 +185,149 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3" />
-
-        <g
-          transform={`translate(${center} ${center}) scale(${graphScale}) translate(${-center} ${-center})`}
-        >
-          {/* Concentric circle guides - adjusted for new radius */}
-          {[70, 115, 160, 205].map((radius, idx) => (
-            <circle
-              key={radius}
-              cx={center}
-              cy={center}
-              r={radius}
-              fill="none"
-              stroke="hsl(var(--border))"
-              strokeWidth="0.5"
-              strokeDasharray="4 4"
-              opacity={0.5 - idx * 0.1}
-            />
-          ))}
-
-          {/* Inferred links between living nodes (dotted lines) */}
-          <g className="inferred-links">
-            {inferredLinks.map((link, idx) => {
-              const fromPos = nodePositionsByName.get(link.fromAuthor);
-              const toPos = nodePositionsByName.get(link.toAuthor);
-              if (!fromPos || !toPos) return null;
-
-              const opacity =
-                link.confidence === "high" ? 0.5 : link.confidence === "medium" ? 0.35 : 0.2;
-
-              return (
-                <line
-                  key={`inferred-${idx}`}
-                  x1={center + fromPos.x}
-                  y1={center + fromPos.y}
-                  x2={center + toPos.x}
-                  y2={center + toPos.y}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                  opacity={opacity}
-                  className="transition-all duration-300"
-                />
-              );
-            })}
-          </g>
-
-          {/* Connection lines to deceased (center) - Bold black lines */}
-          <g className="connection-lines">
-            {nodes.map((node) => (
+        
+        {/* Concentric circle guides */}
+        {[100, 160, 220, 280].map((radius, idx) => (
+          <circle
+            key={radius}
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="hsl(var(--border))"
+            strokeWidth="0.5"
+            strokeDasharray="4 4"
+            opacity={0.5 - idx * 0.1}
+          />
+        ))}
+        
+        {/* Inferred links between living nodes (dotted lines) */}
+        <g className="inferred-links">
+          {inferredLinks.map((link, idx) => {
+            const fromPos = nodePositionsByName.get(link.fromAuthor);
+            const toPos = nodePositionsByName.get(link.toAuthor);
+            if (!fromPos || !toPos) return null;
+            
+            const opacity = link.confidence === 'high' ? 0.5 : link.confidence === 'medium' ? 0.35 : 0.2;
+            
+            return (
               <line
-                key={`line-${node.id}`}
-                x1={center}
-                y1={center}
-                x2={center + node.x}
-                y2={center + node.y}
-                stroke="#000000"
-                strokeWidth={hoveredNode === node.id ? 3 : 2}
-                opacity={hoveredNode === node.id ? 1 : 0.7}
+                key={`inferred-${idx}`}
+                x1={center + fromPos.x}
+                y1={center + fromPos.y}
+                x2={center + toPos.x}
+                y2={center + toPos.y}
+                stroke="hsl(var(--primary))"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity={opacity}
                 className="transition-all duration-300"
               />
-            ))}
-          </g>
-
-          {/* Center node (deceased) */}
-          <g className="center-node">
-            <circle
-              cx={center}
-              cy={center}
-              r="24"
-              fill="hsl(var(--primary))"
-              className="transition-transform duration-300"
-            />
-            <circle
-              cx={center}
-              cy={center}
-              r="28"
-              fill="none"
-              stroke="hsl(var(--primary))"
-              strokeWidth="1"
-              opacity="0.3"
-            />
-            <text
-              x={center}
-              y={center + 42}
-              textAnchor="middle"
-              className="font-serif text-xs fill-foreground"
-              style={{ fontSize: "10px" }}
-            >
-              {deceasedName.split(" ")[0]}
-            </text>
-          </g>
-
-          {/* Author nodes */}
-          {nodes.map((node) => {
-            const color = categoryColors[node.categoryType];
-            const isHovered = hoveredNode === node.id;
-
-            return (
-              <g
-                key={node.id}
-                className="author-node cursor-pointer"
-                onMouseEnter={() => setHoveredNode(node.id)}
-                onMouseLeave={() => setHoveredNode(null)}
-              >
-                {/* Node circle - neutral stroke */}
-                <circle
-                  cx={center + node.x}
-                  cy={center + node.y}
-                  r={isHovered ? 14 : 12}
-                  fill="hsl(var(--background))"
-                  stroke="hsl(var(--border))"
-                  strokeWidth={isHovered ? 2 : 1.5}
-                  className="transition-all duration-300"
-                />
-
-                {/* Inner dot - colored by category */}
-                <circle
-                  cx={center + node.x}
-                  cy={center + node.y}
-                  r={isHovered ? 5 : 4}
-                  fill={color}
-                  className="transition-all duration-300"
-                />
-
-                {/* Name label */}
-                <text
-                  x={center + node.x}
-                  y={center + node.y + 24}
-                  textAnchor="middle"
-                  className="font-serif fill-foreground pointer-events-none"
-                  style={{ fontSize: isHovered ? `${labelFontSizeHover}px` : `${labelFontSize}px` }}
-                >
-                  {node.name.split(" ")[0]}
-                </text>
-              </g>
             );
           })}
         </g>
+        
+        {/* Connection lines to deceased (center) - Bold black lines */}
+        <g className="connection-lines">
+          {nodes.map((node) => (
+            <line
+              key={`line-${node.id}`}
+              x1={center}
+              y1={center}
+              x2={center + node.x}
+              y2={center + node.y}
+              stroke="#000000"
+              strokeWidth={hoveredNode === node.id ? 3 : 2}
+              opacity={hoveredNode === node.id ? 1 : 0.7}
+              className="transition-all duration-300"
+            />
+          ))}
+        </g>
+        
+        {/* Center node (deceased) */}
+        <g className="center-node">
+          <circle
+            cx={center}
+            cy={center}
+            r="24"
+            fill="hsl(var(--primary))"
+            className="transition-transform duration-300"
+          />
+          <circle
+            cx={center}
+            cy={center}
+            r="28"
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="1"
+            opacity="0.3"
+          />
+          <text
+            x={center}
+            y={center + 42}
+            textAnchor="middle"
+            className="font-serif text-xs fill-foreground"
+            style={{ fontSize: "10px" }}
+          >
+            {deceasedName.split(" ")[0]}
+          </text>
+        </g>
+        
+        {/* Author nodes */}
+        {nodes.map((node) => {
+          const color = categoryColors[node.categoryType];
+          const isHovered = hoveredNode === node.id;
+          
+          return (
+            <g
+              key={node.id}
+              className="author-node cursor-pointer"
+              onMouseEnter={() => setHoveredNode(node.id)}
+              onMouseLeave={() => setHoveredNode(null)}
+            >
+              {/* Node circle - neutral stroke */}
+              <circle
+                cx={center + node.x}
+                cy={center + node.y}
+                r={isHovered ? 14 : 12}
+                fill="hsl(var(--background))"
+                stroke="hsl(var(--border))"
+                strokeWidth={isHovered ? 2 : 1.5}
+                className="transition-all duration-300"
+              />
+              
+              {/* Inner dot - colored by category */}
+              <circle
+                cx={center + node.x}
+                cy={center + node.y}
+                r={isHovered ? 5 : 4}
+                fill={color}
+                className="transition-all duration-300"
+              />
+              
+              {/* Name label */}
+              <text
+                x={center + node.x}
+                y={center + node.y + 24}
+                textAnchor="middle"
+                className="font-serif fill-foreground pointer-events-none"
+                style={{ fontSize: isHovered ? "10px" : "8px" }}
+              >
+                {node.name.split(" ")[0]}
+              </text>
+            </g>
+          );
+        })}
         </svg>
       </div>
       
-      {/* Tooltip - responsive positioning */}
+      {/* Tooltip */}
       {hoveredNode && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[85%] sm:max-w-[90%] z-10">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[90%]">
           {nodes.filter(n => n.id === hoveredNode).map(node => (
             <div key={node.id} className="text-center">
-              <div className="font-serif text-sm text-foreground truncate">{node.name}</div>
-              <div className="text-xs text-muted-foreground font-sans mt-0.5 truncate">
+              <div className="font-serif text-sm text-foreground">{node.name}</div>
+              <div className="text-xs text-muted-foreground font-sans mt-0.5">
                 {getCleanRelationName(node.category)} du défunt
               </div>
             </div>
@@ -376,22 +335,22 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </div>
       )}
       
-      {/* Legend with category colors - fully responsive */}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 mt-3 sm:mt-4 text-[10px] sm:text-xs font-sans text-muted-foreground px-1">
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
+      {/* Legend with category colors - responsive */}
+      <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4 text-xs font-sans text-muted-foreground px-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
           <span>Famille</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
           <span>Alliés</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
           <span>Amis</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
           <span>Autres</span>
         </div>
       </div>
