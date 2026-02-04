@@ -170,13 +170,14 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
   const center = viewBoxSize / 2;
 
   return (
-    <div className="relative w-full overflow-hidden">
-      {/* Container responsive avec aspect-ratio */}
-      <div className="w-full aspect-square max-w-[500px] mx-auto">
+    <div className="relative w-full overflow-visible">
+      {/* Container responsive - s'adapte à tous les écrans */}
+      <div className="w-full aspect-square max-w-full md:max-w-[450px] lg:max-w-[500px] mx-auto">
         <svg
           viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
           className="w-full h-full"
           preserveAspectRatio="xMidYMid meet"
+          style={{ minHeight: "280px" }}
         >
         {/* Background subtle grid */}
         <defs>
@@ -321,13 +322,13 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </svg>
       </div>
       
-      {/* Tooltip */}
+      {/* Tooltip - responsive positioning */}
       {hoveredNode && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[90%]">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[85%] sm:max-w-[90%] z-10">
           {nodes.filter(n => n.id === hoveredNode).map(node => (
             <div key={node.id} className="text-center">
-              <div className="font-serif text-sm text-foreground">{node.name}</div>
-              <div className="text-xs text-muted-foreground font-sans mt-0.5">
+              <div className="font-serif text-sm text-foreground truncate">{node.name}</div>
+              <div className="text-xs text-muted-foreground font-sans mt-0.5 truncate">
                 {getCleanRelationName(node.category)} du défunt
               </div>
             </div>
@@ -335,22 +336,22 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </div>
       )}
       
-      {/* Legend with category colors - responsive */}
-      <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4 text-xs font-sans text-muted-foreground px-2">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
+      {/* Legend with category colors - fully responsive */}
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 mt-3 sm:mt-4 text-[10px] sm:text-xs font-sans text-muted-foreground px-1">
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
           <span>Famille</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
           <span>Alliés</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
           <span>Amis</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
           <span>Autres</span>
         </div>
       </div>
