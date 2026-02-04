@@ -69,7 +69,7 @@ const MemorialCard = ({
             {name}
             {age !== null && (
               <span className="text-muted-foreground font-normal text-base md:text-lg ml-2">
-                ({age} ans)
+                • {age} ans
               </span>
             )}
           </h3>
@@ -156,7 +156,7 @@ const MemorialCard = ({
           {name}
           {age !== null && (
             <span className="text-muted-foreground font-normal text-sm ml-1">
-              ({age} ans)
+              • {age} ans
             </span>
           )}
         </h3>

@@ -6,8 +6,8 @@ const Footer = () => {
       <div className="container mx-auto section-padding">
         {/* Mission Statement */}
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <p className="font-serif text-2xl md:text-3xl font-light italic leading-relaxed">
-            "Honorer, Relier et Transmettre"
+          <p className="font-serif text-2xl md:text-3xl font-normal leading-relaxed">
+            Honorer, Relier et Transmettre
           </p>
         </div>
 

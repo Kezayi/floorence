@@ -294,7 +294,7 @@ const Users = () => {
                         {user.phone && (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Phone className="w-3 h-3" />
-                            {user.phone}
+                            {user.phone.slice(0, -6)}** ** **
                           </div>
                         )}
                       </div>

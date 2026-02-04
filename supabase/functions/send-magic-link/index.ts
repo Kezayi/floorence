@@ -59,7 +59,7 @@ const generateEmailHtml = (magicLink: string, isNewUser: boolean) => {
               <!-- Magic Link Button -->
               <div style="text-align: center; margin-bottom: 24px;">
                 <a href="${magicLink}" 
-                   style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">
+                   style="display: inline-block; background-color: #1F2937; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">
                   ${isNewUser ? "Activer mon compte" : "Me connecter"}
                 </a>
               </div>
@@ -195,8 +195,8 @@ const handler = async (req: Request): Promise<Response> => {
       reply_to: "contact@floorence.org",
       to: [normalizedEmail],
       subject: isNewUser
-        ? "🕯️ Bienvenue sur Floorence - Activez votre compte"
-        : "🕯️ Votre lien de connexion Floorence",
+        ? "Bienvenue sur Floorence - Activez votre compte"
+        : "Connexion sécurisée à votre espace Floorence",
       html: generateEmailHtml(magicLink, isNewUser),
     });
 

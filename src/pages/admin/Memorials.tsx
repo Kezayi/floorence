@@ -37,6 +37,7 @@ interface Memorial {
   is_active: boolean;
   merged_into: string | null;
   created_at: string;
+  payment_status?: string;
 }
 
 const Memorials = () => {
@@ -230,9 +231,15 @@ const Memorials = () => {
                     {!memorial.is_active && (
                       <Badge variant="secondary">Inactif</Badge>
                     )}
+                    {memorial.is_active && (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">En ligne</Badge>
+                    )}
                     {memorial.merged_into && (
                       <Badge variant="outline">Fusionné</Badge>
                     )}
+                    <Badge className={memorial.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                      {memorial.payment_status === 'completed' ? 'Payé' : 'En attente'}
+                    </Badge>
                     {hasDuplicates && !memorial.merged_into && (
                       <Badge variant="destructive">
                         {duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} potentiel{duplicates.length > 1 ? 's' : ''}
