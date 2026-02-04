@@ -64,6 +64,10 @@
     /* Admin theme */
     --admin-burgundy: 0 60% 25%;
 
+    /* Gris Anthracite - Section identification */
+    --memorial-anthracite: 220 13% 18%;
+    --memorial-anthracite-foreground: 0 0% 92%;
+
     /* Sidebar */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 25%;

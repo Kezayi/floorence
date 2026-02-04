@@ -69,6 +69,8 @@ export default {
           dark: "hsl(var(--memorial-dark))",
           "dark-foreground": "hsl(var(--memorial-dark-foreground))",
           "dark-muted": "hsl(var(--memorial-dark-muted))",
+          anthracite: "hsl(var(--memorial-anthracite))",
+          "anthracite-foreground": "hsl(var(--memorial-anthracite-foreground))",
         },
         candle: {
           glow: "hsl(var(--candle-glow))",

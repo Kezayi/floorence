@@ -41,10 +41,14 @@ const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 
 const queryClient = new QueryClient();
 
-// Minimal loading fallback
+// Minimal loading fallback with logo fade animation
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-pulse text-muted-foreground">Chargement...</div>
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-16 h-16 rounded-full bg-foreground/10 flex items-center justify-center animate-pulse">
+        <span className="font-serif text-3xl text-foreground/60">F</span>
+      </div>
+    </div>
   </div>
 );
 
