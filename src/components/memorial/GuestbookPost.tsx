@@ -96,12 +96,7 @@ const GuestbookPost = ({
           <h4 className="font-serif text-lg text-memorial-dark-foreground">
             {post.authorName}
             {isDeletedUser && (
-              <span 
-                className="text-memorial-dark-muted ml-1 cursor-help" 
-                title="Compte utilisateur supprimé"
-              >
-                *
-              </span>
+              <span className="text-memorial-dark-muted ml-1">*</span>
             )}
           </h4>
           <span className="inline-block mt-1 px-2 py-0.5 bg-memorial-dark-muted/20 text-memorial-dark-muted text-xs font-sans">
