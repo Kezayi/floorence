@@ -68,7 +68,7 @@ const GestureSummary = ({
       </div>
       
       {!userHasPosted && (
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-6 pt-4 border-t border-border">
           <Info className="w-3 h-3 inline mr-1" />
           Publiez un message dans le livre d'or pour allumer des cierges ou déposer des fleurs.
         </p>
