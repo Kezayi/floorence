@@ -1,4 +1,4 @@
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,8 @@ import { getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshi
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 // Types pour la désambiguïsation
 interface PersonMatch {
@@ -228,13 +230,23 @@ const organizeResultsForPerson = (
 };
 
 const SearchPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const query = searchParams.get("q") || "";
+  const [searchInput, setSearchInput] = useState(query);
   const { memorials } = useMemorials();
   const { user } = useAuth();
   const [selectedPerson, setSelectedPerson] = useState<PersonMatch | null>(null);
   
   const currentUserName = user?.email?.split("@")[0];
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      setSearchParams({ q: searchInput.trim() });
+      setSelectedPerson(null);
+    }
+  };
 
   const results = useMemo(
     () => query ? searchMemorialsAndAuthors(query, memorials) : [],
@@ -267,21 +279,37 @@ const SearchPage = () => {
               Retour à l'accueil
             </Link>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Search className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h1 className="font-serif text-2xl text-foreground">
-                  Résultats de recherche
+                  Recherche
                 </h1>
-                {query && (
-                  <p className="text-muted-foreground font-sans text-sm">
-                    {results.length} résultat{results.length > 1 ? "s" : ""} pour "{query}"
-                  </p>
-                )}
+                <p className="text-muted-foreground font-sans text-sm">
+                  Trouvez un défunt ou un proche
+                </p>
               </div>
             </div>
+
+            {/* Formulaire de recherche */}
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Nom du défunt ou d'un proche..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-10 h-12 text-base bg-background border-border"
+                  autoFocus
+                />
+              </div>
+              <Button type="submit" className="h-12 px-6">
+                Rechercher
+              </Button>
+            </form>
           </div>
 
           {/* Pas de recherche */}
@@ -289,7 +317,16 @@ const SearchPage = () => {
             <div className="text-center py-16">
               <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
               <p className="text-muted-foreground font-sans">
-                Utilisez la barre de recherche pour trouver un défunt ou un proche
+                Entrez un nom pour lancer la recherche
+              </p>
+            </div>
+          )}
+
+          {/* Résultats de recherche */}
+          {query && (
+            <div className="mb-4">
+              <p className="text-muted-foreground font-sans text-sm">
+                {results.length} résultat{results.length > 1 ? "s" : ""} pour "{query}"
               </p>
             </div>
           )}
