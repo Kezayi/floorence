@@ -170,12 +170,14 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
   const center = viewBoxSize / 2;
 
   return (
-    <div className="relative">
-      <svg
-        viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
-        className="w-full h-auto max-h-[400px]"
-        style={{ minHeight: "300px" }}
-      >
+    <div className="relative w-full overflow-hidden">
+      {/* Container responsive avec aspect-ratio */}
+      <div className="w-full aspect-square max-w-[500px] mx-auto">
+        <svg
+          viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
+          className="w-full h-full"
+          preserveAspectRatio="xMidYMid meet"
+        >
         {/* Background subtle grid */}
         <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -316,11 +318,12 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
             </g>
           );
         })}
-      </svg>
+        </svg>
+      </div>
       
       {/* Tooltip */}
       {hoveredNode && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-4 py-2 animate-fade-in">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[90%]">
           {nodes.filter(n => n.id === hoveredNode).map(node => (
             <div key={node.id} className="text-center">
               <div className="font-serif text-sm text-foreground">{node.name}</div>
@@ -332,8 +335,8 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </div>
       )}
       
-      {/* Legend with category colors */}
-      <div className="flex flex-wrap justify-center gap-4 mt-4 text-xs font-sans text-muted-foreground">
+      {/* Legend with category colors - responsive */}
+      <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4 text-xs font-sans text-muted-foreground px-2">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
           <span>Famille</span>
