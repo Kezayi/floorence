@@ -1,6 +1,7 @@
-import { createContext, useContext, ReactNode, useMemo } from "react";
+import { createContext, useContext, ReactNode, useMemo, useState, useEffect } from "react";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
-import { getMemorialType } from "@/lib/dateUtils";
+import { getMemorialType, formatDateFrench } from "@/lib/dateUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 // 10 espaces mémoriels afro-américains avec données complètes
 const mockMemorialsData = [
@@ -278,8 +279,15 @@ const mockMemorialsData = [
   },
 ];
 
+// Extended memorial type with isDemo flag
+export interface ExtendedSearchableMemorial extends SearchableMemorial {
+  isDemo: boolean;
+  createdBy?: string;
+  donationEnabled?: boolean;
+}
+
 interface MemorialsContextType {
-  memorials: SearchableMemorial[];
+  memorials: ExtendedSearchableMemorial[];
   memorialCards: {
     id: string;
     slug: string;
@@ -291,18 +299,78 @@ interface MemorialsContextType {
     candleCount: number;
     flowerCount: number;
     type: "RECENT" | "PAST";
+    isDemo: boolean;
   }[];
+  loading: boolean;
+  refetchMemorials: () => Promise<void>;
 }
 
 const MemorialsContext = createContext<MemorialsContextType | undefined>(undefined);
 
 export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
-  const memorials = useMemo<SearchableMemorial[]>(() => 
-    mockMemorialsData.map(m => ({
+  const [dbMemorials, setDbMemorials] = useState<ExtendedSearchableMemorial[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch memorials from database
+  const fetchMemorials = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('memorials')
+        .select('*')
+        .eq('is_published', true)
+        .eq('is_active', true)
+        .is('merged_into', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching memorials:', error);
+        return;
+      }
+
+      const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
+        id: m.id,
+        slug: m.slug,
+        name: `${m.first_name} ${m.last_name}`,
+        birthDate: formatDateFrench(m.birth_date),
+        deathDate: formatDateFrench(m.death_date),
+        bio: m.biography || "",
+        photos: m.photo_url ? [m.photo_url] : ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop"],
+        author: {
+          id: m.created_by,
+          name: "Créateur",
+          relation: "Créateur de l'espace",
+        },
+        guestbookMessages: [],
+        type: getMemorialType(formatDateFrench(m.death_date)),
+        isDemo: false,
+        createdBy: m.created_by,
+        donationEnabled: m.donation_enabled,
+        funeralDate: m.funeral_date,
+        funeralLocation: m.funeral_location,
+      }));
+
+      setDbMemorials(memorialsFromDb);
+    } catch (err) {
+      console.error('Error fetching memorials:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMemorials();
+  }, []);
+
+  // Combine mock and real memorials
+  const memorials = useMemo<ExtendedSearchableMemorial[]>(() => {
+    const mockWithFlag = mockMemorialsData.map(m => ({
       ...m,
       type: getMemorialType(m.deathDate),
-    })), 
-  []);
+      isDemo: true,
+    }));
+    
+    return [...dbMemorials, ...mockWithFlag];
+  }, [dbMemorials]);
 
   const memorialCards = useMemo(() => 
     memorials.map(m => {
@@ -327,12 +395,13 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
         candleCount: totals.candleCount,
         flowerCount: totals.flowerCount,
         type: m.type,
+        isDemo: m.isDemo,
       };
     }),
   [memorials]);
 
   return (
-    <MemorialsContext.Provider value={{ memorials, memorialCards }}>
+    <MemorialsContext.Provider value={{ memorials, memorialCards, loading, refetchMemorials: fetchMemorials }}>
       {children}
     </MemorialsContext.Provider>
   );

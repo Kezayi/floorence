@@ -36,6 +36,7 @@ interface MemorialHeroProps {
       authorName: string;
       relationCategory: string;
     }>;
+    isDemo?: boolean;
   };
   onScrollToGuestbook: () => void;
   gestureTotals?: GestureTotals;
@@ -127,6 +128,14 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
         {/* Info */}
         <div className="flex flex-col justify-center">
           <div className="animate-fade-in">
+            {/* Demo Badge */}
+            {memorial.isDemo && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-3 bg-amber-500/20 border border-amber-500/40 rounded-full text-amber-600 dark:text-amber-400 text-xs font-sans uppercase tracking-wider">
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                Démonstration
+              </div>
+            )}
+            
             <h1 className="text-4xl md:text-5xl lg:text-6xl mb-2">
               {memorial.name}
               {age !== null && (
