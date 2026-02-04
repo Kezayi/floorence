@@ -225,7 +225,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
           })}
         </g>
         
-        {/* Connection lines to deceased (center) */}
+        {/* Connection lines to deceased (center) - Bold black lines */}
         <g className="connection-lines">
           {nodes.map((node) => (
             <line
@@ -234,9 +234,9 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
               y1={center}
               x2={center + node.x}
               y2={center + node.y}
-              stroke="hsl(var(--border))"
-              strokeWidth={hoveredNode === node.id ? 1.5 : 1}
-              opacity={hoveredNode === node.id ? 0.8 : 0.4}
+              stroke="#000000"
+              strokeWidth={hoveredNode === node.id ? 3 : 2}
+              opacity={hoveredNode === node.id ? 1 : 0.7}
               className="transition-all duration-300"
             />
           ))}
