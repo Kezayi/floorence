@@ -130,8 +130,8 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
         </p>
       </div>
 
-      {/* 2D Graph */}
-      <div className="relative bg-card border border-border rounded-sm p-4">
+      {/* 2D Graph - responsive container */}
+      <div className="relative bg-card border border-border rounded-sm p-2 sm:p-4 overflow-visible">
         <RelationshipGraph2D deceasedName={deceasedName} posts={posts} />
       </div>
 
