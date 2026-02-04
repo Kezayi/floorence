@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { getCleanRelationName } from "@/lib/relationshipInference";
+import { getCleanRelationName, inferAllRelationships, InferredRelationship } from "@/lib/relationshipInference";
 
 interface RelationshipGraph2DProps {
   deceasedName: string;
@@ -94,7 +94,6 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     });
     
     const authorsList = Array.from(uniqueAuthors.entries());
-    const count = authorsList.length;
     
     // Calculate positions in concentric circles based on category
     const graphNodes: GraphNode[] = [];
@@ -139,6 +138,24 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     return graphNodes;
   }, [posts]);
 
+  // Infer relationships between living nodes
+  const inferredLinks = useMemo(() => {
+    const messages = posts.map(p => ({
+      authorName: p.authorName,
+      relationCategory: p.relationCategory,
+    }));
+    return inferAllRelationships(messages);
+  }, [posts]);
+
+  // Create a map of node positions by author name for drawing inter-node links
+  const nodePositionsByName = useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    nodes.forEach(node => {
+      map.set(node.name, { x: node.x, y: node.y });
+    });
+    return map;
+  }, [nodes]);
+
   if (posts.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] bg-muted/30 rounded-sm">
@@ -182,7 +199,33 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
           />
         ))}
         
-        {/* Connection lines */}
+        {/* Inferred links between living nodes (dotted lines) */}
+        <g className="inferred-links">
+          {inferredLinks.map((link, idx) => {
+            const fromPos = nodePositionsByName.get(link.fromAuthor);
+            const toPos = nodePositionsByName.get(link.toAuthor);
+            if (!fromPos || !toPos) return null;
+            
+            const opacity = link.confidence === 'high' ? 0.5 : link.confidence === 'medium' ? 0.35 : 0.2;
+            
+            return (
+              <line
+                key={`inferred-${idx}`}
+                x1={center + fromPos.x}
+                y1={center + fromPos.y}
+                x2={center + toPos.x}
+                y2={center + toPos.y}
+                stroke="hsl(var(--primary))"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity={opacity}
+                className="transition-all duration-300"
+              />
+            );
+          })}
+        </g>
+        
+        {/* Connection lines to deceased (center) */}
         <g className="connection-lines">
           {nodes.map((node) => (
             <line

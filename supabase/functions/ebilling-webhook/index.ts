@@ -153,6 +153,26 @@ serve(async (req) => {
 
     console.log('Transaction updated:', { id: data.id, status: internalStatus })
 
+    // If payment completed and it's for memorial creation, publish the memorial
+    if (internalStatus === 'completed' && data.payment_type === 'memorial_creation' && data.memorial_id) {
+      console.log('Publishing memorial after successful payment:', data.memorial_id)
+      
+      const { error: publishError } = await supabase
+        .from('memorials')
+        .update({
+          is_published: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', data.memorial_id)
+
+      if (publishError) {
+        console.error('Error publishing memorial:', publishError)
+        // Don't fail the webhook, transaction was still updated
+      } else {
+        console.log('Memorial published successfully:', data.memorial_id)
+      }
+    }
+
     // Return success response to EBILLING
     return new Response(
       JSON.stringify({ success: true, message: 'Webhook processed successfully' }),

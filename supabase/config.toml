@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.admin-settings]
 verify_jwt = false
+
+[functions.create-memorial]
+verify_jwt = false
