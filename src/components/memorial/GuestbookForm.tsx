@@ -88,8 +88,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   // Block admins/moderators from posting
   if (isAdminOrMod) {
     return (
-      <div className="mb-12 py-6 px-4 bg-memorial-anthracite text-center rounded-sm">
-        <p className="text-memorial-anthracite-foreground font-serif">
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm">
+        <p className="text-memorial-dark-muted text-center font-serif">
           En tant qu'administrateur ou modérateur, vous ne pouvez pas rédiger d'hommage avec ce compte.
         </p>
       </div>
