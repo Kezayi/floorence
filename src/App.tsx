@@ -45,7 +45,7 @@ const queryClient = new QueryClient();
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="flex flex-col items-center gap-4">
-      <div className="w-32 h-32 rounded-full bg-foreground/10 flex items-center justify-center animate-pulse">
+      <div className="w-32 h-32 rounded-full bg-foreground/10 flex items-center justify-center animate-fade-in">
         <span className="font-serif text-6xl text-foreground/60">F</span>
       </div>
     </div>
