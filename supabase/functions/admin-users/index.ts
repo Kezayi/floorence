@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 interface AdminRequest {
-  action: "list-users" | "add-role" | "remove-role" | "ban-user" | "unban-user";
+  action: "list-users" | "add-role" | "remove-role" | "ban-user" | "unban-user" | "delete-user";
   userId?: string;
   email?: string;
   role?: "admin" | "moderator";
@@ -455,6 +455,79 @@ const handler = async (req: Request): Promise<Response> => {
 
         return new Response(
           JSON.stringify({ success: true, message: "Utilisateur débloqué" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      case "delete-user": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "ID utilisateur requis" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Prevent self-deletion
+        if (userId === user.id) {
+          return new Response(
+            JSON.stringify({ error: "Vous ne pouvez pas supprimer votre propre compte" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Check if target is an admin (prevent deleting other admins)
+        const { data: targetRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+
+        const isTargetAdmin = targetRoles?.some((r) => r.role === "admin");
+        if (isTargetAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Impossible de supprimer un administrateur. Retirez d'abord son rôle." }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Get user email before deletion for audit
+        const { data: targetUserData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const targetEmail = targetUserData?.user?.email;
+
+        // Delete user roles first
+        await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId);
+
+        // Delete profile
+        await supabaseAdmin
+          .from("profiles")
+          .delete()
+          .eq("user_id", userId);
+
+        // Delete the user from auth
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+        if (deleteError) {
+          console.error("Delete user error:", deleteError);
+          throw deleteError;
+        }
+
+        console.log(`User ${userId} (${targetEmail}) deleted by admin ${user.id}`);
+
+        // Log audit action
+        await logAuditAction(
+          supabaseAdmin,
+          "delete_user",
+          user.id,
+          user.email,
+          userId,
+          targetEmail,
+          { permanent: true }
+        );
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Utilisateur supprimé définitivement" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
