@@ -14,6 +14,7 @@ interface MemorialCardProps {
   flowerCount: number;
   type: "RECENT" | "PAST";
   variant?: "card" | "list";
+  priority?: boolean;
 }
 
 const MemorialCard = ({
@@ -27,6 +28,7 @@ const MemorialCard = ({
   flowerCount,
   type,
   variant = "card",
+  priority = false,
 }: MemorialCardProps) => {
   const age = calculateAge(birthDate, deathDate);
   if (variant === "list") {
@@ -43,6 +45,7 @@ const MemorialCard = ({
               alt={`Portrait de ${name}`}
               width={160}
               height={213}
+              fetchPriority={priority ? "high" : undefined}
               className="w-full h-full object-cover portrait-memorial"
             />
           ) : (
@@ -108,6 +111,7 @@ const MemorialCard = ({
             alt={`Portrait de ${name}`}
             width={400}
             height={533}
+            fetchPriority={priority ? "high" : undefined}
             className="w-full h-full object-cover portrait-memorial"
           />
         ) : (
