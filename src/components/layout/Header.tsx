@@ -1,9 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
-import SearchBar from "@/components/search/SearchBar";
 import NotificationBell from "./NotificationBell";
 
 const Header = () => {
@@ -22,6 +21,21 @@ const Header = () => {
       ]
     : [
         { path: "/", label: "Accueil", icon: Home },
+        { path: "/creer", label: "Créer", icon: PlusCircle },
+        { path: "/auth", label: "Connexion", icon: LogIn },
+      ];
+
+  // Mobile bottom nav items (includes Search)
+  const mobileNavItems = user
+    ? [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/recherche", label: "Recherche", icon: Search },
+        { path: "/creer", label: "Créer", icon: PlusCircle },
+        { path: "/compte", label: "Compte", icon: User },
+      ]
+    : [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/recherche", label: "Recherche", icon: Search },
         { path: "/creer", label: "Créer", icon: PlusCircle },
         { path: "/auth", label: "Connexion", icon: LogIn },
       ];
@@ -52,10 +66,10 @@ const Header = () => {
 
   return (
     <>
-      {/* Top Header */}
+      {/* Top Header - Logo only */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F9FAFB]/90 backdrop-blur-sm border-b border-border text-foreground">
         <div className="container mx-auto">
-          <div className="flex items-center justify-between h-16 md:h-20 gap-4">
+          <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo + Tagline */}
             <Link 
               to="/" 
@@ -73,11 +87,6 @@ const Header = () => {
                 Aux bons soins des vivants
               </span>
             </Link>
-
-            {/* Search Bar - Center */}
-            <div className="flex-1 max-w-md mx-4">
-              <SearchBar />
-            </div>
 
             {/* Notification Bell + Hamburger Menu - Desktop Only */}
             <div className="hidden md:flex items-center gap-2">
@@ -115,6 +124,19 @@ const Header = () => {
                       );
                     })}
                     
+                    {/* Recherche - dans le hamburger menu */}
+                    <Link
+                      to="/recherche"
+                      className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
+                        isActive("/recherche")
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Search className="w-4 h-4" />
+                      Recherche
+                    </Link>
+                    
                     {/* Admin - uniquement pour admin/modérateur */}
                     {user && isAdminOrMod && (
                       <Link
@@ -147,6 +169,11 @@ const Header = () => {
               )}
               </div>
             </div>
+
+            {/* Mobile - Notification only (Menu is in bottom nav) */}
+            <div className="flex md:hidden items-center">
+              <NotificationBell />
+            </div>
           </div>
         </div>
       </header>
@@ -154,7 +181,7 @@ const Header = () => {
       {/* Bottom Navigation - Mobile Only (TikTok style) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black border-t border-white/10 safe-area-bottom">
         <div className="flex items-center justify-around h-16">
-          {navItems.map((item) => {
+          {mobileNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
