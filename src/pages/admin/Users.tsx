@@ -40,7 +40,8 @@ import {
   RefreshCw,
   Search,
   Users as UsersIcon,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -63,6 +64,7 @@ const Users = () => {
   const queryClient = useQueryClient();
   const [showAddRoleDialog, setShowAddRoleDialog] = useState(false);
   const [showBanDialog, setShowBanDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<EnrichedUser | null>(null);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminRole, setNewAdminRole] = useState<'admin' | 'moderator'>('admin');
@@ -164,6 +166,27 @@ const Users = () => {
     },
   });
 
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'delete-user', userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
+      toast.success('Utilisateur supprimé définitivement');
+      setShowDeleteDialog(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   const isBanned = (user: EnrichedUser) => {
     if (!user.banned_until) return false;
     return new Date(user.banned_until) > new Date();
@@ -202,6 +225,11 @@ const Users = () => {
   const handleBanClick = (user: EnrichedUser) => {
     setSelectedUser(user);
     setShowBanDialog(true);
+  };
+
+  const handleDeleteClick = (user: EnrichedUser) => {
+    setSelectedUser(user);
+    setShowDeleteDialog(true);
   };
 
   return (
@@ -367,8 +395,21 @@ const Users = () => {
                             size="sm"
                             onClick={() => handleBanClick(user)}
                             className="text-destructive hover:text-destructive"
+                            title="Bloquer l'utilisateur"
                           >
                             <Ban className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {/* Delete button - only for non-admins */}
+                        {!user.roles.includes('admin') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(user)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Supprimer définitivement"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
                       </div>
@@ -484,6 +525,39 @@ const Users = () => {
             >
               <Ban className="w-4 h-4 mr-2" />
               Bloquer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Supprimer l'utilisateur
+            </DialogTitle>
+            <DialogDescription className="space-y-2">
+              <p>
+                Êtes-vous sûr de vouloir supprimer définitivement <strong>{selectedUser?.email}</strong> ?
+              </p>
+              <p className="text-destructive font-medium">
+                ⚠️ Cette action est irréversible. Toutes les données associées à cet utilisateur seront perdues.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => selectedUser && deleteUserMutation.mutate(selectedUser.id)}
+              disabled={deleteUserMutation.isPending}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>
