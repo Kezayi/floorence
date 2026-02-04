@@ -51,13 +51,13 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   // Block non-authenticated users - must sign in to post
   if (!user) {
     return (
-      <div className="mb-12 py-6 px-4 bg-memorial-anthracite text-center rounded-sm">
-        <p className="text-memorial-anthracite-foreground font-serif mb-2">
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm text-center">
+        <p className="text-memorial-dark-muted font-serif mb-2">
           Pour participer au maillage et honorer la mémoire, l'identification est requise.
         </p>
         <a 
           href="/auth" 
-          className="text-memorial-anthracite-foreground underline hover:text-memorial-anthracite-foreground/80 transition-colors font-sans text-sm"
+          className="text-memorial-dark-muted underline hover:text-memorial-dark-foreground transition-colors font-sans text-sm"
         >
           Se connecter
         </a>
@@ -88,8 +88,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   // Block admins/moderators from posting
   if (isAdminOrMod) {
     return (
-      <div className="mb-12 py-6 px-4 bg-memorial-anthracite text-center rounded-sm">
-        <p className="text-memorial-anthracite-foreground font-serif">
+      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm text-center">
+        <p className="text-memorial-dark-muted font-serif">
           En tant qu'administrateur ou modérateur, vous ne pouvez pas rédiger d'hommage avec ce compte.
         </p>
       </div>
