@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Bell, BellOff, Feather } from "lucide-react";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
-import AuthorCredibility from "./AuthorCredibility";
 import ShareButtons from "./ShareButtons";
 import GestureSummary from "./GestureSummary";
 import { calculateAge } from "@/lib/dateUtils";
@@ -132,7 +131,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               {memorial.name}
               {age !== null && (
                 <span className="text-muted-foreground font-normal text-3xl md:text-4xl ml-3">
-                  ({age} ans)
+                  • {age} ans
                 </span>
               )}
             </h1>
@@ -155,12 +154,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 {" "}({getRelationWithDeceased(memorial.author.relation)})
               </span>
             </div>
-            
-            {/* Author Credibility */}
-            <AuthorCredibility 
-              authorId={memorial.author.id} 
-              initialCount={Math.floor(Math.random() * 20) + 5}
-            />
 
             <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
               {memorial.bio}

@@ -465,6 +465,7 @@ const CreateMemorial = () => {
                         onChange={(value) =>
                           setFormData((prev) => ({ ...prev, authorRelation: value }))
                         }
+                        variant="light"
                       />
                       <ErrorMessage message={errors.authorRelation} />
                     </div>

@@ -325,13 +325,17 @@ const SearchPage = () => {
                     onClick={() => setSelectedPerson(person)}
                     className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left group"
                   >
-                    <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0">
-                      {person.photo && (
+                    <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
+                      {person.photo ? (
                         <img
                           src={person.photo}
                           alt=""
                           className="w-full h-full object-cover"
                         />
+                      ) : (
+                        <span className="font-serif text-lg text-muted-foreground">
+                          {person.name.charAt(0).toUpperCase()}
+                        </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -344,7 +348,7 @@ const SearchPage = () => {
                             ? "bg-primary/10 text-primary" 
                             : "bg-secondary text-muted-foreground"
                         }`}>
-                          {person.type === "deceased" ? "Défunt" : "Auteur"}
+                          {person.type === "deceased" ? "Défunt" : "Témoin"}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground font-sans truncate">
@@ -402,13 +406,17 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
           </button>
         )}
         <div className="flex items-center gap-4">
-          <div className="w-16 h-20 overflow-hidden rounded-sm bg-muted shrink-0">
-            {person.photo && (
+          <div className="w-16 h-20 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
+            {person.photo ? (
               <img
                 src={person.photo}
                 alt=""
                 className="w-full h-full object-cover"
               />
+            ) : (
+              <span className="font-serif text-2xl text-muted-foreground">
+                {organized.authorName.charAt(0).toUpperCase()}
+              </span>
             )}
           </div>
           <div>
@@ -420,7 +428,7 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
                 ? "bg-primary/10 text-primary" 
                 : "bg-secondary text-muted-foreground"
             }`}>
-              {person.type === "deceased" ? "Défunt" : "Auteur"}
+              {person.type === "deceased" ? "Défunt" : "Témoin"}
             </span>
           </div>
         </div>

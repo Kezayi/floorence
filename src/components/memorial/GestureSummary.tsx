@@ -1,5 +1,4 @@
 import { Info } from "lucide-react";
-import GestureButton from "./GestureButton";
 import {
   Tooltip,
   TooltipContent,
@@ -42,24 +41,30 @@ const GestureSummary = ({
         </Tooltip>
       </div>
       
-      <div className="grid grid-cols-3 gap-3">
-        <GestureButton
-          type="RIP"
-          count={totals.ripCount}
+      <div className="flex items-center justify-center gap-6">
+        <button
           onClick={onRIPClick}
-        />
-        <GestureButton
-          type="CANDLE"
-          count={totals.candleCount}
+          className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="text-2xl font-serif">{totals.ripCount.toLocaleString("fr-FR")}</span>
+          <span className="text-xs font-sans">Repos en paix</span>
+        </button>
+        <button
           onClick={onCandleClick}
           disabled={!userHasPosted}
-        />
-        <GestureButton
-          type="FLOWER"
-          count={totals.flowerCount}
+          className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <span className="text-2xl font-serif">{totals.candleCount.toLocaleString("fr-FR")}</span>
+          <span className="text-xs font-sans">Cierges</span>
+        </button>
+        <button
           onClick={onFlowerClick}
           disabled={!userHasPosted}
-        />
+          className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <span className="text-2xl font-serif">{totals.flowerCount.toLocaleString("fr-FR")}</span>
+          <span className="text-xs font-sans">Fleurs</span>
+        </button>
       </div>
       
       {!userHasPosted && (

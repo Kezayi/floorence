@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Cross, Heart } from "lucide-react";
+import { Calendar, MapPin, Cross, Flame } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface MemorialEvent {
@@ -31,7 +31,7 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
   const [loading, setLoading] = useState(true);
 
   // Section icon based on type
-  const SectionIcon = type === "funerals" ? Cross : Heart;
+  const SectionIcon = type === "funerals" ? Cross : Flame;
 
   useEffect(() => {
     const fetchEvents = async () => {

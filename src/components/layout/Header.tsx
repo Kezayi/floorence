@@ -53,7 +53,7 @@ const Header = () => {
   return (
     <>
       {/* Top Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-admin-burgundy/25 backdrop-blur-sm border-b border-white/10 text-white">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#F9FAFB]/90 backdrop-blur-sm border-b border-border text-foreground">
         <div className="container mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
             {/* Logo + Tagline */}

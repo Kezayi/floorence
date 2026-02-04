@@ -51,13 +51,13 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   // Block non-authenticated users - must sign in to post
   if (!user) {
     return (
-      <div className="mb-12 p-6 bg-memorial-dark-muted/10 border border-memorial-dark-muted/30 rounded-sm text-center">
-        <p className="text-memorial-dark-foreground font-serif mb-4">
-          Connectez-vous pour rédiger un hommage
+      <div className="mb-12 text-center">
+        <p className="text-memorial-dark-muted font-serif mb-2">
+          Pour participer au maillage et honorer la mémoire, l'identification est requise.
         </p>
         <a 
           href="/auth" 
-          className="inline-block px-6 py-3 bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90 transition-colors font-sans text-sm"
+          className="text-memorial-dark-foreground underline hover:text-memorial-dark-foreground/80 transition-colors font-sans text-sm"
         >
           Se connecter
         </a>

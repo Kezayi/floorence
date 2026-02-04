@@ -261,7 +261,7 @@ const InferredRelationshipsSection = ({ relationships }: { relationships: Inferr
     <div className="bg-secondary p-6 rounded-sm">
       <div className="flex items-center gap-2 mb-4">
         <Link2 className="w-5 h-5 text-primary" />
-        <h4>Relations inférées entre les proches</h4>
+        <h4>Liens de parenté retrouvés</h4>
         <span className="text-sm text-muted-foreground font-sans">
           ({relationships.length})
         </span>
