@@ -85,6 +85,9 @@ const GuestbookPost = ({
     }
   };
 
+  // Check if user account was deleted (user_id is null or 'anonymous')
+  const isDeletedUser = !post.authorId || post.authorId === 'anonymous';
+
   return (
     <article className="py-6 border-b border-memorial-dark-muted/20 last:border-0">
       {/* Author info */}
@@ -92,6 +95,14 @@ const GuestbookPost = ({
         <div>
           <h4 className="font-serif text-lg text-memorial-dark-foreground">
             {post.authorName}
+            {isDeletedUser && (
+              <span 
+                className="text-memorial-dark-muted ml-1 cursor-help" 
+                title="Compte utilisateur supprimé"
+              >
+                *
+              </span>
+            )}
           </h4>
           <span className="inline-block mt-1 px-2 py-0.5 bg-memorial-dark-muted/20 text-memorial-dark-muted text-xs font-sans">
             {getRelationWithDeceased(post.relationCategory)}

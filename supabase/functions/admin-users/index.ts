@@ -493,7 +493,13 @@ const handler = async (req: Request): Promise<Response> => {
         const { data: targetUserData } = await supabaseAdmin.auth.admin.getUserById(userId);
         const targetEmail = targetUserData?.user?.email;
 
-        // Delete user roles first
+        // IMPORTANT: Keep guestbook posts but set user_id to NULL (mark as deleted user)
+        await supabaseAdmin
+          .from("guestbook_posts")
+          .update({ user_id: null })
+          .eq("user_id", userId);
+
+        // Delete user roles
         await supabaseAdmin
           .from("user_roles")
           .delete()
