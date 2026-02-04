@@ -199,7 +199,7 @@ const Index = () => {
             ) : (
               <>
                 <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
-                  {paginatedMemorials.map((memorial) => (
+                  {paginatedMemorials.map((memorial, index) => (
                     <MemorialCard
                       key={memorial.id}
                       id={memorial.id}
@@ -213,6 +213,7 @@ const Index = () => {
                       flowerCount={memorial.flowerCount}
                       type={memorial.type}
                       variant={viewMode === "list" ? "list" : "card"}
+                      priority={index < 4}
                     />
                   ))}
                 </div>
