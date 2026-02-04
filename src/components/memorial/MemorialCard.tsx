@@ -36,15 +36,17 @@ const MemorialCard = ({
         className="memorial-card group flex flex-row items-stretch bg-card hover:shadow-lg hover:shadow-black/5 transition-all duration-500"
       >
         {/* Photo Portrait - Left */}
-        <div className="w-24 md:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden bg-muted">
+        <div className="w-24 md:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden bg-muted aspect-[3/4]">
           {photoUrl ? (
             <img
               src={photoUrl}
               alt={`Portrait de ${name}`}
-              className="w-full h-full object-cover portrait-memorial aspect-[3/4]"
+              width={160}
+              height={213}
+              className="w-full h-full object-cover portrait-memorial"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-secondary aspect-[3/4]">
+            <div className="w-full h-full flex items-center justify-center bg-secondary">
               <span className="font-serif text-3xl text-muted-foreground/30">
                 {name.charAt(0)}
               </span>
@@ -104,6 +106,8 @@ const MemorialCard = ({
           <img
             src={photoUrl}
             alt={`Portrait de ${name}`}
+            width={400}
+            height={533}
             className="w-full h-full object-cover portrait-memorial"
           />
         ) : (
