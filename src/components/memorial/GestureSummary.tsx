@@ -47,7 +47,7 @@ const GestureSummary = ({
           className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
         >
           <span className="text-2xl font-serif">{totals.ripCount.toLocaleString("fr-FR")}</span>
-          <span className="text-xs font-sans">Repos en paix</span>
+          <span className="text-xs font-sans">RIP</span>
         </button>
         <button
           onClick={onCandleClick}

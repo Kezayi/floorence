@@ -10,7 +10,7 @@ interface GestureButtonProps {
 
 const gestureConfig = {
   RIP: {
-    label: "Repos en paix",
+    label: "RIP",
     className: "bg-secondary hover:bg-muted",
   },
   CANDLE: {

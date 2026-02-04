@@ -66,7 +66,7 @@ const GuestbookPagination = ({
   };
 
   return (
-    <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-memorial-dark-muted/20">
+    <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-memorial-dark-muted/20">
       {/* Previous button */}
       <button
         onClick={handlePrevious}
