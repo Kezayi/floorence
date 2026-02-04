@@ -70,3 +70,20 @@ export const getMonthsSinceDeath = (deathDateStr: string): number | null => {
   
   return Math.max(0, months);
 };
+
+/**
+ * Format an ISO date or Date object to French date string like "12 Mars 1945"
+ */
+export const formatDateFrench = (date: string | Date | null): string => {
+  if (!date) return "";
+  
+  const monthNames = [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+  ];
+  
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "";
+  
+  return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+};
