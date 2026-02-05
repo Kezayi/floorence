@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, GitMerge, ExternalLink } from 'lucide-react';
+import { Search, GitMerge, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -34,6 +36,8 @@ interface Memorial {
   first_name: string;
   last_name: string;
   death_date: string | null;
+  birth_date: string | null;
+  biography: string | null;
   is_active: boolean;
   merged_into: string | null;
   created_at: string;
@@ -46,6 +50,15 @@ const Memorials = () => {
   const [selectedMemorial, setSelectedMemorial] = useState<Memorial | null>(null);
   const [targetMemorialId, setTargetMemorialId] = useState<string>('');
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    birth_date: '',
+    death_date: '',
+    biography: '',
+  });
 
   const pagination = useServerPagination(10);
 
@@ -83,7 +96,7 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('*')
+        .select('id, slug, first_name, last_name, death_date, birth_date, biography, is_active, merged_into, created_at')
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
@@ -143,9 +156,91 @@ const Memorials = () => {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async (data: { id: string; first_name: string; last_name: string; birth_date: string | null; death_date: string | null; biography: string | null }) => {
+      const { error } = await supabase
+        .from('memorials')
+        .update({
+          first_name: data.first_name,
+          last_name: data.last_name,
+          birth_date: data.birth_date || null,
+          death_date: data.death_date || null,
+          biography: data.biography || null,
+        })
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
+      toast.success('Mémorial modifié avec succès');
+      setShowEditDialog(false);
+      setSelectedMemorial(null);
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // First delete related guestbook posts
+      const { error: postsError } = await supabase
+        .from('guestbook_posts')
+        .delete()
+        .eq('memorial_id', id);
+
+      if (postsError) throw postsError;
+
+      // Then delete memorial events
+      const { error: eventsError } = await supabase
+        .from('memorial_events')
+        .delete()
+        .eq('memorial_id', id);
+
+      if (eventsError) throw eventsError;
+
+      // Finally delete the memorial - need to use edge function for admin delete
+      const { error } = await supabase
+        .from('memorials')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-memorials-count'] });
+      toast.success('Mémorial supprimé avec succès');
+      setShowDeleteDialog(false);
+      setSelectedMemorial(null);
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
   const handleMerge = (memorial: Memorial) => {
     setSelectedMemorial(memorial);
     setShowMergeDialog(true);
+  };
+
+  const handleEdit = (memorial: Memorial) => {
+    setSelectedMemorial(memorial);
+    setEditForm({
+      first_name: memorial.first_name,
+      last_name: memorial.last_name,
+      birth_date: memorial.birth_date || '',
+      death_date: memorial.death_date || '',
+      biography: memorial.biography || '',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleDelete = (memorial: Memorial) => {
+    setSelectedMemorial(memorial);
+    setShowDeleteDialog(true);
   };
 
   const confirmMerge = () => {
@@ -154,6 +249,24 @@ const Memorials = () => {
         sourceId: selectedMemorial.id,
         targetId: targetMemorialId,
       });
+    }
+  };
+
+  const confirmEdit = () => {
+    if (selectedMemorial) {
+      editMutation.mutate({
+        id: selectedMemorial.id,
+        ...editForm,
+        birth_date: editForm.birth_date || null,
+        death_date: editForm.death_date || null,
+        biography: editForm.biography || null,
+      });
+    }
+  };
+
+  const confirmDelete = () => {
+    if (selectedMemorial) {
+      deleteMutation.mutate(selectedMemorial.id);
     }
   };
 
@@ -261,6 +374,22 @@ const Memorials = () => {
                       Voir
                     </a>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(memorial)}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Modifier
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDelete(memorial)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer
+                  </Button>
                   {!memorial.merged_into && hasDuplicates && (
                     <Button
                       variant="outline"
@@ -331,6 +460,98 @@ const Memorials = () => {
               disabled={!targetMemorialId || mergeMutation.isPending}
             >
               Confirmer la fusion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier le mémorial</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">Prénom</Label>
+                <Input
+                  id="first_name"
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Nom</Label>
+                <Input
+                  id="last_name"
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="birth_date">Date de naissance</Label>
+                <Input
+                  id="birth_date"
+                  type="date"
+                  value={editForm.birth_date}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, birth_date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="death_date">Date de décès</Label>
+                <Input
+                  id="death_date"
+                  type="date"
+                  value={editForm.death_date}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, death_date: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="biography">Biographie</Label>
+              <Textarea
+                id="biography"
+                value={editForm.biography}
+                onChange={(e) => setEditForm(prev => ({ ...prev, biography: e.target.value }))}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={confirmEdit} disabled={editMutation.isPending}>
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le mémorial</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le mémorial de{' '}
+              <strong>{selectedMemorial?.first_name} {selectedMemorial?.last_name}</strong> ?
+              Cette action supprimera également tous les hommages associés et est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>
