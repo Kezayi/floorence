@@ -380,6 +380,15 @@ export type Database = {
     }
     Functions: {
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
+      get_memorial_gesture_stats: {
+        Args: { p_memorial_ids: string[] }
+        Returns: {
+          memorial_id: string
+          post_count: number
+          total_candles: number
+          total_flowers: number
+        }[]
+      }
       get_public_guestbook_posts: {
         Args: { p_memorial_id?: string }
         Returns: {
