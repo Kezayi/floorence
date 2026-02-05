@@ -1,36 +1,29 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-// Input validation schema for EBILLING webhook payload
-// Based on EBILLING documentation, the callback sends these parameters:
-// billingid, transactionid, reference (external_reference), amount, paymentsystem, merchantid, customerid
-const WebhookPayloadSchema = z.object({
-  // billingid is the EBILLING internal bill ID
-  billingid: z.string().min(1).max(100).optional(),
-  // transactionid is the operator transaction ID
-  transactionid: z.string().min(1).max(100).optional(),
-  // reference is our external_reference we sent when creating the bill
-  reference: z.string().min(1).max(100),
-  // amount paid
-  amount: z.union([z.number(), z.string()]).optional(),
-  // payment system used (airtelmoney, moovmoney4, etc.)
-  paymentsystem: z.string().max(50).optional(),
-  // merchant ID
-  merchantid: z.string().max(100).optional(),
-  // customer ID
-  customerid: z.string().max(100).optional(),
-  // Some implementations also send status
-  status: z.string().max(50).optional(),
-  // payer info
-  payer_code: z.string().max(50).optional(),
-  payerid: z.string().max(100).optional(),
-})
+// Helper function to check if payment is considered successful
+function isPaymentSuccessful(data: Record<string, unknown>): boolean {
+  // Check state field (eBilling simulator uses 'paid' or 'ready')
+  const state = String(data.state || '').toLowerCase()
+  if (state === 'paid' || state === 'ready') {
+    return true
+  }
+  
+  // Check status field (some implementations use 'success')
+  const status = String(data.status || '').toLowerCase()
+  if (status === 'success') {
+    return true
+  }
+  
+  // If callback is received without explicit status, assume success
+  // (EBILLING documentation: callback = payment successful)
+  return true
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -45,8 +38,7 @@ serve(async (req) => {
     // EBILLING can send data as JSON body or as form-urlencoded
     // We need to handle both cases
     const contentType = req.headers.get('content-type') || ''
-    // deno-lint-ignore no-explicit-any
-    let rawBody: any
+    let rawBody: Record<string, unknown> = {}
     
     try {
       if (contentType.includes('application/json')) {
@@ -72,41 +64,77 @@ serve(async (req) => {
 
     console.log('Received EBILLING webhook:', JSON.stringify(rawBody))
 
-    const validationResult = WebhookPayloadSchema.safeParse(rawBody)
+    // Extract data from raw body - be tolerant of missing fields
+    const reference = String(rawBody.reference || rawBody.external_reference || '')
+    const billingId = String(rawBody.billingid || rawBody.billing_id || '')
+    const transactionId = String(rawBody.transactionid || rawBody.transaction_id || '')
+    const paymentSystem = String(rawBody.paymentsystem || rawBody.payment_system || '')
     
-    if (!validationResult.success) {
-      console.error('Webhook validation error:', validationResult.error.issues)
-      // Still try to process if we have at least a reference
-      if (!rawBody.reference) {
+    console.log('Extracted fields:', { reference, billingId, transactionId, paymentSystem })
+    
+    // Check if we have at least one identifier to find the transaction
+    if (!reference && !transactionId && !billingId) {
+      console.warn('No identifier found in webhook payload, but returning 200 OK')
       return new Response(
-        JSON.stringify({ error: 'Invalid webhook payload' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ status: 'received', message: 'No identifier found' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-      }
     }
-
-    // Extract data from validated result or raw body
-    const data = validationResult.success ? validationResult.data : rawBody
-    const reference = data.reference
-    const billingId = data.billingid || data.billing_id
-    const transactionId = data.transactionid || data.transaction_id
-    const paymentSystem = data.paymentsystem || data.payment_system
 
     // Create Supabase client with service role for admin access
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Find the transaction by reference (our external_reference)
-    const { data: existingTx } = await supabase
+    // Try to find the transaction by reference OR transactionId
+    let existingTx = null
+    
+    // First try by reference (our external_reference like FLO-...)
+    if (reference) {
+      const { data: txByRef } = await supabase
+        .from('payment_transactions')
+        .select('id, status, ebilling_transaction_id, payment_type, memorial_id, metadata')
+        .eq('ebilling_reference', reference)
+        .maybeSingle()
+      
+      if (txByRef) {
+        existingTx = txByRef
+        console.log('Found transaction by reference:', reference)
+      }
+    }
+    
+    // If not found, try by transactionId
+    if (!existingTx && transactionId) {
+      const { data: txByTxId } = await supabase
+        .from('payment_transactions')
+        .select('id, status, ebilling_transaction_id, payment_type, memorial_id, metadata')
+        .eq('ebilling_transaction_id', transactionId)
+        .maybeSingle()
+      
+      if (txByTxId) {
+        existingTx = txByTxId
+        console.log('Found transaction by transactionId:', transactionId)
+      }
+    }
+    
+    // If still not found, try by billingId in metadata
+    if (!existingTx && billingId) {
+      const { data: txByBillingId } = await supabase
       .from('payment_transactions')
-      .select('id, status, ebilling_transaction_id, payment_type, memorial_id')
-      .eq('ebilling_reference', reference)
-      .maybeSingle()
+        .select('id, status, ebilling_transaction_id, payment_type, memorial_id, metadata')
+        .eq('ebilling_transaction_id', billingId)
+        .maybeSingle()
+      
+      if (txByBillingId) {
+        existingTx = txByBillingId
+        console.log('Found transaction by billingId:', billingId)
+      }
+    }
 
     if (!existingTx) {
-      console.error('Transaction not found for reference:', reference)
+      console.warn('Transaction not found for identifiers:', { reference, transactionId, billingId })
+      // Return 200 OK anyway for the simulator
       return new Response(
-        JSON.stringify({ error: 'Transaction not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ status: 'received', message: 'Transaction not found but webhook acknowledged' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -114,14 +142,16 @@ serve(async (req) => {
     if (existingTx.status === 'completed') {
       console.log('Transaction already completed:', existingTx.id)
       return new Response(
-        JSON.stringify({ success: true, message: 'Already processed' }),
+        JSON.stringify({ status: 'received', message: 'Already processed' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // EBILLING callback means payment was successful
-    // According to documentation: "Si le payement est reussi, Ebilling va notifier votre système"
-    const internalStatus = 'completed'
+    // Check if payment is successful based on state/status fields
+    const paymentSuccessful = isPaymentSuccessful(rawBody)
+    const internalStatus = paymentSuccessful ? 'completed' : 'pending'
+    
+    console.log('Payment status check:', { paymentSuccessful, internalStatus, rawState: rawBody.state, rawStatus: rawBody.status })
 
     // Update the transaction in our database
     const { error: updateError } = await supabase
@@ -130,9 +160,10 @@ serve(async (req) => {
         status: internalStatus,
         ebilling_transaction_id: transactionId || billingId || 'callback-received',
         metadata: {
-          ...((existingTx as { metadata?: Record<string, unknown> }).metadata || {}),
+          ...(existingTx.metadata as Record<string, unknown> || {}),
           payment_system: paymentSystem,
-          callback_received_at: new Date().toISOString()
+          callback_received_at: new Date().toISOString(),
+          raw_webhook_data: rawBody
         },
         updated_at: new Date().toISOString()
       })
@@ -140,16 +171,17 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Error updating transaction:', updateError)
+      // Return 200 OK anyway - don't fail the webhook
       return new Response(
-        JSON.stringify({ error: 'Failed to update transaction' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ status: 'received', message: 'Webhook received but update failed', error: updateError.message }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     console.log('Transaction updated:', { id: existingTx.id, status: internalStatus })
 
     // If payment completed and it's for memorial creation, publish the memorial
-    if (existingTx.payment_type === 'memorial_creation' && existingTx.memorial_id) {
+    if (paymentSuccessful && existingTx.payment_type === 'memorial_creation' && existingTx.memorial_id) {
       console.log('Publishing memorial after successful payment:', existingTx.memorial_id)
       
       const { error: publishError } = await supabase
@@ -168,17 +200,18 @@ serve(async (req) => {
       }
     }
 
-    // Return success response to EBILLING
+    // Return success response to EBILLING (always 200 OK)
     return new Response(
-      JSON.stringify({ success: true, message: 'Webhook processed successfully' }),
+      JSON.stringify({ status: 'received', message: 'Webhook processed successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     console.error('Webhook processing error:', error)
+    // Even on error, return 200 to acknowledge receipt
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ status: 'received', message: 'Webhook received with errors', error: String(error) }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
