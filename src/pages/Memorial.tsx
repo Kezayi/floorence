@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialHero from "@/components/memorial/MemorialHero";
@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
+import { calculateAge } from "@/lib/dateUtils";
 import { toast } from "sonner";
 
 interface MemorialEvent {
@@ -48,10 +49,24 @@ const Memorial = () => {
   // Check if contributions are enabled globally
   const contributionsEnabled = settings?.contribution_link_template.enabled && settings?.contribution_link_template.url;
 
-  // Find the memorial by slug from context
+  // Find the memorial by slug or legacy_slug from context
   const memorialData = useMemo(() => {
-    return memorials.find((m) => m.slug === slug);
+    // First try current slug
+    const bySlug = memorials.find((m) => m.slug === slug);
+    if (bySlug) return bySlug;
+    
+    // If not found, check legacy slugs for redirect
+    return memorials.find((m) => m.legacySlug === slug);
   }, [memorials, slug]);
+
+  // Check if we need to redirect from legacy slug to new slug
+  const shouldRedirect = memorialData && memorialData.legacySlug === slug && memorialData.slug !== slug;
+
+  // Calculate age for SEO
+  const ageAtDeath = useMemo(() => {
+    if (!memorialData) return null;
+    return calculateAge(memorialData.birthDate, memorialData.deathDate);
+  }, [memorialData?.birthDate, memorialData?.deathDate]);
 
   // Helper to check if string is valid UUID
   const isValidUUID = (str: string): boolean => {
@@ -282,16 +297,21 @@ const Memorial = () => {
     }
   };
 
-  // SEO: Update meta tags for this memorial
+  // SEO: Update meta tags for this memorial with enhanced social preview
   useSEO({
     title: memorialData ? `Hommage à ${memorialData.name}` : undefined,
-    description: memorialData 
-      ? `${memorialData.bio.substring(0, 150)}${memorialData.bio.length > 150 ? "..." : ""}`
-      : undefined,
-    image: memorialData?.photos?.[0],
+    description: memorialData?.bio,
+    image: memorialData?.photos?.[memorialData.defaultPhotoIndex || 0] || memorialData?.photos?.[0],
     type: "article",
     url: memorialData ? `${window.location.origin}/memorial/${memorialData.slug}` : undefined,
+    deceasedName: memorialData?.name,
+    age: ageAtDeath,
   });
+
+  // Handle legacy slug redirect (301 equivalent in SPA)
+  if (shouldRedirect && memorialData) {
+    return <Navigate to={`/memorial/${memorialData.slug}`} replace />;
+  }
 
   // If memorial not found, show error page
   if (!memorialData) {

@@ -182,6 +182,7 @@ export type Database = {
           is_active: boolean
           is_published: boolean
           last_name: string
+          legacy_slug: string | null
           merged_into: string | null
           photo_url: string | null
           photos: string[] | null
@@ -207,6 +208,7 @@ export type Database = {
           is_active?: boolean
           is_published?: boolean
           last_name: string
+          legacy_slug?: string | null
           merged_into?: string | null
           photo_url?: string | null
           photos?: string[] | null
@@ -232,6 +234,7 @@ export type Database = {
           is_active?: boolean
           is_published?: boolean
           last_name?: string
+          legacy_slug?: string | null
           merged_into?: string | null
           photo_url?: string | null
           photos?: string[] | null
@@ -380,6 +383,10 @@ export type Database = {
     }
     Functions: {
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
+      generate_secure_slug: {
+        Args: { first_name: string; last_name: string }
+        Returns: string
+      }
       get_memorial_gesture_stats: {
         Args: { p_memorial_ids: string[] }
         Returns: {
@@ -417,6 +424,7 @@ export type Database = {
         Args: { p_funeral_date: string }
         Returns: boolean
       }
+      migrate_to_secure_slugs: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "moderator"
