@@ -6,6 +6,8 @@ import MemorialHero from "@/components/memorial/MemorialHero";
 import DeathNotice from "@/components/memorial/DeathNotice";
 import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
+import EditMemorialDialog from "@/components/memorial/EditMemorialDialog";
+import AddEventDialog from "@/components/memorial/AddEventDialog";
 
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
@@ -254,6 +256,31 @@ const Memorial = () => {
 
   // Check if current user is the memorial owner
   const isOwner = user?.id === memorialData?.createdBy || false;
+
+  // Refetch memorial data after edit
+  const handleMemorialUpdated = () => {
+    // Force refetch by refreshing the page data
+    window.location.reload();
+  };
+
+  // Refetch events after adding one
+  const fetchEventsAgain = async () => {
+    if (!memorialData?.id || !isValidUUID(memorialData.id)) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('memorial_events')
+        .select('*')
+        .eq('memorial_id', memorialData.id)
+        .order('event_date', { ascending: true });
+
+      if (!error) {
+        setMemorialEvents(data || []);
+      }
+    } catch (err) {
+      console.error('Error refetching events:', err);
+    }
+  };
 
   // SEO: Update meta tags for this memorial
   useSEO({
@@ -525,7 +552,26 @@ const Memorial = () => {
             {/* Avis de décès + Programme obsèques */}
             {memorial.type !== "PAST" && (
               <TabsContent value="notice" className="mt-0">
-                <div className="max-w-2xl">
+                <div className="max-w-2xl space-y-6">
+                  {/* Edit button for owner */}
+                  {isOwner && (
+                    <div className="flex justify-end gap-3">
+                      <EditMemorialDialog
+                        memorialId={memorial.id}
+                        initialData={{
+                          bio: memorial.bio,
+                          funeralDate: memorial.funeralDate,
+                          funeralLocation: memorial.funeralLocation,
+                        }}
+                        onSave={handleMemorialUpdated}
+                      />
+                      <AddEventDialog
+                        memorialId={memorial.id}
+                        onEventAdded={fetchEventsAgain}
+                      />
+                    </div>
+                  )}
+                  
                   <DeathNotice
                     memorial={{
                       name: memorial.name,
@@ -547,11 +593,9 @@ const Memorial = () => {
                 <GatheringsCalendar
                   events={memorialEvents}
                   memorialName={memorial.name}
+                  memorialId={memorial.id}
                   isOwner={isOwner}
-                  onAddEvent={() => {
-                    // TODO: Open add event modal
-                    console.log("Add event clicked");
-                  }}
+                  onAddEvent={fetchEventsAgain}
                 />
               </div>
             </TabsContent>

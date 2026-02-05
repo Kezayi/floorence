@@ -4,6 +4,7 @@ import { format, parseISO, isValid, isFuture, isPast, startOfMonth, endOfMonth, 
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import AddEventDialog from "./AddEventDialog";
 
 interface MemorialEvent {
   id: string;
@@ -18,8 +19,9 @@ interface MemorialEvent {
 interface GatheringsCalendarProps {
   events: MemorialEvent[];
   memorialName: string;
+  memorialId?: string;
   isOwner?: boolean;
-  onAddEvent?: () => void;
+  onAddEvent?: () => void;  
 }
 
 const eventTypeLabels: Record<string, string> = {
@@ -38,7 +40,7 @@ const eventTypeColors: Record<string, string> = {
   GATHERING: "bg-emerald-500",
 };
 
-const GatheringsCalendar = ({ events, memorialName, isOwner = false, onAddEvent }: GatheringsCalendarProps) => {
+const GatheringsCalendar = ({ events, memorialName, memorialId, isOwner = false, onAddEvent }: GatheringsCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -115,11 +117,17 @@ const GatheringsCalendar = ({ events, memorialName, isOwner = false, onAddEvent 
           </p>
         </div>
         
-        {isOwner && onAddEvent && (
-          <Button onClick={onAddEvent} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Planifier
-          </Button>
+        {isOwner && memorialId && onAddEvent && (
+          <AddEventDialog
+            memorialId={memorialId}
+            onEventAdded={onAddEvent}
+            triggerButton={
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Planifier
+              </Button>
+            }
+          />
         )}
       </div>
 
