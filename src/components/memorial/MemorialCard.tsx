@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
 import { calculateAge } from "@/lib/dateUtils";
 
 interface MemorialCardProps {
@@ -77,19 +76,16 @@ const MemorialCard = ({
             {birthDate} — {deathDate}
           </p>
           
-          {/* Stats - Gestures with text labels */}
-          <div className="flex items-center gap-4 md:gap-5 text-sm">
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground font-sans">RIP</span>
-              <span className="font-medium text-foreground">{ripCount}</span>
+          {/* Stats - Gestures with colored text labels */}
+          <div className="flex items-center gap-4 md:gap-6 text-sm">
+            <span className="text-foreground font-medium">
+              {ripCount} <span className="font-normal">RIP</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground font-sans">Cierges</span>
-              <span className="font-medium text-foreground">{candleCount}</span>
+            <span className="text-[hsl(var(--gesture-candle))] font-medium">
+              {candleCount} <span className="font-normal">Cierges</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground font-sans">Fleurs</span>
-              <span className="font-medium text-foreground">{flowerCount}</span>
+            <span className="text-[hsl(var(--gesture-flower))] font-medium">
+              {flowerCount} <span className="font-normal">Fleurs</span>
             </span>
           </div>
         </div>
@@ -133,18 +129,15 @@ const MemorialCard = ({
 
         {/* Overlay Info on Hover */}
         <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="flex items-center gap-4 text-white text-sm">
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs opacity-80">RIP</span>
-              <span>{ripCount}</span>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-white font-medium">
+              {ripCount} <span className="font-normal opacity-80">RIP</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs opacity-80">Cierges</span>
-              <span>{candleCount}</span>
+            <span className="text-[hsl(var(--gesture-candle))] font-medium">
+              {candleCount} <span className="font-normal opacity-80">Cierges</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-xs opacity-80">Fleurs</span>
-              <span>{flowerCount}</span>
+            <span className="text-[hsl(var(--gesture-flower))] font-medium">
+              {flowerCount} <span className="font-normal opacity-80">Fleurs</span>
             </span>
           </div>
         </div>
