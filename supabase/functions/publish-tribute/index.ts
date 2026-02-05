@@ -7,15 +7,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-// Valid relation categories
-const VALID_RELATION_CATEGORIES = [
-  'family',
-  'friend',
-  'colleague',
-  'neighbor',
-  'acquaintance',
-  'other'
-] as const
+ // Valid relation categories (French labels used by frontend for "Maillage" feature)
+ const VALID_RELATION_CATEGORIES = [
+   // Famille
+   "Son Père",
+   "Sa Mère",
+   "Son Fils",
+   "Sa Fille",
+   "Son Frère",
+   "Sa Sœur",
+   "Son Grand-père",
+   "Sa Grand-mère",
+   "Son Petit-fils",
+   "Sa Petite-fille",
+   "Son Oncle",
+   "Sa Tante",
+   "Son Neveu",
+   "Sa Nièce",
+   "Son Cousin",
+   "Sa Cousine",
+   // Alliés
+   "Son Époux",
+   "Son Épouse",
+   "Son Beau-père",
+   "Sa Belle-mère",
+   "Son Beau-frère",
+   "Sa Belle-sœur",
+   "Son Gendre",
+   "Sa Belle-fille",
+   // Proches
+   "Son Ami(e)",
+   "Son Collègue",
+   "Son Voisin(e)",
+   "Son Professeur",
+   "Son Élève",
+   "Son Mentor",
+   "Son Filleul(e)",
+   "Son Parrain/Marraine",
+   // Autres
+   "Une connaissance",
+   "Un admirateur",
+   "Un anonyme",
+   // Legacy categories (for backward compatibility)
+   "family",
+   "friend",
+   "colleague",
+   "neighbor",
+   "acquaintance",
+   "other"
+ ] as const
 
 // Input validation schema
 const TributeInputSchema = z.object({
