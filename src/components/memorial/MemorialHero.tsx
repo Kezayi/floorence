@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff, Feather } from "lucide-react";
@@ -51,7 +51,7 @@ interface MemorialHeroProps {
 }
 
 const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick, onMemorialUpdated }: MemorialHeroProps) => {
-   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(memorial.defaultPhotoIndex || 0);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(memorial.defaultPhotoIndex || 0);
   
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
   const { toast } = useToast();
@@ -67,70 +67,57 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
   // Filter out empty photos
   const validPhotos = memorial.photos.filter(photo => photo && photo.length > 0);
 
-  // Duplicate photos for seamless infinite scroll
-  const duplicatedPhotos = useMemo(() => {
-    if (validPhotos.length === 0) return [];
-    const minItems = 6;
-    let result = [...validPhotos];
-    while (result.length < minItems) {
-      result = [...result, ...validPhotos];
-    }
-    // Double for seamless loop
-    return [...result, ...result];
-  }, [validPhotos]);
+  // Auto-advance photos every 5 seconds
+  useEffect(() => {
+    if (validPhotos.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentPhotoIndex((prev) => (prev + 1) % validPhotos.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [validPhotos.length]);
 
   return (
     <section className="container mx-auto px-4 pb-8">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-        {/* Photo Gallery - Infinite Carousel with Grayscale Effect */}
+        {/* Photo Gallery - Sequential with Snap Transitions */}
         <div className="relative">
           {validPhotos.length > 0 ? (
-            <div className="memorial-photo-carousel aspect-[3/4] overflow-hidden relative">
-              <div className="memorial-photo-track flex h-full">
-                {duplicatedPhotos.map((photo, index) => (
-                  <div
-                    key={`photo-${index}`}
-                    className="memorial-photo-item flex-shrink-0 w-full h-full"
-                  >
-                    <img
-                      src={photo}
-                      alt={`Portrait de ${memorial.name}`}
-                      className="w-full h-full object-cover memorial-photo-grayscale"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
+            <div className="memorial-photo-container aspect-[3/4] overflow-hidden relative">
+              {validPhotos.map((photo, index) => (
+                <div
+                  key={`photo-${index}`}
+                  className={`memorial-photo-slide absolute inset-0 ${
+                    index === currentPhotoIndex ? 'active' : ''
+                  }`}
+                >
+                  <img
+                    src={photo}
+                    alt={`Portrait de ${memorial.name}`}
+                    className="w-full h-full object-cover memorial-photo-grayscale"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
               
               {/* Photo Counter */}
               {validPhotos.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans z-10">
-                  {validPhotos.length} photos
+                  {currentPhotoIndex + 1} / {validPhotos.length}
                 </div>
               )}
 
               <style>{`
-                .memorial-photo-carousel .memorial-photo-track {
-                  animation: memorial-photo-scroll 20s linear infinite;
-                  width: fit-content;
+                .memorial-photo-slide {
+                  opacity: 0;
+                  transition: opacity 0.15s ease-out;
+                  pointer-events: none;
                 }
 
-                .memorial-photo-carousel:hover .memorial-photo-track {
-                  animation-play-state: paused;
-                }
-
-                @keyframes memorial-photo-scroll {
-                  0% {
-                    transform: translateX(0);
-                  }
-                  100% {
-                    transform: translateX(-50%);
-                  }
-                }
-
-                .memorial-photo-carousel .memorial-photo-item {
-                  width: 100%;
-                  min-width: 100%;
+                .memorial-photo-slide.active {
+                  opacity: 1;
+                  pointer-events: auto;
                 }
 
                 .memorial-photo-grayscale {
@@ -138,7 +125,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                   transition: filter 0.6s ease-in-out;
                 }
 
-                .memorial-photo-item:hover .memorial-photo-grayscale {
+                .memorial-photo-slide.active:hover .memorial-photo-grayscale {
                   filter: grayscale(0%);
                 }
               `}</style>
