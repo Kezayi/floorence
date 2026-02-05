@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialHero from "@/components/memorial/MemorialHero";
@@ -35,7 +35,6 @@ interface MemorialEvent {
 
 const Memorial = () => {
   const { slug } = useParams();
-  const [searchParams] = useSearchParams();
   const { memorials } = useMemorials();
   const { user } = useAuth();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
@@ -527,11 +526,8 @@ const Memorial = () => {
             return funeralDateTime.getTime() < today.getTime();
           })();
           
-          // Priorité : paramètre URL > isPastFuneral (basé sur funeral_date) > type PAST (basé sur death_date)
-          const tabParam = searchParams.get("tab");
-          const computedDefaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "relationships" : "notice");
-          // Si ?tab=maillage ou ?tab=relationships, forcer l'onglet Maillage
-          const defaultTab = (tabParam === "maillage" || tabParam === "relationships") ? "relationships" : computedDefaultTab;
+          // Priorité : isPastFuneral (basé sur funeral_date) > type PAST (basé sur death_date)
+          const defaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "relationships" : "notice");
           return (
         <section className="container mx-auto px-4 py-12">
           <Tabs defaultValue={defaultTab} className="w-full">
