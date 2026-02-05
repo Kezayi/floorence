@@ -9,8 +9,8 @@ const corsHeaders = {
 
 // Input validation schema
 const PaymentInputSchema = z.object({
-  amount: z.number().int().positive().max(10000000, 'Amount exceeds maximum allowed'),
-  paymentType: z.enum(['tribute', 'donation']).default('tribute'),
+  amount: z.number().int().positive().max(10000000, 'Le montant dépasse le maximum autorisé'),
+  paymentType: z.enum(['tribute', 'donation', 'memorial_creation']).default('tribute'),
   memorialId: z.string().uuid().optional().nullable(),
   metadata: z.object({
     candleCount: z.number().int().min(0).max(100).optional(),
