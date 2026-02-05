@@ -5,12 +5,10 @@ import {
   MessageSquare, 
   Users, 
   BarChart3, 
-  DollarSign,
   Flower2,
   LogOut,
   User,
-   History,
-   Receipt
+  History
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,8 +29,6 @@ const AdminSidebar = () => {
     { to: '/admin/moderation', icon: MessageSquare, label: 'Modération' },
     { to: '/admin/memoriaux', icon: Flower2, label: 'Mémoriaux' },
     { to: '/admin/statistiques', icon: BarChart3, label: 'Statistiques' },
-    { to: '/admin/revenus', icon: DollarSign, label: 'Chiffre d\'affaires', adminOnly: true },
-     { to: '/admin/transactions', icon: Receipt, label: 'Transactions', adminOnly: true },
     { to: '/admin/utilisateurs', icon: Users, label: 'Utilisateurs', adminOnly: true },
     { to: '/admin/historique', icon: History, label: 'Historique', adminOnly: true },
     { to: '/admin/parametres', icon: Settings, label: 'Paramètres', adminOnly: true },

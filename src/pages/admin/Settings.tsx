@@ -6,76 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, Save, ExternalLink, CreditCard, Flower2 } from 'lucide-react';
+import { Loader2, Save, ExternalLink, Info } from 'lucide-react';
 
 const Settings = () => {
   const { data: settings, isLoading } = useSystemSettings();
   const updateSetting = useUpdateSetting();
 
-  // Gesture prices
-  const [candlePrice, setCandlePrice] = useState(500);
-  const [flowerPrice, setFlowerPrice] = useState(1000);
-  
-  // Memorial creation prices
-  const [memorialPriceFuture, setMemorialPriceFuture] = useState(15000);
-  const [memorialPricePast, setMemorialPricePast] = useState(10000);
-  
   // Contribution link
   const [contributionUrl, setContributionUrl] = useState('');
   const [contributionEnabled, setContributionEnabled] = useState(false);
 
   useEffect(() => {
     if (settings) {
-      setCandlePrice(settings.candle_price.amount);
-      setFlowerPrice(settings.flower_price.amount);
-      setMemorialPriceFuture(settings.memorial_price_future.amount);
-      setMemorialPricePast(settings.memorial_price_past.amount);
       setContributionUrl(settings.contribution_link_template.url);
       setContributionEnabled(settings.contribution_link_template.enabled);
     }
   }, [settings]);
-
-  const handleSaveGesturePrices = async () => {
-    try {
-      await Promise.all([
-        updateSetting.mutateAsync({
-          key: 'candle_price',
-          value: { amount: candlePrice, currency: 'XOF' },
-        }),
-        updateSetting.mutateAsync({
-          key: 'flower_price',
-          value: { amount: flowerPrice, currency: 'XOF' },
-        }),
-      ]);
-      toast.success('Prix des gestes mis à jour');
-    } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
-    }
-  };
-
-  const handleSaveMemorialPrices = async () => {
-    // Validate: future price must be higher than past price
-    if (memorialPriceFuture <= memorialPricePast) {
-      toast.error('Le prix "obsèques futures" doit être supérieur au prix "obsèques passées"');
-      return;
-    }
-    
-    try {
-      await Promise.all([
-        updateSetting.mutateAsync({
-          key: 'memorial_price_future',
-          value: { amount: memorialPriceFuture, currency: 'XOF' },
-        }),
-        updateSetting.mutateAsync({
-          key: 'memorial_price_past',
-          value: { amount: memorialPricePast, currency: 'XOF' },
-        }),
-      ]);
-      toast.success('Prix de création mis à jour');
-    } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
-    }
-  };
 
   const handleSaveContributionLink = async () => {
     try {
@@ -102,104 +48,29 @@ const Settings = () => {
       <h1 className="text-3xl font-bold text-foreground mb-8">Paramètres</h1>
 
       <div className="grid gap-6 max-w-2xl">
-        {/* Memorial Creation Prices */}
+        {/* Beta Mode Notice */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Tarification de création
+              <Info className="w-5 h-5 text-primary" />
+              Mode Bêta
             </CardTitle>
             <CardDescription>
-              Définissez les prix de création d'un espace mémoriel selon la date des obsèques.
-              Le prix "obsèques futures" doit être supérieur au prix "obsèques passées".
+              Floorence est actuellement en phase de bêta-test. Toutes les fonctionnalités sont gratuites.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="memorial-price-future">Obsèques futures (FCFA)</Label>
-                <Input
-                  id="memorial-price-future"
-                  type="number"
-                  value={memorialPriceFuture}
-                  onChange={(e) => setMemorialPriceFuture(Number(e.target.value))}
-                  min={0}
-                  step={500}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Date des obsèques dans le futur
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="memorial-price-past">Obsèques passées (FCFA)</Label>
-                <Input
-                  id="memorial-price-past"
-                  type="number"
-                  value={memorialPricePast}
-                  onChange={(e) => setMemorialPricePast(Number(e.target.value))}
-                  min={0}
-                  step={500}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Date des obsèques dans le passé
-                </p>
-              </div>
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-foreground">
+                <strong>✓ Création de mémoriaux :</strong> Gratuit
+              </p>
+              <p className="text-sm text-foreground mt-1">
+                <strong>✓ Hommages et gestes :</strong> Gratuit
+              </p>
+              <p className="text-sm text-muted-foreground mt-3">
+                Les tarifs seront activés après la phase de bêta.
+              </p>
             </div>
-            <Button onClick={handleSaveMemorialPrices} disabled={updateSetting.isPending}>
-              {updateSetting.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Enregistrer les tarifs
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Gesture Prices */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Flower2 className="w-5 h-5" />
-              Tarification des gestes
-            </CardTitle>
-            <CardDescription>
-              Définissez les prix des cierges et des fleurs en FCFA
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="candle-price">Prix d'un cierge (FCFA)</Label>
-                <Input
-                  id="candle-price"
-                  type="number"
-                  value={candlePrice}
-                  onChange={(e) => setCandlePrice(Number(e.target.value))}
-                  min={0}
-                  step={50}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="flower-price">Prix d'une fleur (FCFA)</Label>
-                <Input
-                  id="flower-price"
-                  type="number"
-                  value={flowerPrice}
-                  onChange={(e) => setFlowerPrice(Number(e.target.value))}
-                  min={0}
-                  step={50}
-                />
-              </div>
-            </div>
-            <Button onClick={handleSaveGesturePrices} disabled={updateSetting.isPending}>
-              {updateSetting.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Enregistrer les prix
-            </Button>
           </CardContent>
         </Card>
 
