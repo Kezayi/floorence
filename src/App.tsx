@@ -15,19 +15,17 @@ import AdminLayout from "./components/admin/AdminLayout";
 // Eager load: Homepage (critical path)
 import Index from "./pages/Index";
 
-// Lazy load: All other pages
-const Memorial = lazy(() => import("./pages/Memorial"));
-const Account = lazy(() => import("./pages/Account"));
-const CreateMemorial = lazy(() => import("./pages/CreateMemorial"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Search = lazy(() => import("./pages/Search"));
-const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
-const PaymentCancelled = lazy(() => import("./pages/PaymentCancelled"));
-const Conditions = lazy(() => import("./pages/Conditions"));
-const Confidentialite = lazy(() => import("./pages/Confidentialite"));
-const Vision = lazy(() => import("./pages/Vision"));
-const Mission = lazy(() => import("./pages/Mission"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+ // Lazy load: All other pages
+ const Memorial = lazy(() => import("./pages/Memorial"));
+ const Account = lazy(() => import("./pages/Account"));
+ const CreateMemorial = lazy(() => import("./pages/CreateMemorial"));
+ const Auth = lazy(() => import("./pages/Auth"));
+ const Search = lazy(() => import("./pages/Search"));
+ const Conditions = lazy(() => import("./pages/Conditions"));
+ const Confidentialite = lazy(() => import("./pages/Confidentialite"));
+ const Vision = lazy(() => import("./pages/Vision"));
+ const Mission = lazy(() => import("./pages/Mission"));
+ const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -75,8 +73,6 @@ const App = () => (
                     </RequireAuth>
                   } />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/paiement/succes" element={<PaymentSuccess />} />
-                  <Route path="/paiement/annule" element={<PaymentCancelled />} />
                   <Route path="/conditions" element={<Conditions />} />
                   <Route path="/confidentialite" element={<Confidentialite />} />
                   <Route path="/a-propos" element={<Vision />} />

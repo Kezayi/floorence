@@ -1,20 +1,13 @@
-import { useState, useRef, useMemo } from "react";
+ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, CreditCard, Info, Loader2 } from "lucide-react";
+ import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle } from "lucide-react";
 import RelationSelect from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { isFuture, parseISO, isValid } from "date-fns";
 
 // Noms interdits pour les auteurs
 const FORBIDDEN_NAMES = [
@@ -36,7 +29,6 @@ const CreateMemorial = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
-  const { data: settings, isLoading: settingsLoading } = useSystemSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
@@ -61,33 +53,6 @@ const CreateMemorial = () => {
     { number: 3, title: "Photos" },
     { number: 4, title: "Confirmation" },
   ];
-
-  // Determine if funeral is in the future (higher price) or past (lower price)
-  const isFuneralInFuture = useMemo(() => {
-    if (!formData.funeralDate) return null;
-    try {
-      const funeralDateParsed = parseISO(formData.funeralDate);
-      return isValid(funeralDateParsed) && isFuture(funeralDateParsed);
-    } catch {
-      return null;
-    }
-  }, [formData.funeralDate]);
-
-  // Get the appropriate creation price based on funeral date
-  const creationPrice = useMemo(() => {
-    if (!settings) return 0;
-    // RECENT type: check if funeral is in future or past
-    if (memorialType === "RECENT" && isFuneralInFuture !== null) {
-      return isFuneralInFuture 
-        ? settings.memorial_price_future.amount 
-        : settings.memorial_price_past.amount;
-    }
-    // PAST type: always use past price
-    if (memorialType === "PAST") {
-      return settings.memorial_price_past.amount;
-    }
-    return 0;
-  }, [settings, memorialType, isFuneralInFuture]);
 
   const validateStep = (step: Step): boolean => {
     const newErrors: Record<string, string> = {};
@@ -194,7 +159,7 @@ const CreateMemorial = () => {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "";
 
-      // Step 1: Create the memorial (unpublished)
+       // BETA: Create the memorial (directly published, no payment)
       const { data: createData, error: createError } = await supabase.functions.invoke('create-memorial', {
         body: {
           firstName,
@@ -218,44 +183,11 @@ const CreateMemorial = () => {
         return;
       }
 
-      const memorialId = createData.memorial.id;
-      console.log('Memorial created:', memorialId);
-
-      // Step 2: Store data for payment flow
-      sessionStorage.setItem('pending_memorial', JSON.stringify({
-        memorialId,
-        slug: createData.memorial.slug,
-        amount: creationPrice,
-        paymentType: 'memorial_creation',
-      }));
-
-      // Step 3: Initiate payment
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('initiate-payment', {
-        body: {
-          amount: creationPrice,
-          paymentType: 'memorial_creation',
-          memorialId,
-          metadata: {
-            firstName: createData.memorial.firstName,
-            lastName: createData.memorial.lastName,
-          }
-        }
-      });
-
-      if (paymentError || !paymentData?.success) {
-        console.error('Payment initiation error:', paymentError || paymentData?.error);
-        toast.error(paymentData?.error || "Erreur lors de l'initiation du paiement");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Redirect to payment URL
-      if (paymentData.paymentUrl) {
-        window.location.href = paymentData.paymentUrl;
-      } else {
-        toast.error("URL de paiement non disponible");
-        setIsSubmitting(false);
-      }
+       console.log('[BETA] Memorial created:', createData.memorial.slug);
+       
+       // BETA: Show success and redirect directly to the memorial
+       toast.success("Espace mémoriel créé avec succès !");
+       navigate(`/memorial/${createData.memorial.slug}`);
 
     } catch (error) {
       console.error('Submit error:', error);
@@ -534,16 +466,6 @@ const CreateMemorial = () => {
                           />
                           <ErrorMessage message={errors.funeralDate} />
                           
-                          {/* Pricing indicator */}
-                          {formData.funeralDate && isFuneralInFuture !== null && (
-                            <div className="mt-2 p-2 rounded-sm text-xs font-sans flex items-center gap-2 bg-primary/10 text-primary">
-                              <CreditCard className="w-3 h-3" />
-                              Création : {creationPrice.toLocaleString("fr-FR")} FCFA
-                              {isFuneralInFuture && (
-                                <span className="text-muted-foreground ml-1">(obsèques à venir)</span>
-                              )}
-                            </div>
-                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-sans text-muted-foreground mb-2">
@@ -607,18 +529,10 @@ const CreateMemorial = () => {
                         <label className="block text-sm font-sans text-muted-foreground">
                           Email de l'héritier numérique *
                         </label>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Info className="w-4 h-4 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <p>
-                              L'héritier numérique pourra reprendre la gestion de cet espace mémoriel 
-                              si vous n'êtes plus en mesure de le faire. Cette désignation est obligatoire.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
                       </div>
+                       <p className="text-xs text-muted-foreground mb-2">
+                         L'héritier numérique pourra reprendre la gestion de cet espace mémoriel si vous n'êtes plus en mesure de le faire.
+                       </p>
                       <input
                         type="email"
                         value={formData.heirEmail}
@@ -814,34 +728,17 @@ const CreateMemorial = () => {
                   </div>
 
                   <div className="border border-border p-6 mb-8">
-                    <h4 className="font-sans text-sm font-medium mb-4">
-                      Récapitulatif du paiement
-                    </h4>
-                    
-                    {settingsLoading ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                     <div className="flex items-center gap-3 mb-4">
+                       <CheckCircle className="w-6 h-6 text-primary" />
+                       <div>
+                         <h4 className="font-sans text-sm font-medium">Bêta gratuite</h4>
+                         <p className="text-xs text-muted-foreground">Création d'espace mémoriel offerte</p>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center py-2 border-b border-border">
-                          <span className="font-sans text-sm">
-                            Publication de l'avis
-                            {memorialType === "RECENT" && isFuneralInFuture && (
-                              <span className="text-muted-foreground ml-1">(obsèques futures)</span>
-                            )}
-                            {memorialType === "RECENT" && isFuneralInFuture === false && (
-                              <span className="text-muted-foreground ml-1">(obsèques passées)</span>
-                            )}
-                          </span>
-                          <span className="font-sans font-medium">{creationPrice.toLocaleString("fr-FR")} FCFA</span>
-                        </div>
-                        <div className="flex justify-between items-center py-4">
-                          <span className="font-sans font-medium">Total</span>
-                          <span className="font-serif text-xl">{creationPrice.toLocaleString("fr-FR")} FCFA</span>
-                        </div>
-                      </>
-                    )}
+                     </div>
+                     <p className="text-sm text-muted-foreground">
+                       Durant la phase bêta, la création d'espaces mémoriels est entièrement gratuite. 
+                       Profitez-en pour honorer la mémoire de vos proches.
+                     </p>
                   </div>
 
                   {/* Heir email reminder */}
@@ -862,7 +759,7 @@ const CreateMemorial = () => {
                     <button 
                       onClick={handleSubmit} 
                       className="btn-memorial" 
-                      disabled={settingsLoading || isSubmitting}
+                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
@@ -870,7 +767,7 @@ const CreateMemorial = () => {
                           Création en cours...
                         </>
                       ) : (
-                        "Procéder au paiement"
+                         "Créer l'espace mémoriel"
                       )}
                     </button>
                   </div>

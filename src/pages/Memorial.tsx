@@ -164,6 +164,66 @@ const Memorial = () => {
   useEffect(() => {
     fetchGuestbookPosts();
   }, [fetchGuestbookPosts]);
+ 
+   // Realtime subscription for new posts
+   useEffect(() => {
+     if (!memorialData?.id || !isValidUUID(memorialData.id)) return;
+ 
+     console.log('[Realtime] Subscribing to guestbook posts for:', memorialData.id);
+     
+     const channel = supabase
+       .channel(`guestbook-${memorialData.id}`)
+       .on(
+         'postgres_changes',
+         {
+           event: 'INSERT',
+           schema: 'public',
+           table: 'guestbook_posts',
+           filter: `memorial_id=eq.${memorialData.id}`,
+         },
+         (payload) => {
+           console.log('[Realtime] New post received:', payload.new);
+           const newPost = payload.new as {
+             id: string;
+             user_id: string | null;
+             author_name: string;
+             relation_category: string;
+             content: string;
+             photos: string[] | null;
+             created_at: string;
+             candle_count: number;
+             flower_count: number;
+           };
+           
+           // Add the new post to the beginning of the list
+           setGuestbookPosts((prev) => {
+             // Avoid duplicates
+             if (prev.some((p) => p.id === newPost.id)) return prev;
+             
+             return [
+               {
+                 id: newPost.id,
+                 authorId: newPost.user_id || 'anonymous',
+                 authorName: newPost.author_name,
+                 relationCategory: newPost.relation_category,
+                 content: newPost.content,
+                 photos: newPost.photos || [],
+                 createdAt: newPost.created_at,
+                 candleCount: newPost.candle_count,
+                 flowerCount: newPost.flower_count,
+               },
+               ...prev,
+             ];
+           });
+         }
+       )
+       .subscribe();
+ 
+     return () => {
+       console.log('[Realtime] Unsubscribing from guestbook posts');
+       supabase.removeChannel(channel);
+     };
+   }, [memorialData?.id]);
 
   // Reset page when memorial changes
   useEffect(() => {
