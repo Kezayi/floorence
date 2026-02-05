@@ -195,7 +195,7 @@ interface TransactionWithDetails {
                  {transactions.map((tx) => (
                    <TableRow key={tx.id}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {tx.id.slice(0, 8)}…
+                        {tx.id}
                       </TableCell>
                      <TableCell className="whitespace-nowrap">
                        {format(new Date(tx.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
