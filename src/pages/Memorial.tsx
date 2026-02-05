@@ -465,6 +465,7 @@ const Memorial = () => {
             funeralDate: memorial.funeralDate,
             funeralLocation: memorial.funeralLocation,
             createdBy: memorial.createdBy,
+           defaultPhotoIndex: memorialData.defaultPhotoIndex || 0,
             guestbookMessages: memorial.guestbookMessages.map(msg => ({
               authorName: msg.authorName,
               relationCategory: msg.relationCategory,
@@ -566,6 +567,8 @@ const Memorial = () => {
                           bio: memorial.bio,
                           funeralDate: memorial.funeralDate,
                           funeralLocation: memorial.funeralLocation,
+                          photos: memorial.photos,
+                          defaultPhotoIndex: 0,
                         }}
                         onSave={handleMemorialUpdated}
                       />

@@ -170,6 +170,7 @@ export type Database = {
           created_at: string
           created_by: string
           death_date: string | null
+          default_photo_index: number | null
           donation_enabled: boolean
           first_name: string
           funeral_date: string | null
@@ -182,6 +183,7 @@ export type Database = {
           last_name: string
           merged_into: string | null
           photo_url: string | null
+          photos: string[] | null
           slug: string
           updated_at: string
         }
@@ -192,6 +194,7 @@ export type Database = {
           created_at?: string
           created_by: string
           death_date?: string | null
+          default_photo_index?: number | null
           donation_enabled?: boolean
           first_name: string
           funeral_date?: string | null
@@ -204,6 +207,7 @@ export type Database = {
           last_name: string
           merged_into?: string | null
           photo_url?: string | null
+          photos?: string[] | null
           slug: string
           updated_at?: string
         }
@@ -214,6 +218,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           death_date?: string | null
+          default_photo_index?: number | null
           donation_enabled?: boolean
           first_name?: string
           funeral_date?: string | null
@@ -226,6 +231,7 @@ export type Database = {
           last_name?: string
           merged_into?: string | null
           photo_url?: string | null
+          photos?: string[] | null
           slug?: string
           updated_at?: string
         }
