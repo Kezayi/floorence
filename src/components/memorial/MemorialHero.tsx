@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Bell, BellOff, Feather } from "lucide-react";
+import { Bell, BellOff, Feather } from "lucide-react";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import ShareButtons from "./ShareButtons";
 import GestureSummary from "./GestureSummary";
@@ -67,77 +67,82 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
   // Filter out empty photos
   const validPhotos = memorial.photos.filter(photo => photo && photo.length > 0);
 
+  // Duplicate photos for seamless infinite scroll
+  const duplicatedPhotos = useMemo(() => {
+    if (validPhotos.length === 0) return [];
+    const minItems = 6;
+    let result = [...validPhotos];
+    while (result.length < minItems) {
+      result = [...result, ...validPhotos];
+    }
+    // Double for seamless loop
+    return [...result, ...result];
+  }, [validPhotos]);
+
   return (
     <section className="container mx-auto px-4 pb-8">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-        {/* Photo Gallery */}
+        {/* Photo Gallery - Infinite Carousel with Grayscale Effect */}
         <div className="relative">
           {validPhotos.length > 0 ? (
-            <>
-              <div className="aspect-[3/4] overflow-hidden relative group">
-                <img
-                  src={validPhotos[currentPhotoIndex] || validPhotos[0]}
-                  alt={`Portrait de ${memorial.name}`}
-                  className="w-full h-full object-cover portrait-memorial transition-opacity duration-300"
-                />
-                
-                {/* Navigation Arrows */}
-                {validPhotos.length > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPhotoIndex((prev) => 
-                        prev === 0 ? validPhotos.length - 1 : prev - 1
-                      )}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                      aria-label="Photo précédente"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPhotoIndex((prev) => 
-                        prev === validPhotos.length - 1 ? 0 : prev + 1
-                      )}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                      aria-label="Photo suivante"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </Button>
-                    
-                    {/* Photo Counter */}
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans">
-                      {currentPhotoIndex + 1} / {validPhotos.length}
-                    </div>
-                  </>
-                )}
+            <div className="memorial-photo-carousel aspect-[3/4] overflow-hidden relative">
+              <div className="memorial-photo-track flex h-full">
+                {duplicatedPhotos.map((photo, index) => (
+                  <div
+                    key={`photo-${index}`}
+                    className="memorial-photo-item flex-shrink-0 w-full h-full"
+                  >
+                    <img
+                      src={photo}
+                      alt={`Portrait de ${memorial.name}`}
+                      className="w-full h-full object-cover memorial-photo-grayscale"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
               </div>
               
-              {/* Thumbnails */}
+              {/* Photo Counter */}
               {validPhotos.length > 1 && (
-                <div className="flex gap-2 mt-2">
-                  {validPhotos.map((photo, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPhotoIndex(index)}
-                      className={`w-16 h-20 overflow-hidden transition-all ${
-                        index === currentPhotoIndex 
-                          ? "ring-2 ring-primary opacity-100" 
-                          : "opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      <img
-                        src={photo}
-                        alt=""
-                        className="w-full h-full object-cover portrait-memorial"
-                      />
-                    </button>
-                  ))}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans z-10">
+                  {validPhotos.length} photos
                 </div>
               )}
-            </>
+
+              <style>{`
+                .memorial-photo-carousel .memorial-photo-track {
+                  animation: memorial-photo-scroll 20s linear infinite;
+                  width: fit-content;
+                }
+
+                .memorial-photo-carousel:hover .memorial-photo-track {
+                  animation-play-state: paused;
+                }
+
+                @keyframes memorial-photo-scroll {
+                  0% {
+                    transform: translateX(0);
+                  }
+                  100% {
+                    transform: translateX(-50%);
+                  }
+                }
+
+                .memorial-photo-carousel .memorial-photo-item {
+                  width: 100%;
+                  min-width: 100%;
+                }
+
+                .memorial-photo-grayscale {
+                  filter: grayscale(100%);
+                  transition: filter 0.6s ease-in-out;
+                }
+
+                .memorial-photo-item:hover .memorial-photo-grayscale {
+                  filter: grayscale(0%);
+                }
+              `}</style>
+            </div>
           ) : (
             <div className="aspect-[3/4] bg-muted flex items-center justify-center">
               <span className="text-muted-foreground">Aucune photo</span>
