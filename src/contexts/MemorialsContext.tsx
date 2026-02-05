@@ -98,6 +98,37 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
   return profiles;
 };
 
+// Fetch guestbook posts for search (via RPC function to bypass RLS)
+const fetchGuestbookPosts = async (memorialIds: string[]): Promise<Record<string, GuestbookMessage[]>> => {
+  if (memorialIds.length === 0) return {};
+  
+  const { data, error } = await supabase
+    .rpc('get_public_guestbook_posts');
+
+  if (error) {
+    console.error('Error fetching guestbook posts:', error);
+    return {};
+  }
+
+  // Group by memorial_id
+  const postsByMemorial: Record<string, GuestbookMessage[]> = {};
+  (data || []).forEach((post: { id: string; memorial_id: string; author_name: string; relation_category: string; content: string; candle_count: number; flower_count: number }) => {
+    if (!postsByMemorial[post.memorial_id]) {
+      postsByMemorial[post.memorial_id] = [];
+    }
+    postsByMemorial[post.memorial_id].push({
+      id: post.id,
+      authorName: post.author_name,
+      relationCategory: post.relation_category,
+      content: post.content,
+      candleCount: post.candle_count,
+      flowerCount: post.flower_count,
+    });
+  });
+
+  return postsByMemorial;
+};
+
 // Fetch memorials from database
 const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }>; creatorProfiles: Record<string, string> }> => {
   const { data, error } = await supabase
@@ -116,8 +147,11 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
   // Get unique creator IDs
   const creatorIds = [...new Set((data || []).map(m => m.created_by))];
   
-  // Fetch creator profiles
-  const creatorProfiles = await fetchCreatorProfiles(creatorIds);
+  // Fetch creator profiles and guestbook posts in parallel
+  const [creatorProfiles, guestbookPosts] = await Promise.all([
+    fetchCreatorProfiles(creatorIds),
+    fetchGuestbookPosts((data || []).map(m => m.id))
+  ]);
 
   const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
     id: m.id,
@@ -126,19 +160,19 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     birthDate: formatDateFrench(m.birth_date),
     deathDate: formatDateFrench(m.death_date),
     bio: m.biography || "",
-   photos: (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []),
+    photos: (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []),
     author: {
       id: m.created_by,
       name: creatorProfiles[m.created_by] || "Créateur",
-      relation: "Créateur de l'espace",
+      relation: m.creator_relation || "Créateur de l'espace",
     },
-    guestbookMessages: [],
+    guestbookMessages: guestbookPosts[m.id] || [],
     type: getMemorialType(formatDateFrench(m.death_date)),
     createdBy: m.created_by,
     donationEnabled: m.donation_enabled,
     funeralDate: m.funeral_date,
     funeralLocation: m.funeral_location,
-   defaultPhotoIndex: m.default_photo_index || 0,
+    defaultPhotoIndex: m.default_photo_index || 0,
   }));
 
   // Fetch stats for all memorials
