@@ -1,5 +1,5 @@
  import { useState, useRef } from "react";
- import { ImagePlus, X, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus } from "lucide-react";
  import RelationSelect from "./RelationSelect";
  import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +37,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [candleCount, setCandleCount] = useState(0);
+  const [flowerCount, setFlowerCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Block non-authenticated users - must sign in to post
@@ -130,8 +132,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
       content: messageContent.trim(),
       relationCategory: selectedRelation,
       photos,
-       candleCount: 0,
-       flowerCount: 0,
+      candleCount,
+      flowerCount,
     });
 
     // Reset form
@@ -140,6 +142,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
     setPhotos([]);
     setShowConfirmDialog(false);
      setIsSubmitting(false);
+    setCandleCount(0);
+    setFlowerCount(0);
   };
 
   const canSubmit = messageContent.trim() && selectedRelation;
@@ -210,6 +214,62 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
             )}
           </div>
 
+          {/* Gesture selectors - Free for Beta */}
+          <div className="bg-memorial-dark-muted/10 border border-memorial-dark-muted/20 rounded-sm p-4">
+            <p className="text-memorial-dark-muted text-sm mb-3 font-serif">
+              Accompagnez votre hommage d'un geste symbolique <span className="text-primary">(gratuit pendant la bêta)</span>
+            </p>
+            <div className="flex flex-wrap gap-4">
+              {/* Candle selector */}
+              <div className="flex items-center gap-3">
+                <Flame className="w-5 h-5 text-amber-500" />
+                <span className="text-memorial-dark-foreground text-sm">Cierges</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCandleCount(Math.max(0, candleCount - 1))}
+                    disabled={candleCount === 0}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Minus className="w-3 h-3 text-memorial-dark-foreground" />
+                  </button>
+                  <span className="w-8 text-center font-medium text-memorial-dark-foreground">{candleCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCandleCount(candleCount + 1)}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-memorial-dark-foreground" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Flower selector */}
+              <div className="flex items-center gap-3">
+                <Flower2 className="w-5 h-5 text-pink-400" />
+                <span className="text-memorial-dark-foreground text-sm">Fleurs</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setFlowerCount(Math.max(0, flowerCount - 1))}
+                    disabled={flowerCount === 0}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Minus className="w-3 h-3 text-memorial-dark-foreground" />
+                  </button>
+                  <span className="w-8 text-center font-medium text-memorial-dark-foreground">{flowerCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFlowerCount(flowerCount + 1)}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-memorial-dark-foreground" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={!canSubmit}
@@ -238,6 +298,23 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
                  <p className="text-memorial-dark-muted text-sm">Votre hommage sera publié immédiatement</p>
                </div>
              </div>
+
+             {(candleCount > 0 || flowerCount > 0) && (
+               <div className="flex justify-center gap-6 py-2">
+                 {candleCount > 0 && (
+                   <div className="flex items-center gap-2">
+                     <Flame className="w-5 h-5 text-amber-500" />
+                     <span className="text-memorial-dark-foreground">{candleCount} cierge{candleCount > 1 ? 's' : ''}</span>
+                   </div>
+                 )}
+                 {flowerCount > 0 && (
+                   <div className="flex items-center gap-2">
+                     <Flower2 className="w-5 h-5 text-pink-400" />
+                     <span className="text-memorial-dark-foreground">{flowerCount} fleur{flowerCount > 1 ? 's' : ''}</span>
+                   </div>
+                 )}
+               </div>
+             )}
              
              <div className="bg-memorial-dark-muted/10 p-3 rounded-sm">
                <p className="text-sm text-memorial-dark-muted line-clamp-2">
