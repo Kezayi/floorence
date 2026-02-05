@@ -2,262 +2,347 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { searchMemorialsAndAuthors, SearchableMemorial } from "@/lib/searchWithRelations";
+import { useProfile } from "@/hooks/useProfile";
+import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getCleanRelationName, getRelationWithDeceased, inferUserToPersonRelation, UserRelationResult } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search, GitBranch } from "lucide-react";
+import { User, Heart, BookOpen, ChevronRight, FileText, Users, ArrowLeft, Search, GitBranch } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import RelationshipGraphSearch from "@/components/search/RelationshipGraphSearch";
-// Types pour la désambiguïsation
-interface PersonMatch {
-  id: string;
-  name: string;
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+// Représente une personne avec toutes ses activités groupées
+interface GroupedPerson {
+  normalizedName: string;
+  displayName: string;
   type: "deceased" | "author";
-  memorialId: string;
-  memorialSlug: string;
-  memorialName: string;
-  photo?: string;
-  relation?: string;
-}
-
-// Types pour organiser les résultats
-interface AuthorPublications {
-  memorialId: string;
-  memorialName: string;
-  memorialSlug: string;
-  photo?: string;
-  relation: string;
-}
-
-interface AuthorGuestbookEntry {
-  memorialId: string;
-  memorialName: string;
-  memorialSlug: string;
-  photo?: string;
-  relationCategory: string;
-  content: string;
-}
-
-interface OrganizedResults {
-  isDeceased: boolean;
+  // Pour les défunts
   deceasedMemorial?: {
     id: string;
-    name: string;
     slug: string;
+    name: string;
     photo?: string;
   };
-  authorName: string;
-  publications: AuthorPublications[];
-  guestbookEntries: AuthorGuestbookEntry[];
-  connectionWithUser?: {
+  // Pour les auteurs (créateurs + contributeurs)
+  createdMemorials: Array<{
+    memorialId: string;
+    memorialSlug: string;
+    memorialName: string;
+    photo?: string;
+    relation: string;
+  }>;
+  guestbookEntries: Array<{
+    memorialId: string;
+    memorialSlug: string;
+    memorialName: string;
+    photo?: string;
+    relationCategory: string;
+    content: string;
+  }>;
+  // Photo principale
+  mainPhoto?: string;
+  // Lien inféré avec l'utilisateur connecté
+  userConnection?: {
     type: "direct" | "indirect" | "none";
-    description: string;
     inferredLabel?: string;
     colorClass?: string;
     confidence?: "high" | "medium" | "low";
-    via?: string;
+    description: string;
     // Données pour le graphe
     userRelation?: string;
     personRelation?: string;
     deceasedName?: string;
   };
+  // Score de tri (pour priorité par lien de parenté)
+  sortScore: number;
 }
 
-// Trouve toutes les personnes correspondant à la recherche (dédoublonnées)
-const findAllMatchingPersons = (
-  query: string,
-  memorials: SearchableMemorial[]
-): PersonMatch[] => {
-  const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  
-  // Group by normalized name to deduplicate
-  const personsByName = new Map<string, PersonMatch>();
+// ============================================================================
+// NORMALISATION
+// ============================================================================
 
+const normalizeString = (str: string): string => {
+  return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
+// Distance de Levenshtein pour le fuzzy match
+const levenshteinDistance = (a: string, b: string): number => {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+};
+
+// Vérifie si deux chaînes sont similaires
+const isFuzzyMatch = (query: string, target: string, threshold: number = 2): boolean => {
+  if (target.includes(query)) return true;
+  if (query.length <= 3) return target.includes(query);
+  
+  const targetWords = target.split(/\s+/);
+  for (const word of targetWords) {
+    if (word.startsWith(query.substring(0, Math.min(3, query.length)))) {
+      const distance = levenshteinDistance(query, word.substring(0, query.length + 1));
+      if (distance <= threshold) return true;
+    }
+    const distance = levenshteinDistance(query, word);
+    const adaptiveThreshold = Math.min(threshold, Math.floor(query.length / 3) + 1);
+    if (distance <= adaptiveThreshold) return true;
+  }
+  return false;
+};
+
+// ============================================================================
+// MOTEUR DE RECHERCHE AVEC GROUPEMENT ET TRI
+// ============================================================================
+
+const searchAndGroupPersons = (
+  query: string,
+  memorials: SearchableMemorial[],
+  currentUserName?: string
+): GroupedPerson[] => {
+  if (!query.trim()) return [];
+
+  const normalizedQuery = normalizeString(query);
+  const personsMap = new Map<string, GroupedPerson>();
+
+  // Parcourir tous les mémoriaux
   for (const memorial of memorials) {
-    const memorialNameNormalized = memorial.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    // Check deceased
-    if (memorialNameNormalized.includes(normalizedQuery)) {
+    const memorialNameNormalized = normalizeString(memorial.name);
+
+    // 1. Chercher dans les défunts
+    if (isFuzzyMatch(normalizedQuery, memorialNameNormalized)) {
       const key = `deceased-${memorialNameNormalized}`;
-      if (!personsByName.has(key)) {
-        personsByName.set(key, {
-          id: memorial.id,
-          name: memorial.name,
+      if (!personsMap.has(key)) {
+        personsMap.set(key, {
+          normalizedName: memorialNameNormalized,
+          displayName: memorial.name,
           type: "deceased",
-          memorialId: memorial.id,
-          memorialSlug: memorial.slug,
-          memorialName: memorial.name,
-          photo: memorial.photos[0],
+          deceasedMemorial: {
+            id: memorial.id,
+            slug: memorial.slug,
+            name: memorial.name,
+            photo: memorial.photos[0],
+          },
+          createdMemorials: [],
+          guestbookEntries: [],
+          mainPhoto: memorial.photos[0],
+          sortScore: 0,
         });
       }
     }
 
-    // Check memorial author
-    const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (authorNameNormalized.includes(normalizedQuery)) {
+    // 2. Chercher dans les créateurs de mémoriaux
+    const authorNameNormalized = normalizeString(memorial.author.name);
+    if (isFuzzyMatch(normalizedQuery, authorNameNormalized)) {
       const key = `author-${authorNameNormalized}`;
-      // If already exists, keep the first one (or update with better data)
-      if (!personsByName.has(key)) {
-        personsByName.set(key, {
-          id: memorial.author.id,
-          name: memorial.author.name,
-          type: "author",
+      const existing = personsMap.get(key);
+      
+      if (existing) {
+        // Ajouter ce mémorial à la liste des créations
+        existing.createdMemorials.push({
           memorialId: memorial.id,
           memorialSlug: memorial.slug,
           memorialName: memorial.name,
           photo: memorial.photos[0],
           relation: memorial.author.relation,
         });
-      }
-    }
-
-    // Check guestbook messages
-    for (const message of memorial.guestbookMessages) {
-      const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (msgAuthorNormalized.includes(normalizedQuery)) {
-        const key = `author-${msgAuthorNormalized}`;
-        // Only add if not already present (deduplicate by normalized name)
-        if (!personsByName.has(key)) {
-          personsByName.set(key, {
-            id: message.id,
-            name: message.authorName,
-            type: "author",
+        if (!existing.mainPhoto && memorial.photos[0]) {
+          existing.mainPhoto = memorial.photos[0];
+        }
+      } else {
+        personsMap.set(key, {
+          normalizedName: authorNameNormalized,
+          displayName: memorial.author.name,
+          type: "author",
+          createdMemorials: [{
             memorialId: memorial.id,
             memorialSlug: memorial.slug,
             memorialName: memorial.name,
             photo: memorial.photos[0],
-            relation: message.relationCategory,
+            relation: memorial.author.relation,
+          }],
+          guestbookEntries: [],
+          mainPhoto: memorial.photos[0],
+          sortScore: 0,
+        });
+      }
+    }
+
+    // 3. Chercher dans les contributeurs du livre d'or
+    for (const message of memorial.guestbookMessages) {
+      const msgAuthorNormalized = normalizeString(message.authorName);
+      if (isFuzzyMatch(normalizedQuery, msgAuthorNormalized)) {
+        const key = `author-${msgAuthorNormalized}`;
+        const existing = personsMap.get(key);
+
+        if (existing) {
+          // Ajouter cette entrée au livre d'or
+          existing.guestbookEntries.push({
+            memorialId: memorial.id,
+            memorialSlug: memorial.slug,
+            memorialName: memorial.name,
+            photo: memorial.photos[0],
+            relationCategory: message.relationCategory,
+            content: message.content,
+          });
+          if (!existing.mainPhoto && memorial.photos[0]) {
+            existing.mainPhoto = memorial.photos[0];
+          }
+        } else {
+          personsMap.set(key, {
+            normalizedName: msgAuthorNormalized,
+            displayName: message.authorName,
+            type: "author",
+            createdMemorials: [],
+            guestbookEntries: [{
+              memorialId: memorial.id,
+              memorialSlug: memorial.slug,
+              memorialName: memorial.name,
+              photo: memorial.photos[0],
+              relationCategory: message.relationCategory,
+              content: message.content,
+            }],
+            mainPhoto: memorial.photos[0],
+            sortScore: 0,
           });
         }
       }
     }
   }
 
-  return Array.from(personsByName.values());
-};
+  // Convertir en tableau et calculer les liens avec l'utilisateur
+  let results = Array.from(personsMap.values());
 
-const organizeResultsForPerson = (
-  person: PersonMatch,
-  memorials: SearchableMemorial[],
-  currentUserName?: string,
-  userRelation?: string // La relation de l'utilisateur avec un défunt (si connue)
-): OrganizedResults => {
-  const publications: AuthorPublications[] = [];
-  const guestbookEntries: AuthorGuestbookEntry[] = [];
-  
-  if (person.type === "deceased") {
-    return {
-      isDeceased: true,
-      deceasedMemorial: {
-        id: person.memorialId,
-        name: person.name,
-        slug: person.memorialSlug,
-        photo: person.photo,
-      },
-      authorName: person.name,
-      publications: [],
-      guestbookEntries: [],
-    };
-  }
-
-  const personNameNormalized = person.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  for (const memorial of memorials) {
-    const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (authorNameNormalized === personNameNormalized) {
-      publications.push({
-        memorialId: memorial.id,
-        memorialName: memorial.name,
-        memorialSlug: memorial.slug,
-        photo: memorial.photos[0],
-        relation: memorial.author.relation,
-      });
-    }
-
-    for (const message of memorial.guestbookMessages) {
-      const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (msgAuthorNormalized === personNameNormalized) {
-        guestbookEntries.push({
-          memorialId: memorial.id,
-          memorialName: memorial.name,
-          memorialSlug: memorial.slug,
-          photo: memorial.photos[0],
-          relationCategory: message.relationCategory,
-          content: message.content,
-        });
-      }
-    }
-  }
-
-  let connectionWithUser: OrganizedResults["connectionWithUser"];
-  
+  // Calculer le lien contextuel avec l'utilisateur connecté
   if (currentUserName) {
-    const userNameNormalized = currentUserName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const userNameNormalized = normalizeString(currentUserName);
     
-    for (const memorial of memorials) {
-      const allContributors = [
-        { name: memorial.author.name, relation: memorial.author.relation },
-        ...memorial.guestbookMessages.map(m => ({ name: m.authorName, relation: m.relationCategory }))
+    results = results.map(person => {
+      if (person.type === "deceased") return person;
+
+      // Récupérer toutes les relations de cette personne dans les mémoriaux
+      const allPersonRelations: Array<{
+        memorialId: string;
+        memorialName: string;
+        relation: string;
+      }> = [
+        ...person.createdMemorials.map(m => ({
+          memorialId: m.memorialId,
+          memorialName: m.memorialName,
+          relation: m.relation,
+        })),
+        ...person.guestbookEntries.map(e => ({
+          memorialId: e.memorialId,
+          memorialName: e.memorialName,
+          relation: e.relationCategory,
+        })),
       ];
-      
-      const personContrib = allContributors.find(c => 
-        c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === personNameNormalized
-      );
-      
-      const userContrib = allContributors.find(c =>
-        c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(userNameNormalized)
-      );
 
-      if (personContrib && userContrib) {
-        // Utiliser le nouveau moteur d'inférence vectorielle
-        const inferredRelation = inferUserToPersonRelation(userContrib.relation, personContrib.relation);
-        
-        if (inferredRelation) {
-          connectionWithUser = {
-            type: "direct",
-            description: `Via le mémorial de ${memorial.name}`,
-            inferredLabel: inferredRelation.label,
-            colorClass: inferredRelation.colorClass,
-            confidence: inferredRelation.confidence,
-            via: memorial.name,
-            // Données pour le graphe
-            userRelation: userContrib.relation,
-            personRelation: personContrib.relation,
-            deceasedName: memorial.name,
-          };
-        } else {
-          connectionWithUser = {
-            type: "indirect",
-            description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.name} est ${getCleanRelationName(personContrib.relation)} de ${memorial.name}`,
-            via: memorial.name,
-            // Données pour le graphe même sans inférence directe
-            userRelation: userContrib.relation,
-            personRelation: personContrib.relation,
-            deceasedName: memorial.name,
-          };
+      // Chercher l'utilisateur dans les mêmes mémoriaux
+      for (const personRel of allPersonRelations) {
+        const memorial = memorials.find(m => m.id === personRel.memorialId);
+        if (!memorial) continue;
+
+        // Construire la liste des contributeurs de ce mémorial
+        const allContributors = [
+          { name: memorial.author.name, relation: memorial.author.relation },
+          ...memorial.guestbookMessages.map(m => ({ name: m.authorName, relation: m.relationCategory }))
+        ];
+
+        // Chercher l'utilisateur dans les contributeurs (comparaison stricte normalisée)
+        const userContrib = allContributors.find(c => {
+          const contribNormalized = normalizeString(c.name);
+          return contribNormalized === userNameNormalized || contribNormalized.includes(userNameNormalized);
+        });
+
+        if (userContrib) {
+          // L'utilisateur et la personne sont tous les deux dans ce mémorial !
+          const inferredRelation = inferUserToPersonRelation(userContrib.relation, personRel.relation);
+          
+          if (inferredRelation) {
+            return {
+              ...person,
+              userConnection: {
+                type: "direct" as const,
+                inferredLabel: inferredRelation.label,
+                colorClass: inferredRelation.colorClass,
+                confidence: inferredRelation.confidence,
+                description: `Via le mémorial de ${memorial.name}`,
+                userRelation: userContrib.relation,
+                personRelation: personRel.relation,
+                deceasedName: memorial.name,
+              },
+              sortScore: inferredRelation.confidence === "high" ? 100 : inferredRelation.confidence === "medium" ? 50 : 25,
+            };
+          } else {
+            return {
+              ...person,
+              userConnection: {
+                type: "indirect" as const,
+                description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.displayName} est ${getCleanRelationName(personRel.relation)} de ${memorial.name}`,
+                userRelation: userContrib.relation,
+                personRelation: personRel.relation,
+                deceasedName: memorial.name,
+              },
+              sortScore: 10,
+            };
+          }
         }
-        break;
       }
-    }
 
-    if (!connectionWithUser) {
-      connectionWithUser = {
-        type: "none",
-        description: "Aucun lien trouvé dans les mémoriaux partagés",
+      // Aucun lien trouvé
+      return {
+        ...person,
+        userConnection: {
+          type: "none" as const,
+          description: "Aucun lien trouvé dans les mémoriaux partagés",
+        },
+        sortScore: 0,
       };
-    }
+    });
   }
 
-  return {
-    isDeceased: false,
-    authorName: person.name,
-    publications,
-    guestbookEntries,
-    connectionWithUser,
-  };
+  // Trier : personnes avec lien de parenté en premier
+  results.sort((a, b) => {
+    // D'abord par score de lien (descendant)
+    if (b.sortScore !== a.sortScore) {
+      return b.sortScore - a.sortScore;
+    }
+    // Ensuite les défunts en premier
+    if (a.type !== b.type) {
+      return a.type === "deceased" ? -1 : 1;
+    }
+    // Puis par nombre d'activités (descendant)
+    const aActivities = a.createdMemorials.length + a.guestbookEntries.length;
+    const bActivities = b.createdMemorials.length + b.guestbookEntries.length;
+    return bActivities - aActivities;
+  });
+
+  return results;
 };
+
+// ============================================================================
+// COMPOSANT PRINCIPAL
+// ============================================================================
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -266,9 +351,11 @@ const SearchPage = () => {
   const [searchInput, setSearchInput] = useState(query);
   const { memorials } = useMemorials();
   const { user } = useAuth();
-  const [selectedPerson, setSelectedPerson] = useState<PersonMatch | null>(null);
+  const { profile } = useProfile();
+  const [selectedPerson, setSelectedPerson] = useState<GroupedPerson | null>(null);
   
-  const currentUserName = user?.email?.split("@")[0];
+  // Utiliser le display_name du profil si disponible, sinon fallback sur l'email
+  const currentUserName = profile?.display_name || user?.email?.split("@")[0];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,20 +365,14 @@ const SearchPage = () => {
     }
   };
 
-  const results = useMemo(
-    () => query ? searchMemorialsAndAuthors(query, memorials) : [],
-    [query, memorials]
+  // Recherche avec groupement et tri
+  const groupedResults = useMemo(
+    () => query ? searchAndGroupPersons(query, memorials, currentUserName) : [],
+    [query, memorials, currentUserName]
   );
 
-  const matchingPersons = useMemo(
-    () => query ? findAllMatchingPersons(query, memorials) : [],
-    [query, memorials]
-  );
-
-  const organized = useMemo(
-    () => selectedPerson ? organizeResultsForPerson(selectedPerson, memorials, currentUserName) : null,
-    [selectedPerson, memorials, currentUserName]
-  );
+  // Comptage total pour l'affichage
+  const totalCount = groupedResults.length;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -356,13 +437,13 @@ const SearchPage = () => {
           {query && (
             <div className="mb-4">
               <p className="text-muted-foreground font-sans text-sm">
-                {results.length} résultat{results.length > 1 ? "s" : ""} pour "{query}"
+                {totalCount} personne{totalCount > 1 ? "s" : ""} trouvée{totalCount > 1 ? "s" : ""} pour "{query}"
               </p>
             </div>
           )}
 
           {/* Aucun résultat */}
-          {query && results.length === 0 && (
+          {query && totalCount === 0 && (
             <div className="text-center py-16">
               <p className="text-muted-foreground font-sans text-lg mb-2">
                 Aucun résultat pour "{query}"
@@ -373,45 +454,33 @@ const SearchPage = () => {
             </div>
           )}
 
-          {/* Liste de désambiguïsation */}
-          {query && matchingPersons.length > 1 && !selectedPerson && (
+          {/* Liste des personnes groupées */}
+          {query && totalCount > 0 && !selectedPerson && (
             <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <div className="p-4 border-b border-border bg-muted/30">
-                <div className="flex items-center gap-2 text-primary mb-1">
-                  <Users className="w-4 h-4" />
-                  <h2 className="font-serif text-lg text-foreground">
-                    Plusieurs personnes trouvées
-                  </h2>
-                </div>
-                <p className="text-sm text-muted-foreground font-sans">
-                  Sélectionnez la personne recherchée
-                </p>
-              </div>
-              
               <div className="divide-y divide-border">
-                {matchingPersons.map((person) => (
+                {groupedResults.map((person) => (
                   <button
-                    key={`${person.type}-${person.id}`}
+                    key={`${person.type}-${person.normalizedName}`}
                     onClick={() => setSelectedPerson(person)}
                     className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left group"
                   >
                     <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
-                      {person.photo ? (
+                      {person.mainPhoto ? (
                         <img
-                          src={person.photo}
+                          src={person.mainPhoto}
                           alt=""
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <span className="font-serif text-lg text-muted-foreground">
-                          {person.name.charAt(0).toUpperCase()}
+                          {person.displayName.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">
-                          {person.name}
+                          {person.displayName}
                         </span>
                         <span className={`px-2 py-0.5 text-xs font-sans rounded ${
                           person.type === "deceased" 
@@ -420,11 +489,17 @@ const SearchPage = () => {
                         }`}>
                           {person.type === "deceased" ? "Défunt" : "Témoin"}
                         </span>
+                        {/* Badge de lien inféré */}
+                        {person.userConnection?.type === "direct" && person.userConnection.inferredLabel && (
+                          <span className={`px-2 py-0.5 text-xs font-sans rounded bg-green-500/10 border border-green-500/20 ${person.userConnection.colorClass || 'text-foreground'}`}>
+                            {person.userConnection.inferredLabel}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground font-sans truncate">
                         {person.type === "deceased" 
                           ? "Espace mémorial" 
-                          : `${getCleanRelationName(person.relation || "")} de ${person.memorialName}`
+                          : `${person.createdMemorials.length > 0 ? `Créateur de ${person.createdMemorials.length} mémorial${person.createdMemorials.length > 1 ? 's' : ''}` : ''}${person.createdMemorials.length > 0 && person.guestbookEntries.length > 0 ? ' • ' : ''}${person.guestbookEntries.length > 0 ? `${person.guestbookEntries.length} hommage${person.guestbookEntries.length > 1 ? 's' : ''}` : ''}`
                         }
                       </p>
                     </div>
@@ -435,13 +510,12 @@ const SearchPage = () => {
             </div>
           )}
 
-          {/* Détails d'une personne */}
-          {query && results.length > 0 && (matchingPersons.length === 1 || selectedPerson) && (
+          {/* Détails d'une personne sélectionnée */}
+          {query && totalCount > 0 && selectedPerson && (
             <PersonDetails
-              person={selectedPerson || matchingPersons[0]}
-              organized={organized || organizeResultsForPerson(selectedPerson || matchingPersons[0], memorials, currentUserName)}
+              person={selectedPerson}
               user={user}
-              showBackButton={matchingPersons.length > 1}
+              showBackButton={true}
               onBack={() => setSelectedPerson(null)}
             />
           )}
@@ -453,15 +527,18 @@ const SearchPage = () => {
   );
 };
 
+// ============================================================================
+// COMPOSANT DÉTAILS PERSONNE
+// ============================================================================
+
 interface PersonDetailsProps {
-  person: PersonMatch;
-  organized: OrganizedResults;
+  person: GroupedPerson;
   user: any;
   showBackButton: boolean;
   onBack: () => void;
 }
 
-const PersonDetails = ({ person, organized, user, showBackButton, onBack }: PersonDetailsProps) => {
+const PersonDetails = ({ person, user, showBackButton, onBack }: PersonDetailsProps) => {
   return (
     <div className="space-y-6">
       {/* Header avec infos de la personne */}
@@ -477,35 +554,43 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
         )}
         <div className="flex items-center gap-4">
           <div className="w-16 h-20 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
-            {person.photo ? (
+            {person.mainPhoto ? (
               <img
-                src={person.photo}
+                src={person.mainPhoto}
                 alt=""
                 className="w-full h-full object-cover"
               />
             ) : (
               <span className="font-serif text-2xl text-muted-foreground">
-                {organized.authorName.charAt(0).toUpperCase()}
+                {person.displayName.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div>
             <h2 className="font-serif text-2xl text-foreground">
-              {organized.authorName}
+              {person.displayName}
             </h2>
-            <span className={`inline-block mt-1 px-3 py-1 text-sm font-sans rounded ${
-              person.type === "deceased" 
-                ? "bg-primary/10 text-primary" 
-                : "bg-secondary text-muted-foreground"
-            }`}>
-              {person.type === "deceased" ? "Défunt" : "Témoin"}
-            </span>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className={`inline-block px-3 py-1 text-sm font-sans rounded ${
+                person.type === "deceased" 
+                  ? "bg-primary/10 text-primary" 
+                  : "bg-secondary text-muted-foreground"
+              }`}>
+                {person.type === "deceased" ? "Défunt" : "Témoin"}
+              </span>
+              {/* Badge de lien inféré */}
+              {person.userConnection?.type === "direct" && person.userConnection.inferredLabel && (
+                <span className={`px-3 py-1 text-sm font-sans rounded bg-green-500/10 border border-green-500/20 ${person.userConnection.colorClass || 'text-foreground'}`}>
+                  {person.userConnection.inferredLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Espace mémorial (si défunt) */}
-      {organized.isDeceased && organized.deceasedMemorial && (
+      {person.type === "deceased" && person.deceasedMemorial && (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2 text-primary">
@@ -516,13 +601,13 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
             </div>
           </div>
           <Link
-            to={`/memorial/${organized.deceasedMemorial.slug}`}
+            to={`/memorial/${person.deceasedMemorial.slug}`}
             className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group"
           >
             <div className="w-16 h-20 overflow-hidden rounded-sm bg-muted shrink-0">
-              {organized.deceasedMemorial.photo && (
+              {person.deceasedMemorial.photo && (
                 <img
-                  src={organized.deceasedMemorial.photo}
+                  src={person.deceasedMemorial.photo}
                   alt=""
                   className="w-full h-full object-cover"
                 />
@@ -530,7 +615,7 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-serif text-xl text-foreground group-hover:text-primary transition-colors">
-                {organized.deceasedMemorial.name}
+                {person.deceasedMemorial.name}
               </p>
               <p className="text-sm text-muted-foreground font-sans mt-1">
                 Accéder à l'espace mémorial
@@ -541,22 +626,22 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
         </div>
       )}
 
-      {/* Publications */}
-      {organized.publications.length > 0 && (
+      {/* Mémoriaux créés */}
+      {person.createdMemorials.length > 0 && (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2 text-primary">
               <FileText className="w-4 h-4" />
               <h3 className="font-sans text-sm font-medium uppercase tracking-wide">
-                Publications ({organized.publications.length})
+                Mémoriaux créés ({person.createdMemorials.length})
               </h3>
             </div>
             <p className="text-xs text-muted-foreground font-sans mt-1">
-              Espaces mémoriels créés par {organized.authorName}
+              Espaces mémoriels créés par {person.displayName}
             </p>
           </div>
           <div className="divide-y divide-border">
-            {organized.publications.map((pub) => (
+            {person.createdMemorials.map((pub) => (
               <Link
                 key={pub.memorialId}
                 to={`/memorial/${pub.memorialSlug}`}
@@ -587,21 +672,21 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
       )}
 
       {/* Messages Livre d'Or */}
-      {organized.guestbookEntries.length > 0 && (
+      {person.guestbookEntries.length > 0 && (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2 text-primary">
               <BookOpen className="w-4 h-4" />
               <h3 className="font-sans text-sm font-medium uppercase tracking-wide">
-                Messages Livre d'Or ({organized.guestbookEntries.length})
+                Messages Livre d'Or ({person.guestbookEntries.length})
               </h3>
             </div>
             <p className="text-xs text-muted-foreground font-sans mt-1">
-              Contributions de {organized.authorName} aux livres d'or
+              Contributions de {person.displayName} aux livres d'or
             </p>
           </div>
           <div className="divide-y divide-border">
-            {organized.guestbookEntries.map((entry, idx) => (
+            {person.guestbookEntries.map((entry, idx) => (
               <Link
                 key={`${entry.memorialId}-${idx}`}
                 to={`/memorial/${entry.memorialSlug}`}
@@ -629,13 +714,13 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
       )}
 
       {/* Lien avec l'utilisateur connecté */}
-      {!organized.isDeceased && (
+      {person.type !== "deceased" && (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2 text-primary">
               <GitBranch className="w-4 h-4" />
               <h3 className="font-sans text-sm font-medium uppercase tracking-wide">
-                Votre lien avec {organized.authorName}
+                Votre lien avec {person.displayName}
               </h3>
             </div>
           </div>
@@ -652,21 +737,21 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
                   Se connecter
                 </Link>
               </div>
-            ) : organized.connectionWithUser && (organized.connectionWithUser.type === "direct" || organized.connectionWithUser.type === "indirect") ? (
+            ) : person.userConnection && (person.userConnection.type === "direct" || person.userConnection.type === "indirect") ? (
               <div className="space-y-4">
                 {/* Visualisation graphique */}
-                {organized.connectionWithUser.userRelation && organized.connectionWithUser.personRelation && organized.connectionWithUser.deceasedName && (
+                {person.userConnection.userRelation && person.userConnection.personRelation && person.userConnection.deceasedName && (
                   <div className="bg-muted/30 rounded-sm p-4">
                     <RelationshipGraphSearch
                       userName="Vous"
-                      userRelation={organized.connectionWithUser.userRelation}
-                      personName={organized.authorName}
-                      personRelation={organized.connectionWithUser.personRelation}
-                      deceasedName={organized.connectionWithUser.deceasedName}
-                      inferredRelation={organized.connectionWithUser.inferredLabel ? {
-                        label: organized.connectionWithUser.inferredLabel,
-                        confidence: organized.connectionWithUser.confidence || "medium",
-                        colorClass: organized.connectionWithUser.colorClass || "text-foreground",
+                      userRelation={person.userConnection.userRelation}
+                      personName={person.displayName}
+                      personRelation={person.userConnection.personRelation}
+                      deceasedName={person.userConnection.deceasedName}
+                      inferredRelation={person.userConnection.inferredLabel ? {
+                        label: person.userConnection.inferredLabel,
+                        confidence: person.userConnection.confidence || "medium",
+                        colorClass: person.userConnection.colorClass || "text-foreground",
                       } : undefined}
                     />
                   </div>
@@ -674,50 +759,43 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
 
                 {/* Badge et description */}
                 <div className={`p-4 rounded-sm ${
-                  organized.connectionWithUser.type === "direct"
+                  person.userConnection.type === "direct"
                     ? "bg-green-500/10 border border-green-500/20" 
                     : "bg-amber-500/10 border border-amber-500/20"
                 }`}>
-                  {organized.connectionWithUser.type === "direct" && organized.connectionWithUser.inferredLabel ? (
+                  {person.userConnection.type === "direct" && person.userConnection.inferredLabel ? (
                     <>
-                      <p className={`font-serif text-xl ${organized.connectionWithUser.colorClass || 'text-foreground'}`}>
-                        {organized.connectionWithUser.inferredLabel}
+                      <p className={`font-serif text-xl ${person.userConnection.colorClass || 'text-foreground'}`}>
+                        {person.userConnection.inferredLabel}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`text-xs px-2 py-0.5 rounded font-sans ${
-                          organized.connectionWithUser.confidence === "high" 
+                          person.userConnection.confidence === "high" 
                             ? "bg-green-100 text-green-800"
-                            : organized.connectionWithUser.confidence === "medium"
+                            : person.userConnection.confidence === "medium"
                             ? "bg-amber-100 text-amber-800"
                             : "bg-gray-100 text-gray-600"
                         }`}>
-                          {organized.connectionWithUser.confidence === "high" ? "Lien direct" : organized.connectionWithUser.confidence === "medium" ? "Lien probable" : "Lien indirect"}
+                          {person.userConnection.confidence === "high" ? "Lien direct" : person.userConnection.confidence === "medium" ? "Lien probable" : "Lien indirect"}
                         </span>
                       </div>
-                      {organized.connectionWithUser.via && (
-                        <p className="text-sm text-muted-foreground mt-2 font-sans">
-                          {organized.connectionWithUser.description}
-                        </p>
-                      )}
+                      <p className="text-sm text-muted-foreground mt-2 font-sans">
+                        {person.userConnection.description}
+                      </p>
                     </>
                   ) : (
                     <>
                       <p className="font-sans text-foreground">
-                        {organized.connectionWithUser.description}
+                        {person.userConnection.description}
                       </p>
-                      {organized.connectionWithUser.via && (
-                        <p className="text-sm text-muted-foreground mt-2 font-sans">
-                          Via le mémorial de {organized.connectionWithUser.via}
-                        </p>
-                      )}
                     </>
                   )}
                 </div>
               </div>
-            ) : organized.connectionWithUser?.type === "none" ? (
+            ) : person.userConnection?.type === "none" ? (
               <div className="bg-muted/50 p-4 rounded-sm">
                 <p className="text-muted-foreground font-sans">
-                  {organized.connectionWithUser.description}
+                  {person.userConnection.description}
                 </p>
               </div>
             ) : (
