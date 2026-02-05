@@ -19,15 +19,15 @@ const DEFAULT_IMAGE = "/icons/icon-512x512.png";
 /**
  * Generate a social sharing description for memorial pages.
  * Includes the deceased name, age, and a sober call to remembrance.
+ * Format optimized for WhatsApp/Facebook previews.
  */
 const generateMemorialDescription = (
   name: string,
   age: number | null,
   bio?: string
 ): string => {
-  const ageText = age ? `, ${age} ans` : "";
-  const bioExcerpt = bio ? `. ${bio.substring(0, 80)}${bio.length > 80 ? "..." : ""}` : "";
-  return `Hommage à ${name}${ageText}${bioExcerpt}. Rejoignez le recueillement sur Floorence.`;
+  const ageText = age ? ` (${age} ans)` : "";
+  return `Rejoignez la communauté de mémoire de ${name}${ageText} sur Floorence. Laissez un message ou un geste de recueillement.`;
 };
 
 /**
