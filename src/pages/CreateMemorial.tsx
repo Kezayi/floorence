@@ -88,9 +88,9 @@ const CreateMemorial = () => {
         }
       }
 
-      // Funeral date required for RECENT type
-      if (memorialType === "RECENT" && !formData.funeralDate) {
-        newErrors.funeralDate = "La date des obsèques est obligatoire pour un décès récent";
+      // Funeral date required for all memorial types
+      if (!formData.funeralDate) {
+        newErrors.funeralDate = "La date des obsèques est obligatoire";
       }
 
       if (!formData.authorRelation) {
@@ -444,48 +444,48 @@ const CreateMemorial = () => {
                       </div>
                     </div>
 
-                    {/* Funeral date and location - for RECENT type */}
-                    {memorialType === "RECENT" && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
-                        <div>
-                          <label className="block text-sm font-sans text-muted-foreground mb-2">
-                            Date des obsèques *
-                          </label>
-                          <input
-                            type="datetime-local"
-                            value={formData.funeralDate}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                funeralDate: e.target.value,
-                              }))
-                            }
-                            className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
-                              errors.funeralDate ? "ring-1 ring-destructive" : ""
-                            }`}
-                          />
-                          <ErrorMessage message={errors.funeralDate} />
-                          
-                        </div>
-                        <div>
-                          <label className="block text-sm font-sans text-muted-foreground mb-2">
-                            Lieu des obsèques
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.funeralLocation}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                funeralLocation: e.target.value,
-                              }))
-                            }
-                            placeholder="Église, cimetière, domicile..."
-                            className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
-                          />
-                        </div>
+                    {/* Funeral date and location - always shown */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+                      <div>
+                        <label className="block text-sm font-sans text-muted-foreground mb-2">
+                          Date des obsèques *
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formData.funeralDate}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              funeralDate: e.target.value,
+                            }))
+                          }
+                          className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
+                            errors.funeralDate ? "ring-1 ring-destructive" : ""
+                          }`}
+                        />
+                        <ErrorMessage message={errors.funeralDate} />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Si la date n'est pas encore fixée, veuillez saisir une date indicative. Elle pourra être modifiée plus tard.
+                        </p>
                       </div>
-                    )}
+                      <div>
+                        <label className="block text-sm font-sans text-muted-foreground mb-2">
+                          Lieu des obsèques
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.funeralLocation}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              funeralLocation: e.target.value,
+                            }))
+                          }
+                          placeholder="Église, cimetière, domicile..."
+                          className="w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
 
                     <div>
                       <label className="block text-sm font-sans text-muted-foreground mb-2">
