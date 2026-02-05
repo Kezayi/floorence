@@ -117,6 +117,9 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
     return groups;
   }, [directRelations]);
 
+  // Check if maillage is completely empty (no posts at all)
+  const isMaillageEmpty = directRelations.length === 0;
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -130,116 +133,127 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
         </p>
       </div>
 
-      {/* 2D Graph */}
-      <div className="relative bg-card border border-border rounded-sm p-4">
-        <RelationshipGraph2D deceasedName={deceasedName} posts={posts} />
-      </div>
-
-      {/* Direct Relations with Deceased */}
-      <div className="bg-secondary p-6 rounded-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h4>Relations directes avec le défunt</h4>
-        </div>
-        
-        {directRelations.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun hommage n'a encore été déposé.
+      {/* État vide incitatif - Aucun hommage */}
+      {isMaillageEmpty ? (
+        <div className="bg-secondary/50 border border-border rounded-sm p-8 text-center">
+          <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+          <h4 className="text-lg font-sans font-medium mb-2">Commencer à tisser la communauté</h4>
+          <p className="text-sm text-muted-foreground font-serif max-w-md mx-auto mb-4">
+            Aucun hommage n'a encore été déposé. Soyez le premier à partager un souvenir 
+            et à construire le maillage relationnel autour de {deceasedName}.
           </p>
-        ) : (
-          <div className="space-y-4">
-            {/* Famille */}
-            {groupedRelations.famille.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${categoryColors.famille}`} />
-                  <span className="text-sm font-sans font-medium">Famille ({groupedRelations.famille.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
-                  {groupedRelations.famille.map((rel, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Alliés */}
-            {groupedRelations.allies.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${categoryColors.allies}`} />
-                  <span className="text-sm font-sans font-medium">Alliés ({groupedRelations.allies.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
-                  {groupedRelations.allies.map((rel, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Amis */}
-            {groupedRelations.amis.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${categoryColors.amis}`} />
-                  <span className="text-sm font-sans font-medium">Amis & Connaissances ({groupedRelations.amis.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
-                  {groupedRelations.amis.map((rel, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Autre */}
-            {groupedRelations.autre.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${categoryColors.autre}`} />
-                  <span className="text-sm font-sans font-medium">Autres ({groupedRelations.autre.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
-                  {groupedRelations.autre.map((rel, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-serif">{rel.name}</span>
-                      <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <p className="text-xs text-muted-foreground/70 font-sans">
+            Chaque témoignage enrichit la mémoire collective et révèle les liens qui unissent les proches.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* 2D Graph */}
+          <div className="relative bg-card border border-border rounded-sm p-4">
+            <RelationshipGraph2D deceasedName={deceasedName} posts={posts} />
           </div>
-        )}
-      </div>
 
-      {/* Inferred Relationships with Pagination */}
-      {inferredRelationships.length > 0 && (
-        <InferredRelationshipsSection relationships={inferredRelationships} />
-      )}
+          {/* Direct Relations with Deceased */}
+          <div className="bg-secondary p-6 rounded-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-primary" />
+              <h4>Relations directes avec le défunt</h4>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Famille */}
+              {groupedRelations.famille.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${categoryColors.famille}`} />
+                    <span className="text-sm font-sans font-medium">Famille ({groupedRelations.famille.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
+                    {groupedRelations.famille.map((rel, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="font-serif">{rel.name}</span>
+                        <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Alliés */}
+              {groupedRelations.allies.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${categoryColors.allies}`} />
+                    <span className="text-sm font-sans font-medium">Alliés ({groupedRelations.allies.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
+                    {groupedRelations.allies.map((rel, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="font-serif">{rel.name}</span>
+                        <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Amis */}
+              {groupedRelations.amis.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${categoryColors.amis}`} />
+                    <span className="text-sm font-sans font-medium">Amis & Connaissances ({groupedRelations.amis.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
+                    {groupedRelations.amis.map((rel, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="font-serif">{rel.name}</span>
+                        <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Autre */}
+              {groupedRelations.autre.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${categoryColors.autre}`} />
+                    <span className="text-sm font-sans font-medium">Autres ({groupedRelations.autre.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-5">
+                    {groupedRelations.autre.map((rel, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="font-serif">{rel.name}</span>
+                        <span className="text-muted-foreground text-xs">({getCleanRelationName(rel.category)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-      {/* Empty state for inferences */}
-      {inferredRelationships.length === 0 && directRelations.length > 1 && (
-        <div className="bg-muted/50 p-6 rounded-sm text-center">
-          <Link2 className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Pas assez d'informations pour inférer des relations entre les proches.
-          </p>
-        </div>
+          {/* Inferred Relationships with Pagination */}
+          {inferredRelationships.length > 0 && (
+            <InferredRelationshipsSection relationships={inferredRelationships} />
+          )}
+
+          {/* Empty state for inferences */}
+          {inferredRelationships.length === 0 && directRelations.length > 1 && (
+            <div className="bg-muted/50 p-6 rounded-sm text-center">
+              <Link2 className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Pas assez d'informations pour inférer des relations entre les proches.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
