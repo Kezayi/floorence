@@ -7,14 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Eye, EyeOff, RotateCcw, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -31,6 +34,8 @@ interface GuestbookPost {
   hidden_reason: string | null;
   created_at: string;
   memorial_id: string;
+  candle_count: number;
+  flower_count: number;
 }
 
 const Moderation = () => {
@@ -39,6 +44,14 @@ const Moderation = () => {
   const [selectedPost, setSelectedPost] = useState<GuestbookPost | null>(null);
   const [hideReason, setHideReason] = useState('');
   const [showHideDialog, setShowHideDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editForm, setEditForm] = useState({
+    author_name: '',
+    content: '',
+    candle_count: 0,
+    flower_count: 0,
+  });
 
   const pagination = useServerPagination(10);
 
@@ -66,7 +79,7 @@ const Moderation = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
-        .select('*')
+        .select('id, author_name, content, relation_category, is_hidden, hidden_reason, created_at, memorial_id, candle_count, flower_count')
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
 
@@ -124,14 +137,91 @@ const Moderation = () => {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async (data: { id: string; author_name: string; content: string; candle_count: number; flower_count: number }) => {
+      const { error } = await supabase
+        .from('guestbook_posts')
+        .update({
+          author_name: data.author_name,
+          content: data.content,
+          candle_count: data.candle_count,
+          flower_count: data.flower_count,
+        })
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
+      toast.success('Hommage modifié avec succès');
+      setShowEditDialog(false);
+      setSelectedPost(null);
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('guestbook_posts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts-count'] });
+      toast.success('Hommage supprimé avec succès');
+      setShowDeleteDialog(false);
+      setSelectedPost(null);
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
   const handleHide = (post: GuestbookPost) => {
     setSelectedPost(post);
     setShowHideDialog(true);
   };
 
+  const handleEdit = (post: GuestbookPost) => {
+    setSelectedPost(post);
+    setEditForm({
+      author_name: post.author_name,
+      content: post.content,
+      candle_count: post.candle_count,
+      flower_count: post.flower_count,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleDelete = (post: GuestbookPost) => {
+    setSelectedPost(post);
+    setShowDeleteDialog(true);
+  };
+
   const confirmHide = () => {
     if (selectedPost && hideReason.trim()) {
       hideMutation.mutate({ postId: selectedPost.id, reason: hideReason });
+    }
+  };
+
+  const confirmEdit = () => {
+    if (selectedPost) {
+      editMutation.mutate({
+        id: selectedPost.id,
+        ...editForm,
+      });
+    }
+  };
+
+  const confirmDelete = () => {
+    if (selectedPost) {
+      deleteMutation.mutate(selectedPost.id);
     }
   };
 
@@ -218,9 +308,27 @@ const Moderation = () => {
                     Masquer
                   </Button>
                 )}
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(post)}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(post)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={`/memorial/${post.memorial_id}`} target="_blank" rel="noopener noreferrer">
                   <Eye className="w-4 h-4 mr-2" />
                   Voir le mémorial
+                  </a>
                 </Button>
               </div>
             </CardContent>
@@ -273,6 +381,90 @@ const Moderation = () => {
               disabled={!hideReason.trim() || hideMutation.isPending}
             >
               Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier l'hommage</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="author_name">Nom de l'auteur</Label>
+              <Input
+                id="author_name"
+                value={editForm.author_name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, author_name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="content">Message</Label>
+              <Textarea
+                id="content"
+                value={editForm.content}
+                onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="candle_count">Cierges</Label>
+                <Input
+                  id="candle_count"
+                  type="number"
+                  min="0"
+                  value={editForm.candle_count}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, candle_count: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="flower_count">Fleurs</Label>
+                <Input
+                  id="flower_count"
+                  type="number"
+                  min="0"
+                  value={editForm.flower_count}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, flower_count: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={confirmEdit} disabled={editMutation.isPending}>
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer l'hommage</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer l'hommage de{' '}
+              <strong>{selectedPost?.author_name}</strong> ?
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>
