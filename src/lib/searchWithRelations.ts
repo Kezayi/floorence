@@ -56,22 +56,84 @@ export interface SearchWithRelationsResult {
   clusters: SearchResult[][];
 }
 
-// Search function
+// Calcul de la distance de Levenshtein pour la recherche floue
+const levenshteinDistance = (a: string, b: string): number => {
+  const matrix: number[][] = [];
+  
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  
+  return matrix[b.length][a.length];
+};
+
+// Vérifie si deux chaînes sont similaires (fuzzy match)
+const isFuzzyMatch = (query: string, target: string, threshold: number = 2): boolean => {
+  // D'abord vérifier la correspondance exacte (inclut)
+  if (target.includes(query)) return true;
+  
+  // Pour les mots courts, être plus strict
+  if (query.length <= 3) {
+    return target.includes(query);
+  }
+  
+  // Vérifier chaque mot du target
+  const targetWords = target.split(/\s+/);
+  for (const word of targetWords) {
+    // Si le mot cible est beaucoup plus long, vérifier le début
+    if (word.startsWith(query.substring(0, Math.min(3, query.length)))) {
+      const distance = levenshteinDistance(query, word.substring(0, query.length + 1));
+      if (distance <= threshold) return true;
+    }
+    
+    // Calcul de distance standard
+    const distance = levenshteinDistance(query, word);
+    // Threshold adaptatif basé sur la longueur
+    const adaptiveThreshold = Math.min(threshold, Math.floor(query.length / 3) + 1);
+    if (distance <= adaptiveThreshold) return true;
+  }
+  
+  return false;
+};
+
+// Normalise une chaîne pour la recherche
+const normalizeString = (str: string): string => {
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
+// Search function with fuzzy matching
 export const searchMemorialsAndAuthors = (
   query: string,
   memorials: SearchableMemorial[]
 ): SearchResult[] => {
   if (!query.trim()) return [];
   
-  const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const normalizedQuery = normalizeString(query);
   const results: SearchResult[] = [];
   const seen = new Set<string>();
 
   for (const memorial of memorials) {
-    const memorialNameNormalized = memorial.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const memorialNameNormalized = normalizeString(memorial.name);
     
-    // Search in memorial name
-    if (memorialNameNormalized.includes(normalizedQuery)) {
+    // Search in memorial name with fuzzy matching
+    if (isFuzzyMatch(normalizedQuery, memorialNameNormalized)) {
       const key = `memorial-${memorial.id}`;
       if (!seen.has(key)) {
         seen.add(key);
@@ -87,9 +149,9 @@ export const searchMemorialsAndAuthors = (
       }
     }
 
-    // Search in memorial author
-    const authorNameNormalized = memorial.author.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (authorNameNormalized.includes(normalizedQuery)) {
+    // Search in memorial author with fuzzy matching
+    const authorNameNormalized = normalizeString(memorial.author.name);
+    if (isFuzzyMatch(normalizedQuery, authorNameNormalized)) {
       const key = `author-${memorial.author.id}`;
       if (!seen.has(key)) {
         seen.add(key);
@@ -106,10 +168,10 @@ export const searchMemorialsAndAuthors = (
       }
     }
 
-    // Search in guestbook authors
+    // Search in guestbook authors with fuzzy matching
     for (const message of memorial.guestbookMessages) {
-      const msgAuthorNormalized = message.authorName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (msgAuthorNormalized.includes(normalizedQuery)) {
+      const msgAuthorNormalized = normalizeString(message.authorName);
+      if (isFuzzyMatch(normalizedQuery, msgAuthorNormalized)) {
         const key = `guestbook-${memorial.id}-${message.authorName}`;
         if (!seen.has(key)) {
           seen.add(key);
