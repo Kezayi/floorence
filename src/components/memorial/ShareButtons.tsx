@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Share2, X } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Share2, X, Copy, Check } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ShareButtonsProps {
   url: string;
@@ -44,8 +45,29 @@ const getSocialShareUrl = (slug: string | undefined, fallbackUrl: string): strin
   return fallbackUrl;
 };
 
+/**
+ * Check if we can use native share API
+ * Returns false in iframes/restricted contexts where permission is denied
+ */
+const canUseNativeShare = (): boolean => {
+  // Check if navigator.share exists
+  if (!navigator.share) return false;
+  
+  // Check if we're in an iframe (often restricted)
+  try {
+    if (window.self !== window.top) return false;
+  } catch {
+    // Cross-origin iframe - definitely can't use native share
+    return false;
+  }
+  
+  return true;
+};
+
 const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isMobile = useIsMobile();
 
   // Use social preview URL for crawlers, regular URL for native share
   const socialUrl = getSocialShareUrl(slug, url);
@@ -55,45 +77,60 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
   const shareLinks = {
     whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedSocialUrl}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedSocialUrl}&quote=${encodedTitle}`,
-    instagram: null, // Instagram doesn't support direct URL sharing
   };
 
-  const handleShare = async (platform: string) => {
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [url]);
+
+  const handleShare = useCallback((platform: string) => {
     if (platform === "instagram") {
       // Instagram doesn't support direct URL sharing, copy link instead
-      await navigator.clipboard.writeText(url);
-      alert("Lien copié ! Collez-le dans votre story Instagram.");
+      handleCopyLink();
       return;
     }
 
     const link = shareLinks[platform as keyof typeof shareLinks];
     if (link) {
-      window.open(link, "_blank", "width=600,height=400");
+      // Use window.open with _blank target and noopener for security
+      window.open(link, "_blank", "noopener,noreferrer,width=600,height=400");
     }
     setIsOpen(false);
-  };
+  }, [shareLinks, handleCopyLink]);
 
-  const handleNativeShare = async () => {
-    console.log("Share button clicked, navigator.share available:", !!navigator.share);
-    
-    if (navigator.share) {
+  const handleNativeShare = useCallback(async () => {
+    // Try native share only if available and not in restricted context
+    if (canUseNativeShare()) {
       try {
         await navigator.share({
           title,
           text: description,
           url,
         });
-        console.log("Native share completed");
+        return; // Success - don't show dropdown
       } catch (err) {
-        console.log("Native share cancelled or failed:", err);
-        // If native share fails, fallback to dropdown
-        setIsOpen(true);
+        // User cancelled or permission denied - fall through to dropdown
+        console.log("Native share unavailable:", err);
       }
-    } else {
-      console.log("Opening dropdown menu, current state:", isOpen);
-      setIsOpen(!isOpen);
     }
-  };
+    
+    // Fallback: show dropdown menu
+    setIsOpen(!isOpen);
+  }, [title, description, url, isOpen]);
 
   return (
     <div className="relative z-50">
@@ -156,7 +193,25 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
                   <InstagramIcon size={20} />
                 </span>
                 <span className="font-sans text-sm">Instagram</span>
+                <span className="text-xs text-muted-foreground ml-auto">(copie lien)</span>
               </button>
+              
+              {/* Copy link button */}
+              <div className="border-t border-border mt-2 pt-2">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-left hover:bg-muted rounded-sm transition-colors"
+                >
+                  {copied ? (
+                    <Check className="w-5 h-5 text-accent-green" />
+                  ) : (
+                    <Copy className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  <span className="font-sans text-sm">
+                    {copied ? "Lien copié !" : "Copier le lien"}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </>
