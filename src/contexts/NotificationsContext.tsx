@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./AuthContext";
 
 export interface Notification {
   id: string;
@@ -31,57 +33,18 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
-// Mock initial data
-const mockNotifications: Notification[] = [
-  {
-    id: "n1",
-    type: "NEW_MESSAGE",
-    memorialSlug: "marcus-james-washington",
-    memorialName: "Marcus James Washington",
-    message: "Un nouveau message a été publié dans le livre d'or",
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    isRead: false,
-  },
-  {
-    id: "n2",
-    type: "NEW_EVENT",
-    memorialSlug: "gloria-mae-johnson",
-    memorialName: "Gloria Mae Johnson",
-    message: "Un nouveau recueillement a été programmé",
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    isRead: false,
-  },
-  {
-    id: "n3",
-    type: "MEMORIAL_UPDATE",
-    memorialSlug: "jaylen-christopher-davis",
-    memorialName: "Jaylen Christopher Davis",
-    message: "L'espace mémoriel a été mis à jour",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    isRead: true,
-  },
-];
-
-const mockFollowedMemorials: FollowedMemorial[] = [
-  {
-    id: "f1",
-    slug: "marcus-james-washington",
-    name: "Marcus James Washington",
-    photoUrl: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop&crop=face",
-    followedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: "f2",
-    slug: "gloria-mae-johnson",
-    name: "Gloria Mae Johnson",
-    photoUrl: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=100&h=100&fit=crop&crop=face",
-    followedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-];
-
 export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const [followedMemorials, setFollowedMemorials] = useState<FollowedMemorial[]>(mockFollowedMemorials);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [followedMemorials, setFollowedMemorials] = useState<FollowedMemorial[]>([]);
+
+  // Reset state when user logs out
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setFollowedMemorials([]);
+    }
+  }, [user]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
