@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRelationWithDeceased } from '@/lib/relationshipInference';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -17,13 +17,23 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Eye, EyeOff, RotateCcw, Pencil, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import SortableTableHeader from '@/components/admin/SortableTableHeader';
+import { useSortableTable } from '@/hooks/useSortableTable';
+import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
+import { logAuditAction } from '@/lib/auditLogger';
 
 interface GuestbookPost {
   id: string;
@@ -36,6 +46,7 @@ interface GuestbookPost {
   memorial_id: string;
   candle_count: number;
   flower_count: number;
+  photos: string[] | null;
 }
 
 const Moderation = () => {
@@ -46,6 +57,7 @@ const Moderation = () => {
   const [showHideDialog, setShowHideDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [editForm, setEditForm] = useState({
     author_name: '',
     content: '',
@@ -79,7 +91,7 @@ const Moderation = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
-        .select('id, author_name, content, relation_category, is_hidden, hidden_reason, created_at, memorial_id, candle_count, flower_count')
+        .select('id, author_name, content, relation_category, is_hidden, hidden_reason, created_at, memorial_id, candle_count, flower_count, photos')
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
 
@@ -87,6 +99,8 @@ const Moderation = () => {
       return data as GuestbookPost[];
     },
   });
+
+  const { sortConfig, handleSort, sortedData } = useSortableTable(posts, 'created_at', 'desc');
 
   const hideMutation = useMutation({
     mutationFn: async ({ postId, reason }: { postId: string; reason: string }) => {
@@ -101,6 +115,14 @@ const Moderation = () => {
         .eq('id', postId);
 
       if (error) throw error;
+
+      // Log audit
+      await logAuditAction(
+        'guestbook_post_hidden',
+        user?.id || '',
+        user?.email || null,
+        { guestbook_post_id: postId, reason }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -127,6 +149,14 @@ const Moderation = () => {
         .eq('id', postId);
 
       if (error) throw error;
+
+      // Log audit
+      await logAuditAction(
+        'guestbook_post_restored',
+        user?.id || '',
+        user?.email || null,
+        { guestbook_post_id: postId }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -139,6 +169,7 @@ const Moderation = () => {
 
   const editMutation = useMutation({
     mutationFn: async (data: { id: string; author_name: string; content: string; candle_count: number; flower_count: number }) => {
+      const originalPost = selectedPost;
       const { error } = await supabase
         .from('guestbook_posts')
         .update({
@@ -150,6 +181,22 @@ const Moderation = () => {
         .eq('id', data.id);
 
       if (error) throw error;
+
+      // Log audit with changes
+      await logAuditAction(
+        'guestbook_post_updated',
+        user?.id || '',
+        user?.email || null,
+        {
+          guestbook_post_id: data.id,
+          changes: {
+            author_name: { old: originalPost?.author_name || '', new: data.author_name },
+            content: { old: originalPost?.content || '', new: data.content },
+            candle_count: { old: originalPost?.candle_count || 0, new: data.candle_count },
+            flower_count: { old: originalPost?.flower_count || 0, new: data.flower_count },
+          },
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -170,6 +217,14 @@ const Moderation = () => {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log audit
+      await logAuditAction(
+        'guestbook_post_deleted',
+        user?.id || '',
+        user?.email || null,
+        { guestbook_post_id: id, author_name: selectedPost?.author_name || '' }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -202,6 +257,11 @@ const Moderation = () => {
   const handleDelete = (post: GuestbookPost) => {
     setSelectedPost(post);
     setShowDeleteDialog(true);
+  };
+
+  const handleViewPhotos = (post: GuestbookPost) => {
+    setSelectedPost(post);
+    setShowPhotosDialog(true);
   };
 
   const confirmHide = () => {
@@ -252,7 +312,7 @@ const Moderation = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Modération</h1>
+        <h1 className="text-3xl font-bold text-foreground">Modération des Hommages</h1>
         <ExportCSVButton
           fetchData={fetchAllPosts}
           columns={postColumns}
@@ -261,88 +321,145 @@ const Moderation = () => {
         />
       </div>
 
-      <div className="space-y-4">
-        {posts?.map((post) => (
-          <Card key={post.id} className={post.is_hidden ? 'opacity-60' : ''}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CardTitle className="text-base">{post.author_name}</CardTitle>
-                  <Badge variant="secondary">{getRelationWithDeceased(post.relation_category)}</Badge>
-                  {post.is_hidden && (
-                    <Badge variant="destructive">Masqué</Badge>
-                  )}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {format(new Date(post.created_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground mb-4">{post.content}</p>
-
-              {post.hidden_reason && (
-                <p className="text-sm text-muted-foreground italic mb-4">
-                  Raison du masquage : {post.hidden_reason}
-                </p>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableTableHeader
+                  label="Auteur"
+                  sortKey="author_name"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Lien avec le défunt"
+                  sortKey="relation_category"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Hommage"
+                  sortKey="content"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                  className="min-w-[300px]"
+                />
+                <SortableTableHeader
+                  label="Photos"
+                  sortKey="photos"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Date"
+                  sortKey="created_at"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Statut"
+                  sortKey="is_hidden"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <TableCell className="font-medium text-muted-foreground">Actions</TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedData?.map((post) => (
+                <TableRow key={post.id} className={post.is_hidden ? 'opacity-60 bg-muted/30' : ''}>
+                  <TableCell className="font-medium">{post.author_name}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{getRelationWithDeceased(post.relation_category)}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-[300px]">
+                    <p className="line-clamp-2 text-sm">{post.content}</p>
+                  </TableCell>
+                  <TableCell>
+                    {post.photos && post.photos.length > 0 ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewPhotos(post)}
+                        className="flex items-center gap-1"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        <span>{post.photos.length}</span>
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {format(new Date(post.created_at), 'dd MMM yyyy', { locale: fr })}
+                  </TableCell>
+                  <TableCell>
+                    {post.is_hidden ? (
+                      <Badge variant="destructive">Masqué</Badge>
+                    ) : (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">Visible</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {post.is_hidden ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => restoreMutation.mutate(post.id)}
+                          disabled={restoreMutation.isPending}
+                          title="Restaurer"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleHide(post)}
+                          title="Masquer"
+                        >
+                          <EyeOff className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(post)}
+                        title="Modifier"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(post)}
+                        title="Supprimer"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild title="Voir le mémorial">
+                        <a href={`/memorial/${post.memorial_id}`} target="_blank" rel="noopener noreferrer">
+                          <Eye className="w-4 h-4" />
+                        </a>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {(!sortedData || sortedData.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucun hommage à modérer.
+                  </TableCell>
+                </TableRow>
               )}
-
-              <div className="flex gap-2">
-                {post.is_hidden ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => restoreMutation.mutate(post.id)}
-                    disabled={restoreMutation.isPending}
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Restaurer
-                  </Button>
-                ) : (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleHide(post)}
-                  >
-                    <EyeOff className="w-4 h-4 mr-2" />
-                    Masquer
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(post)}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Modifier
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(post)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <a href={`/memorial/${post.memorial_id}`} target="_blank" rel="noopener noreferrer">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Voir le mémorial
-                  </a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {posts?.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Aucun message à modérer.
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <AdminPagination
         page={pagination.page}
@@ -355,6 +472,7 @@ const Moderation = () => {
         onPageSizeChange={pagination.setPageSize}
       />
 
+      {/* Hide Dialog */}
       <Dialog open={showHideDialog} onOpenChange={setShowHideDialog}>
         <DialogContent>
           <DialogHeader>
@@ -465,6 +583,31 @@ const Moderation = () => {
               disabled={deleteMutation.isPending}
             >
               Supprimer définitivement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photos Dialog */}
+      <Dialog open={showPhotosDialog} onOpenChange={setShowPhotosDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Photos de l'hommage</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4 py-4">
+            {selectedPost?.photos?.map((photo, index) => (
+              <div key={index} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                <img
+                  src={photo}
+                  alt={`Photo ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPhotosDialog(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
