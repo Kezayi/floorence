@@ -35,6 +35,7 @@ const AdminModeration = lazy(() => import("./pages/admin/Moderation"));
 const AdminMemorials = lazy(() => import("./pages/admin/Memorials"));
 const AdminStatistics = lazy(() => import("./pages/admin/Statistics"));
 const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
+ const AdminTransactions = lazy(() => import("./pages/admin/Transactions"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
@@ -107,6 +108,11 @@ const App = () => (
                       <AdminLayout><AdminRevenue /></AdminLayout>
                     </RequireAdmin>
                   } />
+                   <Route path="/admin/transactions" element={
+                     <RequireAdmin requireAdmin>
+                       <AdminLayout><AdminTransactions /></AdminLayout>
+                     </RequireAdmin>
+                   } />
                   <Route path="/admin/utilisateurs" element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminUsers /></AdminLayout>
