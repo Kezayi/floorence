@@ -1,5 +1,5 @@
- import { useState } from "react";
- import { Pencil } from "lucide-react";
+ import { useState, useEffect } from "react";
+ import { Pencil, Loader2 } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import {
    Dialog,
@@ -12,7 +12,10 @@
  import { Input } from "@/components/ui/input";
  import { Label } from "@/components/ui/label";
  import { Textarea } from "@/components/ui/textarea";
+ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
  import { supabase } from "@/integrations/supabase/client";
+ import { useAuth } from "@/contexts/AuthContext";
+ import PhotoUploader from "./PhotoUploader";
  import { toast } from "sonner";
  
  interface EditMemorialDialogProps {
@@ -21,26 +24,53 @@
      bio: string;
      funeralDate?: string | null;
      funeralLocation?: string | null;
+     photos?: string[];
+     defaultPhotoIndex?: number;
    };
    onSave: () => void;
  }
  
  const EditMemorialDialog = ({ memorialId, initialData, onSave }: EditMemorialDialogProps) => {
+   const { user } = useAuth();
    const [open, setOpen] = useState(false);
    const [loading, setLoading] = useState(false);
    const [bio, setBio] = useState(initialData.bio || "");
    const [funeralDate, setFuneralDate] = useState(initialData.funeralDate || "");
    const [funeralLocation, setFuneralLocation] = useState(initialData.funeralLocation || "");
+   const [photos, setPhotos] = useState<string[]>(initialData.photos || []);
+   const [defaultPhotoIndex, setDefaultPhotoIndex] = useState(initialData.defaultPhotoIndex || 0);
+ 
+   // Reset state when dialog opens
+   useEffect(() => {
+     if (open) {
+       setBio(initialData.bio || "");
+       setFuneralDate(initialData.funeralDate || "");
+       setFuneralLocation(initialData.funeralLocation || "");
+       setPhotos(initialData.photos || []);
+       setDefaultPhotoIndex(initialData.defaultPhotoIndex || 0);
+     }
+   }, [open, initialData]);
+ 
+   const handlePhotosChange = (newPhotos: string[], newDefaultIndex: number) => {
+     setPhotos(newPhotos);
+     setDefaultPhotoIndex(newDefaultIndex);
+   };
  
    const handleSave = async () => {
      setLoading(true);
      try {
+       // Determine the primary photo URL
+       const primaryPhotoUrl = photos.length > 0 ? photos[defaultPhotoIndex] || photos[0] : null;
+ 
        const { error } = await supabase
          .from("memorials")
          .update({
            biography: bio,
            funeral_date: funeralDate || null,
            funeral_location: funeralLocation || null,
+           photos: photos,
+           default_photo_index: defaultPhotoIndex,
+           photo_url: primaryPhotoUrl,
            updated_at: new Date().toISOString(),
          })
          .eq("id", memorialId);
@@ -78,47 +108,69 @@
            </DialogDescription>
          </DialogHeader>
  
-         <div className="space-y-6 py-4">
-           {/* Biography */}
-           <div className="space-y-2">
-             <Label htmlFor="bio">Biographie / Avis de décès</Label>
-             <Textarea
-               id="bio"
-               value={bio}
-               onChange={(e) => setBio(e.target.value)}
-               placeholder="Rédigez l'avis de décès..."
-               className="min-h-[150px]"
-             />
-           </div>
+         <Tabs defaultValue="info" className="py-4">
+           <TabsList className="grid w-full grid-cols-2">
+             <TabsTrigger value="info">Informations</TabsTrigger>
+             <TabsTrigger value="photos">Photos</TabsTrigger>
+           </TabsList>
  
-           {/* Funeral Date */}
-           <div className="space-y-2">
-             <Label htmlFor="funeralDate">Date des obsèques</Label>
-             <Input
-               id="funeralDate"
-               type="datetime-local"
-               value={funeralDate ? funeralDate.slice(0, 16) : ""}
-               onChange={(e) => setFuneralDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
-             />
-           </div>
+           <TabsContent value="info" className="space-y-6 mt-4">
+             {/* Biography */}
+             <div className="space-y-2">
+               <Label htmlFor="bio">Biographie / Avis de décès</Label>
+               <Textarea
+                 id="bio"
+                 value={bio}
+                 onChange={(e) => setBio(e.target.value)}
+                 placeholder="Rédigez l'avis de décès..."
+                 className="min-h-[150px]"
+               />
+             </div>
  
-           {/* Funeral Location */}
-           <div className="space-y-2">
-             <Label htmlFor="funeralLocation">Lieu des obsèques</Label>
-             <Input
-               id="funeralLocation"
-               value={funeralLocation}
-               onChange={(e) => setFuneralLocation(e.target.value)}
-               placeholder="Église, cimetière, etc."
-             />
-           </div>
-         </div>
+             {/* Funeral Date */}
+             <div className="space-y-2">
+               <Label htmlFor="funeralDate">Date des obsèques</Label>
+               <Input
+                 id="funeralDate"
+                 type="datetime-local"
+                 value={funeralDate ? funeralDate.slice(0, 16) : ""}
+                 onChange={(e) => setFuneralDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
+               />
+             </div>
+ 
+             {/* Funeral Location */}
+             <div className="space-y-2">
+               <Label htmlFor="funeralLocation">Lieu des obsèques</Label>
+               <Input
+                 id="funeralLocation"
+                 value={funeralLocation}
+                 onChange={(e) => setFuneralLocation(e.target.value)}
+                 placeholder="Église, cimetière, etc."
+               />
+             </div>
+           </TabsContent>
+ 
+           <TabsContent value="photos" className="mt-4">
+             {user && (
+               <PhotoUploader
+                 photos={photos}
+                 defaultPhotoIndex={defaultPhotoIndex}
+                 maxPhotos={3}
+                 memorialId={memorialId}
+                 userId={user.id}
+                 onChange={handlePhotosChange}
+                 disabled={loading}
+               />
+             )}
+           </TabsContent>
+         </Tabs>
  
          <div className="flex justify-end gap-3">
            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
              Annuler
            </Button>
-           <Button onClick={handleSave} disabled={loading}>
+           <Button onClick={handleSave} disabled={loading} className="gap-2">
+             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
              {loading ? "Enregistrement..." : "Enregistrer"}
            </Button>
          </div>

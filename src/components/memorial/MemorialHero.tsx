@@ -41,6 +41,7 @@ interface MemorialHeroProps {
     funeralDate?: string | null;
     funeralLocation?: string | null;
     createdBy?: string;
+     defaultPhotoIndex?: number;
   };
   onScrollToGuestbook: () => void;
   gestureTotals?: GestureTotals;
@@ -50,7 +51,7 @@ interface MemorialHeroProps {
 }
 
 const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick, onMemorialUpdated }: MemorialHeroProps) => {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(memorial.defaultPhotoIndex || 0);
   
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
   const { toast } = useToast();
@@ -236,6 +237,8 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                     bio: memorial.bio,
                     funeralDate: memorial.funeralDate,
                     funeralLocation: memorial.funeralLocation,
+                     photos: memorial.photos,
+                     defaultPhotoIndex: memorial.defaultPhotoIndex || 0,
                   }}
                   onSave={onMemorialUpdated}
                 />

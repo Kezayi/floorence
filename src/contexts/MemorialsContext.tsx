@@ -25,6 +25,7 @@ interface ExtendedSearchableMemorial extends SearchableMemorial {
   donationEnabled?: boolean;
   funeralDate?: string | null;
   funeralLocation?: string | null;
+   defaultPhotoIndex?: number;
 }
 
 interface MemorialCardData {
@@ -129,7 +130,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     birthDate: formatDateFrench(m.birth_date),
     deathDate: formatDateFrench(m.death_date),
     bio: m.biography || "",
-    photos: m.photo_url ? [m.photo_url] : [],
+   photos: (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []),
     author: {
       id: m.created_by,
       name: creatorProfiles[m.created_by] || "Créateur",
@@ -141,6 +142,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     donationEnabled: m.donation_enabled,
     funeralDate: m.funeral_date,
     funeralLocation: m.funeral_location,
+   defaultPhotoIndex: m.default_photo_index || 0,
   }));
 
   // Fetch stats for all memorials
