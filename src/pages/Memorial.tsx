@@ -379,7 +379,6 @@ const Memorial = () => {
               authorName: msg.authorName,
               relationCategory: msg.relationCategory,
             })),
-            isDemo: memorialData?.isDemo ?? false,
           }}
           onScrollToGuestbook={scrollToGuestbook}
           gestureTotals={totals}

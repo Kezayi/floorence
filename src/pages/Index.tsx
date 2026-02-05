@@ -3,8 +3,10 @@ import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
 import MemorialPagination from "@/components/home/MemorialPagination";
 import UpcomingEvents from "@/components/home/UpcomingEvents";
-import { LayoutGrid, Grid3X3, List, Square } from "lucide-react";
+import EmptyState from "@/components/ui/empty-state";
+import { LayoutGrid, Grid3X3, List, Square, Heart } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import {
@@ -13,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
@@ -20,11 +23,12 @@ type FilterType = "all" | "RECENT" | "PAST";
 const ITEMS_PER_PAGE = 8;
 
 const Index = () => {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const { memorialCards } = useMemorials();
+  const { memorialCards, loading } = useMemorials();
 
   // Set default view mode based on device
   useEffect(() => {
@@ -67,6 +71,19 @@ const Index = () => {
     }
   };
 
+  // Loading skeleton
+  const renderSkeleton = () => (
+    <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="space-y-3">
+          <Skeleton className="aspect-[3/4] w-full" />
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -81,9 +98,11 @@ const Index = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
-                  <span className="text-sm text-muted-foreground font-sans">
-                    {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
-                  </span>
+                  {!loading && (
+                    <span className="text-sm text-muted-foreground font-sans">
+                      {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
                 
                 {/* View Mode Switcher - Desktop only */}
@@ -190,7 +209,17 @@ const Index = () => {
             </TooltipProvider>
           </div>
 
-            {filteredMemorials.length === 0 ? (
+            {loading ? (
+              renderSkeleton()
+            ) : memorialCards.length === 0 ? (
+              <EmptyState
+                icon={Heart}
+                title="Aucun espace mémoriel"
+                message="Soyez le premier à créer un espace mémoriel pour honorer la mémoire d'un proche disparu."
+                actionLabel="Créer le premier mémorial"
+                onAction={() => navigate("/creer-memorial")}
+              />
+            ) : filteredMemorials.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground font-sans">
                   Aucun espace mémoriel {filterType === "RECENT" ? "récent" : "passé"} trouvé.
