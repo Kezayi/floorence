@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import SortableTableHeader from '@/components/admin/SortableTableHeader';
+import { useSortableTable } from '@/hooks/useSortableTable';
 import { Search, GitMerge, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -29,6 +40,7 @@ import { fr } from 'date-fns/locale';
 import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
+import { logAuditAction } from '@/lib/auditLogger';
 
 interface Memorial {
   id: string;
@@ -38,13 +50,21 @@ interface Memorial {
   death_date: string | null;
   birth_date: string | null;
   biography: string | null;
+  photo_url: string | null;
+  photos: string[] | null;
   is_active: boolean;
   merged_into: string | null;
   created_at: string;
-  payment_status?: string;
+  created_by: string;
+}
+
+interface Profile {
+  user_id: string;
+  display_name: string | null;
 }
 
 const Memorials = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemorial, setSelectedMemorial] = useState<Memorial | null>(null);
@@ -96,7 +116,7 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('id, slug, first_name, last_name, death_date, birth_date, biography, is_active, merged_into, created_at')
+        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, merged_into, created_at, created_by')
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
@@ -108,6 +128,29 @@ const Memorials = () => {
       return data as Memorial[];
     },
   });
+
+  // Fetch creator profiles
+  const { data: profiles } = useQuery({
+    queryKey: ['admin-memorial-profiles', memorials?.map(m => m.created_by)],
+    queryFn: async () => {
+      if (!memorials || memorials.length === 0) return [];
+      const creatorIds = [...new Set(memorials.map(m => m.created_by))];
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', creatorIds);
+      if (error) throw error;
+      return data as Profile[];
+    },
+    enabled: !!memorials && memorials.length > 0,
+  });
+
+  const getCreatorName = (createdBy: string) => {
+    const profile = profiles?.find(p => p.user_id === createdBy);
+    return profile?.display_name || 'Inconnu';
+  };
+
+  const { sortConfig, handleSort, sortedData } = useSortableTable(memorials, 'created_at', 'desc');
 
   // Fetch all memorials for merge target selection (without pagination)
   const { data: allMemorials } = useQuery({
@@ -142,6 +185,14 @@ const Memorials = () => {
         .eq('memorial_id', sourceId);
 
       if (postsError) throw postsError;
+
+      // Log audit
+      await logAuditAction(
+        'memorial_merged',
+        user?.id || '',
+        user?.email || null,
+        { source_memorial_id: sourceId, target_memorial_id: targetId }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
@@ -158,6 +209,7 @@ const Memorials = () => {
 
   const editMutation = useMutation({
     mutationFn: async (data: { id: string; first_name: string; last_name: string; birth_date: string | null; death_date: string | null; biography: string | null }) => {
+      const originalMemorial = selectedMemorial;
       const { error } = await supabase
         .from('memorials')
         .update({
@@ -170,6 +222,21 @@ const Memorials = () => {
         .eq('id', data.id);
 
       if (error) throw error;
+
+      // Log audit with changes
+      await logAuditAction(
+        'memorial_updated',
+        user?.id || '',
+        user?.email || null,
+        {
+          memorial_id: data.id,
+          changes: {
+            first_name: { old: originalMemorial?.first_name || '', new: data.first_name },
+            last_name: { old: originalMemorial?.last_name || '', new: data.last_name },
+            biography: { old: originalMemorial?.biography || '', new: data.biography || '' },
+          },
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
@@ -200,13 +267,21 @@ const Memorials = () => {
 
       if (eventsError) throw eventsError;
 
-      // Finally delete the memorial - need to use edge function for admin delete
+      // Finally delete the memorial
       const { error } = await supabase
         .from('memorials')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log audit
+      await logAuditAction(
+        'memorial_deleted',
+        user?.id || '',
+        user?.email || null,
+        { memorial_id: id, name: `${selectedMemorial?.first_name} ${selectedMemorial?.last_name}` }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
@@ -280,6 +355,12 @@ const Memorials = () => {
     );
   };
 
+  const getPhotoUrl = (memorial: Memorial) => {
+    if (memorial.photo_url) return memorial.photo_url;
+    if (memorial.photos && memorial.photos.length > 0) return memorial.photos[0];
+    return null;
+  };
+
   if (isLoading) {
     return <div className="text-center py-8">Chargement...</div>;
   }
@@ -307,7 +388,7 @@ const Memorials = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Gestion des mémoriaux</h1>
+        <h1 className="text-3xl font-bold text-foreground">Gestion des Mémoriaux</h1>
         <ExportCSVButton
           fetchData={fetchAllMemorials}
           columns={memorialColumns}
@@ -328,92 +409,147 @@ const Memorials = () => {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {memorials?.map((memorial) => {
-          const duplicates = findDuplicates(memorial);
-          const hasDuplicates = duplicates && duplicates.length > 0;
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableCell className="font-medium text-muted-foreground w-16">Photo</TableCell>
+                <SortableTableHeader
+                  label="Nom du défunt"
+                  sortKey="last_name"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Biographie"
+                  sortKey="biography"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                  className="min-w-[250px]"
+                />
+                <SortableTableHeader
+                  label="Créateur"
+                  sortKey="created_by"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Date de création"
+                  sortKey="created_at"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Statut"
+                  sortKey="is_active"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <TableCell className="font-medium text-muted-foreground">Actions</TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedData?.map((memorial) => {
+                const duplicates = findDuplicates(memorial);
+                const hasDuplicates = duplicates && duplicates.length > 0;
+                const photoUrl = getPhotoUrl(memorial);
 
-          return (
-            <Card key={memorial.id} className={memorial.merged_into ? 'opacity-50' : ''}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="text-lg">
-                      {memorial.first_name} {memorial.last_name}
-                    </CardTitle>
-                    {!memorial.is_active && (
-                      <Badge variant="secondary">Inactif</Badge>
-                    )}
-                    {memorial.is_active && (
-                      <Badge className="bg-green-100 text-green-800 border-green-200">En ligne</Badge>
-                    )}
-                    {memorial.merged_into && (
-                      <Badge variant="outline">Fusionné</Badge>
-                    )}
-                    <Badge className={memorial.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
-                      {memorial.payment_status === 'completed' ? 'Payé' : 'En attente'}
-                    </Badge>
-                    {hasDuplicates && !memorial.merged_into && (
-                      <Badge variant="destructive">
-                        {duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} potentiel{duplicates.length > 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {memorial.death_date
-                      ? format(new Date(memorial.death_date), 'dd MMM yyyy', { locale: fr })
-                      : 'Date inconnue'}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={`/memorial/${memorial.slug}`} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Voir
-                    </a>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(memorial)}
-                  >
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Modifier
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(memorial)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Supprimer
-                  </Button>
-                  {!memorial.merged_into && hasDuplicates && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleMerge(memorial)}
-                    >
-                      <GitMerge className="w-4 h-4 mr-2" />
-                      Fusionner
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {memorials?.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Aucun mémorial trouvé.
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                return (
+                  <TableRow key={memorial.id} className={memorial.merged_into ? 'opacity-50 bg-muted/30' : ''}>
+                    <TableCell>
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={photoUrl || undefined} alt={`${memorial.first_name} ${memorial.last_name}`} />
+                        <AvatarFallback className="bg-muted text-muted-foreground">
+                          {memorial.first_name[0]}{memorial.last_name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{memorial.first_name} {memorial.last_name}</span>
+                        {memorial.death_date && (
+                          <span className="text-sm text-muted-foreground">
+                            † {format(new Date(memorial.death_date), 'dd MMM yyyy', { locale: fr })}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[250px]">
+                      <p className="line-clamp-2 text-sm text-muted-foreground">
+                        {memorial.biography || <span className="italic">Aucune biographie</span>}
+                      </p>
+                    </TableCell>
+                    <TableCell className="text-sm">{getCreatorName(memorial.created_by)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      {format(new Date(memorial.created_at), 'dd MMM yyyy', { locale: fr })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {memorial.merged_into ? (
+                          <Badge variant="outline">Fusionné</Badge>
+                        ) : memorial.is_active ? (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">En ligne</Badge>
+                        ) : (
+                          <Badge variant="secondary">Inactif</Badge>
+                        )}
+                        {hasDuplicates && !memorial.merged_into && (
+                          <Badge variant="destructive" className="text-xs">
+                            {duplicates.length} doublon{duplicates.length > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" asChild title="Voir">
+                          <a href={`/memorial/${memorial.slug}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(memorial)}
+                          title="Modifier"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(memorial)}
+                          title="Supprimer"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        {!memorial.merged_into && hasDuplicates && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMerge(memorial)}
+                            title="Fusionner"
+                          >
+                            <GitMerge className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {(!sortedData || sortedData.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucun mémorial trouvé.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <AdminPagination
         page={pagination.page}
@@ -426,6 +562,7 @@ const Memorials = () => {
         onPageSizeChange={pagination.setPageSize}
       />
 
+      {/* Merge Dialog */}
       <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
         <DialogContent>
           <DialogHeader>
