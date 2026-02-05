@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialHero from "@/components/memorial/MemorialHero";
+import PhotoCarouselBanner from "@/components/memorial/PhotoCarouselBanner";
 import DeathNotice from "@/components/memorial/DeathNotice";
 import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
@@ -492,6 +493,13 @@ const Memorial = () => {
               scrollToDarkZone();
             }
           }}
+        />
+
+        {/* Photo Carousel Banner - Infinite scroll with grayscale effect */}
+        <PhotoCarouselBanner 
+          photos={memorial.photos} 
+          name={memorial.name}
+          className="my-8"
         />
 
         {/* Anniversary Reminder - shown if death date exists */}
