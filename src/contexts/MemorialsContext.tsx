@@ -51,30 +51,26 @@ interface MemorialsContextType {
 
 const MemorialsContext = createContext<MemorialsContextType | undefined>(undefined);
 
-// Fetch guestbook stats for all memorials
+// Fetch guestbook stats for all memorials using RPC function (bypasses RLS for aggregation)
 const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string, { postCount: number; candles: number; flowers: number }>> => {
   if (memorialIds.length === 0) return {};
   
   const { data, error } = await supabase
-    .from('guestbook_posts')
-    .select('memorial_id, candle_count, flower_count')
-    .in('memorial_id', memorialIds)
-    .eq('is_hidden', false);
+    .rpc('get_memorial_gesture_stats', { p_memorial_ids: memorialIds });
 
   if (error) {
     console.error('Error fetching guestbook stats:', error);
     return {};
   }
 
-  // Aggregate stats per memorial
+  // Map RPC results to our stats format
   const stats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
-  (data || []).forEach(post => {
-    if (!stats[post.memorial_id]) {
-      stats[post.memorial_id] = { postCount: 0, candles: 0, flowers: 0 };
-    }
-    stats[post.memorial_id].postCount += 1;
-    stats[post.memorial_id].candles += post.candle_count || 0;
-    stats[post.memorial_id].flowers += post.flower_count || 0;
+  (data || []).forEach((row: { memorial_id: string; post_count: number; total_candles: number; total_flowers: number }) => {
+    stats[row.memorial_id] = {
+      postCount: row.post_count,
+      candles: row.total_candles,
+      flowers: row.total_flowers,
+    };
   });
 
   return stats;
