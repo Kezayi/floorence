@@ -3,13 +3,12 @@ import { useMemo, useState } from "react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchMemorialsAndAuthors, SearchableMemorial } from "@/lib/searchWithRelations";
-import { getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
+import { getCleanRelationName, getRelationWithDeceased, inferUserToPersonRelation, UserRelationResult } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
 // Types pour la désambiguïsation
 interface PersonMatch {
   id: string;
@@ -54,6 +53,9 @@ interface OrganizedResults {
   connectionWithUser?: {
     type: "direct" | "indirect" | "none";
     description: string;
+    inferredLabel?: string;
+    colorClass?: string;
+    confidence?: "high" | "medium" | "low";
     via?: string;
   };
 }
@@ -134,7 +136,8 @@ const findAllMatchingPersons = (
 const organizeResultsForPerson = (
   person: PersonMatch,
   memorials: SearchableMemorial[],
-  currentUserName?: string
+  currentUserName?: string,
+  userRelation?: string // La relation de l'utilisateur avec un défunt (si connue)
 ): OrganizedResults => {
   const publications: AuthorPublications[] = [];
   const guestbookEntries: AuthorGuestbookEntry[] = [];
@@ -203,11 +206,25 @@ const organizeResultsForPerson = (
       );
 
       if (personContrib && userContrib) {
-        connectionWithUser = {
-          type: "indirect",
-          description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.name} est ${getCleanRelationName(personContrib.relation)} de ${memorial.name}`,
-          via: memorial.name,
-        };
+        // Utiliser le nouveau moteur d'inférence vectorielle
+        const inferredRelation = inferUserToPersonRelation(userContrib.relation, personContrib.relation);
+        
+        if (inferredRelation) {
+          connectionWithUser = {
+            type: "direct",
+            description: `Via le mémorial de ${memorial.name}`,
+            inferredLabel: inferredRelation.label,
+            colorClass: inferredRelation.colorClass,
+            confidence: inferredRelation.confidence,
+            via: memorial.name,
+          };
+        } else {
+          connectionWithUser = {
+            type: "indirect",
+            description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.name} est ${getCleanRelationName(personContrib.relation)} de ${memorial.name}`,
+            via: memorial.name,
+          };
+        }
         break;
       }
     }
@@ -624,11 +641,34 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
               </div>
             ) : organized.connectionWithUser ? (
               <div className={`p-4 rounded-sm ${
-                organized.connectionWithUser.type === "indirect" 
+                organized.connectionWithUser.type === "direct" || organized.connectionWithUser.type === "indirect"
                   ? "bg-green-500/10 border border-green-500/20" 
                   : "bg-muted/50"
               }`}>
-                {organized.connectionWithUser.type === "indirect" ? (
+                {organized.connectionWithUser.type === "direct" && organized.connectionWithUser.inferredLabel ? (
+                  <>
+                    {/* Affichage contextuel: "Votre Frère" au lieu de "Fils du défunt" */}
+                    <p className={`font-serif text-xl ${organized.connectionWithUser.colorClass || 'text-foreground'}`}>
+                      {organized.connectionWithUser.inferredLabel}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`text-xs px-2 py-0.5 rounded font-sans ${
+                        organized.connectionWithUser.confidence === "high" 
+                          ? "bg-green-100 text-green-800"
+                          : organized.connectionWithUser.confidence === "medium"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {organized.connectionWithUser.confidence === "high" ? "Lien direct" : organized.connectionWithUser.confidence === "medium" ? "Lien probable" : "Lien indirect"}
+                      </span>
+                    </div>
+                    {organized.connectionWithUser.via && (
+                      <p className="text-sm text-muted-foreground mt-2 font-sans">
+                        {organized.connectionWithUser.description}
+                      </p>
+                    )}
+                  </>
+                ) : organized.connectionWithUser.type === "indirect" ? (
                   <>
                     <p className="font-sans text-foreground">
                       {organized.connectionWithUser.description}
