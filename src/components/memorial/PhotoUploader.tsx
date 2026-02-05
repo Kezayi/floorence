@@ -1,18 +1,18 @@
- import { useState, useRef } from "react";
- import { Upload, X, Star, Loader2 } from "lucide-react";
- import { supabase } from "@/integrations/supabase/client";
- import { Button } from "@/components/ui/button";
- import { toast } from "sonner";
- 
- interface PhotoUploaderProps {
-   photos: string[];
-   defaultPhotoIndex: number;
-   maxPhotos?: number;
-   memorialId?: string;
-   userId: string;
-   onChange: (photos: string[], defaultIndex: number) => void;
-   disabled?: boolean;
- }
+import { useState, useRef } from "react";
+import { Upload, X, Star, Loader2, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface PhotoUploaderProps {
+  photos: string[];
+  defaultPhotoIndex: number;
+  maxPhotos?: number;
+  memorialId?: string;
+  userId: string;
+  onChange: (photos: string[], defaultIndex: number) => void;
+  disabled?: boolean;
+}
  
  const PhotoUploader = ({
    photos,
@@ -23,8 +23,9 @@
    onChange,
    disabled = false,
  }: PhotoUploaderProps) => {
-   const fileInputRef = useRef<HTMLInputElement>(null);
-   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
  
    const uploadPhoto = async (file: File): Promise<string | null> => {
      const fileExt = file.name.split(".").pop();
@@ -113,98 +114,179 @@
      onChange(newPhotos, newDefaultIndex);
    };
  
-   const setDefaultPhoto = (index: number) => {
-     onChange(photos, index);
-   };
- 
-   return (
-     <div className="space-y-4">
-       {/* Photo Grid */}
-       <div className="grid grid-cols-3 gap-3">
-         {photos.map((photo, index) => (
-           <div
-             key={index}
-             className={`relative aspect-[3/4] group ${
-               index === defaultPhotoIndex ? "ring-2 ring-primary" : ""
-             }`}
-           >
-             <img
-               src={photo}
-               alt={`Photo ${index + 1}`}
-               className="w-full h-full object-cover"
-             />
-             {/* Overlay actions */}
-             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-               <Button
-                 type="button"
-                 variant="secondary"
-                 size="icon"
-                 className="h-8 w-8"
-                 onClick={() => setDefaultPhoto(index)}
-                 disabled={disabled || index === defaultPhotoIndex}
-                 title="Définir comme photo principale"
-               >
-                 <Star
-                   className={`w-4 h-4 ${
-                     index === defaultPhotoIndex ? "fill-primary text-primary" : ""
-                   }`}
-                 />
-               </Button>
-               <Button
-                 type="button"
-                 variant="destructive"
-                 size="icon"
-                 className="h-8 w-8"
-                 onClick={() => removePhoto(index)}
-                 disabled={disabled}
-                 title="Supprimer"
-               >
-                 <X className="w-4 h-4" />
-               </Button>
-             </div>
-             {/* Default indicator */}
-             {index === defaultPhotoIndex && (
-               <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded">
-                 Principale
-               </div>
-             )}
-           </div>
-         ))}
- 
-         {/* Add photo button */}
-         {photos.length < maxPhotos && (
-           <button
-             type="button"
-             onClick={() => fileInputRef.current?.click()}
-             disabled={disabled || uploading}
-             className="aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
-           >
-             {uploading ? (
-               <Loader2 className="w-6 h-6 animate-spin" />
-             ) : (
-               <>
-                 <Upload className="w-6 h-6" />
-                 <span className="text-xs font-sans">Ajouter</span>
-               </>
-             )}
-           </button>
-         )}
-       </div>
- 
-       <input
-         ref={fileInputRef}
-         type="file"
-         accept="image/*"
-         multiple
-         onChange={handleFileChange}
-         className="hidden"
-       />
- 
-       <p className="text-xs text-muted-foreground font-sans">
-         Maximum {maxPhotos} photos. Cliquez sur l'étoile pour définir la photo principale.
-       </p>
-     </div>
-   );
- };
- 
- export default PhotoUploader;
+  const setDefaultPhoto = (index: number) => {
+    onChange(photos, index);
+  };
+
+  const enhancePhoto = async (index: number) => {
+    const photoUrl = photos[index];
+    if (!photoUrl) return;
+
+    setEnhancingIndex(index);
+    try {
+      const { data, error } = await supabase.functions.invoke("enhance-photo", {
+        body: { imageUrl: photoUrl },
+      });
+
+      if (error) {
+        console.error("Error enhancing photo:", error);
+        toast.error("Erreur lors de l'amélioration de la photo");
+        return;
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.enhancedImageUrl) {
+        // Upload the enhanced image to storage
+        const base64Data = data.enhancedImageUrl.split(",")[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "image/png" });
+
+        const fileName = `${memorialId || "new"}-enhanced-${Date.now()}.png`;
+        const filePath = `${userId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("memorial-photos")
+          .upload(filePath, blob);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          toast.error("Erreur lors de la sauvegarde de la photo améliorée");
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("memorial-photos")
+          .getPublicUrl(filePath);
+
+        // Replace the photo with the enhanced version
+        const newPhotos = [...photos];
+        newPhotos[index] = urlData.publicUrl;
+        onChange(newPhotos, defaultPhotoIndex);
+        toast.success("Photo améliorée avec succès !");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Une erreur est survenue");
+    } finally {
+      setEnhancingIndex(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Photo Grid */}
+      <div className="grid grid-cols-3 gap-3">
+        {photos.map((photo, index) => (
+          <div
+            key={index}
+            className={`relative aspect-[3/4] group ${
+              index === defaultPhotoIndex ? "ring-2 ring-primary" : ""
+            }`}
+          >
+            <img
+              src={photo}
+              alt={`Photo ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+            {/* Enhancing overlay */}
+            {enhancingIndex === index && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 text-white">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span className="text-xs font-sans">Amélioration...</span>
+              </div>
+            )}
+            {/* Overlay actions */}
+            <div className={`absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 ${enhancingIndex === index ? "hidden" : ""}`}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => enhancePhoto(index)}
+                disabled={disabled || enhancingIndex !== null}
+                title="Améliorer la photo (IA)"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setDefaultPhoto(index)}
+                disabled={disabled || index === defaultPhotoIndex}
+                title="Définir comme photo principale"
+              >
+                <Star
+                  className={`w-3.5 h-3.5 ${
+                    index === defaultPhotoIndex ? "fill-primary text-primary" : ""
+                  }`}
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => removePhoto(index)}
+                disabled={disabled}
+                title="Supprimer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            {/* Default indicator */}
+            {index === defaultPhotoIndex && (
+              <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded">
+                Principale
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Add photo button */}
+        {photos.length < maxPhotos && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || uploading}
+            className="aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
+          >
+            {uploading ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <>
+                <Upload className="w-6 h-6" />
+                <span className="text-xs font-sans">Ajouter</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      <p className="text-xs text-muted-foreground font-sans">
+        Maximum {maxPhotos} photos. <Sparkles className="w-3 h-3 inline" /> Améliorer • <Star className="w-3 h-3 inline" /> Principale
+      </p>
+    </div>
+  );
+};
+
+export default PhotoUploader;

@@ -12,5 +12,8 @@
  [functions.admin-settings]
  verify_jwt = false
  
- [functions.create-memorial]
- verify_jwt = false
+[functions.create-memorial]
+verify_jwt = false
+
+[functions.enhance-photo]
+verify_jwt = false
