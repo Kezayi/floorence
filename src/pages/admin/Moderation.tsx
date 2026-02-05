@@ -50,6 +50,7 @@ interface GuestbookPost {
   memorial?: {
     first_name: string;
     last_name: string;
+    slug: string;
   };
 }
 
@@ -98,7 +99,7 @@ const Moderation = () => {
         .select(`
           id, author_name, content, relation_category, is_hidden, hidden_reason, 
           created_at, memorial_id, candle_count, flower_count, photos,
-          memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name)
+          memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name, slug)
         `)
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
@@ -453,7 +454,11 @@ const Moderation = () => {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" asChild title="Voir le mémorial">
-                        <a href={`/memorial/${post.memorial_id}`} target="_blank" rel="noopener noreferrer">
+                        <a 
+                          href={post.memorial?.slug ? `/memorial/${post.memorial.slug}` : `/memorial/${post.memorial_id}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
                           <Eye className="w-4 h-4" />
                         </a>
                       </Button>

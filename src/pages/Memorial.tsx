@@ -509,8 +509,13 @@ const Memorial = () => {
         <div className="divider-elegant" />
 
         {/* Tabs Content */}
+        {/* Logique d'onglet par défaut : Si funeral_date < aujourd'hui → "Maillage" (relationships) */}
+        {(() => {
+          const isPastFuneral = memorial.funeralDate && new Date(memorial.funeralDate) < new Date();
+          const defaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "gatherings" : "notice");
+          return (
         <section className="container mx-auto px-4 py-12">
-          <Tabs defaultValue={memorial.type === "PAST" ? "gatherings" : "notice"} className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto flex-nowrap">
               {/* Avis de décès - uniquement pour les décès récents */}
               {memorial.type !== "PAST" && (
@@ -631,6 +636,8 @@ const Memorial = () => {
             )}
           </Tabs>
         </section>
+          );
+        })()}
 
         {/* Guestbook - Dark Zone */}
         <section className="dark-zone section-padding">
