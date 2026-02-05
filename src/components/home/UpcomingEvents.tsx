@@ -37,7 +37,8 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const today = new Date().toISOString().split("T")[0];
+        // Use full ISO timestamp for proper comparison with timestamp column
+        const now = new Date().toISOString();
         
         // Define event types based on the type prop (case-insensitive matching)
         const eventTypes = type === "funerals" 
@@ -59,7 +60,7 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
               slug
             )
           `)
-          .gte("event_date", today)
+          .gte("event_date", now)
           .in("event_type", eventTypes)
           .eq("is_public", true)
           .order("event_date", { ascending: true })
