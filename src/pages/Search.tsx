@@ -6,9 +6,10 @@ import { searchMemorialsAndAuthors, SearchableMemorial } from "@/lib/searchWithR
 import { getCleanRelationName, getRelationWithDeceased, inferUserToPersonRelation, UserRelationResult } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search } from "lucide-react";
+import { User, Heart, BookOpen, Link2, ChevronRight, FileText, Users, ArrowLeft, Search, GitBranch } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import RelationshipGraphSearch from "@/components/search/RelationshipGraphSearch";
 // Types pour la désambiguïsation
 interface PersonMatch {
   id: string;
@@ -57,6 +58,10 @@ interface OrganizedResults {
     colorClass?: string;
     confidence?: "high" | "medium" | "low";
     via?: string;
+    // Données pour le graphe
+    userRelation?: string;
+    personRelation?: string;
+    deceasedName?: string;
   };
 }
 
@@ -217,12 +222,20 @@ const organizeResultsForPerson = (
             colorClass: inferredRelation.colorClass,
             confidence: inferredRelation.confidence,
             via: memorial.name,
+            // Données pour le graphe
+            userRelation: userContrib.relation,
+            personRelation: personContrib.relation,
+            deceasedName: memorial.name,
           };
         } else {
           connectionWithUser = {
             type: "indirect",
             description: `Vous êtes ${getCleanRelationName(userContrib.relation)} et ${person.name} est ${getCleanRelationName(personContrib.relation)} de ${memorial.name}`,
             via: memorial.name,
+            // Données pour le graphe même sans inférence directe
+            userRelation: userContrib.relation,
+            personRelation: personContrib.relation,
+            deceasedName: memorial.name,
           };
         }
         break;
@@ -620,7 +633,7 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2 text-primary">
-              <Link2 className="w-4 h-4" />
+              <GitBranch className="w-4 h-4" />
               <h3 className="font-sans text-sm font-medium uppercase tracking-wide">
                 Votre lien avec {organized.authorName}
               </h3>
@@ -639,51 +652,73 @@ const PersonDetails = ({ person, organized, user, showBackButton, onBack }: Pers
                   Se connecter
                 </Link>
               </div>
-            ) : organized.connectionWithUser ? (
-              <div className={`p-4 rounded-sm ${
-                organized.connectionWithUser.type === "direct" || organized.connectionWithUser.type === "indirect"
-                  ? "bg-green-500/10 border border-green-500/20" 
-                  : "bg-muted/50"
-              }`}>
-                {organized.connectionWithUser.type === "direct" && organized.connectionWithUser.inferredLabel ? (
-                  <>
-                    {/* Affichage contextuel: "Votre Frère" au lieu de "Fils du défunt" */}
-                    <p className={`font-serif text-xl ${organized.connectionWithUser.colorClass || 'text-foreground'}`}>
-                      {organized.connectionWithUser.inferredLabel}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-0.5 rounded font-sans ${
-                        organized.connectionWithUser.confidence === "high" 
-                          ? "bg-green-100 text-green-800"
-                          : organized.connectionWithUser.confidence === "medium"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-gray-100 text-gray-600"
-                      }`}>
-                        {organized.connectionWithUser.confidence === "high" ? "Lien direct" : organized.connectionWithUser.confidence === "medium" ? "Lien probable" : "Lien indirect"}
-                      </span>
-                    </div>
-                    {organized.connectionWithUser.via && (
-                      <p className="text-sm text-muted-foreground mt-2 font-sans">
+            ) : organized.connectionWithUser && (organized.connectionWithUser.type === "direct" || organized.connectionWithUser.type === "indirect") ? (
+              <div className="space-y-4">
+                {/* Visualisation graphique */}
+                {organized.connectionWithUser.userRelation && organized.connectionWithUser.personRelation && organized.connectionWithUser.deceasedName && (
+                  <div className="bg-muted/30 rounded-sm p-4">
+                    <RelationshipGraphSearch
+                      userName="Vous"
+                      userRelation={organized.connectionWithUser.userRelation}
+                      personName={organized.authorName}
+                      personRelation={organized.connectionWithUser.personRelation}
+                      deceasedName={organized.connectionWithUser.deceasedName}
+                      inferredRelation={organized.connectionWithUser.inferredLabel ? {
+                        label: organized.connectionWithUser.inferredLabel,
+                        confidence: organized.connectionWithUser.confidence || "medium",
+                        colorClass: organized.connectionWithUser.colorClass || "text-foreground",
+                      } : undefined}
+                    />
+                  </div>
+                )}
+
+                {/* Badge et description */}
+                <div className={`p-4 rounded-sm ${
+                  organized.connectionWithUser.type === "direct"
+                    ? "bg-green-500/10 border border-green-500/20" 
+                    : "bg-amber-500/10 border border-amber-500/20"
+                }`}>
+                  {organized.connectionWithUser.type === "direct" && organized.connectionWithUser.inferredLabel ? (
+                    <>
+                      <p className={`font-serif text-xl ${organized.connectionWithUser.colorClass || 'text-foreground'}`}>
+                        {organized.connectionWithUser.inferredLabel}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`text-xs px-2 py-0.5 rounded font-sans ${
+                          organized.connectionWithUser.confidence === "high" 
+                            ? "bg-green-100 text-green-800"
+                            : organized.connectionWithUser.confidence === "medium"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {organized.connectionWithUser.confidence === "high" ? "Lien direct" : organized.connectionWithUser.confidence === "medium" ? "Lien probable" : "Lien indirect"}
+                        </span>
+                      </div>
+                      {organized.connectionWithUser.via && (
+                        <p className="text-sm text-muted-foreground mt-2 font-sans">
+                          {organized.connectionWithUser.description}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-sans text-foreground">
                         {organized.connectionWithUser.description}
                       </p>
-                    )}
-                  </>
-                ) : organized.connectionWithUser.type === "indirect" ? (
-                  <>
-                    <p className="font-sans text-foreground">
-                      {organized.connectionWithUser.description}
-                    </p>
-                    {organized.connectionWithUser.via && (
-                      <p className="text-sm text-muted-foreground mt-2 font-sans">
-                        Via le mémorial de {organized.connectionWithUser.via}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-muted-foreground font-sans">
-                    {organized.connectionWithUser.description}
-                  </p>
-                )}
+                      {organized.connectionWithUser.via && (
+                        <p className="text-sm text-muted-foreground mt-2 font-sans">
+                          Via le mémorial de {organized.connectionWithUser.via}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : organized.connectionWithUser?.type === "none" ? (
+              <div className="bg-muted/50 p-4 rounded-sm">
+                <p className="text-muted-foreground font-sans">
+                  {organized.connectionWithUser.description}
+                </p>
               </div>
             ) : (
               <div className="text-center py-4">
