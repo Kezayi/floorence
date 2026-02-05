@@ -1,4 +1,5 @@
-import { createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, ReactNode, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getMemorialType, formatDateFrench } from "@/lib/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,107 +38,100 @@ interface MemorialsContextType {
   memorials: ExtendedSearchableMemorial[];
   memorialCards: MemorialCardData[];
   loading: boolean;
+  isRefetching: boolean;
   refetchMemorials: () => Promise<void>;
 }
 
 const MemorialsContext = createContext<MemorialsContextType | undefined>(undefined);
 
+// Fetch guestbook stats for all memorials
+const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string, { postCount: number; candles: number; flowers: number }>> => {
+  if (memorialIds.length === 0) return {};
+  
+  const { data, error } = await supabase
+    .from('guestbook_posts')
+    .select('memorial_id, candle_count, flower_count')
+    .in('memorial_id', memorialIds)
+    .eq('is_hidden', false);
+
+  if (error) {
+    console.error('Error fetching guestbook stats:', error);
+    return {};
+  }
+
+  // Aggregate stats per memorial
+  const stats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
+  (data || []).forEach(post => {
+    if (!stats[post.memorial_id]) {
+      stats[post.memorial_id] = { postCount: 0, candles: 0, flowers: 0 };
+    }
+    stats[post.memorial_id].postCount += 1;
+    stats[post.memorial_id].candles += post.candle_count || 0;
+    stats[post.memorial_id].flowers += post.flower_count || 0;
+  });
+
+  return stats;
+};
+
+// Fetch memorials from database
+const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }> }> => {
+  const { data, error } = await supabase
+    .from('memorials')
+    .select('*')
+    .eq('is_published', true)
+    .eq('is_active', true)
+    .is('merged_into', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching memorials:', error);
+    throw error;
+  }
+
+  const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
+    id: m.id,
+    slug: m.slug,
+    name: `${m.first_name} ${m.last_name}`,
+    birthDate: formatDateFrench(m.birth_date),
+    deathDate: formatDateFrench(m.death_date),
+    bio: m.biography || "",
+    photos: m.photo_url ? [m.photo_url] : [],
+    author: {
+      id: m.created_by,
+      name: "Créateur",
+      relation: "Créateur de l'espace",
+    },
+    guestbookMessages: [],
+    type: getMemorialType(formatDateFrench(m.death_date)),
+    createdBy: m.created_by,
+    donationEnabled: m.donation_enabled,
+    funeralDate: m.funeral_date,
+    funeralLocation: m.funeral_location,
+  }));
+
+  // Fetch stats for all memorials
+  const stats = memorialsFromDb.length > 0 
+    ? await fetchGuestbookStats(memorialsFromDb.map(m => m.id))
+    : {};
+
+  return { memorials: memorialsFromDb, stats };
+};
+
 export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
-  const [memorials, setMemorials] = useState<ExtendedSearchableMemorial[]>([]);
-  const [memorialStats, setMemorialStats] = useState<Record<string, { postCount: number; candles: number; flowers: number }>>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  
+  // React Query with caching: staleTime = 2 min, refetch on window focus
+  const { data, isLoading, isRefetching, refetch } = useQuery({
+    queryKey: ['memorials-list'],
+    queryFn: fetchMemorialsData,
+    staleTime: 2 * 60 * 1000, // 2 minutes cache
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    refetchOnWindowFocus: true,
+    retry: 2,
+  });
 
-  // Fetch guestbook stats for all memorials
-  const fetchGuestbookStats = useCallback(async (memorialIds: string[]) => {
-    if (memorialIds.length === 0) return {};
-    
-    try {
-      const { data, error } = await supabase
-        .from('guestbook_posts')
-        .select('memorial_id, candle_count, flower_count')
-        .in('memorial_id', memorialIds)
-        .eq('is_hidden', false);
-
-      if (error) {
-        console.error('Error fetching guestbook stats:', error);
-        return {};
-      }
-
-      // Aggregate stats per memorial
-      const stats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
-      (data || []).forEach(post => {
-        if (!stats[post.memorial_id]) {
-          stats[post.memorial_id] = { postCount: 0, candles: 0, flowers: 0 };
-        }
-        stats[post.memorial_id].postCount += 1;
-        stats[post.memorial_id].candles += post.candle_count || 0;
-        stats[post.memorial_id].flowers += post.flower_count || 0;
-      });
-
-      return stats;
-    } catch (err) {
-      console.error('Error fetching guestbook stats:', err);
-      return {};
-    }
-  }, []);
-
-  // Fetch memorials from database
-  const fetchMemorials = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('memorials')
-        .select('*')
-        .eq('is_published', true)
-        .eq('is_active', true)
-        .is('merged_into', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching memorials:', error);
-        setMemorials([]);
-        return;
-      }
-
-      const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
-        id: m.id,
-        slug: m.slug,
-        name: `${m.first_name} ${m.last_name}`,
-        birthDate: formatDateFrench(m.birth_date),
-        deathDate: formatDateFrench(m.death_date),
-        bio: m.biography || "",
-        photos: m.photo_url ? [m.photo_url] : [],
-        author: {
-          id: m.created_by,
-          name: "Créateur",
-          relation: "Créateur de l'espace",
-        },
-        guestbookMessages: [],
-        type: getMemorialType(formatDateFrench(m.death_date)),
-        createdBy: m.created_by,
-        donationEnabled: m.donation_enabled,
-        funeralDate: m.funeral_date,
-        funeralLocation: m.funeral_location,
-      }));
-
-      setMemorials(memorialsFromDb);
-
-      // Fetch stats for all memorials
-      if (memorialsFromDb.length > 0) {
-        const stats = await fetchGuestbookStats(memorialsFromDb.map(m => m.id));
-        setMemorialStats(stats);
-      }
-    } catch (err) {
-      console.error('Error fetching memorials:', err);
-      setMemorials([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchGuestbookStats]);
-
-  useEffect(() => {
-    fetchMemorials();
-  }, [fetchMemorials]);
+  const memorials = data?.memorials ?? [];
+  const memorialStats = data?.stats ?? {};
 
   // Compute memorial cards with real stats from DB
   const memorialCards = useMemo<MemorialCardData[]>(() => 
@@ -159,8 +153,12 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
     }),
   [memorials, memorialStats]);
 
+  const refetchMemorials = async () => {
+    await refetch();
+  };
+
   return (
-    <MemorialsContext.Provider value={{ memorials, memorialCards, loading, refetchMemorials: fetchMemorials }}>
+    <MemorialsContext.Provider value={{ memorials, memorialCards, loading: isLoading, isRefetching, refetchMemorials }}>
       {children}
     </MemorialsContext.Provider>
   );
