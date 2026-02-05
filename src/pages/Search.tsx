@@ -601,7 +601,7 @@ const PersonDetails = ({ person, user, showBackButton, onBack }: PersonDetailsPr
             </div>
           </div>
           <Link
-            to={`/memorial/${person.deceasedMemorial.slug}`}
+            to={`/memorial/${person.deceasedMemorial.slug}?tab=maillage`}
             className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group"
           >
             <div className="w-16 h-20 overflow-hidden rounded-sm bg-muted shrink-0">
@@ -644,7 +644,7 @@ const PersonDetails = ({ person, user, showBackButton, onBack }: PersonDetailsPr
             {person.createdMemorials.map((pub) => (
               <Link
                 key={pub.memorialId}
-                to={`/memorial/${pub.memorialSlug}`}
+                to={`/memorial/${pub.memorialSlug}?tab=maillage`}
                 className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group"
               >
                 <div className="w-12 h-14 overflow-hidden rounded-sm bg-muted shrink-0">
@@ -689,7 +689,7 @@ const PersonDetails = ({ person, user, showBackButton, onBack }: PersonDetailsPr
             {person.guestbookEntries.map((entry, idx) => (
               <Link
                 key={`${entry.memorialId}-${idx}`}
-                to={`/memorial/${entry.memorialSlug}`}
+                to={`/memorial/${entry.memorialSlug}?tab=maillage`}
                 className="block p-4 hover:bg-muted/30 transition-colors group"
               >
                 <div className="flex items-center gap-2 mb-2">
