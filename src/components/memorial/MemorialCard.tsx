@@ -77,19 +77,19 @@ const MemorialCard = ({
             {birthDate} — {deathDate}
           </p>
           
-          {/* Stats */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
+          {/* Stats - Gestures */}
+          <div className="flex items-center gap-3 md:gap-4 text-sm">
+            <span className="flex items-center gap-1">
               <CrossIcon size={16} className="text-foreground" />
-              <span>{ripCount}</span>
+              <span className="font-medium text-foreground">{ripCount}</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <FlameIcon size={16} />
-              <span>{candleCount}</span>
+            <span className="flex items-center gap-1">
+              <FlameIcon size={16} className="text-[hsl(var(--gesture-candle))]" />
+              <span className="font-medium text-foreground">{candleCount}</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <ChrysanthemumIcon size={16} />
-              <span>{flowerCount}</span>
+            <span className="flex items-center gap-1">
+              <ChrysanthemumIcon size={16} className="text-[hsl(var(--gesture-flower))]" />
+              <span className="font-medium text-foreground">{flowerCount}</span>
             </span>
           </div>
         </div>
