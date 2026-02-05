@@ -509,10 +509,18 @@ const Memorial = () => {
         <div className="divider-elegant" />
 
         {/* Tabs Content */}
-        {/* Logique d'onglet par défaut : Si funeral_date < aujourd'hui → "Maillage" (relationships) */}
+        {/* Logique d'onglet par défaut : Si funeral_date < maintenant (UTC) → "Maillage" (relationships) */}
         {(() => {
-          const isPastFuneral = memorial.funeralDate && new Date(memorial.funeralDate) < new Date();
-          const defaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "gatherings" : "notice");
+          // Algorithme de bascule : DateObsèques + HeureObsèques < TempsActuel (UTC)
+          const isPastFuneral = (() => {
+            if (!memorial.funeralDate) return false;
+            const funeralDateTime = new Date(memorial.funeralDate);
+            // Comparaison en temps UTC pour éviter les problèmes de fuseaux horaires
+            return !isNaN(funeralDateTime.getTime()) && funeralDateTime.getTime() < Date.now();
+          })();
+          
+          // Priorité : isPastFuneral (basé sur funeral_date) > type PAST (basé sur death_date)
+          const defaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "relationships" : "notice");
           return (
         <section className="container mx-auto px-4 py-12">
           <Tabs defaultValue={defaultTab} className="w-full">
