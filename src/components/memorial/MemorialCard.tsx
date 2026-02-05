@@ -77,22 +77,18 @@ const MemorialCard = ({
             {birthDate} — {deathDate}
           </p>
           
-          {/* Stats - Gestures */}
-          <div className="flex items-center gap-3 md:gap-4 text-sm">
-            <span className="flex items-center gap-1">
-              {/* Icon on desktop, text on mobile */}
-              <CrossIcon size={16} className="hidden md:block text-foreground" />
-              <span className="md:hidden text-xs text-muted-foreground">RIP</span>
+          {/* Stats - Gestures with text labels */}
+          <div className="flex items-center gap-4 md:gap-5 text-sm">
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-sans">RIP</span>
               <span className="font-medium text-foreground">{ripCount}</span>
             </span>
-            <span className="flex items-center gap-1">
-              <FlameIcon size={16} className="hidden md:block text-[hsl(var(--gesture-candle))]" />
-              <span className="md:hidden text-xs text-muted-foreground">Cierges</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-sans">Cierges</span>
               <span className="font-medium text-foreground">{candleCount}</span>
             </span>
-            <span className="flex items-center gap-1">
-              <ChrysanthemumIcon size={16} className="hidden md:block text-[hsl(var(--gesture-flower))]" />
-              <span className="md:hidden text-xs text-muted-foreground">Fleurs</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-sans">Fleurs</span>
               <span className="font-medium text-foreground">{flowerCount}</span>
             </span>
           </div>
@@ -137,18 +133,18 @@ const MemorialCard = ({
 
         {/* Overlay Info on Hover */}
         <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="flex items-center gap-3 text-white text-sm">
-            <span className="flex items-center gap-1">
-              <CrossIcon size={14} className="text-white" />
-              {ripCount}
+          <div className="flex items-center gap-4 text-white text-sm">
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs opacity-80">RIP</span>
+              <span>{ripCount}</span>
             </span>
-            <span className="flex items-center gap-1">
-              <FlameIcon size={14} />
-              {candleCount}
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs opacity-80">Cierges</span>
+              <span>{candleCount}</span>
             </span>
-            <span className="flex items-center gap-1">
-              <ChrysanthemumIcon size={14} />
-              {flowerCount}
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs opacity-80">Fleurs</span>
+              <span>{flowerCount}</span>
             </span>
           </div>
         </div>
