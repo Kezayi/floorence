@@ -4,6 +4,12 @@ import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getMemorialType, formatDateFrench } from "@/lib/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 
+// Type for profile data
+interface ProfileData {
+  user_id: string;
+  display_name: string | null;
+}
+
 interface GuestbookMessage {
   id: string;
   authorName: string;
@@ -73,8 +79,30 @@ const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string
   return stats;
 };
 
+// Fetch creator profiles
+const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string, string>> => {
+  if (creatorIds.length === 0) return {};
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, display_name')
+    .in('user_id', creatorIds);
+
+  if (error) {
+    console.error('Error fetching creator profiles:', error);
+    return {};
+  }
+
+  const profiles: Record<string, string> = {};
+  (data || []).forEach((profile: ProfileData) => {
+    profiles[profile.user_id] = profile.display_name || 'Créateur';
+  });
+
+  return profiles;
+};
+
 // Fetch memorials from database
-const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }> }> => {
+const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }>; creatorProfiles: Record<string, string> }> => {
   const { data, error } = await supabase
     .from('memorials')
     .select('*')
@@ -88,6 +116,12 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     throw error;
   }
 
+  // Get unique creator IDs
+  const creatorIds = [...new Set((data || []).map(m => m.created_by))];
+  
+  // Fetch creator profiles
+  const creatorProfiles = await fetchCreatorProfiles(creatorIds);
+
   const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
     id: m.id,
     slug: m.slug,
@@ -98,7 +132,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     photos: m.photo_url ? [m.photo_url] : [],
     author: {
       id: m.created_by,
-      name: "Créateur",
+      name: creatorProfiles[m.created_by] || "Créateur",
       relation: "Créateur de l'espace",
     },
     guestbookMessages: [],
@@ -114,7 +148,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     ? await fetchGuestbookStats(memorialsFromDb.map(m => m.id))
     : {};
 
-  return { memorials: memorialsFromDb, stats };
+  return { memorials: memorialsFromDb, stats, creatorProfiles };
 };
 
 export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
