@@ -13,7 +13,11 @@ const RequireAdmin = ({ children, requireAdmin = false }: RequireAdminProps) => 
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isAdminOrMod, loading: roleLoading } = useAdminRole();
 
-  if (authLoading || roleLoading) {
+  // CRITICAL: Show loading state while EITHER auth OR roles are loading
+  // This prevents the flash of "Access Denied" before roles are fetched
+  const isLoading = authLoading || roleLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
