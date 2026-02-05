@@ -184,9 +184,9 @@ interface TransactionWithDetails {
                    <TableHead>Type</TableHead>
                     <TableHead>Défunt</TableHead>
                     <TableHead>Auteur</TableHead>
-                   <TableHead>Montant</TableHead>
-                   <TableHead>Statut</TableHead>
                    <TableHead>Détails</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Statut</TableHead>
                  </TableRow>
                </TableHeader>
                <TableBody>
@@ -206,6 +206,11 @@ interface TransactionWithDetails {
                           ? String((tx.metadata as Record<string, unknown>).authorName || '—')
                           : '—'}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                        {tx.metadata && typeof tx.metadata === 'object'
+                          ? String((tx.metadata as Record<string, unknown>).relationCategory || '—')
+                          : '—'}
+                      </TableCell>
                      <TableCell className="font-medium">
                        {tx.amount.toLocaleString()} {tx.currency}
                      </TableCell>
@@ -213,11 +218,6 @@ interface TransactionWithDetails {
                        <Badge variant={statusVariant(tx.status)}>
                          {statusLabel(tx.status)}
                        </Badge>
-                     </TableCell>
-                     <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                       {tx.metadata && typeof tx.metadata === 'object'
-                         ? String((tx.metadata as Record<string, unknown>).relationCategory || '—')
-                         : '—'}
                      </TableCell>
                    </TableRow>
                  ))}
