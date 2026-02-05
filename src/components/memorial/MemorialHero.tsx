@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import EditMemorialDialog from "./EditMemorialDialog";
+
 interface GestureTotals {
   ripCount: number;
   candleCount: number;
@@ -36,14 +38,18 @@ interface MemorialHeroProps {
       authorName: string;
       relationCategory: string;
     }>;
+    funeralDate?: string | null;
+    funeralLocation?: string | null;
+    createdBy?: string;
   };
   onScrollToGuestbook: () => void;
   gestureTotals?: GestureTotals;
   userHasPosted?: boolean;
   onGestureClick?: (type: 'rip' | 'candle' | 'flower') => void;
+  onMemorialUpdated?: () => void;
 }
 
-const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick }: MemorialHeroProps) => {
+const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick, onMemorialUpdated }: MemorialHeroProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
@@ -53,73 +59,87 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
 
   const age = calculateAge(memorial.birthDate, memorial.deathDate);
+  
+  // Check if current user is the creator
+  const isCreator = user?.id === memorial.createdBy;
+  
+  // Filter out empty photos
+  const validPhotos = memorial.photos.filter(photo => photo && photo.length > 0);
 
   return (
     <section className="container mx-auto px-4 pb-8">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
         {/* Photo Gallery */}
         <div className="relative">
-          <div className="aspect-[3/4] overflow-hidden relative group">
-            <img
-              src={memorial.photos[currentPhotoIndex]}
-              alt={`Portrait de ${memorial.name}`}
-              className="w-full h-full object-cover portrait-memorial transition-opacity duration-300"
-            />
-            
-            {/* Navigation Arrows */}
-            {memorial.photos.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentPhotoIndex((prev) => 
-                    prev === 0 ? memorial.photos.length - 1 : prev - 1
-                  )}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                  aria-label="Photo précédente"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentPhotoIndex((prev) => 
-                    prev === memorial.photos.length - 1 ? 0 : prev + 1
-                  )}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
-                  aria-label="Photo suivante"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
+          {validPhotos.length > 0 ? (
+            <>
+              <div className="aspect-[3/4] overflow-hidden relative group">
+                <img
+                  src={validPhotos[currentPhotoIndex] || validPhotos[0]}
+                  alt={`Portrait de ${memorial.name}`}
+                  className="w-full h-full object-cover portrait-memorial transition-opacity duration-300"
+                />
                 
-                {/* Photo Counter */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans">
-                  {currentPhotoIndex + 1} / {memorial.photos.length}
+                {/* Navigation Arrows */}
+                {validPhotos.length > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPhotoIndex((prev) => 
+                        prev === 0 ? validPhotos.length - 1 : prev - 1
+                      )}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
+                      aria-label="Photo précédente"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPhotoIndex((prev) => 
+                        prev === validPhotos.length - 1 ? 0 : prev + 1
+                      )}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 rounded-full"
+                      aria-label="Photo suivante"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                    
+                    {/* Photo Counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm font-sans">
+                      {currentPhotoIndex + 1} / {validPhotos.length}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* Thumbnails */}
+              {validPhotos.length > 1 && (
+                <div className="flex gap-2 mt-2">
+                  {validPhotos.map((photo, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPhotoIndex(index)}
+                      className={`w-16 h-20 overflow-hidden transition-all ${
+                        index === currentPhotoIndex 
+                          ? "ring-2 ring-primary opacity-100" 
+                          : "opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <img
+                        src={photo}
+                        alt=""
+                        className="w-full h-full object-cover portrait-memorial"
+                      />
+                    </button>
+                  ))}
                 </div>
-              </>
-            )}
-          </div>
-          
-          {/* Thumbnails */}
-          {memorial.photos.length > 1 && (
-            <div className="flex gap-2 mt-2">
-              {memorial.photos.map((photo, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPhotoIndex(index)}
-                  className={`w-16 h-20 overflow-hidden transition-all ${
-                    index === currentPhotoIndex 
-                      ? "ring-2 ring-primary opacity-100" 
-                      : "opacity-60 hover:opacity-100"
-                  }`}
-                >
-                  <img
-                    src={photo}
-                    alt=""
-                    className="w-full h-full object-cover portrait-memorial"
-                  />
-                </button>
-              ))}
+              )}
+            </>
+          ) : (
+            <div className="aspect-[3/4] bg-muted flex items-center justify-center">
+              <span className="text-muted-foreground">Aucune photo</span>
             </div>
           )}
         </div>
@@ -207,6 +227,19 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 title={`Hommage à ${memorial.name}`}
                 description={memorial.bio}
               />
+              
+              {/* Edit button for creator */}
+              {isCreator && onMemorialUpdated && (
+                <EditMemorialDialog
+                  memorialId={memorial.id}
+                  initialData={{
+                    bio: memorial.bio,
+                    funeralDate: memorial.funeralDate,
+                    funeralLocation: memorial.funeralLocation,
+                  }}
+                  onSave={onMemorialUpdated}
+                />
+              )}
             </div>
             
             {/* Gesture Summary - Hommages reçus */}

@@ -462,6 +462,9 @@ const Memorial = () => {
             photos: memorial.photos,
             author: memorial.author,
             publishedAt: memorial.publishedAt,
+            funeralDate: memorial.funeralDate,
+            funeralLocation: memorial.funeralLocation,
+            createdBy: memorial.createdBy,
             guestbookMessages: memorial.guestbookMessages.map(msg => ({
               authorName: msg.authorName,
               relationCategory: msg.relationCategory,
@@ -470,6 +473,7 @@ const Memorial = () => {
           onScrollToGuestbook={scrollToGuestbook}
           gestureTotals={totals}
           userHasPosted={userHasPosted}
+          onMemorialUpdated={handleMemorialUpdated}
           onGestureClick={(type) => {
             if (type === 'rip') {
               scrollToDarkZone();
