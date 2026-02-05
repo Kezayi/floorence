@@ -15,7 +15,7 @@
  import { Loader2 } from 'lucide-react';
  import ExportCSVButton from './ExportCSVButton';
  
- interface Transaction {
+interface TransactionWithDetails {
    id: string;
    user_id: string;
    amount: number;
@@ -26,6 +26,7 @@
    memorial_id: string | null;
    metadata: Record<string, unknown> | null;
    created_at: string;
+  memorial_name?: string;
  }
  
  const statusVariant = (status: string) => {
@@ -69,41 +70,87 @@
    const { data: transactions, isLoading } = useQuery({
      queryKey: ['admin-transactions-list'],
      queryFn: async () => {
-       const { data, error } = await supabase
+      // Fetch transactions
+      const { data: txData, error: txError } = await supabase
          .from('payment_transactions')
          .select('*')
          .order('created_at', { ascending: false })
          .limit(100);
  
-       if (error) throw error;
-       return data as Transaction[];
+      if (txError) throw txError;
+
+      // Fetch memorial names for transactions with memorial_id
+      const memorialIds = [...new Set((txData || []).filter(tx => tx.memorial_id).map(tx => tx.memorial_id))];
+      
+      let memorialMap: Record<string, string> = {};
+      if (memorialIds.length > 0) {
+        const { data: memorials } = await supabase
+          .from('memorials')
+          .select('id, first_name, last_name')
+          .in('id', memorialIds);
+        
+        if (memorials) {
+          memorialMap = memorials.reduce((acc, m) => {
+            acc[m.id] = `${m.first_name} ${m.last_name}`;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      // Combine data
+      return (txData || []).map(tx => ({
+        ...tx,
+        memorial_name: tx.memorial_id ? memorialMap[tx.memorial_id] : undefined,
+      })) as TransactionWithDetails[];
      },
    });
  
    const fetchAllTransactions = async () => {
-     const { data, error } = await supabase
+    const { data: txData, error: txError } = await supabase
        .from('payment_transactions')
        .select('*')
        .order('created_at', { ascending: false });
  
-     if (error) throw error;
-     return (data || []).map((tx) => ({
+    if (txError) throw txError;
+
+    const memorialIds = [...new Set((txData || []).filter(tx => tx.memorial_id).map(tx => tx.memorial_id))];
+    
+    let memorialMap: Record<string, string> = {};
+    if (memorialIds.length > 0) {
+      const { data: memorials } = await supabase
+        .from('memorials')
+        .select('id, first_name, last_name')
+        .in('id', memorialIds);
+      
+      if (memorials) {
+        memorialMap = memorials.reduce((acc, m) => {
+          acc[m.id] = `${m.first_name} ${m.last_name}`;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+    }
+
+    return (txData || []).map((tx) => ({
        ...tx,
        created_at: format(new Date(tx.created_at), 'dd/MM/yyyy HH:mm', { locale: fr }),
        payment_type: paymentTypeLabel(tx.payment_type),
        status: statusLabel(tx.status),
+      memorial_name: tx.memorial_id ? memorialMap[tx.memorial_id] || '—' : '—',
+      author_name: tx.metadata && typeof tx.metadata === 'object' 
+        ? String((tx.metadata as Record<string, unknown>).authorName || '—') 
+        : '—',
      }));
    };
  
    const csvColumns = [
      { key: 'created_at' as const, label: 'Date' },
      { key: 'payment_type' as const, label: 'Type' },
+    { key: 'memorial_name' as const, label: 'Défunt' },
+    { key: 'author_name' as const, label: 'Auteur' },
      { key: 'amount' as const, label: 'Montant' },
      { key: 'currency' as const, label: 'Devise' },
      { key: 'status' as const, label: 'Statut' },
      { key: 'ebilling_reference' as const, label: 'Référence' },
-     { key: 'user_id' as const, label: 'Utilisateur' },
-     { key: 'memorial_id' as const, label: 'Mémorial' },
    ];
  
    if (isLoading) {
@@ -135,9 +182,10 @@
                  <TableRow>
                    <TableHead>Date</TableHead>
                    <TableHead>Type</TableHead>
+                    <TableHead>Défunt</TableHead>
+                    <TableHead>Auteur</TableHead>
                    <TableHead>Montant</TableHead>
                    <TableHead>Statut</TableHead>
-                   <TableHead>Référence</TableHead>
                    <TableHead>Détails</TableHead>
                  </TableRow>
                </TableHeader>
@@ -150,6 +198,14 @@
                      <TableCell>
                        <Badge variant="outline">{paymentTypeLabel(tx.payment_type)}</Badge>
                      </TableCell>
+                      <TableCell className="font-medium">
+                        {tx.memorial_name || '—'}
+                      </TableCell>
+                      <TableCell>
+                        {tx.metadata && typeof tx.metadata === 'object'
+                          ? String((tx.metadata as Record<string, unknown>).authorName || '—')
+                          : '—'}
+                      </TableCell>
                      <TableCell className="font-medium">
                        {tx.amount.toLocaleString()} {tx.currency}
                      </TableCell>
@@ -157,11 +213,6 @@
                        <Badge variant={statusVariant(tx.status)}>
                          {statusLabel(tx.status)}
                        </Badge>
-                     </TableCell>
-                     <TableCell className="font-mono text-xs text-muted-foreground">
-                       {tx.ebilling_reference
-                         ? `${tx.ebilling_reference.slice(0, 8)}...${tx.ebilling_reference.slice(-6)}`
-                         : '—'}
                      </TableCell>
                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
                        {tx.metadata && typeof tx.metadata === 'object'
