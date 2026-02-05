@@ -143,6 +143,7 @@ interface TransactionWithDetails {
    };
  
    const csvColumns = [
+     { key: 'id' as const, label: 'ID' },
      { key: 'created_at' as const, label: 'Date' },
      { key: 'payment_type' as const, label: 'Type' },
     { key: 'memorial_name' as const, label: 'Défunt' },
@@ -180,6 +181,7 @@ interface TransactionWithDetails {
              <Table>
                <TableHeader>
                  <TableRow>
+                    <TableHead className="w-[100px]">ID</TableHead>
                    <TableHead>Date</TableHead>
                    <TableHead>Type</TableHead>
                     <TableHead>Défunt</TableHead>
@@ -192,6 +194,9 @@ interface TransactionWithDetails {
                <TableBody>
                  {transactions.map((tx) => (
                    <TableRow key={tx.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {tx.id.slice(0, 8)}…
+                      </TableCell>
                      <TableCell className="whitespace-nowrap">
                        {format(new Date(tx.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
                      </TableCell>
