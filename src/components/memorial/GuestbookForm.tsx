@@ -237,7 +237,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
                   <button
                     type="button"
                     onClick={() => setCandleCount(candleCount + 1)}
-                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 transition-colors"
+                    disabled={candleCount >= 10}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3 h-3 text-memorial-dark-foreground" />
                   </button>
@@ -261,7 +262,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
                   <button
                     type="button"
                     onClick={() => setFlowerCount(flowerCount + 1)}
-                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 transition-colors"
+                    disabled={flowerCount >= 10}
+                    className="w-7 h-7 flex items-center justify-center rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3 h-3 text-memorial-dark-foreground" />
                   </button>
