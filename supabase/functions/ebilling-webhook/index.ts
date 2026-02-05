@@ -1,36 +1,36 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
-import { timingSafeEqual } from 'https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-// Input validation schema for webhook payload
+// Input validation schema for EBILLING webhook payload
+// Based on EBILLING documentation, the callback sends these parameters:
+// billingid, transactionid, reference (external_reference), amount, paymentsystem, merchantid, customerid
 const WebhookPayloadSchema = z.object({
+  // billingid is the EBILLING internal bill ID
+  billingid: z.string().min(1).max(100).optional(),
+  // transactionid is the operator transaction ID
+  transactionid: z.string().min(1).max(100).optional(),
+  // reference is our external_reference we sent when creating the bill
   reference: z.string().min(1).max(100),
-  transaction_id: z.string().min(1).max(100),
-  status: z.string().min(1).max(50),
-  amount: z.number().positive().optional(),
-  currency: z.string().length(3).optional(),
-  signature: z.string().min(1, 'Signature is required'),
-  timestamp: z.number().optional(), // Unix timestamp for replay protection
+  // amount paid
+  amount: z.union([z.number(), z.string()]).optional(),
+  // payment system used (airtelmoney, moovmoney4, etc.)
+  paymentsystem: z.string().max(50).optional(),
+  // merchant ID
+  merchantid: z.string().max(100).optional(),
+  // customer ID
+  customerid: z.string().max(100).optional(),
+  // Some implementations also send status
+  status: z.string().max(50).optional(),
+  // payer info
+  payer_code: z.string().max(50).optional(),
+  payerid: z.string().max(100).optional(),
 })
-
-// Valid status values from EBILLING
-const EBILLING_STATUS_MAP: Record<string, string> = {
-  'SUCCESS': 'completed',
-  'SUCCESSFUL': 'completed',
-  'COMPLETED': 'completed',
-  'PAID': 'completed',
-  'FAILED': 'failed',
-  'CANCELLED': 'cancelled',
-  'CANCELED': 'cancelled',
-  'PENDING': 'pending',
-  'PROCESSING': 'processing',
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -41,121 +41,116 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const EBILLING_SECRET_KEY = Deno.env.get('EBILLING_SECRET_KEY')
 
-    if (!EBILLING_SECRET_KEY) {
-      console.error('EBILLING_SECRET_KEY not configured')
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Parse and validate the webhook payload
-    let rawBody: unknown
+    // EBILLING can send data as JSON body or as form-urlencoded
+    // We need to handle both cases
+    const contentType = req.headers.get('content-type') || ''
+    // deno-lint-ignore no-explicit-any
+    let rawBody: any
+    
     try {
-      rawBody = await req.json()
-    } catch {
-      console.error('Invalid JSON in webhook payload')
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      if (contentType.includes('application/json')) {
+        rawBody = await req.json()
+      } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        const formData = await req.formData()
+        rawBody = Object.fromEntries(formData.entries())
+      } else {
+        // Try JSON first, then form data
+        const text = await req.text()
+        try {
+          rawBody = JSON.parse(text)
+        } catch {
+          // Parse as query string
+          const params = new URLSearchParams(text)
+          rawBody = Object.fromEntries(params.entries())
+        }
+      }
+    } catch (parseError) {
+      console.error('Error parsing webhook payload:', parseError)
+      rawBody = {}
     }
 
-    console.log('Received EBILLING webhook')
+    console.log('Received EBILLING webhook:', JSON.stringify(rawBody))
 
     const validationResult = WebhookPayloadSchema.safeParse(rawBody)
     
     if (!validationResult.success) {
       console.error('Webhook validation error:', validationResult.error.issues)
+      // Still try to process if we have at least a reference
+      if (!rawBody.reference) {
       return new Response(
         JSON.stringify({ error: 'Invalid webhook payload' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    }
-
-    const { reference, transaction_id, status, signature, timestamp } = validationResult.data
-
-    // Replay protection: reject webhooks older than 5 minutes
-    if (timestamp) {
-      const now = Math.floor(Date.now() / 1000)
-      const maxAge = 5 * 60 // 5 minutes in seconds
-      
-      if (now - timestamp > maxAge) {
-        console.error('Webhook timestamp too old:', { timestamp, now, diff: now - timestamp })
-        return new Response(
-          JSON.stringify({ error: 'Webhook expired' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
       }
     }
 
-    // Generate expected signature
-    const expectedSignature = await generateSignature(
-      reference, 
-      transaction_id, 
-      status, 
-      EBILLING_SECRET_KEY
-    )
-    
-    // Constant-time signature comparison to prevent timing attacks
-    const signatureValid = constantTimeCompare(signature, expectedSignature)
-    
-    if (!signatureValid) {
-      console.error('Invalid webhook signature')
-      return new Response(
-        JSON.stringify({ error: 'Invalid signature' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Extract data from validated result or raw body
+    const data = validationResult.success ? validationResult.data : rawBody
+    const reference = data.reference
+    const billingId = data.billingid || data.billing_id
+    const transactionId = data.transactionid || data.transaction_id
+    const paymentSystem = data.paymentsystem || data.payment_system
 
     // Create Supabase client with service role for admin access
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Check if this webhook has already been processed (idempotency)
+    // Find the transaction by reference (our external_reference)
     const { data: existingTx } = await supabase
       .from('payment_transactions')
-      .select('id, status, ebilling_transaction_id')
+      .select('id, status, ebilling_transaction_id, payment_type, memorial_id')
       .eq('ebilling_reference', reference)
       .maybeSingle()
 
-    if (existingTx?.ebilling_transaction_id === transaction_id) {
-      console.log('Webhook already processed for transaction:', transaction_id)
+    if (!existingTx) {
+      console.error('Transaction not found for reference:', reference)
+      return new Response(
+        JSON.stringify({ error: 'Transaction not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if already processed (idempotency)
+    if (existingTx.status === 'completed') {
+      console.log('Transaction already completed:', existingTx.id)
       return new Response(
         JSON.stringify({ success: true, message: 'Already processed' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Map EBILLING status to our internal status
-    const internalStatus = EBILLING_STATUS_MAP[status.toUpperCase()] || 'unknown'
+    // EBILLING callback means payment was successful
+    // According to documentation: "Si le payement est reussi, Ebilling va notifier votre système"
+    const internalStatus = 'completed'
 
     // Update the transaction in our database
-    const { data, error } = await supabase
+    const { error: updateError } = await supabase
       .from('payment_transactions')
       .update({
         status: internalStatus,
-        ebilling_transaction_id: transaction_id,
+        ebilling_transaction_id: transactionId || billingId || 'callback-received',
+        metadata: {
+          ...((existingTx as { metadata?: Record<string, unknown> }).metadata || {}),
+          payment_system: paymentSystem,
+          callback_received_at: new Date().toISOString()
+        },
         updated_at: new Date().toISOString()
       })
-      .eq('ebilling_reference', reference)
-      .select()
-      .single()
+      .eq('id', existingTx.id)
 
-    if (error) {
-      console.error('Error updating transaction:', error)
+    if (updateError) {
+      console.error('Error updating transaction:', updateError)
       return new Response(
         JSON.stringify({ error: 'Failed to update transaction' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Transaction updated:', { id: data.id, status: internalStatus })
+    console.log('Transaction updated:', { id: existingTx.id, status: internalStatus })
 
     // If payment completed and it's for memorial creation, publish the memorial
-    if (internalStatus === 'completed' && data.payment_type === 'memorial_creation' && data.memorial_id) {
-      console.log('Publishing memorial after successful payment:', data.memorial_id)
+    if (existingTx.payment_type === 'memorial_creation' && existingTx.memorial_id) {
+      console.log('Publishing memorial after successful payment:', existingTx.memorial_id)
       
       const { error: publishError } = await supabase
         .from('memorials')
@@ -163,13 +158,13 @@ serve(async (req) => {
           is_published: true,
           updated_at: new Date().toISOString()
         })
-        .eq('id', data.memorial_id)
+        .eq('id', existingTx.memorial_id)
 
       if (publishError) {
         console.error('Error publishing memorial:', publishError)
         // Don't fail the webhook, transaction was still updated
       } else {
-        console.log('Memorial published successfully:', data.memorial_id)
+        console.log('Memorial published successfully:', existingTx.memorial_id)
       }
     }
 
@@ -187,40 +182,3 @@ serve(async (req) => {
     )
   }
 })
-
-// Helper function to generate signature for validation
-async function generateSignature(
-  reference: string,
-  transactionId: string,
-  status: string,
-  secretKey: string
-): Promise<string> {
-  const data = `${reference}${transactionId}${status}${secretKey}`
-  const encoder = new TextEncoder()
-  const dataBuffer = encoder.encode(data)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-// Constant-time string comparison to prevent timing attacks
-function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-  
-  const encoder = new TextEncoder()
-  const aBuffer = encoder.encode(a)
-  const bBuffer = encoder.encode(b)
-  
-  try {
-    return timingSafeEqual(aBuffer, bBuffer)
-  } catch {
-    // Fallback if timingSafeEqual fails
-    let result = 0
-    for (let i = 0; i < a.length; i++) {
-      result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-    }
-    return result === 0
-  }
-}
