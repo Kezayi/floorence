@@ -169,6 +169,7 @@ export type Database = {
           contributions_disabled_at: string | null
           created_at: string
           created_by: string
+          creator_relation: string | null
           death_date: string | null
           default_photo_index: number | null
           donation_enabled: boolean
@@ -193,6 +194,7 @@ export type Database = {
           contributions_disabled_at?: string | null
           created_at?: string
           created_by: string
+          creator_relation?: string | null
           death_date?: string | null
           default_photo_index?: number | null
           donation_enabled?: boolean
@@ -217,6 +219,7 @@ export type Database = {
           contributions_disabled_at?: string | null
           created_at?: string
           created_by?: string
+          creator_relation?: string | null
           death_date?: string | null
           default_photo_index?: number | null
           donation_enabled?: boolean

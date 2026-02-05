@@ -47,6 +47,10 @@ interface GuestbookPost {
   candle_count: number;
   flower_count: number;
   photos: string[] | null;
+  memorial?: {
+    first_name: string;
+    last_name: string;
+  };
 }
 
 const Moderation = () => {
@@ -91,7 +95,11 @@ const Moderation = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
-        .select('id, author_name, content, relation_category, is_hidden, hidden_reason, created_at, memorial_id, candle_count, flower_count, photos')
+        .select(`
+          id, author_name, content, relation_category, is_hidden, hidden_reason, 
+          created_at, memorial_id, candle_count, flower_count, photos,
+          memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name)
+        `)
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
 
@@ -332,6 +340,7 @@ const Moderation = () => {
                   currentSort={sortConfig}
                   onSort={handleSort}
                 />
+                <TableCell className="font-medium text-muted-foreground">Défunt</TableCell>
                 <SortableTableHeader
                   label="Lien avec le défunt"
                   sortKey="relation_category"
@@ -370,6 +379,9 @@ const Moderation = () => {
               {sortedData?.map((post) => (
                 <TableRow key={post.id} className={post.is_hidden ? 'opacity-60 bg-muted/30' : ''}>
                   <TableCell className="font-medium">{post.author_name}</TableCell>
+                  <TableCell className="font-medium">
+                    {post.memorial ? `${post.memorial.first_name} ${post.memorial.last_name}` : '—'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{getRelationWithDeceased(post.relation_category)}</Badge>
                   </TableCell>
@@ -451,7 +463,7 @@ const Moderation = () => {
               ))}
               {(!sortedData || sortedData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Aucun hommage à modérer.
                   </TableCell>
                 </TableRow>

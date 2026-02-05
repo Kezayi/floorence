@@ -41,6 +41,7 @@ import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
+import { getRelationWithDeceased } from '@/lib/relationshipInference';
 
 interface Memorial {
   id: string;
@@ -56,6 +57,7 @@ interface Memorial {
   merged_into: string | null;
   created_at: string;
   created_by: string;
+  creator_relation: string | null;
 }
 
 interface Profile {
@@ -116,7 +118,7 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, merged_into, created_at, created_by')
+        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, merged_into, created_at, created_by, creator_relation')
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
@@ -435,6 +437,12 @@ const Memorials = () => {
                   onSort={handleSort}
                 />
                 <SortableTableHeader
+                  label="Lien avec le défunt"
+                  sortKey="creator_relation"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
                   label="Date de création"
                   sortKey="created_at"
                   currentSort={sortConfig}
@@ -481,6 +489,13 @@ const Memorials = () => {
                       </p>
                     </TableCell>
                     <TableCell className="text-sm">{getCreatorName(memorial.created_by)}</TableCell>
+                    <TableCell className="text-sm">
+                      {memorial.creator_relation ? (
+                        <Badge variant="secondary">{getRelationWithDeceased(memorial.creator_relation)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground italic">Non renseigné</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                       {format(new Date(memorial.created_at), 'dd MMM yyyy', { locale: fr })}
                     </TableCell>
@@ -541,7 +556,7 @@ const Memorials = () => {
               })}
               {(!sortedData || sortedData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Aucun mémorial trouvé.
                   </TableCell>
                 </TableRow>
