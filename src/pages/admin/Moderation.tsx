@@ -453,15 +453,17 @@ const Moderation = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" asChild title="Voir le mémorial">
-                        <a 
-                          href={post.memorial?.slug ? `/memorial/${post.memorial.slug}` : `/memorial/${post.memorial_id}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </a>
-                      </Button>
+                      {post.memorial?.slug && (
+                        <Button variant="ghost" size="sm" asChild title="Voir le mémorial">
+                          <a 
+                            href={`/memorial/${post.memorial.slug}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </a>
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

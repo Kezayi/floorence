@@ -509,14 +509,21 @@ const Memorial = () => {
         <div className="divider-elegant" />
 
         {/* Tabs Content */}
-        {/* Logique d'onglet par défaut : Si funeral_date < maintenant (UTC) → "Maillage" (relationships) */}
+        {/* Logique d'onglet par défaut : Si funeral_date < CurrentDate (00:00:00) → "Maillage" (relationships) */}
         {(() => {
-          // Algorithme de bascule : DateObsèques + HeureObsèques < TempsActuel (UTC)
+          // Algorithme de bascule robuste basé sur ISO 8601
+          // Compare funeral_date au début du jour actuel (00:00:00) pour éviter bascule prématurée
           const isPastFuneral = (() => {
             if (!memorial.funeralDate) return false;
             const funeralDateTime = new Date(memorial.funeralDate);
-            // Comparaison en temps UTC pour éviter les problèmes de fuseaux horaires
-            return !isNaN(funeralDateTime.getTime()) && funeralDateTime.getTime() < Date.now();
+            if (isNaN(funeralDateTime.getTime())) return false;
+            
+            // Créer la date du jour actuel à 00:00:00 (minuit) en heure locale
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Le mémorial est "passé" si la date des obsèques est strictement antérieure à aujourd'hui
+            return funeralDateTime.getTime() < today.getTime();
           })();
           
           // Priorité : isPastFuneral (basé sur funeral_date) > type PAST (basé sur death_date)
