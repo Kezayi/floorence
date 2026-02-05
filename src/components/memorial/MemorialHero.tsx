@@ -154,19 +154,15 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
             </p>
             
             {/* Publication Info */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-1 font-sans">
-              <span>Publié {memorial.publishedAt}</span>
-              <span className="hidden sm:inline">•</span>
-              <span>
-                Par{" "}
-                <Link 
-                  to={`/compte/${memorial.author.id}`} 
-                  className="text-foreground hover:underline"
-                >
-                  {memorial.author.name}
-                </Link>
-                {" "}({getRelationWithDeceased(memorial.author.relation)})
-              </span>
+            <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground mb-1 font-sans">
+              <span>Publié Par •</span>
+              <Link 
+                to={`/compte/${memorial.author.id}`} 
+                className="text-foreground hover:underline"
+              >
+                {memorial.author.name}
+              </Link>
+              <span>({getRelationWithDeceased(memorial.author.relation)})</span>
             </div>
 
             <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
