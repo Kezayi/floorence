@@ -162,7 +162,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               >
                 {memorial.author.name}
               </Link>
-              <span>({getRelationWithDeceased(memorial.author.relation)})</span>
             </div>
 
             <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
