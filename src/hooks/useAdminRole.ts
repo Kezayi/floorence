@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,46 +13,60 @@ interface UseAdminRoleResult {
 }
 
 export const useAdminRole = (): UseAdminRoleResult => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
+
+  const fetchRoles = useCallback(async () => {
+    if (!user) {
+      setRoles([]);
+      setRoleLoading(false);
+      return;
+    }
+
+    try {
+      // Use RPC function for faster and more reliable role check
+      const { data: isAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+      
+      const { data: isMod } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'moderator'
+      });
+
+      const fetchedRoles: AppRole[] = [];
+      if (isAdmin) fetchedRoles.push('admin');
+      if (isMod) fetchedRoles.push('moderator');
+      
+      setRoles(fetchedRoles);
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+      setRoles([]);
+    } finally {
+      setRoleLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const fetchRoles = async () => {
-      if (!user) {
-        setRoles([]);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id);
-
-        if (error) {
-          console.error('Error fetching roles:', error);
-          setRoles([]);
-        } else {
-          setRoles((data || []).map(r => r.role as AppRole));
-        }
-      } catch (err) {
-        console.error('Error fetching roles:', err);
-        setRoles([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    // Wait for auth to complete before checking roles
+    if (authLoading) {
+      setRoleLoading(true);
+      return;
+    }
+    
     fetchRoles();
-  }, [user]);
+  }, [user, authLoading, fetchRoles]);
+
+  // Loading is true while auth OR role check is in progress
+  const isLoading = authLoading || roleLoading;
 
   return {
     isAdmin: roles.includes('admin'),
     isModerator: roles.includes('moderator'),
     isAdminOrMod: roles.includes('admin') || roles.includes('moderator'),
-    loading,
+    loading: isLoading,
     roles,
   };
 };
