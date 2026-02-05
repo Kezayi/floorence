@@ -39,10 +39,10 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
       try {
         const today = new Date().toISOString().split("T")[0];
         
-        // Define event types based on the type prop
+        // Define event types based on the type prop (case-insensitive matching)
         const eventTypes = type === "funerals" 
-          ? ["veillee", "inhumation"] 
-          : ["commemoration"];
+          ? ["veillee", "inhumation", "VEILLEE", "INHUMATION"] 
+          : ["commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT"];
 
         const { data, error } = await supabase
           .from("memorial_events")
@@ -84,13 +84,17 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
   }, [type]);
 
   const getEventTypeLabel = (eventType: string) => {
-    switch (eventType) {
+    const type = eventType.toLowerCase();
+    switch (type) {
       case "veillee":
         return "Veillée";
       case "inhumation":
         return "Inhumation";
       case "commemoration":
+      case "recueillement":
         return "Recueillement";
+      case "anniversary":
+        return "Anniversaire";
       default:
         return eventType;
     }
