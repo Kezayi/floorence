@@ -80,15 +80,19 @@ const MemorialCard = ({
           {/* Stats - Gestures */}
           <div className="flex items-center gap-3 md:gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <CrossIcon size={16} className="text-foreground" />
+              {/* Icon on desktop, text on mobile */}
+              <CrossIcon size={16} className="hidden md:block text-foreground" />
+              <span className="md:hidden text-xs text-muted-foreground">RIP</span>
               <span className="font-medium text-foreground">{ripCount}</span>
             </span>
             <span className="flex items-center gap-1">
-              <FlameIcon size={16} className="text-[hsl(var(--gesture-candle))]" />
+              <FlameIcon size={16} className="hidden md:block text-[hsl(var(--gesture-candle))]" />
+              <span className="md:hidden text-xs text-muted-foreground">Cierges</span>
               <span className="font-medium text-foreground">{candleCount}</span>
             </span>
             <span className="flex items-center gap-1">
-              <ChrysanthemumIcon size={16} className="text-[hsl(var(--gesture-flower))]" />
+              <ChrysanthemumIcon size={16} className="hidden md:block text-[hsl(var(--gesture-flower))]" />
+              <span className="md:hidden text-xs text-muted-foreground">Fleurs</span>
               <span className="font-medium text-foreground">{flowerCount}</span>
             </span>
           </div>
