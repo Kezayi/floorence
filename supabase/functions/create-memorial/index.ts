@@ -112,29 +112,52 @@
        }
      }
  
-     // Generate unique slug
-     const baseSlug = `${data.firstName}-${data.lastName}`
-       .toLowerCase()
-       .normalize('NFD')
-       .replace(/[\u0300-\u036f]/g, '')
-       .replace(/[^a-z0-9]+/g, '-')
-       .replace(/^-|-$/g, '')
- 
-     // Check for existing slugs and generate unique one
-     const { data: existingSlugs } = await supabase
-       .from('memorials')
-       .select('slug')
-       .ilike('slug', `${baseSlug}%`)
- 
-     let slug = baseSlug
-     if (existingSlugs && existingSlugs.length > 0) {
-       const existingSet = new Set(existingSlugs.map(m => m.slug))
-       let counter = 1
-       while (existingSet.has(slug)) {
-         slug = `${baseSlug}-${counter}`
-         counter++
-       }
-     }
+    // Generate secure slug using initials + random ID format
+    // This prevents sequential discovery and protects privacy
+    const generateSecureSlug = async (): Promise<string> => {
+      // Get initials (first letter of each name, normalized)
+      const firstInitial = data.firstName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .charAt(0)
+        .toLowerCase()
+      const lastInitial = data.lastName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .charAt(0)
+        .toLowerCase()
+      const initials = `${firstInitial}${lastInitial}`
+      
+      // Generate random alphanumeric ID (6 chars for unpredictability)
+      // Using crypto for better randomness than Math.random
+      const randomBytes = new Uint8Array(4)
+      crypto.getRandomValues(randomBytes)
+      const randomId = Array.from(randomBytes)
+        .map(b => b.toString(36).padStart(2, '0'))
+        .join('')
+        .substring(0, 6)
+      
+      let slug = `${initials}-${randomId}`
+      
+      // Verify uniqueness
+      const { data: existing } = await supabase
+        .from('memorials')
+        .select('slug')
+        .eq('slug', slug)
+        .single()
+      
+      if (existing) {
+        // Extremely rare collision - add extra randomness
+        const extraRandom = Array.from(crypto.getRandomValues(new Uint8Array(2)))
+          .map(b => b.toString(36))
+          .join('')
+        slug = `${initials}-${randomId}${extraRandom}`
+      }
+      
+      return slug
+    }
+    
+    const slug = await generateSecureSlug()
  
      console.log('[BETA] Creating memorial with slug:', slug)
  

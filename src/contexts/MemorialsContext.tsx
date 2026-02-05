@@ -25,7 +25,8 @@ interface ExtendedSearchableMemorial extends SearchableMemorial {
   donationEnabled?: boolean;
   funeralDate?: string | null;
   funeralLocation?: string | null;
-   defaultPhotoIndex?: number;
+  defaultPhotoIndex?: number;
+  legacySlug?: string | null;
 }
 
 interface MemorialCardData {
@@ -156,6 +157,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
   const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
     id: m.id,
     slug: m.slug,
+    legacySlug: m.legacy_slug || null,
     name: `${m.first_name} ${m.last_name}`,
     birthDate: formatDateFrench(m.birth_date),
     deathDate: formatDateFrench(m.death_date),
