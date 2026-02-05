@@ -1,19 +1,22 @@
- project_id = "vxuueidrzrnfglfilmnh"
- 
- [functions.publish-tribute]
- verify_jwt = false
- 
- [functions.send-magic-link]
- verify_jwt = false
- 
- [functions.admin-users]
- verify_jwt = false
- 
- [functions.admin-settings]
- verify_jwt = false
- 
+project_id = "vxuueidrzrnfglfilmnh"
+
+[functions.publish-tribute]
+verify_jwt = false
+
+[functions.send-magic-link]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
+
+[functions.admin-settings]
+verify_jwt = false
+
 [functions.create-memorial]
 verify_jwt = false
 
 [functions.enhance-photo]
+verify_jwt = false
+
+[functions.social-preview]
 verify_jwt = false

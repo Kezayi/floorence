@@ -5,6 +5,8 @@ interface ShareButtonsProps {
   url: string;
   title: string;
   description?: string;
+  /** Slug for the memorial - used to generate social preview URL */
+  slug?: string;
 }
 
 // Custom social media icons
@@ -26,16 +28,33 @@ const InstagramIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
-const ShareButtons = ({ url, title, description = "" }: ShareButtonsProps) => {
+/**
+ * Generate the social preview URL that goes through the Edge Function
+ * This ensures crawlers get proper OG meta tags
+ */
+const getSocialShareUrl = (slug: string | undefined, fallbackUrl: string): string => {
+  if (!slug) return fallbackUrl;
+  
+  // Use the Edge Function URL for social sharing
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (supabaseUrl) {
+    return `${supabaseUrl}/functions/v1/social-preview?slug=${encodeURIComponent(slug)}`;
+  }
+  
+  return fallbackUrl;
+};
+
+const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const encodedUrl = encodeURIComponent(url);
+  // Use social preview URL for crawlers, regular URL for native share
+  const socialUrl = getSocialShareUrl(slug, url);
+  const encodedSocialUrl = encodeURIComponent(socialUrl);
   const encodedTitle = encodeURIComponent(title);
-  const encodedDescription = encodeURIComponent(description);
 
   const shareLinks = {
-    whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedTitle}`,
+    whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedSocialUrl}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedSocialUrl}&quote=${encodedTitle}`,
     instagram: null, // Instagram doesn't support direct URL sharing
   };
 

@@ -214,6 +214,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 url={`${window.location.origin}/memorial/${memorial.slug}`}
                 title={`Hommage à ${memorial.name}`}
                 description={memorial.bio}
+                slug={memorial.slug}
               />
               
               {/* Edit button for creator */}
