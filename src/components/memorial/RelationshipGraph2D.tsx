@@ -79,12 +79,46 @@ const categoryColors: Record<string, string> = {
   autre: "#EF4444",     // Red
 };
 
+// Couleurs de la charte pour les liens inférés
+const inferredLinkColors = {
+  direct: "#000000",      // Noir - liens familiaux directs
+  alliance: "#D4AF37",    // Doré - liens par alliance
+  feminine: "#EC4899",    // Rose - membres féminins
+  default: "#6B7280",     // Gris - autres liens
+};
+
+// Détermine la couleur du lien inféré selon la nature de la relation
+const getInferredLinkColor = (link: string, confidence: string): string => {
+  const lowerLink = link.toLowerCase();
+  
+  // Liens par alliance
+  if (lowerLink.includes("alliance") || lowerLink.includes("beau") || lowerLink.includes("belle")) {
+    return inferredLinkColors.alliance;
+  }
+  
+  // Liens féminins
+  if (lowerLink.includes("mère") || lowerLink.includes("sœur") || lowerLink.includes("tante") || 
+      lowerLink.includes("nièce") || lowerLink.includes("cousine") || lowerLink.includes("grand-mère")) {
+    return inferredLinkColors.feminine;
+  }
+  
+  // Liens directs (haute confiance)
+  if (confidence === "high" && 
+      (lowerLink.includes("frère") || lowerLink.includes("père") || lowerLink.includes("fils") ||
+       lowerLink.includes("parent") || lowerLink.includes("oncle") || lowerLink.includes("neveu"))) {
+    return inferredLinkColors.direct;
+  }
+  
+  return inferredLinkColors.default;
+};
+
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
 
 const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) => {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredLink, setHoveredLink] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -382,28 +416,81 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
             />
           ))}
           
-          {/* Inferred links between living nodes (dotted lines) */}
+          {/* Inferred links between living nodes (dotted lines with colors) */}
           <g className="inferred-links">
             {inferredLinks.map((link, idx) => {
               const fromPos = nodePositionsByName.get(link.fromAuthor);
               const toPos = nodePositionsByName.get(link.toAuthor);
               if (!fromPos || !toPos) return null;
               
-              const opacity = link.confidence === 'high' ? 0.5 : link.confidence === 'medium' ? 0.35 : 0.2;
+              const isHovered = hoveredLink === idx;
+              const baseOpacity = link.confidence === 'high' ? 0.6 : link.confidence === 'medium' ? 0.45 : 0.3;
+              const opacity = isHovered ? 1 : baseOpacity;
+              const strokeColor = getInferredLinkColor(link.inferredLink, link.confidence);
+              const strokeWidth = isHovered ? 2.5 : (link.confidence === 'high' ? 1.5 : 1);
+              
+              // Position du milieu pour le label
+              const midX = (fromPos.x + toPos.x) / 2;
+              const midY = (fromPos.y + toPos.y) / 2;
               
               return (
-                <line
+                <g 
                   key={`inferred-${idx}`}
-                  x1={fromPos.x}
-                  y1={fromPos.y}
-                  x2={toPos.x}
-                  y2={toPos.y}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                  opacity={opacity}
-                  className="transition-all duration-300"
-                />
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredLink(idx)}
+                  onMouseLeave={() => setHoveredLink(null)}
+                >
+                  {/* Ligne de connexion */}
+                  <line
+                    x1={fromPos.x}
+                    y1={fromPos.y}
+                    x2={toPos.x}
+                    y2={toPos.y}
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={link.confidence === 'high' ? "none" : "4 3"}
+                    opacity={opacity}
+                    className="transition-all duration-300"
+                  />
+                  
+                  {/* Cercle au milieu pour indiquer le lien */}
+                  <circle
+                    cx={midX}
+                    cy={midY}
+                    r={isHovered ? 4 : 3}
+                    fill={strokeColor}
+                    opacity={opacity}
+                    className="transition-all duration-300"
+                  />
+                  
+                  {/* Label visible au survol */}
+                  {isHovered && (
+                    <g>
+                      <rect
+                        x={midX - 60}
+                        y={midY - 28}
+                        width="120"
+                        height="20"
+                        rx="3"
+                        fill="hsl(var(--background))"
+                        stroke={strokeColor}
+                        strokeWidth="1"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={midX}
+                        y={midY - 14}
+                        textAnchor="middle"
+                        className="font-sans fill-foreground pointer-events-none"
+                        style={{ fontSize: '9px', fontWeight: 500 }}
+                      >
+                        {link.inferredLink.length > 28 
+                          ? link.inferredLink.substring(0, 25) + "..." 
+                          : link.inferredLink}
+                      </text>
+                    </g>
+                  )}
+                </g>
               );
             })}
           </g>
@@ -514,21 +601,45 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </svg>
       </div>
       
-      {/* Tooltip */}
-      {hoveredNode && (
+      {/* Tooltip for nodes */}
+      {hoveredNode && !hoveredLink && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[90%] z-20">
-          {nodes.filter(n => n.id === hoveredNode).map(node => (
-            <div key={node.id} className="text-center">
-              <div className="font-serif text-sm text-foreground">{node.name}</div>
-              <div className="text-xs text-muted-foreground font-sans mt-0.5">
-                {getCleanRelationName(node.category)} du défunt
+          {nodes.filter(n => n.id === hoveredNode).map(node => {
+            // Trouver les liens de ce nœud avec d'autres
+            const nodeLinks = inferredLinks.filter(
+              l => l.fromAuthor === node.name || l.toAuthor === node.name
+            );
+            
+            return (
+              <div key={node.id} className="text-center">
+                <div className="font-serif text-sm text-foreground">{node.name}</div>
+                <div className="text-xs text-muted-foreground font-sans mt-0.5">
+                  {getCleanRelationName(node.category)} du défunt
+                </div>
+                {nodeLinks.length > 0 && (
+                  <div className="mt-1.5 pt-1.5 border-t border-border/50">
+                    <div className="text-[10px] text-muted-foreground mb-1">
+                      Liens avec les autres proches :
+                    </div>
+                    {nodeLinks.slice(0, 3).map((link, i) => (
+                      <div key={i} className="text-[10px] text-foreground/80">
+                        {link.inferredLink}
+                      </div>
+                    ))}
+                    {nodeLinks.length > 3 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        +{nodeLinks.length - 3} autres liens...
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       
-      {/* Legend with category colors - responsive */}
+      {/* Legend with category colors and link types - responsive */}
       <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4 text-xs font-sans text-muted-foreground px-2">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
@@ -547,6 +658,25 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
           <span>Autres</span>
         </div>
       </div>
+      
+      {/* Legend for inferred link colors */}
+      {inferredLinks.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-2 text-[10px] font-sans text-muted-foreground px-2">
+          <span className="text-muted-foreground/70">Liens entre proches :</span>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.direct }} />
+            <span>Direct</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.alliance }} />
+            <span>Alliance</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.feminine }} />
+            <span>Féminin</span>
+          </div>
+        </div>
+      )}
 
       {/* Touch/drag hint */}
       <p className="text-center text-xs text-muted-foreground mt-2 font-sans">
