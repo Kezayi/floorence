@@ -14,8 +14,9 @@ interface RelationSelectProps {
   variant?: "dark" | "light";
 }
 
+// Catégories de relations alignées avec la matrice vectorielle (G, L, B, S)
 const relationCategories = {
-  "Famille": [
+  "Famille directe": [
     "Son Père",
     "Sa Mère",
     "Son Fils",
@@ -26,12 +27,24 @@ const relationCategories = {
     "Sa Grand-mère",
     "Son Petit-fils",
     "Sa Petite-fille",
+    "Son Arrière-grand-père",
+    "Sa Arrière-grand-mère",
+    "Son Arrière-petit-fils",
+    "Sa Arrière-petite-fille",
+  ],
+  "Famille élargie": [
     "Son Oncle",
     "Sa Tante",
     "Son Neveu",
     "Sa Nièce",
     "Son Cousin",
     "Sa Cousine",
+    "Son Grand-oncle",
+    "Sa Grand-tante",
+    "Son Petit-neveu",
+    "Sa Petite-nièce",
+    "Son Petit-cousin",
+    "Sa Petite-cousine",
   ],
   "Alliés": [
     "Son Époux",
@@ -42,18 +55,22 @@ const relationCategories = {
     "Sa Belle-sœur",
     "Son Gendre",
     "Sa Belle-fille",
+    "Son Bel-oncle",
+    "Sa Belle-tante",
   ],
-  "Proches": [
+  "Socio-Cœur": [
+    "Son Frère de cœur",
+    "Sa Sœur de cœur",
     "Son Ami(e)",
     "Son Collègue",
+    "Son Parrain/Marraine",
+    "Son Filleul(e)",
+  ],
+  "Autres": [
     "Son Voisin(e)",
     "Son Professeur",
     "Son Élève",
     "Son Mentor",
-    "Son Filleul(e)",
-    "Son Parrain/Marraine",
-  ],
-  "Autres": [
     "Une connaissance",
     "Un admirateur",
     "Un anonyme",
@@ -68,7 +85,7 @@ const RelationSelect = ({ value, onChange, variant = "dark" }: RelationSelectPro
       <SelectTrigger className={`w-full ${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30 text-memorial-dark-foreground' : 'bg-secondary border-0 text-foreground'}`}>
         <SelectValue placeholder="Votre lien avec le défunt *" />
       </SelectTrigger>
-      <SelectContent className={`${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30' : 'bg-card border-border'}`}>
+      <SelectContent className={`${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30' : 'bg-card border-border'} max-h-80`}>
         {Object.entries(relationCategories).map(([category, relations]) => (
           <SelectGroup key={category}>
             <SelectLabel className={`font-sans text-xs ${isDark ? 'text-memorial-dark-muted' : 'text-muted-foreground'}`}>

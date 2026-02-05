@@ -1,73 +1,132 @@
-// Relationship inference logic based on shared connection to the deceased
+// ============================================================================
+// MOTEUR D'INFÉRENCE UNIFIÉ - Version Finale
+// Basé sur la matrice vectorielle (G, L, B, S) du contexte gabonais
+// ============================================================================
 
-interface RelationshipMap {
-  [key: string]: {
-    gender: "M" | "F" | "N";
-    generation: number; // 0 = same gen as deceased, positive = older, negative = younger
-    lineage: "direct" | "in-law" | "extended" | "other";
-    cleanName: string; // Name without possessive pronoun
-    withDeceased: string; // Format "X du/de la défunt(e)"
-  };
+// Types de lignée
+type Lineage = "direct" | "alliance" | "extended" | "coeur" | "other";
+
+// Types de branche
+type Branch = "neutral" | "paternal" | "maternal";
+
+// Types de sexe
+type Gender = "M" | "F" | "N";
+
+// Interface de la matrice vectorielle
+interface RelationVector {
+  g: number;       // Génération: positif = plus vieux, négatif = plus jeune
+  l: Lineage;      // Lignée
+  b: Branch;       // Branche (paternal/maternal)
+  s: Gender;       // Sexe
+  cleanName: string;
+  withDeceased: string;
+  category: "FAMILLE" | "ALLIES" | "SOCIO-COEUR" | "AUTRES";
 }
 
-const relationshipData: RelationshipMap = {
-  // Famille directe
-  "Son Père": { gender: "M", generation: 1, lineage: "direct", cleanName: "Père", withDeceased: "Père du défunt" },
-  "Sa Mère": { gender: "F", generation: 1, lineage: "direct", cleanName: "Mère", withDeceased: "Mère du défunt" },
-  "Son Fils": { gender: "M", generation: -1, lineage: "direct", cleanName: "Fils", withDeceased: "Fils du défunt" },
-  "Sa Fille": { gender: "F", generation: -1, lineage: "direct", cleanName: "Fille", withDeceased: "Fille du défunt" },
-  "Son Frère": { gender: "M", generation: 0, lineage: "direct", cleanName: "Frère", withDeceased: "Frère du défunt" },
-  "Sa Sœur": { gender: "F", generation: 0, lineage: "direct", cleanName: "Sœur", withDeceased: "Sœur du défunt" },
-  "Son Grand-père": { gender: "M", generation: 2, lineage: "direct", cleanName: "Grand-père", withDeceased: "Grand-père du défunt" },
-  "Sa Grand-mère": { gender: "F", generation: 2, lineage: "direct", cleanName: "Grand-mère", withDeceased: "Grand-mère du défunt" },
-  "Son Petit-fils": { gender: "M", generation: -2, lineage: "direct", cleanName: "Petit-fils", withDeceased: "Petit-fils du défunt" },
-  "Sa Petite-fille": { gender: "F", generation: -2, lineage: "direct", cleanName: "Petite-fille", withDeceased: "Petite-fille du défunt" },
-  "Son Oncle": { gender: "M", generation: 1, lineage: "extended", cleanName: "Oncle", withDeceased: "Oncle du défunt" },
-  "Sa Tante": { gender: "F", generation: 1, lineage: "extended", cleanName: "Tante", withDeceased: "Tante du défunt" },
-  "Son Neveu": { gender: "M", generation: -1, lineage: "extended", cleanName: "Neveu", withDeceased: "Neveu du défunt" },
-  "Sa Nièce": { gender: "F", generation: -1, lineage: "extended", cleanName: "Nièce", withDeceased: "Nièce du défunt" },
-  "Son Cousin": { gender: "M", generation: 0, lineage: "extended", cleanName: "Cousin", withDeceased: "Cousin du défunt" },
-  "Sa Cousine": { gender: "F", generation: 0, lineage: "extended", cleanName: "Cousine", withDeceased: "Cousine du défunt" },
-  // Alliés
-  "Son Époux": { gender: "M", generation: 0, lineage: "in-law", cleanName: "Époux", withDeceased: "Époux de la défunte" },
-  "Son Épouse": { gender: "F", generation: 0, lineage: "in-law", cleanName: "Épouse", withDeceased: "Épouse du défunt" },
-  "Son Beau-père": { gender: "M", generation: 1, lineage: "in-law", cleanName: "Beau-père", withDeceased: "Beau-père du défunt" },
-  "Sa Belle-mère": { gender: "F", generation: 1, lineage: "in-law", cleanName: "Belle-mère", withDeceased: "Belle-mère du défunt" },
-  "Son Beau-frère": { gender: "M", generation: 0, lineage: "in-law", cleanName: "Beau-frère", withDeceased: "Beau-frère du défunt" },
-  "Sa Belle-sœur": { gender: "F", generation: 0, lineage: "in-law", cleanName: "Belle-sœur", withDeceased: "Belle-sœur du défunt" },
-  "Son Gendre": { gender: "M", generation: -1, lineage: "in-law", cleanName: "Gendre", withDeceased: "Gendre du défunt" },
-  "Sa Belle-fille": { gender: "F", generation: -1, lineage: "in-law", cleanName: "Belle-fille", withDeceased: "Belle-fille du défunt" },
-  // Proches
-  "Son Ami(e)": { gender: "N", generation: 0, lineage: "other", cleanName: "Ami(e)", withDeceased: "Ami(e) du défunt" },
-  "Son Collègue": { gender: "N", generation: 0, lineage: "other", cleanName: "Collègue", withDeceased: "Collègue du défunt" },
-  "Son Voisin(e)": { gender: "N", generation: 0, lineage: "other", cleanName: "Voisin(e)", withDeceased: "Voisin(e) du défunt" },
-  "Son Professeur": { gender: "N", generation: 0, lineage: "other", cleanName: "Professeur", withDeceased: "Professeur du défunt" },
-  "Son Élève": { gender: "N", generation: 0, lineage: "other", cleanName: "Élève", withDeceased: "Élève du défunt" },
-  "Son Mentor": { gender: "N", generation: 0, lineage: "other", cleanName: "Mentor", withDeceased: "Mentor du défunt" },
-  "Son Filleul(e)": { gender: "N", generation: -1, lineage: "other", cleanName: "Filleul(e)", withDeceased: "Filleul(e) du défunt" },
-  "Son Parrain/Marraine": { gender: "N", generation: 1, lineage: "other", cleanName: "Parrain/Marraine", withDeceased: "Parrain/Marraine du défunt" },
-  // Autres
-  "Une connaissance": { gender: "N", generation: 0, lineage: "other", cleanName: "Connaissance", withDeceased: "Connaissance du défunt" },
-  "Un admirateur": { gender: "N", generation: 0, lineage: "other", cleanName: "Admirateur", withDeceased: "Admirateur du défunt" },
-  "Un anonyme": { gender: "N", generation: 0, lineage: "other", cleanName: "Anonyme", withDeceased: "Anonyme" },
+// Matrice vectorielle complète des relations
+const relationVectors: Record<string, RelationVector> = {
+  // ============ FAMILLE DIRECTE ============
+  "Son Père": { g: 1, l: "direct", b: "neutral", s: "M", cleanName: "Père", withDeceased: "Père du défunt", category: "FAMILLE" },
+  "Sa Mère": { g: 1, l: "direct", b: "neutral", s: "F", cleanName: "Mère", withDeceased: "Mère du défunt", category: "FAMILLE" },
+  "Son Fils": { g: -1, l: "direct", b: "neutral", s: "M", cleanName: "Fils", withDeceased: "Fils du défunt", category: "FAMILLE" },
+  "Sa Fille": { g: -1, l: "direct", b: "neutral", s: "F", cleanName: "Fille", withDeceased: "Fille du défunt", category: "FAMILLE" },
+  "Son Frère": { g: 0, l: "direct", b: "neutral", s: "M", cleanName: "Frère", withDeceased: "Frère du défunt", category: "FAMILLE" },
+  "Sa Sœur": { g: 0, l: "direct", b: "neutral", s: "F", cleanName: "Sœur", withDeceased: "Sœur du défunt", category: "FAMILLE" },
+  
+  // Grands-parents (G+2)
+  "Son Grand-père": { g: 2, l: "direct", b: "paternal", s: "M", cleanName: "Grand-père", withDeceased: "Grand-père du défunt", category: "FAMILLE" },
+  "Sa Grand-mère": { g: 2, l: "direct", b: "maternal", s: "F", cleanName: "Grand-mère", withDeceased: "Grand-mère du défunt", category: "FAMILLE" },
+  
+  // Petits-enfants (G-2)
+  "Son Petit-fils": { g: -2, l: "direct", b: "neutral", s: "M", cleanName: "Petit-fils", withDeceased: "Petit-fils du défunt", category: "FAMILLE" },
+  "Sa Petite-fille": { g: -2, l: "direct", b: "neutral", s: "F", cleanName: "Petite-fille", withDeceased: "Petite-fille du défunt", category: "FAMILLE" },
+  
+  // Arrière-grands-parents (G+3)
+  "Son Arrière-grand-père": { g: 3, l: "direct", b: "neutral", s: "M", cleanName: "Arrière-grand-père", withDeceased: "Arrière-grand-père du défunt", category: "FAMILLE" },
+  "Sa Arrière-grand-mère": { g: 3, l: "direct", b: "neutral", s: "F", cleanName: "Arrière-grand-mère", withDeceased: "Arrière-grand-mère du défunt", category: "FAMILLE" },
+  
+  // Arrière-petits-enfants (G-3)
+  "Son Arrière-petit-fils": { g: -3, l: "direct", b: "neutral", s: "M", cleanName: "Arrière-petit-fils", withDeceased: "Arrière-petit-fils du défunt", category: "FAMILLE" },
+  "Sa Arrière-petite-fille": { g: -3, l: "direct", b: "neutral", s: "F", cleanName: "Arrière-petite-fille", withDeceased: "Arrière-petite-fille du défunt", category: "FAMILLE" },
+  
+  // Oncles/Tantes (G+1, extended, branche obligatoire)
+  "Son Oncle": { g: 1, l: "extended", b: "paternal", s: "M", cleanName: "Oncle", withDeceased: "Oncle du défunt", category: "FAMILLE" },
+  "Sa Tante": { g: 1, l: "extended", b: "maternal", s: "F", cleanName: "Tante", withDeceased: "Tante du défunt", category: "FAMILLE" },
+  
+  // Neveux/Nièces (G-1, extended)
+  "Son Neveu": { g: -1, l: "extended", b: "neutral", s: "M", cleanName: "Neveu", withDeceased: "Neveu du défunt", category: "FAMILLE" },
+  "Sa Nièce": { g: -1, l: "extended", b: "neutral", s: "F", cleanName: "Nièce", withDeceased: "Nièce du défunt", category: "FAMILLE" },
+  
+  // Cousins (G0, extended)
+  "Son Cousin": { g: 0, l: "extended", b: "paternal", s: "M", cleanName: "Cousin", withDeceased: "Cousin du défunt", category: "FAMILLE" },
+  "Sa Cousine": { g: 0, l: "extended", b: "maternal", s: "F", cleanName: "Cousine", withDeceased: "Cousine du défunt", category: "FAMILLE" },
+  
+  // Grands-oncles/Grandes-tantes (G+2, extended)
+  "Son Grand-oncle": { g: 2, l: "extended", b: "paternal", s: "M", cleanName: "Grand-oncle", withDeceased: "Grand-oncle du défunt", category: "FAMILLE" },
+  "Sa Grand-tante": { g: 2, l: "extended", b: "maternal", s: "F", cleanName: "Grand-tante", withDeceased: "Grand-tante du défunt", category: "FAMILLE" },
+  
+  // Petits-neveux/Petites-nièces (G-2, extended)
+  "Son Petit-neveu": { g: -2, l: "extended", b: "neutral", s: "M", cleanName: "Petit-neveu", withDeceased: "Petit-neveu du défunt", category: "FAMILLE" },
+  "Sa Petite-nièce": { g: -2, l: "extended", b: "neutral", s: "F", cleanName: "Petite-nièce", withDeceased: "Petite-nièce du défunt", category: "FAMILLE" },
+  
+  // Petits-cousins (G-1, extended)
+  "Son Petit-cousin": { g: -1, l: "extended", b: "neutral", s: "M", cleanName: "Petit-cousin", withDeceased: "Petit-cousin du défunt", category: "FAMILLE" },
+  "Sa Petite-cousine": { g: -1, l: "extended", b: "neutral", s: "F", cleanName: "Petite-cousine", withDeceased: "Petite-cousine du défunt", category: "FAMILLE" },
+  
+  // ============ ALLIÉS (par alliance) ============
+  "Son Époux": { g: 0, l: "alliance", b: "neutral", s: "M", cleanName: "Époux", withDeceased: "Époux de la défunte", category: "ALLIES" },
+  "Son Épouse": { g: 0, l: "alliance", b: "neutral", s: "F", cleanName: "Épouse", withDeceased: "Épouse du défunt", category: "ALLIES" },
+  "Son Beau-père": { g: 1, l: "alliance", b: "neutral", s: "M", cleanName: "Beau-père", withDeceased: "Beau-père du défunt", category: "ALLIES" },
+  "Sa Belle-mère": { g: 1, l: "alliance", b: "neutral", s: "F", cleanName: "Belle-mère", withDeceased: "Belle-mère du défunt", category: "ALLIES" },
+  "Son Beau-frère": { g: 0, l: "alliance", b: "neutral", s: "M", cleanName: "Beau-frère", withDeceased: "Beau-frère du défunt", category: "ALLIES" },
+  "Sa Belle-sœur": { g: 0, l: "alliance", b: "neutral", s: "F", cleanName: "Belle-sœur", withDeceased: "Belle-sœur du défunt", category: "ALLIES" },
+  "Son Gendre": { g: -1, l: "alliance", b: "neutral", s: "M", cleanName: "Gendre", withDeceased: "Gendre du défunt", category: "ALLIES" },
+  "Sa Belle-fille": { g: -1, l: "alliance", b: "neutral", s: "F", cleanName: "Belle-fille", withDeceased: "Belle-fille du défunt", category: "ALLIES" },
+  "Son Bel-oncle": { g: 1, l: "alliance", b: "neutral", s: "M", cleanName: "Bel-oncle", withDeceased: "Bel-oncle du défunt", category: "ALLIES" },
+  "Sa Belle-tante": { g: 1, l: "alliance", b: "neutral", s: "F", cleanName: "Belle-tante", withDeceased: "Belle-tante du défunt", category: "ALLIES" },
+  
+  // ============ SOCIO-CŒUR ============
+  "Son Frère de cœur": { g: 0, l: "coeur", b: "neutral", s: "M", cleanName: "Frère de cœur", withDeceased: "Frère de cœur du défunt", category: "SOCIO-COEUR" },
+  "Sa Sœur de cœur": { g: 0, l: "coeur", b: "neutral", s: "F", cleanName: "Sœur de cœur", withDeceased: "Sœur de cœur du défunt", category: "SOCIO-COEUR" },
+  "Son Ami(e)": { g: 0, l: "coeur", b: "neutral", s: "N", cleanName: "Ami(e)", withDeceased: "Ami(e) du défunt", category: "SOCIO-COEUR" },
+  "Son Collègue": { g: 0, l: "coeur", b: "neutral", s: "N", cleanName: "Collègue", withDeceased: "Collègue du défunt", category: "SOCIO-COEUR" },
+  "Son Parrain/Marraine": { g: 1, l: "coeur", b: "neutral", s: "N", cleanName: "Parrain/Marraine", withDeceased: "Parrain/Marraine du défunt", category: "SOCIO-COEUR" },
+  "Son Filleul(e)": { g: -1, l: "coeur", b: "neutral", s: "N", cleanName: "Filleul(e)", withDeceased: "Filleul(e) du défunt", category: "SOCIO-COEUR" },
+  
+  // ============ AUTRES ============
+  "Son Voisin(e)": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Voisin(e)", withDeceased: "Voisin(e) du défunt", category: "AUTRES" },
+  "Son Professeur": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Professeur", withDeceased: "Professeur du défunt", category: "AUTRES" },
+  "Son Élève": { g: -1, l: "other", b: "neutral", s: "N", cleanName: "Élève", withDeceased: "Élève du défunt", category: "AUTRES" },
+  "Son Mentor": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Mentor", withDeceased: "Mentor du défunt", category: "AUTRES" },
+  "Une connaissance": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Connaissance", withDeceased: "Connaissance du défunt", category: "AUTRES" },
+  "Un admirateur": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Admirateur", withDeceased: "Admirateur du défunt", category: "AUTRES" },
+  "Un anonyme": { g: 0, l: "other", b: "neutral", s: "N", cleanName: "Anonyme", withDeceased: "Anonyme", category: "AUTRES" },
 };
 
-// Helper function to get clean relation name without possessive
+// ============================================================================
+// FONCTIONS UTILITAIRES
+// ============================================================================
+
 export const getCleanRelationName = (relation: string): string => {
-  const data = relationshipData[relation];
+  const data = relationVectors[relation];
   if (data) return data.cleanName;
-  // Fallback: remove common possessive prefixes
   return relation.replace(/^(Son |Sa |Une |Un )/i, "");
 };
 
-// Helper function to format relation with "du défunt"
 export const getRelationWithDeceased = (relation: string): string => {
-  const data = relationshipData[relation];
+  const data = relationVectors[relation];
   if (data) return data.withDeceased;
-  // Fallback
   const clean = getCleanRelationName(relation);
   return `${clean} du défunt`;
 };
+
+export const getRelationVector = (relation: string): RelationVector | null => {
+  return relationVectors[relation] || null;
+};
+
+// ============================================================================
+// INTERFACE D'INFÉRENCE
+// ============================================================================
 
 export interface InferredRelationship {
   fromAuthor: string;
@@ -78,283 +137,204 @@ export interface InferredRelationship {
   confidence: "high" | "medium" | "low";
 }
 
+// Résultat de l'inférence entre un utilisateur et une personne trouvée
+export interface UserRelationResult {
+  label: string;           // Ex: "Votre Frère", "Votre Oncle"
+  confidence: "high" | "medium" | "low";
+  colorClass: string;      // Classe CSS pour la couleur
+}
+
+// ============================================================================
+// ALGORITHME D'INFÉRENCE VECTORIELLE
+// ============================================================================
+
+const inferByVectors = (
+  vectorA: RelationVector,
+  vectorB: RelationVector,
+  nameA: string,
+  nameB: string
+): { link: string; confidence: "high" | "medium" | "low" } | null => {
+  const deltaG = vectorB.g - vectorA.g;
+  const firstName = (name: string) => name.split(" ")[0];
+  const n1 = firstName(nameA);
+  const n2 = firstName(nameB);
+
+  // ============================================
+  // RÈGLE 1: Fratrie (ΔG = 0, lignée directe)
+  // ============================================
+  if (deltaG === 0 && vectorA.l === "direct" && vectorB.l === "direct" && vectorA.g === 0 && vectorB.g === 0) {
+    if (vectorA.s === "M" && vectorB.s === "M") {
+      return { link: `${n1} et ${n2} sont frères`, confidence: "high" };
+    }
+    if (vectorA.s === "F" && vectorB.s === "F") {
+      return { link: `${n1} et ${n2} sont sœurs`, confidence: "high" };
+    }
+    return { link: `${n1} et ${n2} sont frère et sœur`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 2: Enfants du défunt entre eux (tous G-1 direct)
+  // ============================================
+  if (vectorA.g === -1 && vectorB.g === -1 && vectorA.l === "direct" && vectorB.l === "direct") {
+    if (vectorA.s === "M" && vectorB.s === "M") {
+      return { link: `${n1} et ${n2} sont frères`, confidence: "high" };
+    }
+    if (vectorA.s === "F" && vectorB.s === "F") {
+      return { link: `${n1} et ${n2} sont sœurs`, confidence: "high" };
+    }
+    return { link: `${n1} et ${n2} sont frère et sœur`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 3: Époux/Épouse + Enfant = Parent/Enfant (Priorité Gabonaise)
+  // ============================================
+  if (vectorA.l === "alliance" && vectorA.g === 0 && vectorB.l === "direct" && vectorB.g === -1) {
+    // A est époux/épouse, B est enfant → A est parent de B
+    const parentLabel = vectorA.s === "F" ? "la mère" : "le père";
+    return { link: `${n1} est ${parentLabel} de ${n2}`, confidence: "high" };
+  }
+  if (vectorB.l === "alliance" && vectorB.g === 0 && vectorA.l === "direct" && vectorA.g === -1) {
+    const parentLabel = vectorB.s === "F" ? "la mère" : "le père";
+    return { link: `${n2} est ${parentLabel} de ${n1}`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 4: Frère/Sœur du défunt + Enfant du défunt = Oncle/Tante
+  // ============================================
+  if (vectorA.g === 0 && vectorA.l === "direct" && vectorB.g === -1 && vectorB.l === "direct") {
+    const uncleLabel = vectorA.s === "M" ? "l'oncle" : "la tante";
+    return { link: `${n1} est ${uncleLabel} de ${n2}`, confidence: "high" };
+  }
+  if (vectorB.g === 0 && vectorB.l === "direct" && vectorA.g === -1 && vectorA.l === "direct") {
+    const uncleLabel = vectorB.s === "M" ? "l'oncle" : "la tante";
+    return { link: `${n2} est ${uncleLabel} de ${n1}`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 5: Parent du défunt + Enfant du défunt = Grand-parent
+  // ============================================
+  if (vectorA.g === 1 && vectorA.l === "direct" && vectorB.g === -1 && vectorB.l === "direct") {
+    const gpLabel = vectorA.s === "M" ? "le grand-père" : "la grand-mère";
+    return { link: `${n1} est ${gpLabel} de ${n2}`, confidence: "high" };
+  }
+  if (vectorB.g === 1 && vectorB.l === "direct" && vectorA.g === -1 && vectorA.l === "direct") {
+    const gpLabel = vectorB.s === "M" ? "le grand-père" : "la grand-mère";
+    return { link: `${n2} est ${gpLabel} de ${n1}`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 6: Parents du défunt entre eux
+  // ============================================
+  if (vectorA.g === 1 && vectorB.g === 1 && vectorA.l === "direct" && vectorB.l === "direct") {
+    if ((vectorA.s === "M" && vectorB.s === "F") || (vectorA.s === "F" && vectorB.s === "M")) {
+      return { link: `${n1} et ${n2} sont les parents du défunt`, confidence: "high" };
+    }
+  }
+
+  // ============================================
+  // RÈGLE 7: Oncle/Tante + Fils/Fille = Oncle/Neveu
+  // ============================================
+  if (vectorA.l === "extended" && vectorA.g === 1 && vectorB.l === "direct" && vectorB.g === -1) {
+    const label = vectorA.s === "M" ? "l'oncle" : "la tante";
+    return { link: `${n1} est ${label} de ${n2}`, confidence: "high" };
+  }
+  if (vectorB.l === "extended" && vectorB.g === 1 && vectorA.l === "direct" && vectorA.g === -1) {
+    const label = vectorB.s === "M" ? "l'oncle" : "la tante";
+    return { link: `${n2} est ${label} de ${n1}`, confidence: "high" };
+  }
+
+  // ============================================
+  // RÈGLE 8: Cousins entre eux
+  // ============================================
+  if (vectorA.l === "extended" && vectorB.l === "extended" && vectorA.g === 0 && vectorB.g === 0) {
+    return { link: `${n1} et ${n2} sont cousins`, confidence: "medium" };
+  }
+
+  // ============================================
+  // RÈGLE 9: Petits-enfants entre eux
+  // ============================================
+  if (vectorA.g === -2 && vectorB.g === -2 && vectorA.l === "direct" && vectorB.l === "direct") {
+    return { link: `${n1} et ${n2} sont cousins`, confidence: "medium" };
+  }
+
+  // ============================================
+  // RÈGLE 10: Enfant + Petit-enfant = Parent probable
+  // ============================================
+  if (vectorA.g === -1 && vectorB.g === -2 && vectorA.l === "direct" && vectorB.l === "direct") {
+    return { link: `${n1} est possiblement le parent de ${n2}`, confidence: "medium" };
+  }
+  if (vectorB.g === -1 && vectorA.g === -2 && vectorB.l === "direct" && vectorA.l === "direct") {
+    return { link: `${n2} est possiblement le parent de ${n1}`, confidence: "medium" };
+  }
+
+  // ============================================
+  // RÈGLE 11: Relations par alliance + famille
+  // ============================================
+  if ((vectorA.l === "alliance" && vectorB.l === "direct") || (vectorB.l === "alliance" && vectorA.l === "direct")) {
+    return { link: `${n1} et ${n2} sont liés par alliance`, confidence: "medium" };
+  }
+
+  // ============================================
+  // RÈGLE 12: Beau-frère/Belle-sœur + Enfant = Oncle/Tante par alliance
+  // ============================================
+  if (vectorA.l === "alliance" && vectorA.g === 0 && vectorB.l === "direct" && vectorB.g === -1) {
+    const label = vectorA.s === "M" ? "l'oncle par alliance" : "la tante par alliance";
+    return { link: `${n1} est ${label} de ${n2}`, confidence: "medium" };
+  }
+  if (vectorB.l === "alliance" && vectorB.g === 0 && vectorA.l === "direct" && vectorA.g === -1) {
+    const label = vectorB.s === "M" ? "l'oncle par alliance" : "la tante par alliance";
+    return { link: `${n2} est ${label} de ${n1}`, confidence: "medium" };
+  }
+
+  // ============================================
+  // RÈGLE 13: Relations Socio-Cœur
+  // ============================================
+  if (vectorA.l === "coeur" && vectorB.l === "coeur") {
+    return { link: `${n1} et ${n2} font partie du cercle proche`, confidence: "low" };
+  }
+
+  // ============================================
+  // RÈGLE 14: Autres relations
+  // ============================================
+  if (vectorA.l === "other" || vectorB.l === "other") {
+    return { link: `${n1} et ${n2} connaissaient le défunt`, confidence: "low" };
+  }
+
+  // ============================================
+  // RÈGLE GÉNÉRIQUE: Famille élargie
+  // ============================================
+  if ((vectorA.l === "direct" || vectorA.l === "extended") && (vectorB.l === "direct" || vectorB.l === "extended")) {
+    const genDiff = Math.abs(deltaG);
+    if (genDiff <= 1) {
+      return { link: `${n1} et ${n2} sont de la même famille`, confidence: "medium" };
+    }
+    return { link: `${n1} et ${n2} sont de la même famille élargie`, confidence: "low" };
+  }
+
+  return null;
+};
+
+// ============================================================================
+// FONCTION PRINCIPALE D'INFÉRENCE
+// ============================================================================
+
 export const inferRelationship = (
   relation1: string,
   relation2: string,
   author1Name: string,
   author2Name: string
 ): { link: string; confidence: "high" | "medium" | "low" } | null => {
-  const data1 = relationshipData[relation1];
-  const data2 = relationshipData[relation2];
+  const vectorA = relationVectors[relation1];
+  const vectorB = relationVectors[relation2];
 
-  if (!data1 || !data2) return null;
+  if (!vectorA || !vectorB) return null;
 
-  // Helper to get first name for cleaner display
-  const firstName = (name: string) => name.split(" ")[0];
-  const name1 = firstName(author1Name);
-  const name2 = firstName(author2Name);
-
-  // ============================================
-  // ENFANTS ET ÉPOUX/ÉPOUSE = Parent et enfant
-  // ============================================
-  
-  // Si A est Fils/Fille du défunt ET B est Époux/Épouse du défunt → A est l'enfant de B
-  if (
-    (relation1 === "Son Fils" || relation1 === "Sa Fille") &&
-    (relation2 === "Son Époux" || relation2 === "Son Épouse")
-  ) {
-    const childType = relation1 === "Son Fils" ? "le fils" : "la fille";
-    return { link: `${name1} est ${childType} de ${name2}`, confidence: "high" };
-  }
-  if (
-    (relation2 === "Son Fils" || relation2 === "Sa Fille") &&
-    (relation1 === "Son Époux" || relation1 === "Son Épouse")
-  ) {
-    const childType = relation2 === "Son Fils" ? "le fils" : "la fille";
-    return { link: `${name2} est ${childType} de ${name1}`, confidence: "high" };
-  }
-
-  // ============================================
-  // ENFANTS ENTRE EUX = Frères et sœurs
-  // ============================================
-  
-  if (
-    (relation1 === "Son Fils" || relation1 === "Sa Fille") &&
-    (relation2 === "Son Fils" || relation2 === "Sa Fille")
-  ) {
-    if (relation1 === "Son Fils" && relation2 === "Son Fils") {
-      return { link: `${name1} et ${name2} sont frères`, confidence: "high" };
-    }
-    if (relation1 === "Sa Fille" && relation2 === "Sa Fille") {
-      return { link: `${name1} et ${name2} sont sœurs`, confidence: "high" };
-    }
-    return { link: `${name1} et ${name2} sont frère et sœur`, confidence: "high" };
-  }
-
-  // ============================================
-  // FRÈRES/SŒURS DU DÉFUNT ENTRE EUX
-  // ============================================
-  
-  if (
-    (relation1 === "Son Frère" || relation1 === "Sa Sœur") &&
-    (relation2 === "Son Frère" || relation2 === "Sa Sœur")
-  ) {
-    if (relation1 === "Son Frère" && relation2 === "Son Frère") {
-      return { link: `${name1} et ${name2} sont frères`, confidence: "high" };
-    }
-    if (relation1 === "Sa Sœur" && relation2 === "Sa Sœur") {
-      return { link: `${name1} et ${name2} sont sœurs`, confidence: "high" };
-    }
-    return { link: `${name1} et ${name2} sont frère et sœur`, confidence: "high" };
-  }
-
-  // ============================================
-  // PARENTS DU DÉFUNT ET ENFANTS DU DÉFUNT = Grands-parents et petits-enfants
-  // ============================================
-  
-  if (
-    (relation1 === "Son Père" || relation1 === "Sa Mère") &&
-    (relation2 === "Son Fils" || relation2 === "Sa Fille")
-  ) {
-    const grandparentType = relation1 === "Son Père" ? "le grand-père" : "la grand-mère";
-    return { link: `${name1} est ${grandparentType} de ${name2}`, confidence: "high" };
-  }
-  if (
-    (relation2 === "Son Père" || relation2 === "Sa Mère") &&
-    (relation1 === "Son Fils" || relation1 === "Sa Fille")
-  ) {
-    const grandparentType = relation2 === "Son Père" ? "le grand-père" : "la grand-mère";
-    return { link: `${name2} est ${grandparentType} de ${name1}`, confidence: "high" };
-  }
-
-  // ============================================
-  // FRÈRE/SŒUR DU DÉFUNT ET ENFANT DU DÉFUNT = Oncle/Tante et Neveu/Nièce
-  // ============================================
-  
-  if (
-    (relation1 === "Son Frère" || relation1 === "Sa Sœur") &&
-    (relation2 === "Son Fils" || relation2 === "Sa Fille")
-  ) {
-    const uncleAuntType = relation1 === "Son Frère" ? "l'oncle" : "la tante";
-    return { link: `${name1} est ${uncleAuntType} de ${name2}`, confidence: "high" };
-  }
-  if (
-    (relation2 === "Son Frère" || relation2 === "Sa Sœur") &&
-    (relation1 === "Son Fils" || relation1 === "Sa Fille")
-  ) {
-    const uncleAuntType = relation2 === "Son Frère" ? "l'oncle" : "la tante";
-    return { link: `${name2} est ${uncleAuntType} de ${name1}`, confidence: "high" };
-  }
-
-  // ============================================
-  // PETITS-ENFANTS ENTRE EUX = Cousins potentiels
-  // ============================================
-  
-  if (
-    (relation1 === "Son Petit-fils" || relation1 === "Sa Petite-fille") &&
-    (relation2 === "Son Petit-fils" || relation2 === "Sa Petite-fille")
-  ) {
-    return { link: `${name1} et ${name2} sont cousins`, confidence: "medium" };
-  }
-
-  // ============================================
-  // ENFANTS ET PETITS-ENFANTS
-  // ============================================
-  
-  if (
-    (relation1 === "Son Fils" || relation1 === "Sa Fille") &&
-    (relation2 === "Son Petit-fils" || relation2 === "Sa Petite-fille")
-  ) {
-    return { link: `${name1} est possiblement le parent de ${name2}`, confidence: "medium" };
-  }
-  if (
-    (relation2 === "Son Fils" || relation2 === "Sa Fille") &&
-    (relation1 === "Son Petit-fils" || relation1 === "Sa Petite-fille")
-  ) {
-    return { link: `${name2} est possiblement le parent de ${name1}`, confidence: "medium" };
-  }
-
-  // ============================================
-  // BEAUX-PARENTS ET ENFANTS DU DÉFUNT
-  // ============================================
-  
-  if (
-    (relation1 === "Son Beau-père" || relation1 === "Sa Belle-mère") &&
-    (relation2 === "Son Fils" || relation2 === "Sa Fille")
-  ) {
-    const grandparentType = relation1 === "Son Beau-père" ? "le grand-père par alliance" : "la grand-mère par alliance";
-    return { link: `${name1} est ${grandparentType} de ${name2}`, confidence: "medium" };
-  }
-  if (
-    (relation2 === "Son Beau-père" || relation2 === "Sa Belle-mère") &&
-    (relation1 === "Son Fils" || relation1 === "Sa Fille")
-  ) {
-    const grandparentType = relation2 === "Son Beau-père" ? "le grand-père par alliance" : "la grand-mère par alliance";
-    return { link: `${name2} est ${grandparentType} de ${name1}`, confidence: "medium" };
-  }
-
-  // ============================================
-  // BEAU-FRÈRE/BELLE-SŒUR ET ENFANTS
-  // ============================================
-  
-  if (
-    (relation1 === "Son Beau-frère" || relation1 === "Sa Belle-sœur") &&
-    (relation2 === "Son Fils" || relation2 === "Sa Fille")
-  ) {
-    const uncleAuntType = relation1 === "Son Beau-frère" ? "l'oncle par alliance" : "la tante par alliance";
-    return { link: `${name1} est ${uncleAuntType} de ${name2}`, confidence: "medium" };
-  }
-  if (
-    (relation2 === "Son Beau-frère" || relation2 === "Sa Belle-sœur") &&
-    (relation1 === "Son Fils" || relation1 === "Sa Fille")
-  ) {
-    const uncleAuntType = relation2 === "Son Beau-frère" ? "l'oncle par alliance" : "la tante par alliance";
-    return { link: `${name2} est ${uncleAuntType} de ${name1}`, confidence: "medium" };
-  }
-
-  // ============================================
-  // GENDRE/BELLE-FILLE ET PARENTS DU DÉFUNT
-  // ============================================
-  
-  if (
-    (relation1 === "Son Gendre" || relation1 === "Sa Belle-fille") &&
-    (relation2 === "Son Père" || relation2 === "Sa Mère")
-  ) {
-    return { link: `${name2} est un beau-parent de ${name1}`, confidence: "medium" };
-  }
-  if (
-    (relation2 === "Son Gendre" || relation2 === "Sa Belle-fille") &&
-    (relation1 === "Son Père" || relation1 === "Sa Mère")
-  ) {
-    return { link: `${name1} est un beau-parent de ${name2}`, confidence: "medium" };
-  }
-
-  // ============================================
-  // PARENTS DU DÉFUNT ENTRE EUX
-  // ============================================
-  
-  if (
-    (relation1 === "Son Père" && relation2 === "Sa Mère") ||
-    (relation1 === "Sa Mère" && relation2 === "Son Père")
-  ) {
-    return { link: `${name1} et ${name2} sont les parents du défunt`, confidence: "high" };
-  }
-
-  // ============================================
-  // GRANDS-PARENTS ENTRE EUX
-  // ============================================
-  
-  if (
-    (relation1 === "Son Grand-père" || relation1 === "Sa Grand-mère") &&
-    (relation2 === "Son Grand-père" || relation2 === "Sa Grand-mère")
-  ) {
-    return { link: `${name1} et ${name2} sont les grands-parents du défunt`, confidence: "high" };
-  }
-
-  // ============================================
-  // COUSINS ENTRE EUX
-  // ============================================
-  
-  if (
-    (relation1 === "Son Cousin" || relation1 === "Sa Cousine") &&
-    (relation2 === "Son Cousin" || relation2 === "Sa Cousine")
-  ) {
-    return { link: `${name1} et ${name2} sont cousins`, confidence: "medium" };
-  }
-
-  // ============================================
-  // ONCLE/TANTE ET COUSIN(E)
-  // ============================================
-  
-  if (
-    (relation1 === "Son Oncle" || relation1 === "Sa Tante") &&
-    (relation2 === "Son Cousin" || relation2 === "Sa Cousine")
-  ) {
-    const parentType = relation1 === "Son Oncle" ? "le père" : "la mère";
-    return { link: `${name1} est possiblement ${parentType} de ${name2}`, confidence: "medium" };
-  }
-  if (
-    (relation2 === "Son Oncle" || relation2 === "Sa Tante") &&
-    (relation1 === "Son Cousin" || relation1 === "Sa Cousine")
-  ) {
-    const parentType = relation2 === "Son Oncle" ? "le père" : "la mère";
-    return { link: `${name2} est possiblement ${parentType} de ${name1}`, confidence: "medium" };
-  }
-
-  // ============================================
-  // RELATIONS GÉNÉRIQUES PAR LIGNÉE
-  // ============================================
-
-  // Générations différentes dans la famille directe
-  if (data1.lineage === "direct" && data2.lineage === "direct") {
-    const genDiff = Math.abs(data1.generation - data2.generation);
-    if (genDiff === 1) {
-      return { link: `${name1} et ${name2} sont de la même famille`, confidence: "medium" };
-    }
-    if (genDiff === 2) {
-      return { link: `${name1} et ${name2} sont de la même famille élargie`, confidence: "low" };
-    }
-  }
-
-  // Relations par alliance avec famille directe
-  if (
-    (data1.lineage === "in-law" && data2.lineage === "direct") ||
-    (data2.lineage === "in-law" && data1.lineage === "direct")
-  ) {
-    return { link: `${name1} et ${name2} sont liés par alliance`, confidence: "medium" };
-  }
-
-  // Mêmes cercles non-familiaux
-  if (data1.lineage === "other" && data2.lineage === "other") {
-    return { link: `${name1} et ${name2} font partie du cercle proche`, confidence: "low" };
-  }
-
-  if (data1.lineage === "other" || data2.lineage === "other") {
-    return { link: `${name1} et ${name2} connaissaient le défunt`, confidence: "low" };
-  }
-
-  return null;
+  return inferByVectors(vectorA, vectorB, author1Name, author2Name);
 };
+
+// ============================================================================
+// INFÉRENCE TOUTES LES RELATIONS
+// ============================================================================
 
 export const inferAllRelationships = (
   messages: Array<{ authorName: string; relationCategory: string }>
@@ -367,10 +347,8 @@ export const inferAllRelationships = (
       const msg1 = messages[i];
       const msg2 = messages[j];
 
-      // Skip if same author
       if (msg1.authorName === msg2.authorName) continue;
 
-      // Create unique key for this pair
       const pairKey = [msg1.authorName, msg2.authorName].sort().join("|");
       if (seen.has(pairKey)) continue;
       seen.add(pairKey);
@@ -381,6 +359,7 @@ export const inferAllRelationships = (
         msg1.authorName,
         msg2.authorName
       );
+      
       if (inferred) {
         relationships.push({
           fromAuthor: msg1.authorName,
@@ -394,9 +373,163 @@ export const inferAllRelationships = (
     }
   }
 
-  // Sort by confidence (high first)
+  // Trier par confiance (high d'abord)
   return relationships.sort((a, b) => {
     const order = { high: 0, medium: 1, low: 2 };
     return order[a.confidence] - order[b.confidence];
   });
 };
+
+// ============================================================================
+// INFÉRENCE CONTEXTUELLE UTILISATEUR ↔ PERSONNE TROUVÉE
+// Pour la recherche: affiche "Votre Frère" au lieu de "Fils du défunt"
+// ============================================================================
+
+export const inferUserToPersonRelation = (
+  userRelation: string,
+  personRelation: string
+): UserRelationResult | null => {
+  const vectorUser = relationVectors[userRelation];
+  const vectorPerson = relationVectors[personRelation];
+
+  if (!vectorUser || !vectorPerson) return null;
+
+  const deltaG = vectorPerson.g - vectorUser.g;
+  
+  // Déterminer la classe de couleur basée sur le type de relation
+  const getColorClass = (lineage: Lineage, gender: Gender): string => {
+    if (lineage === "alliance") return "text-[hsl(var(--gesture-candle))]"; // Doré
+    if (gender === "F") return "text-[hsl(var(--gesture-flower))]"; // Rose
+    return "text-foreground"; // Noir
+  };
+
+  // ============================================
+  // MÊME GÉNÉRATION, LIGNÉE DIRECTE = Frère/Sœur
+  // ============================================
+  if (deltaG === 0 && vectorUser.l === "direct" && vectorPerson.l === "direct") {
+    // Même génération dans la famille directe
+    if (vectorUser.g === -1 && vectorPerson.g === -1) {
+      // Deux enfants du défunt = frères/sœurs
+      const label = vectorPerson.s === "M" ? "Votre Frère" : vectorPerson.s === "F" ? "Votre Sœur" : "Votre Frère/Sœur";
+      return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+    if (vectorUser.g === 0 && vectorPerson.g === 0) {
+      // Frères/Sœurs du défunt = frères/sœurs
+      const label = vectorPerson.s === "M" ? "Votre Frère" : vectorPerson.s === "F" ? "Votre Sœur" : "Votre Frère/Sœur";
+      return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+  }
+
+  // ============================================
+  // ΔG = +1: Personne plus vieille d'une génération
+  // ============================================
+  if (deltaG === 1) {
+    // Si user est enfant (G-1) et person est frère/sœur du défunt (G0) → Oncle/Tante
+    if (vectorUser.g === -1 && vectorPerson.g === 0 && vectorUser.l === "direct" && vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Oncle" : vectorPerson.s === "F" ? "Votre Tante" : "Votre Oncle/Tante";
+      return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+    // Si user est enfant (G-1) et person est parent (G+1) → Grand-parent
+    if (vectorUser.g === -1 && vectorPerson.g === 1 && vectorUser.l === "direct" && vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Grand-père" : vectorPerson.s === "F" ? "Votre Grand-mère" : "Votre Grand-parent";
+      return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+    // Parent générique
+    if (vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Père/Beau-père" : vectorPerson.s === "F" ? "Votre Mère/Belle-mère" : "Votre Parent";
+      return { label, confidence: "medium", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+  }
+
+  // ============================================
+  // ΔG = -1: Personne plus jeune d'une génération
+  // ============================================
+  if (deltaG === -1) {
+    // Si user est frère/sœur du défunt (G0) et person est enfant (G-1) → Neveu/Nièce
+    if (vectorUser.g === 0 && vectorPerson.g === -1 && vectorUser.l === "direct" && vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Neveu" : vectorPerson.s === "F" ? "Votre Nièce" : "Votre Neveu/Nièce";
+      return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+    // Enfant générique
+    if (vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Fils/Beau-fils" : vectorPerson.s === "F" ? "Votre Fille/Belle-fille" : "Votre Enfant";
+      return { label, confidence: "medium", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+  }
+
+  // ============================================
+  // ΔG = +2: Deux générations au-dessus
+  // ============================================
+  if (deltaG === 2) {
+    if (vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Grand-père" : vectorPerson.s === "F" ? "Votre Grand-mère" : "Votre Grand-parent";
+      return { label, confidence: "medium", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+  }
+
+  // ============================================
+  // ΔG = -2: Deux générations en dessous
+  // ============================================
+  if (deltaG === -2) {
+    if (vectorPerson.l === "direct") {
+      const label = vectorPerson.s === "M" ? "Votre Petit-fils" : vectorPerson.s === "F" ? "Votre Petite-fille" : "Votre Petit-enfant";
+      return { label, confidence: "medium", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+    }
+  }
+
+  // ============================================
+  // ALLIANCE: Époux/Épouse du défunt + Enfant
+  // ============================================
+  if (vectorUser.l === "direct" && vectorUser.g === -1 && vectorPerson.l === "alliance" && vectorPerson.g === 0) {
+    // User est enfant, Person est époux/épouse → Parent
+    const label = vectorPerson.s === "M" ? "Votre Père" : vectorPerson.s === "F" ? "Votre Mère" : "Votre Parent";
+    return { label, confidence: "high", colorClass: getColorClass("alliance", vectorPerson.s) };
+  }
+  if (vectorPerson.l === "direct" && vectorPerson.g === -1 && vectorUser.l === "alliance" && vectorUser.g === 0) {
+    // User est époux/épouse, Person est enfant → Enfant
+    const label = vectorPerson.s === "M" ? "Votre Fils" : vectorPerson.s === "F" ? "Votre Fille" : "Votre Enfant";
+    return { label, confidence: "high", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+  }
+
+  // ============================================
+  // COUSINS (même génération, extended)
+  // ============================================
+  if (deltaG === 0 && vectorUser.l === "extended" && vectorPerson.l === "extended") {
+    const label = vectorPerson.s === "M" ? "Votre Cousin" : vectorPerson.s === "F" ? "Votre Cousine" : "Votre Cousin(e)";
+    return { label, confidence: "medium", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+  }
+
+  // ============================================
+  // RELATION PAR ALLIANCE
+  // ============================================
+  if (vectorPerson.l === "alliance") {
+    return { label: "Lié(e) par alliance", confidence: "medium", colorClass: getColorClass("alliance", vectorPerson.s) };
+  }
+
+  // ============================================
+  // SOCIO-CŒUR
+  // ============================================
+  if (vectorPerson.l === "coeur") {
+    return { label: "Proche du défunt", confidence: "low", colorClass: "text-muted-foreground" };
+  }
+
+  // ============================================
+  // AUTRES
+  // ============================================
+  if (vectorPerson.l === "other") {
+    return { label: "Connaissance", confidence: "low", colorClass: "text-muted-foreground" };
+  }
+
+  // Fallback: famille élargie
+  if (vectorPerson.l === "direct" || vectorPerson.l === "extended") {
+    return { label: "De la famille", confidence: "low", colorClass: getColorClass(vectorPerson.l, vectorPerson.s) };
+  }
+
+  return null;
+};
+
+// ============================================================================
+// EXPORTS POUR COMPATIBILITÉ
+// ============================================================================
+
+export const getRelationshipData = () => relationVectors;
