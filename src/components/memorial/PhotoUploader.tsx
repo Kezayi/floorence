@@ -27,77 +27,130 @@ interface PhotoUploaderProps {
   const [uploading, setUploading] = useState(false);
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
  
-   const uploadPhoto = async (file: File): Promise<string | null> => {
-     const fileExt = file.name.split(".").pop();
-     const fileName = `${memorialId || "new"}-${Date.now()}.${fileExt}`;
-     const filePath = `${userId}/${fileName}`;
- 
-     const { error: uploadError } = await supabase.storage
-       .from("memorial-photos")
-       .upload(filePath, file);
- 
-     if (uploadError) {
-       console.error("Upload error:", uploadError);
-       throw uploadError;
-     }
- 
-     const { data } = supabase.storage
-       .from("memorial-photos")
-       .getPublicUrl(filePath);
- 
-     return data.publicUrl;
-   };
- 
-   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-     const files = e.target.files;
-     if (!files || files.length === 0) return;
- 
-     const remainingSlots = maxPhotos - photos.length;
-     if (remainingSlots <= 0) {
-       toast.error(`Maximum ${maxPhotos} photos autorisées`);
-       return;
-     }
- 
-     const filesToUpload = Array.from(files).slice(0, remainingSlots);
-     setUploading(true);
- 
-     try {
-       const uploadedUrls: string[] = [];
- 
-       for (const file of filesToUpload) {
-         // Validate file type
-         if (!file.type.startsWith("image/")) {
-           toast.error("Seules les images sont acceptées");
-           continue;
-         }
- 
-         // Validate file size (max 5MB)
-         if (file.size > 5 * 1024 * 1024) {
-           toast.error("La taille maximum est de 5 Mo par image");
-           continue;
-         }
- 
-         const url = await uploadPhoto(file);
-         if (url) {
-           uploadedUrls.push(url);
-         }
-       }
- 
-       if (uploadedUrls.length > 0) {
-         const newPhotos = [...photos, ...uploadedUrls];
-         onChange(newPhotos, defaultPhotoIndex);
-         toast.success(`${uploadedUrls.length} photo(s) ajoutée(s)`);
-       }
-     } catch (error) {
-       console.error("Upload error:", error);
-       toast.error("Erreur lors de l'upload de la photo");
-     } finally {
-       setUploading(false);
-       if (fileInputRef.current) {
-         fileInputRef.current.value = "";
-       }
-     }
-   };
+  const uploadPhoto = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${memorialId || "new"}-${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("memorial-photos")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from("memorial-photos")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  const autoEnhancePhoto = async (photoUrl: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("enhance-photo", {
+        body: { imageUrl: photoUrl },
+      });
+
+      if (error || data.error) {
+        console.warn("Auto-enhance failed, keeping original:", error || data.error);
+        return photoUrl;
+      }
+
+      if (data.enhancedImageUrl) {
+        // Upload the enhanced image to storage
+        const base64Data = data.enhancedImageUrl.split(",")[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "image/png" });
+
+        const fileName = `${memorialId || "new"}-enhanced-${Date.now()}.png`;
+        const filePath = `${userId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("memorial-photos")
+          .upload(filePath, blob);
+
+        if (uploadError) {
+          console.warn("Enhanced upload failed, keeping original:", uploadError);
+          return photoUrl;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("memorial-photos")
+          .getPublicUrl(filePath);
+
+        return urlData.publicUrl;
+      }
+
+      return photoUrl;
+    } catch (err) {
+      console.warn("Auto-enhance error, keeping original:", err);
+      return photoUrl;
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = maxPhotos - photos.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum ${maxPhotos} photos autorisées`);
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    setUploading(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (const file of filesToUpload) {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Seules les images sont acceptées");
+          continue;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("La taille maximum est de 5 Mo par image");
+          continue;
+        }
+
+        const url = await uploadPhoto(file);
+        if (url) {
+          // Auto-enhance the photo immediately after upload
+          toast.info("Amélioration automatique en cours...");
+          const enhancedUrl = await autoEnhancePhoto(url);
+          uploadedUrls.push(enhancedUrl);
+          
+          if (enhancedUrl !== url) {
+            toast.success("Photo améliorée avec succès !");
+          }
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        const newPhotos = [...photos, ...uploadedUrls];
+        onChange(newPhotos, defaultPhotoIndex);
+        toast.success(`${uploadedUrls.length} photo(s) ajoutée(s)`);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Erreur lors de l'upload de la photo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
  
    const removePhoto = (index: number) => {
      const newPhotos = photos.filter((_, i) => i !== index);
