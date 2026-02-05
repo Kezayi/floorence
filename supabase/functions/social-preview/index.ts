@@ -33,24 +33,16 @@ Deno.serve(async (req) => {
 
     const userAgent = req.headers.get('user-agent') || '';
     const isCrawler = CRAWLER_REGEX.test(userAgent);
-    const canonicalUrl = `${APP_BASE_URL}/memorial/${slug}`;
     
-    console.log(`[social-preview] slug: ${slug}, crawler: ${isCrawler}`);
+    console.log(`[social-preview] slug: ${slug}, crawler: ${isCrawler}, ua: ${userAgent.substring(0, 100)}`);
 
-    // Redirect non-crawlers to the SPA
-    if (!isCrawler) {
-      return new Response(null, {
-        status: 302,
-        headers: { ...corsHeaders, 'Location': canonicalUrl },
-      });
-    }
-
-    // Fetch memorial data
+    // Fetch memorial data first (needed for both crawlers and redirect)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!
     );
 
+    // Try to find memorial by slug OR legacy_slug
     let { data: memorial } = await supabase
       .from('memorials')
       .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date')
@@ -60,7 +52,7 @@ Deno.serve(async (req) => {
       .is('merged_into', null)
       .maybeSingle();
 
-    // Try legacy slug if not found
+    // If not found by current slug, try legacy_slug
     if (!memorial) {
       const { data: legacyMemorial } = await supabase
         .from('memorials')
@@ -77,66 +69,96 @@ Deno.serve(async (req) => {
     }
 
     if (!memorial) {
+      // Memorial not found - redirect to 404
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, 'Location': `${APP_BASE_URL}/404` },
       });
     }
 
-    // Build OG data
+    // Always use the CANONICAL (current) slug for URLs - this ensures 301 behavior
+    const canonicalUrl = `${APP_BASE_URL}/memorial/${memorial.slug}`;
+
+    // Redirect non-crawlers to the SPA with canonical URL
+    if (!isCrawler) {
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': canonicalUrl },
+      });
+    }
+
+    // Build OG data for crawlers
     const fullName = `${memorial.first_name} ${memorial.last_name}`;
     const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : null;
     const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : null;
     
+    // Title with years if available
     let ogTitle = `Hommage à ${fullName}`;
-    if (birthYear && deathYear) ogTitle += ` (${birthYear} - ${deathYear})`;
+    if (birthYear && deathYear) {
+      ogTitle += ` (${birthYear} - ${deathYear})`;
+    }
     
+    // Calculate age for description
     let age: number | null = null;
     if (memorial.birth_date && memorial.death_date) {
       const birth = new Date(memorial.birth_date);
       const death = new Date(memorial.death_date);
       age = death.getFullYear() - birth.getFullYear();
+      // Adjust if birthday hasn't occurred yet in death year
       if (death.getMonth() < birth.getMonth() || 
           (death.getMonth() === birth.getMonth() && death.getDate() < birth.getDate())) {
         age--;
       }
     }
     
+    // Description with age if available
     let ogDescription = `Rejoignez la communauté de mémoire de ${fullName}`;
-    if (age !== null) ogDescription += ` (${age} ans)`;
+    if (age !== null) {
+      ogDescription += ` (${age} ans)`;
+    }
     ogDescription += ` sur Floorence. Laissez un message ou un geste de recueillement.`;
 
-    // Get photo
+    // Get best photo - prefer photos array with default index, fallback to photo_url
     let imageUrl = DEFAULT_IMAGE;
     if (memorial.photos && memorial.photos.length > 0) {
-      const idx = Math.min(memorial.default_photo_index ?? 0, memorial.photos.length - 1);
-      imageUrl = memorial.photos[idx];
+      const photoIndex = Math.min(memorial.default_photo_index ?? 0, memorial.photos.length - 1);
+      imageUrl = memorial.photos[photoIndex];
     } else if (memorial.photo_url) {
       imageUrl = memorial.photo_url;
     }
 
-    const finalUrl = `${APP_BASE_URL}/memorial/${memorial.slug}`;
-
+    // Generate minimal HTML with all necessary OG tags
     const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <title>${escapeHtml(ogTitle)} | Floorence</title>
+<meta name="description" content="${escapeHtml(ogDescription)}">
+<link rel="canonical" href="${escapeHtml(canonicalUrl)}">
+
+<!-- Open Graph / Facebook -->
 <meta property="og:type" content="profile">
-<meta property="og:url" content="${escapeHtml(finalUrl)}">
+<meta property="og:url" content="${escapeHtml(canonicalUrl)}">
 <meta property="og:title" content="${escapeHtml(ogTitle)}">
 <meta property="og:description" content="${escapeHtml(ogDescription)}">
 <meta property="og:image" content="${escapeHtml(imageUrl)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:site_name" content="Floorence">
+<meta property="og:locale" content="fr_FR">
+
+<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
 <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
 <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
-<meta name="description" content="${escapeHtml(ogDescription)}">
-<link rel="canonical" href="${escapeHtml(finalUrl)}">
-<meta http-equiv="refresh" content="0; url=${escapeHtml(finalUrl)}">
+
+<!-- Redirect -->
+<meta http-equiv="refresh" content="0; url=${escapeHtml(canonicalUrl)}">
 </head>
-<body><p>Redirection...</p></body>
+<body>
+<p>Redirection vers <a href="${escapeHtml(canonicalUrl)}">${escapeHtml(fullName)}</a>...</p>
+</body>
 </html>`;
 
     return new Response(html, {
@@ -144,7 +166,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       },
     });
 
@@ -155,4 +177,5 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
   }
+});
 });
