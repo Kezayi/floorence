@@ -425,6 +425,7 @@ export type Database = {
         Returns: boolean
       }
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator"
