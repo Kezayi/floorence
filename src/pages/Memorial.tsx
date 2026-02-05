@@ -478,16 +478,19 @@ const Memorial = () => {
 
         {/* Tabs Content */}
         <section className="container mx-auto px-4 py-12">
-          <Tabs defaultValue="notice" className="w-full">
+          <Tabs defaultValue={memorial.type === "PAST" ? "gatherings" : "notice"} className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto flex-nowrap">
-              <TabsTrigger
-                value="notice"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-              >
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">Avis de décès</span>
-                <span className="sm:hidden">Avis</span>
-              </TabsTrigger>
+              {/* Avis de décès - uniquement pour les décès récents */}
+              {memorial.type !== "PAST" && (
+                <TabsTrigger
+                  value="notice"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">Avis de décès</span>
+                  <span className="sm:hidden">Avis</span>
+                </TabsTrigger>
+              )}
               
               <TabsTrigger
                 value="gatherings"
@@ -520,21 +523,23 @@ const Memorial = () => {
             </TabsList>
 
             {/* Avis de décès + Programme obsèques */}
-            <TabsContent value="notice" className="mt-0">
-              <div className="max-w-2xl">
-                <DeathNotice
-                  memorial={{
-                    name: memorial.name,
-                    birthDate: memorial.birthDate,
-                    deathDate: memorial.deathDate,
-                    bio: memorial.bio,
-                    funeralDate: memorial.funeralDate,
-                    funeralLocation: memorial.funeralLocation,
-                  }}
-                  events={memorialEvents}
-                />
-              </div>
-            </TabsContent>
+            {memorial.type !== "PAST" && (
+              <TabsContent value="notice" className="mt-0">
+                <div className="max-w-2xl">
+                  <DeathNotice
+                    memorial={{
+                      name: memorial.name,
+                      birthDate: memorial.birthDate,
+                      deathDate: memorial.deathDate,
+                      bio: memorial.bio,
+                      funeralDate: memorial.funeralDate,
+                      funeralLocation: memorial.funeralLocation,
+                    }}
+                    events={memorialEvents}
+                  />
+                </div>
+              </TabsContent>
+            )}
 
             {/* Recueillements / Calendrier */}
             <TabsContent value="gatherings" className="mt-0">
