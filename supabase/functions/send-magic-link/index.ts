@@ -10,6 +10,10 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// In-memory rate limiter (persists within function isolate lifetime)
+const rateLimitMap = new Map<string, number>();
+const RATE_LIMIT_MS = 60_000; // 60 seconds between requests per email
+
 interface SendMagicLinkRequest {
   email: string;
   redirectTo?: string;
@@ -112,6 +116,33 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limiting: check if this email was recently requested
+    const lastRequest = rateLimitMap.get(normalizedEmail);
+    const now = Date.now();
+    if (lastRequest && now - lastRequest < RATE_LIMIT_MS) {
+      const remainingSeconds = Math.ceil((RATE_LIMIT_MS - (now - lastRequest)) / 1000);
+      console.log(`[RATE LIMIT] Email ${normalizedEmail} rate-limited, ${remainingSeconds}s remaining`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Veuillez patienter ${remainingSeconds} secondes avant de demander un nouveau lien.` 
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Record this request for rate limiting
+    rateLimitMap.set(normalizedEmail, now);
+
+    // Clean up old entries to prevent memory leaks (keep last 1000)
+    if (rateLimitMap.size > 1000) {
+      const entries = [...rateLimitMap.entries()];
+      entries.sort((a, b) => a[1] - b[1]);
+      for (let i = 0; i < entries.length - 500; i++) {
+        rateLimitMap.delete(entries[i][0]);
+      }
+    }
+
     const origin = req.headers.get("origin") || "https://floorence.lovable.app";
     const finalRedirect = redirectTo || `${origin}/compte`;
 
@@ -121,29 +152,26 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Check if user exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
-    const isNewUser = !existingUser;
+    // Try to create user first — if already exists, we catch the error
+    let isNewUser = false;
+    const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: normalizedEmail,
+      email_confirm: true,
+    });
 
-    let userId: string;
-
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      // Create user first
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: normalizedEmail,
-        email_confirm: true,
-      });
-
-      if (createError || !newUser.user) {
+    if (createError) {
+      // Check if user already exists (expected case)
+      const errorMsg = createError.message?.toLowerCase() || "";
+      if (errorMsg.includes("already") || errorMsg.includes("registered") || errorMsg.includes("exists") || errorMsg.includes("duplicate")) {
+        isNewUser = false;
+        console.log(`User ${normalizedEmail} already exists, generating magic link`);
+      } else {
         console.error("Error creating user:", createError);
         throw new Error("Erreur lors de la création du compte");
       }
-      userId = newUser.user.id;
+    } else {
+      isNewUser = true;
+      console.log(`New user created: ${normalizedEmail}`);
     }
 
     // Generate magic link
@@ -162,32 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const magicLink = linkData.properties.action_link;
 
-    // Check if we're in test mode (bypass email sending)
-    // Note: secrets can sometimes include quotes or be set as TRUE/1.
-    const testModeRaw = (Deno.env.get("TEST_MODE") ?? "").trim();
-    const testModeNormalized = testModeRaw.replace(/^["']|["']$/g, "").toLowerCase();
-    const testMode = ["true", "1", "yes", "on"].includes(testModeNormalized);
-    console.log(
-      `TEST_MODE raw='${testModeRaw}' normalized='${testModeNormalized}' -> testMode=${testMode}`
-    );
-
-    if (testMode) {
-      // In test mode, return the magic link directly without sending email
-      console.log(`[TEST MODE] Magic link for ${normalizedEmail}: ${magicLink}`);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Mode test: lien de connexion généré",
-          isNewUser,
-          testMode: true,
-          magicLink, // Return the link for testing
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Send email via Resend
+    // Send email via Resend (no test mode bypass — always send real emails)
     console.log(`Sending magic link to ${normalizedEmail}, isNewUser: ${isNewUser}`);
 
     const emailResponse = await resend.emails.send({
@@ -202,7 +205,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Magic link email sent:", emailResponse);
 
-    // If Resend returns an error, bubble it up so the frontend can display a proper message.
+    // If Resend returns an error, bubble it up
     if ((emailResponse as any)?.error) {
       const err = (emailResponse as any).error;
       throw new Error(err?.message || "Erreur lors de l'envoi de l'email");

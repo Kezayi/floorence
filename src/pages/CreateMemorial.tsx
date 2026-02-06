@@ -1,8 +1,8 @@
- import { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
- import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle } from "lucide-react";
 import RelationSelect from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ const CreateMemorial = () => {
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
@@ -44,7 +45,7 @@ const CreateMemorial = () => {
     authorRelation: "",
     heirEmail: "",
     enableContributions: false,
-    photos: [] as string[],
+    photos: [] as string[], // Storage URLs (not base64)
   });
 
   const steps = [
@@ -88,7 +89,6 @@ const CreateMemorial = () => {
         }
       }
 
-      // Funeral date required for all memorial types
       if (!formData.funeralDate) {
         newErrors.funeralDate = "La date des obsèques est obligatoire";
       }
@@ -101,7 +101,6 @@ const CreateMemorial = () => {
         newErrors.bio = "La biographie ne doit pas dépasser 1000 caractères";
       }
 
-      // Heir email is now required
       if (!formData.heirEmail) {
         newErrors.heirEmail = "L'email de l'héritier numérique est obligatoire";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.heirEmail)) {
@@ -154,12 +153,10 @@ const CreateMemorial = () => {
     setIsSubmitting(true);
 
     try {
-      // Split name into first and last name
       const nameParts = formData.name.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "";
 
-       // BETA: Create the memorial (directly published, no payment)
       const { data: createData, error: createError } = await supabase.functions.invoke('create-memorial', {
         body: {
           firstName,
@@ -173,6 +170,7 @@ const CreateMemorial = () => {
           heirEmail: formData.heirEmail,
           enableContributions: formData.enableContributions,
           photoUrl: formData.photos[0] || undefined,
+          photos: formData.photos,
         }
       });
 
@@ -184,8 +182,6 @@ const CreateMemorial = () => {
       }
 
        console.log('[BETA] Memorial created:', createData.memorial.slug);
-       
-       // BETA: Show success and redirect directly to the memorial
        toast.success("Espace mémoriel créé avec succès !");
        navigate(`/memorial/${createData.memorial.slug}`);
 
@@ -196,43 +192,70 @@ const CreateMemorial = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  // Upload photo to Supabase Storage (returns public URL)
+  const uploadPhotoToStorage = async (file: File): Promise<string | null> => {
+    if (!user?.id) return null;
+    
+    const fileExt = file.name.split(".").pop();
+    const fileName = `new-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
 
-    Array.from(files).forEach((file) => {
-      if (formData.photos.length >= 3) return;
-      
-      // Validate file type
+    const { error: uploadError } = await supabase.storage
+      .from("memorial-photos")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("memorial-photos")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = 3 - formData.photos.length;
+    if (remainingSlots <= 0) {
+      toast.error("Maximum 3 photos autorisées");
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    setIsUploadingPhoto(true);
+
+    for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({ ...prev, photos: "Seules les images sont acceptées" }));
-        return;
+        continue;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setErrors((prev) => ({ ...prev, photos: "La taille maximum est de 5 Mo par image" }));
-        return;
+        continue;
       }
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFormData((prev) => ({
-            ...prev,
-            photos: [...prev.photos, event.target!.result as string],
-          }));
-          setErrors((prev) => {
-            const { photos, ...rest } = prev;
-            return rest;
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      const url = await uploadPhotoToStorage(file);
+      if (url) {
+        setFormData((prev) => ({
+          ...prev,
+          photos: [...prev.photos, url],
+        }));
+        setErrors((prev) => {
+          const { photos, ...rest } = prev;
+          return rest;
+        });
+      } else {
+        toast.error("Erreur lors de l'upload de la photo");
+      }
+    }
 
-    // Reset input
+    setIsUploadingPhoto(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -444,7 +467,7 @@ const CreateMemorial = () => {
                       </div>
                     </div>
 
-                    {/* Funeral date and location - always shown */}
+                    {/* Funeral date and location */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
                       <div>
                         <label className="block text-sm font-sans text-muted-foreground mb-2">
@@ -591,7 +614,7 @@ const CreateMemorial = () => {
                 </div>
               )}
 
-              {/* Step 3: Photos */}
+              {/* Step 3: Photos — Upload direct to Storage */}
               {currentStep === 3 && (
                 <div className="animate-fade-in">
                   <h1 className="text-center mb-4">Photos du défunt</h1>
@@ -599,7 +622,6 @@ const CreateMemorial = () => {
                     Ajoutez jusqu'à 3 photos pour illustrer l'espace mémoriel
                   </p>
 
-                  {/* Hidden file input */}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -639,10 +661,17 @@ const CreateMemorial = () => {
                         ) : (
                           <button
                             onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingPhoto}
                             className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full h-full justify-center"
                           >
-                            <Upload className="w-6 h-6" />
-                            <span className="text-xs font-sans">Ajouter</span>
+                            {isUploadingPhoto ? (
+                              <Loader2 className="w-6 h-6 animate-spin" />
+                            ) : (
+                              <>
+                                <Upload className="w-6 h-6" />
+                                <span className="text-xs font-sans">Ajouter</span>
+                              </>
+                            )}
                           </button>
                         )}
                       </div>
@@ -662,10 +691,20 @@ const CreateMemorial = () => {
                     </button>
                     <button
                       onClick={handleNext}
+                      disabled={isUploadingPhoto}
                       className="btn-memorial"
                     >
-                      Continuer
-                      <ChevronRight className="w-4 h-4" />
+                      {isUploadingPhoto ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          Continuer
+                          <ChevronRight className="w-4 h-4" />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

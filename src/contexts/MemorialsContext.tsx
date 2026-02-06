@@ -81,8 +81,9 @@ const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string
 const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string, string>> => {
   if (creatorIds.length === 0) return {};
   
+  // Use profiles_public view to bypass RLS and avoid exposing sensitive data
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profiles_public')
     .select('user_id, display_name')
     .in('user_id', creatorIds);
 
@@ -93,7 +94,9 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
 
   const profiles: Record<string, string> = {};
   (data || []).forEach((profile: ProfileData) => {
-    profiles[profile.user_id] = profile.display_name || 'Créateur';
+    if (profile.user_id) {
+      profiles[profile.user_id] = profile.display_name || 'Créateur';
+    }
   });
 
   return profiles;

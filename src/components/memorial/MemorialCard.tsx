@@ -44,7 +44,7 @@ const MemorialCard = ({
               alt={`Portrait de ${name}`}
               width={160}
               height={213}
-              fetchPriority={priority ? "high" : undefined}
+              loading={priority ? "eager" : "lazy"}
               className="w-full h-full object-cover portrait-memorial"
             />
           ) : (
@@ -107,7 +107,7 @@ const MemorialCard = ({
             alt={`Portrait de ${name}`}
             width={400}
             height={533}
-            fetchPriority={priority ? "high" : undefined}
+            loading={priority ? "eager" : "lazy"}
             className="w-full h-full object-cover portrait-memorial"
           />
         ) : (

@@ -1,216 +1,218 @@
- import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
- import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
- import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
- 
- const corsHeaders = {
-   'Access-Control-Allow-Origin': '*',
-   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
- }
- 
- // Forbidden author names
- const FORBIDDEN_NAMES = [
-   'super admin',
-   'admin',
-   'administrateur',
-   'test',
-   'utilisateur',
-   'anonymous',
-   'anonyme',
-   'system',
-   'système',
- ]
- 
- // Input validation schema
- const CreateMemorialSchema = z.object({
-   firstName: z.string().min(2).max(50),
-   lastName: z.string().min(2).max(50),
-   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-   deathDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-   funeralDate: z.string().optional(),
-   funeralLocation: z.string().max(200).optional(),
-   biography: z.string().max(2000).optional(),
-   authorRelation: z.string().min(1),
-   heirEmail: z.string().email(),
-   enableContributions: z.boolean().optional(),
-   photoUrl: z.string().url().optional(),
- })
- 
- serve(async (req) => {
-   // Handle CORS preflight requests
-   if (req.method === 'OPTIONS') {
-     return new Response('ok', { headers: corsHeaders })
-   }
- 
-   try {
-     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
- 
-     // Get authorization header
-     const authHeader = req.headers.get('Authorization')
-     if (!authHeader) {
-       return new Response(
-         JSON.stringify({ error: 'Non autorisé' }),
-         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       )
-     }
- 
-     // Create Supabase client with user's JWT
-     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-       global: { headers: { Authorization: authHeader } }
-     })
- 
-     // Get authenticated user
-     const { data: { user }, error: userError } = await supabase.auth.getUser()
-     if (userError || !user) {
-       return new Response(
-         JSON.stringify({ error: 'Non autorisé' }),
-         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       )
-     }
- 
-     // Parse and validate request body
-     let rawBody: unknown
-     try {
-       rawBody = await req.json()
-     } catch {
-       return new Response(
-         JSON.stringify({ error: 'Corps de requête invalide' }),
-         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       )
-     }
- 
-     const validationResult = CreateMemorialSchema.safeParse(rawBody)
-     if (!validationResult.success) {
-       console.error('Validation error:', validationResult.error.issues)
-       return new Response(
-         JSON.stringify({ 
-           error: 'Données invalides', 
-           details: validationResult.error.issues 
-         }),
-         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       )
-     }
- 
-     const data = validationResult.data
- 
-     // Check for forbidden author names in profile
-     const { data: profile } = await supabase
-       .from('profiles')
-       .select('display_name')
-       .eq('user_id', user.id)
-       .single()
- 
-     if (profile?.display_name) {
-       const normalizedName = profile.display_name.toLowerCase().trim()
-       if (FORBIDDEN_NAMES.some(fn => normalizedName.includes(fn))) {
-         return new Response(
-           JSON.stringify({ 
-             error: 'Veuillez mettre à jour votre profil avec votre vrai nom avant de créer un espace mémoriel.' 
-           }),
-           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-         )
-       }
-     }
- 
-    // Generate secure slug using initials + random ID format
-    // This prevents sequential discovery and protects privacy
-    const generateSecureSlug = async (): Promise<string> => {
-      // Get initials (first letter of each name, normalized)
-      const firstInitial = data.firstName
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .charAt(0)
-        .toLowerCase()
-      const lastInitial = data.lastName
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .charAt(0)
-        .toLowerCase()
-      const initials = `${firstInitial}${lastInitial}`
-      
-      // Generate random alphanumeric ID (6 chars for unpredictability)
-      // Using crypto for better randomness than Math.random
-      const randomBytes = new Uint8Array(4)
-      crypto.getRandomValues(randomBytes)
-      const randomId = Array.from(randomBytes)
-        .map(b => b.toString(36).padStart(2, '0'))
-        .join('')
-        .substring(0, 6)
-      
-      let slug = `${initials}-${randomId}`
-      
-      // Verify uniqueness
-      const { data: existing } = await supabase
-        .from('memorials')
-        .select('slug')
-        .eq('slug', slug)
-        .single()
-      
-      if (existing) {
-        // Extremely rare collision - add extra randomness
-        const extraRandom = Array.from(crypto.getRandomValues(new Uint8Array(2)))
-          .map(b => b.toString(36))
-          .join('')
-        slug = `${initials}-${randomId}${extraRandom}`
-      }
-      
-      return slug
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+}
+
+// Forbidden author names
+const FORBIDDEN_NAMES = [
+  'super admin',
+  'admin',
+  'administrateur',
+  'test',
+  'utilisateur',
+  'anonymous',
+  'anonyme',
+  'system',
+  'système',
+]
+
+// Input validation schema
+const CreateMemorialSchema = z.object({
+  firstName: z.string().min(2).max(50),
+  lastName: z.string().min(2).max(50),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  deathDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  funeralDate: z.string().optional(),
+  funeralLocation: z.string().max(200).optional(),
+  biography: z.string().max(2000).optional(),
+  authorRelation: z.string().min(1),
+  heirEmail: z.string().email(),
+  enableContributions: z.boolean().optional(),
+  photoUrl: z.string().url().optional(),
+  photos: z.array(z.string().url()).max(3).optional(),
+})
+
+// Generate secure slug using initials + random ID format
+const generateSecureSlug = async (
+  supabase: ReturnType<typeof createClient>,
+  firstName: string,
+  lastName: string
+): Promise<string> => {
+  const firstInitial = firstName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .charAt(0)
+    .toLowerCase()
+  const lastInitial = lastName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .charAt(0)
+    .toLowerCase()
+  const initials = `${firstInitial}${lastInitial}`
+
+  const randomBytes = new Uint8Array(4)
+  crypto.getRandomValues(randomBytes)
+  const randomId = Array.from(randomBytes)
+    .map(b => b.toString(36).padStart(2, '0'))
+    .join('')
+    .substring(0, 6)
+
+  let slug = `${initials}-${randomId}`
+
+  const { data: existing } = await supabase
+    .from('memorials')
+    .select('slug')
+    .eq('slug', slug)
+    .single()
+
+  if (existing) {
+    const extraRandom = Array.from(crypto.getRandomValues(new Uint8Array(2)))
+      .map(b => b.toString(36))
+      .join('')
+    slug = `${initials}-${randomId}${extraRandom}`
+  }
+
+  return slug
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Non autorisé' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
-    
-    const slug = await generateSecureSlug()
- 
-     console.log('[BETA] Creating memorial with slug:', slug)
- 
-     // BETA: Create the memorial directly as published (no payment required)
-     const { data: memorial, error: createError } = await supabase
-       .from('memorials')
-       .insert({
-         first_name: data.firstName,
-         last_name: data.lastName,
-         birth_date: data.birthDate,
-         death_date: data.deathDate,
-         funeral_date: data.funeralDate || null,
-         funeral_location: data.funeralLocation || null,
-         biography: data.biography || null,
-         heir_email: data.heirEmail,
-         donation_enabled: data.enableContributions ?? true,
-         photo_url: data.photoUrl || null,
-         slug: slug,
-         created_by: user.id,
-         is_active: true,
-         is_published: true, // BETA: Publish immediately
-       })
-       .select()
-       .single()
- 
-     if (createError) {
-       console.error('Error creating memorial:', createError)
-       return new Response(
-         JSON.stringify({ error: 'Erreur lors de la création de l\'espace mémoriel' }),
-         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       )
-     }
- 
-     console.log('[BETA] Memorial created and published:', memorial.id)
- 
-     return new Response(
-       JSON.stringify({ 
-         success: true, 
-         memorial: {
-           id: memorial.id,
-           slug: memorial.slug,
-           firstName: memorial.first_name,
-           lastName: memorial.last_name,
-         }
-       }),
-       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-     )
- 
-   } catch (error) {
-     console.error('Create memorial error:', error)
-     return new Response(
-       JSON.stringify({ error: 'Erreur interne du serveur' }),
-       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-     )
-   }
- })
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Non autorisé' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    let rawBody: unknown
+    try {
+      rawBody = await req.json()
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Corps de requête invalide' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const validationResult = CreateMemorialSchema.safeParse(rawBody)
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.issues)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Données invalides', 
+          details: validationResult.error.issues 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const data = validationResult.data
+
+    // Check for forbidden author names in profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', user.id)
+      .single()
+
+    if (profile?.display_name) {
+      const normalizedName = profile.display_name.toLowerCase().trim()
+      if (FORBIDDEN_NAMES.some(fn => normalizedName.includes(fn))) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Veuillez mettre à jour votre profil avec votre vrai nom avant de créer un espace mémoriel.' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
+
+    console.log('[BETA] Creating memorial with slug:', slug)
+
+    // Build photos array from provided URLs
+    const photosArray = data.photos && data.photos.length > 0
+      ? data.photos
+      : data.photoUrl
+        ? [data.photoUrl]
+        : []
+
+    const { data: memorial, error: createError } = await supabase
+      .from('memorials')
+      .insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        birth_date: data.birthDate,
+        death_date: data.deathDate,
+        funeral_date: data.funeralDate || null,
+        funeral_location: data.funeralLocation || null,
+        biography: data.biography || null,
+        heir_email: data.heirEmail,
+        donation_enabled: data.enableContributions ?? true,
+        photo_url: photosArray[0] || null,
+        photos: photosArray,
+        creator_relation: data.authorRelation,
+        slug: slug,
+        created_by: user.id,
+        is_active: true,
+        is_published: true,
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('Error creating memorial:', createError)
+      return new Response(
+        JSON.stringify({ error: 'Erreur lors de la création de l\'espace mémoriel' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('[BETA] Memorial created and published:', memorial.id)
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        memorial: {
+          id: memorial.id,
+          slug: memorial.slug,
+          firstName: memorial.first_name,
+          lastName: memorial.last_name,
+        }
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    console.error('Create memorial error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Erreur interne du serveur' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
