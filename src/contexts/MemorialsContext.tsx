@@ -157,6 +157,12 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     fetchGuestbookPosts((data || []).map(m => m.id))
   ]);
 
+  // Filter out base64 data from photos (safety guard for legacy data)
+  const getValidPhotos = (m: typeof data[0]): string[] => {
+    const allPhotos = (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []);
+    return allPhotos.filter((p: string) => p && !p.startsWith('data:'));
+  };
+
   const memorialsFromDb: ExtendedSearchableMemorial[] = (data || []).map(m => ({
     id: m.id,
     slug: m.slug,
@@ -165,7 +171,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     birthDate: formatDateFrench(m.birth_date),
     deathDate: formatDateFrench(m.death_date),
     bio: m.biography || "",
-    photos: (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []),
+    photos: getValidPhotos(m),
     author: {
       id: m.created_by,
       name: creatorProfiles[m.created_by] || "Créateur",
