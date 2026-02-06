@@ -24,13 +24,24 @@ const AuthVisionPanel = ({ onScrollToForm }: { onScrollToForm?: () => void }) =>
             «&nbsp;Mes proches, mes amis,
           </p>
           <p>
-            Je vous écoute ici non pas comme un concepteur, mais comme quelqu'un qui, comme vous, porte en lui les trésors laissés par ceux que nous avons aimés et perdus. La perte d'un être cher a redéfini notre importance accordée à la mémoire.
+            Je ne vous écris pas seulement comme un ami, mais comme quelqu'un qui partage vos cicatrices et les trésors laissés par ceux que nous avons aimés. Je sais comment la perte a transformé nos vies et redéfini l'importance de la mémoire.
+          </p>
+          <p className="font-medium">
+            C'est pour nous, et pour eux, que j'ai créé Floorence.
           </p>
           <p>
-            Floorence est né de cette volonté de transformer notre douleur commune en quelque chose de fertile. C'est un sanctuaire numérique où nos souvenirs sont vivants, où l'on tisse le maillage de nos familles pour que nos enfants sachent, dans 50&nbsp;ans, d'où ils viennent.
+            J'ai voulu transformer notre douleur en un sanctuaire fertile. Floorence est un lieu où nos souvenirs sont vivants, où l'on tisse le maillage de nos familles pour que nos enfants sachent, dans 50&nbsp;ans, d'où ils viennent.
           </p>
           <p>
-            Vous êtes les premiers à entrer dans ce lieu. Votre regard est le seul qui m'importe pour valider ce projet qui est, désormais, le nôtre.&nbsp;»
+            Vous êtes les premiers à entrer dans ce lieu. Votre regard est le seul qui m'importe pour valider ce projet qui est, désormais, le nôtre.
+          </p>
+          <p>
+            Entrez, créez un espace, allumez un cierge. Voyez si ce sanctuaire résonne avec votre cœur autant qu'il a résonné avec le mien.
+          </p>
+          <p className="mt-4 font-serif italic opacity-70">
+            Avec toute mon affection,
+            <br />
+            Michel N.A.&nbsp;»
           </p>
         </blockquote>
 
