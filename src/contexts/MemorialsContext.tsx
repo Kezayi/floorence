@@ -214,6 +214,8 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   const memorialCards = useMemo<MemorialCardData[]>(() => 
     memorials.map(m => {
       const stats = memorialStats[m.id] || { postCount: 0, candles: 0, flowers: 0 };
+      // Use defaultPhotoIndex with bounds checking
+      const safeIndex = (m.defaultPhotoIndex ?? 0) < m.photos.length ? (m.defaultPhotoIndex ?? 0) : 0;
       
       return {
         id: m.id,
@@ -221,7 +223,7 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
         name: m.name,
         birthDate: m.birthDate,
         deathDate: m.deathDate,
-        photoUrl: m.photos[0] || "",
+        photoUrl: m.photos[safeIndex] || "",
         ripCount: stats.postCount,
         candleCount: stats.candles,
         flowerCount: stats.flowers,

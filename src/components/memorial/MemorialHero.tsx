@@ -52,7 +52,12 @@ interface MemorialHeroProps {
 }
 
 const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPosted, onGestureClick, onMemorialUpdated }: MemorialHeroProps) => {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(memorial.defaultPhotoIndex || 0);
+  // Filter out empty photos first
+  const validPhotos = memorial.photos.filter(photo => photo && photo.length > 0);
+  
+  // Clamp defaultPhotoIndex to valid range
+  const safeDefaultIndex = (memorial.defaultPhotoIndex ?? 0) < validPhotos.length ? (memorial.defaultPhotoIndex ?? 0) : 0;
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(safeDefaultIndex);
   
   const { isFollowing: checkIsFollowing, toggleFollow } = useNotifications();
   const { toast } = useToast();
@@ -64,9 +69,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
   
   // Check if current user is the creator
   const isCreator = user?.id === memorial.createdBy;
-  
-  // Filter out empty photos
-  const validPhotos = memorial.photos.filter(photo => photo && photo.length > 0);
 
   // Auto-advance photos every 5 seconds
   useEffect(() => {
