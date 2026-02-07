@@ -58,6 +58,7 @@ export type Database = {
           hidden_by: string | null
           hidden_reason: string | null
           id: string
+          is_demo: boolean | null
           is_hidden: boolean
           memorial_id: string
           payment_reference: string | null
@@ -76,6 +77,7 @@ export type Database = {
           hidden_by?: string | null
           hidden_reason?: string | null
           id?: string
+          is_demo?: boolean | null
           is_hidden?: boolean
           memorial_id: string
           payment_reference?: string | null
@@ -94,6 +96,7 @@ export type Database = {
           hidden_by?: string | null
           hidden_reason?: string | null
           id?: string
+          is_demo?: boolean | null
           is_hidden?: boolean
           memorial_id?: string
           payment_reference?: string | null
@@ -180,6 +183,7 @@ export type Database = {
           heir_user_id: string | null
           id: string
           is_active: boolean
+          is_demo: boolean | null
           is_published: boolean
           last_name: string
           legacy_slug: string | null
@@ -206,6 +210,7 @@ export type Database = {
           heir_user_id?: string | null
           id?: string
           is_active?: boolean
+          is_demo?: boolean | null
           is_published?: boolean
           last_name: string
           legacy_slug?: string | null
@@ -232,6 +237,7 @@ export type Database = {
           heir_user_id?: string | null
           id?: string
           is_active?: boolean
+          is_demo?: boolean | null
           is_published?: boolean
           last_name?: string
           legacy_slug?: string | null
