@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,13 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { 
   History, 
   Shield, 
@@ -26,7 +20,6 @@ import {
   Ban, 
   UserCheck,
   RefreshCw,
-  Filter,
   Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,55 +45,63 @@ const actionConfig: Record<string, { label: string; icon: React.ReactNode; varia
   update_setting: { label: 'Modification paramètre', icon: <Settings className="w-3 h-3" />, variant: 'secondary', category: 'settings' },
 };
 
-const filterOptions = [
-  { value: 'all', label: 'Toutes les actions' },
-  { value: 'users', label: 'Gestion utilisateurs', icon: <Shield className="w-4 h-4" /> },
-  { value: 'settings', label: 'Paramètres & prix', icon: <Settings className="w-4 h-4" /> },
-  { value: 'add_role', label: 'Ajout de rôle' },
-  { value: 'remove_role', label: 'Retrait de rôle' },
-  { value: 'ban_user', label: 'Blocage' },
-  { value: 'unban_user', label: 'Déblocage' },
-  { value: 'update_setting', label: 'Modification paramètre' },
-];
-
 const AuditLogs = () => {
-  const [actionFilter, setActionFilter] = useState<string>('all');
+  const { filters, updateFilter } = useAdminFilters();
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['audit-logs'],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: 'always' as const,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('audit_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error) throw error;
       return data as AuditLog[];
     },
   });
 
-  const filteredLogs = logs?.filter((log) => {
-    if (actionFilter === 'all') return true;
-    if (actionFilter === 'users') {
-      return actionConfig[log.action_type]?.category === 'users';
-    }
-    if (actionFilter === 'settings') {
-      return actionConfig[log.action_type]?.category === 'settings';
-    }
-    return log.action_type === actionFilter;
-  });
+  const filteredLogs = useMemo(() => {
+    if (!logs) return [];
+    return logs.filter((log) => {
+      // Action type filter
+      if (filters.actionType !== 'all') {
+        if (filters.actionType === 'users') {
+          if (actionConfig[log.action_type]?.category !== 'users') return false;
+        } else if (filters.actionType === 'settings') {
+          if (actionConfig[log.action_type]?.category !== 'settings') return false;
+        } else if (log.action_type !== filters.actionType) {
+          return false;
+        }
+      }
+      // Text search (debounced)
+      if (filters.debouncedSearch) {
+        const q = filters.debouncedSearch.toLowerCase();
+        if (
+          !log.target_user_email?.toLowerCase().includes(q) &&
+          !log.performed_by_email?.toLowerCase().includes(q) &&
+          !log.action_type.toLowerCase().includes(q)
+        )
+          return false;
+      }
+      // Date range
+      if (filters.dateFrom && log.created_at < filters.dateFrom) return false;
+      if (filters.dateTo && log.created_at > filters.dateTo + 'T23:59:59') return false;
+      return true;
+    });
+  }, [logs, filters.actionType, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
 
   const getActionDisplay = (actionType: string) => {
-    const config = actionConfig[actionType] || { 
+    return actionConfig[actionType] || { 
       label: actionType, 
       icon: <Shield className="w-3 h-3" />, 
       variant: 'secondary' as const,
       category: 'users' as const
     };
-    return config;
   };
 
   const formatDetails = (actionType: string, details: Record<string, unknown>) => {
@@ -113,17 +114,13 @@ const AuditLogs = () => {
       const oldValue = details.old_value as { amount?: number; enabled?: boolean; url?: string } | null;
       const newValue = details.new_value as { amount?: number; enabled?: boolean; url?: string };
       
-      // Format price changes
       if (newValue?.amount !== undefined) {
         const oldAmount = oldValue?.amount ?? '—';
         return `${label}: ${oldAmount} → ${newValue.amount} FCFA`;
       }
-      
-      // Format enabled toggle
       if (newValue?.enabled !== undefined) {
         return `${label}: ${newValue.enabled ? 'Activé' : 'Désactivé'}`;
       }
-      
       return label;
     }
     return null;
@@ -144,37 +141,19 @@ const AuditLogs = () => {
         </Button>
       </div>
 
-      {/* Filter */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Filtrer par :</span>
-            </div>
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Toutes les actions" />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      {option.icon}
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {actionFilter !== 'all' && (
-              <Button variant="ghost" size="sm" onClick={() => setActionFilter('all')}>
-                Réinitialiser
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <AdminSearchHeader
+        placeholder="Rechercher par email ou action…"
+        showActionType
+        showDateRange
+        filters={filters}
+        onChange={(f) => {
+          Object.entries(f).forEach(([k, v]) => {
+            if (filters[k as keyof typeof filters] !== v) {
+              updateFilter(k as keyof typeof filters, v);
+            }
+          });
+        }}
+      />
 
       <Card>
         <CardHeader>
@@ -183,7 +162,7 @@ const AuditLogs = () => {
             Actions récentes
           </CardTitle>
           <CardDescription>
-            {filteredLogs?.length ?? 0} action(s) affichée(s) sur {logs?.length ?? 0}
+            {filteredLogs.length} action(s) affichée(s) sur {logs?.length ?? 0}
           </CardDescription>
         </CardHeader>
         <CardContent>

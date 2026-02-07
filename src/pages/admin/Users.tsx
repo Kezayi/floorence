@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { 
   UserPlus, 
   Shield, 
@@ -38,7 +39,6 @@ import {
   Phone,
   Calendar,
   RefreshCw,
-  Search,
   Users as UsersIcon,
   AlertTriangle,
   AlertCircle,
@@ -69,7 +69,7 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState<EnrichedUser | null>(null);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminRole, setNewAdminRole] = useState<'admin' | 'moderator'>('admin');
-  const [searchTerm, setSearchTerm] = useState('');
+  const { filters, updateFilter } = useAdminFilters();
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -199,15 +199,25 @@ const Users = () => {
     return new Date(user.banned_until) > new Date();
   };
 
-  const filteredUsers = usersData?.users?.filter((user) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      user.email?.toLowerCase().includes(term) ||
-      user.display_name?.toLowerCase().includes(term) ||
-      user.phone?.includes(term)
-    );
-  }) ?? [];
+  const filteredUsers = useMemo(() => {
+    if (!usersData?.users) return [];
+    return usersData.users.filter((user) => {
+      // Debounced text search
+      if (filters.debouncedSearch) {
+        const term = filters.debouncedSearch.toLowerCase();
+        if (
+          !user.email?.toLowerCase().includes(term) &&
+          !user.display_name?.toLowerCase().includes(term) &&
+          !user.phone?.includes(term)
+        )
+          return false;
+      }
+      // Date range filter
+      if (filters.dateFrom && user.created_at < filters.dateFrom) return false;
+      if (filters.dateTo && user.created_at > filters.dateTo + 'T23:59:59') return false;
+      return true;
+    });
+  }, [usersData?.users, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
 
   const getRoleBadges = (roles: string[]) => {
     if (roles.length === 0) return null;
@@ -260,20 +270,18 @@ const Users = () => {
         </div>
       </div>
 
-      {/* Search */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par email, nom ou téléphone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <AdminSearchHeader
+        placeholder="Rechercher par email, nom ou téléphone…"
+        showDateRange
+        filters={filters}
+        onChange={(f) => {
+          Object.entries(f).forEach(([k, v]) => {
+            if (filters[k as keyof typeof filters] !== v) {
+              updateFilter(k as keyof typeof filters, v);
+            }
+          });
+        }}
+      />
 
       {/* Users Table */}
       <Card>
