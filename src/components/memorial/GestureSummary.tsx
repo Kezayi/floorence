@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { Info, Flame, Flower2 } from "lucide-react";
+import { CrossIcon } from "./MemorialIcons";
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +25,9 @@ const GestureSummary = ({
   onCandleClick,
   onFlowerClick,
 }: GestureSummaryProps) => {
+  const hasCandleFervor = totals.candleCount > 5;
+  const hasFlowerFervor = totals.flowerCount > 5;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -46,6 +50,7 @@ const GestureSummary = ({
           onClick={onRIPClick}
           className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
         >
+          <CrossIcon size={20} className="text-foreground mb-0.5" />
           <span className="text-2xl font-serif">{totals.ripCount.toLocaleString("fr-FR")}</span>
           <span className="text-xs font-sans">RIP</span>
         </button>
@@ -54,7 +59,10 @@ const GestureSummary = ({
           disabled={!userHasPosted}
           className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          <span className="text-2xl font-serif">{totals.candleCount.toLocaleString("fr-FR")}</span>
+          <Flame size={20} className={`text-[hsl(var(--gesture-candle))] mb-0.5 ${hasCandleFervor ? 'animate-flicker' : ''}`} />
+          <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-[hsl(var(--gesture-candle))]' : ''}`}>
+            {totals.candleCount.toLocaleString("fr-FR")}
+          </span>
           <span className="text-xs font-sans">Cierges</span>
         </button>
         <button
@@ -62,7 +70,10 @@ const GestureSummary = ({
           disabled={!userHasPosted}
           className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          <span className="text-2xl font-serif">{totals.flowerCount.toLocaleString("fr-FR")}</span>
+          <Flower2 size={20} className={`text-[hsl(var(--gesture-flower))] mb-0.5 ${hasFlowerFervor ? 'animate-flicker' : ''}`} />
+          <span className={`text-2xl font-serif ${hasFlowerFervor ? 'text-[hsl(var(--gesture-flower))]' : ''}`}>
+            {totals.flowerCount.toLocaleString("fr-FR")}
+          </span>
           <span className="text-xs font-sans">Fleurs</span>
         </button>
       </div>

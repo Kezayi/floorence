@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { CrossIcon, FlameIcon, ChrysanthemumIcon } from "./MemorialIcons";
+import { ChevronLeft, ChevronRight, X, Flame, Flower2 } from "lucide-react";
+import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
+import { getRelationCategory } from "@/lib/relationCategoryUtils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export interface GuestbookPostData {
@@ -22,6 +23,18 @@ interface GuestbookPostProps {
   onAddCandle: (postId: string) => void;
   onAddFlower: (postId: string) => void;
 }
+
+/** Category badge color mapping */
+const getCategoryBadgeClass = (relation: string): string => {
+  const cat = getRelationCategory(relation);
+  switch (cat) {
+    case "Famille directe": return "bg-foreground/10 text-memorial-dark-foreground";
+    case "Famille élargie": return "bg-foreground/10 text-memorial-dark-foreground";
+    case "Alliés": return "bg-[hsl(var(--gesture-candle)/0.15)] text-[hsl(var(--gesture-candle))]";
+    case "Socio cœur (Amis)": return "bg-[hsl(var(--gesture-flower)/0.15)] text-[hsl(var(--gesture-flower))]";
+    case "Autres": return "bg-memorial-dark-muted/20 text-memorial-dark-muted";
+  }
+};
 
 const GuestbookPost = ({
   post,
@@ -72,6 +85,8 @@ const GuestbookPost = ({
   };
 
   const isDeletedUser = !post.authorId || post.authorId === "anonymous";
+  const hasCandleFervor = post.candleCount > 5;
+  const hasFlowerFervor = post.flowerCount > 5;
 
   return (
     <article className="py-6 border-b border-memorial-dark-muted/20 last:border-0 animate-fade-in">
@@ -84,7 +99,7 @@ const GuestbookPost = ({
               <span className="text-memorial-dark-muted ml-1">*</span>
             )}
           </h4>
-          <span className="inline-block mt-1 px-2 py-0.5 bg-memorial-dark-muted/20 text-memorial-dark-muted text-xs font-sans">
+          <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationCategory)}`}>
             {getRelationWithDeceased(post.relationCategory)}
           </span>
         </div>
@@ -118,28 +133,25 @@ const GuestbookPost = ({
         </div>
       )}
 
-      {/* Gesture buttons — Optimistic instant feedback */}
+      {/* Gesture buttons with icons and fervor effects */}
       <div className="flex items-center gap-3 mt-4">
         {/* RIP — 1 post = 1 RIP (static) */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-primary/20 text-primary">
-          <CrossIcon size={16} className="text-primary" />
+          <CrossIcon size={14} className="text-primary" />
           <span className="text-sm font-sans">1 RIP</span>
         </div>
 
-        {/* Candle — Single click to increment */}
+        {/* Candle — with icon and fervor glow */}
         {isOwner && post.candleCount < 10 ? (
           <button
             onClick={handleCandleClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-candle))] cursor-pointer"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-candle))] cursor-pointer ${hasCandleFervor ? 'fervor-glow-candle' : ''}`}
             style={{
               transform: candlePulse ? "scale(1.15)" : "scale(1)",
               transition: "transform 0.2s ease-out, background-color 0.2s",
             }}
           >
-            <FlameIcon
-              size={16}
-              className={candlePulse ? "animate-flicker" : ""}
-            />
+            <Flame size={14} className={candlePulse ? "animate-flicker" : ""} />
             <span className="text-sm font-sans">
               {post.candleCount} Cierges
             </span>
@@ -148,31 +160,28 @@ const GuestbookPost = ({
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm ${
               post.candleCount > 0
-                ? "bg-memorial-dark-muted/15 text-[hsl(var(--gesture-candle))]"
+                ? `bg-memorial-dark-muted/15 text-[hsl(var(--gesture-candle))] ${hasCandleFervor ? 'fervor-glow-candle' : ''}`
                 : "bg-memorial-dark-muted/10 text-memorial-dark-muted/60"
             }`}
           >
-            <FlameIcon size={16} />
+            <Flame size={14} />
             <span className="text-sm font-sans">
               {post.candleCount} Cierges
             </span>
           </div>
         )}
 
-        {/* Flower — Single click to increment */}
+        {/* Flower — with icon and fervor glow */}
         {isOwner && post.flowerCount < 10 ? (
           <button
             onClick={handleFlowerClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-flower))] cursor-pointer"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-flower))] cursor-pointer ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`}
             style={{
               transform: flowerPulse ? "scale(1.15)" : "scale(1)",
               transition: "transform 0.2s ease-out, background-color 0.2s",
             }}
           >
-            <ChrysanthemumIcon
-              size={16}
-              className={flowerPulse ? "animate-flicker" : ""}
-            />
+            <Flower2 size={14} className={flowerPulse ? "animate-flicker" : ""} />
             <span className="text-sm font-sans">
               {post.flowerCount} Fleurs
             </span>
@@ -181,11 +190,11 @@ const GuestbookPost = ({
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm ${
               post.flowerCount > 0
-                ? "bg-memorial-dark-muted/15 text-[hsl(var(--gesture-flower))]"
+                ? `bg-memorial-dark-muted/15 text-[hsl(var(--gesture-flower))] ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`
                 : "bg-memorial-dark-muted/10 text-memorial-dark-muted/60"
             }`}
           >
-            <ChrysanthemumIcon size={16} />
+            <Flower2 size={14} />
             <span className="text-sm font-sans">
               {post.flowerCount} Fleurs
             </span>

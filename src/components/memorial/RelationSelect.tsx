@@ -58,7 +58,7 @@ const relationCategories = {
     "Son Bel-oncle",
     "Sa Belle-tante",
   ],
-  "Socio-Cœur": [
+  "Socio cœur (Amis)": [
     "Son Frère de cœur",
     "Sa Sœur de cœur",
     "Son Ami(e)",
