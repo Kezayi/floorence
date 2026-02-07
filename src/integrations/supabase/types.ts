@@ -409,6 +409,29 @@ export type Database = {
         }
         Relationships: []
       }
+      v_dashboard_stats: {
+        Row: {
+          candles_last_week: number | null
+          cat_allies: number | null
+          cat_autres: number | null
+          cat_famille_directe: number | null
+          cat_famille_elargie: number | null
+          cat_socio_coeur: number | null
+          demo_memorials: number | null
+          posts_last_week: number | null
+          posts_prev_week: number | null
+          predicted_candles_next_week: number | null
+          real_memorials: number | null
+          total_candles: number | null
+          total_flowers: number | null
+          total_memorials: number | null
+          total_posts: number | null
+          total_revenue: number | null
+          total_users: number | null
+          visible_posts: number | null
+        }
+        Relationships: []
+      }
       v_social_inferences: {
         Row: {
           author_name: string | null
