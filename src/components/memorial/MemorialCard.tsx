@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { calculateAge } from "@/lib/dateUtils";
 import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
+import DemoBadge from "./DemoBadge";
 
 interface MemorialCardProps {
   id: string;
@@ -16,6 +17,7 @@ interface MemorialCardProps {
   type: "RECENT" | "PAST";
   variant?: "card" | "list";
   priority?: boolean;
+  isDemo?: boolean;
 }
 
 const MemorialCard = ({
@@ -31,6 +33,7 @@ const MemorialCard = ({
   type,
   variant = "card",
   priority = false,
+  isDemo = false,
 }: MemorialCardProps) => {
   const { prefetchMemorial } = useMemorialPrefetch();
   const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
@@ -66,6 +69,11 @@ const MemorialCard = ({
               <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-xs font-sans">
                 Récent
               </span>
+            </div>
+          )}
+          {isDemo && (
+            <div className="absolute top-2 right-2">
+              <DemoBadge size="sm" />
             </div>
           )}
         </div>
@@ -133,6 +141,11 @@ const MemorialCard = ({
             <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-sans">
               Récent
             </span>
+          </div>
+        )}
+        {isDemo && (
+          <div className="absolute top-3 right-3 z-10">
+            <DemoBadge size="sm" />
           </div>
         )}
 

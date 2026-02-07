@@ -8,7 +8,7 @@ import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
 import EditMemorialDialog from "@/components/memorial/EditMemorialDialog";
 import AddEventDialog from "@/components/memorial/AddEventDialog";
-
+import DemoGuide from "@/components/memorial/DemoGuide";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
@@ -514,6 +514,8 @@ const Memorial = () => {
             Retour à l'accueil
           </Link>
         </div>
+        {/* Demo Guide Banner */}
+        {memorialData.isDemo && <DemoGuide />}
 
         {/* Hero Section */}
         <MemorialHero 

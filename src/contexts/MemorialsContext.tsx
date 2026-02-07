@@ -27,6 +27,7 @@ interface ExtendedSearchableMemorial extends SearchableMemorial {
   funeralLocation?: string | null;
   defaultPhotoIndex?: number;
   legacySlug?: string | null;
+  isDemo?: boolean;
 }
 
 interface MemorialCardData {
@@ -40,6 +41,7 @@ interface MemorialCardData {
   candleCount: number;
   flowerCount: number;
   type: "RECENT" | "PAST";
+  isDemo?: boolean;
 }
 
 interface MemorialsContextType {
@@ -184,6 +186,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     funeralDate: m.funeral_date,
     funeralLocation: m.funeral_location,
     defaultPhotoIndex: m.default_photo_index || 0,
+    isDemo: m.is_demo || false,
   }));
 
   // Fetch stats for all memorials
@@ -228,6 +231,7 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
         candleCount: stats.candles,
         flowerCount: stats.flowers,
         type: m.type,
+        isDemo: m.isDemo || false,
       };
     }),
   [memorials, memorialStats]);
