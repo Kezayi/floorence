@@ -18,6 +18,12 @@ const FORBIDDEN_NAMES = [
   'anonyme',
   'system',
   'système',
+  'modérateur',
+  'moderateur',
+  'moderator',
+  'floorence',
+  'support',
+  'helpdesk',
 ]
 
 // Input validation schema

@@ -67,11 +67,57 @@ type SearchResultItem =
   | { type: "multi_memorial"; data: MultiMemorialProfile };
 
 // ============================================================================
-// NORMALISATION
+// NORMALISATION ET DÉDUPLICATION
 // ============================================================================
 
 const normalizeString = (str: string): string => {
   return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
+// Normalisation agressive pour la déduplication (supprime particules, espaces multiples)
+const normalizeForDedup = (str: string): string => {
+  return normalizeString(str)
+    .replace(/\b(de|du|des|le|la|les|el|al|ben|ibn|van|von)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+// Vérifie si deux noms désignent probablement la même personne
+const isSamePerson = (name1: string, name2: string): boolean => {
+  const n1 = normalizeForDedup(name1);
+  const n2 = normalizeForDedup(name2);
+  
+  // Match exact après normalisation
+  if (n1 === n2) return true;
+  
+  // Un nom est contenu dans l'autre (ex: "Marie" vs "Marie Koné")
+  if (n1.includes(n2) || n2.includes(n1)) {
+    // Seulement si le nom court fait au moins 4 caractères
+    const shorter = n1.length < n2.length ? n1 : n2;
+    if (shorter.length >= 4) return true;
+  }
+  
+  // Distance de Levenshtein faible
+  if (n1.length > 4 && n2.length > 4) {
+    const distance = levenshteinDistance(n1, n2);
+    const maxLen = Math.max(n1.length, n2.length);
+    if (distance <= Math.floor(maxLen * 0.2)) return true; // 20% de tolérance
+  }
+  
+  return false;
+};
+
+// Trouve la clé de dédup existante pour un nom, ou retourne null
+const findDedupKey = (name: string, existingKeys: Map<string, string[]>): string | null => {
+  const normalized = normalizeForDedup(name);
+  
+  for (const [key, variants] of existingKeys) {
+    if (key === normalized) return key;
+    for (const variant of variants) {
+      if (isSamePerson(normalized, variant)) return key;
+    }
+  }
+  return null;
 };
 
 // Distance de Levenshtein pour le fuzzy match
@@ -150,7 +196,7 @@ const searchWithFamilyGrouping = (
   const normalizedQuery = normalizeString(query);
   const normalizedUserName = currentUserName ? normalizeString(currentUserName) : null;
   
-  // Map pour détecter les personnes multi-mémoriaux
+  // Map pour détecter les personnes multi-mémoriaux (avec dédup fuzzy)
   const personMemorials = new Map<string, Array<{
     memorialId: string;
     memorialSlug: string;
@@ -161,6 +207,9 @@ const searchWithFamilyGrouping = (
     photo?: string;
     userConnection?: UserRelationResult;
   }>>();
+  
+  // Map de variantes de noms pour la dédup fuzzy
+  const dedupVariants = new Map<string, string[]>(); // dedupKey -> [variants]
 
   // Map pour les groupes familiaux par mémorial
   const familyGroups = new Map<string, FamilyGroup>();
@@ -201,8 +250,14 @@ const searchWithFamilyGrouping = (
         guestbookCount: 0,
       });
 
-      // Ajouter au tracking multi-mémorial
-      const existing = personMemorials.get(authorNameNormalized) || [];
+      // Ajouter au tracking multi-mémorial avec dédup fuzzy
+      const dedupKey = findDedupKey(authorNameNormalized, dedupVariants) || authorNameNormalized;
+      if (!dedupVariants.has(dedupKey)) {
+        dedupVariants.set(dedupKey, [authorNameNormalized]);
+      } else if (!dedupVariants.get(dedupKey)!.includes(authorNameNormalized)) {
+        dedupVariants.get(dedupKey)!.push(authorNameNormalized);
+      }
+      const existing = personMemorials.get(dedupKey) || [];
       existing.push({
         memorialId: memorial.id,
         memorialSlug: memorial.slug,
@@ -212,7 +267,7 @@ const searchWithFamilyGrouping = (
         guestbookCount: 0,
         photo: memorial.photos[0],
       });
-      personMemorials.set(authorNameNormalized, existing);
+      personMemorials.set(dedupKey, existing);
     }
 
     // 3. Chercher dans les contributeurs du livre d'or
@@ -235,8 +290,8 @@ const searchWithFamilyGrouping = (
 
     // Ajouter les contributeurs
     for (const [normName, data] of guestbookByPerson) {
-      // Ne pas dupliquer si déjà créateur
-      const isAlsoCreator = matchesInThisMemorial.some(m => m.normalizedName === normName && m.isCreator);
+      // Ne pas dupliquer si déjà créateur (dédup fuzzy)
+      const isAlsoCreator = matchesInThisMemorial.some(m => isSamePerson(m.normalizedName, normName) && m.isCreator);
       if (!isAlsoCreator) {
         matchesInThisMemorial.push({
           normalizedName: normName,
@@ -246,18 +301,24 @@ const searchWithFamilyGrouping = (
           guestbookCount: data.count,
         });
       } else {
-        // Mettre à jour le count si aussi créateur
-        const creator = matchesInThisMemorial.find(m => m.normalizedName === normName && m.isCreator);
+        // Mettre à jour le count si aussi créateur (dédup fuzzy)
+        const creator = matchesInThisMemorial.find(m => isSamePerson(m.normalizedName, normName) && m.isCreator);
         if (creator) creator.guestbookCount = data.count;
       }
 
-      // Ajouter au tracking multi-mémorial
-      const existing = personMemorials.get(normName) || [];
-      const alreadyTracked = existing.find(e => e.memorialId === memorial.id);
+      // Ajouter au tracking multi-mémorial avec dédup fuzzy
+      const dedupKey = findDedupKey(normName, dedupVariants) || normName;
+      if (!dedupVariants.has(dedupKey)) {
+        dedupVariants.set(dedupKey, [normName]);
+      } else if (!dedupVariants.get(dedupKey)!.includes(normName)) {
+        dedupVariants.get(dedupKey)!.push(normName);
+      }
+      const existingDedup = personMemorials.get(dedupKey) || [];
+      const alreadyTracked = existingDedup.find(e => e.memorialId === memorial.id);
       if (alreadyTracked) {
         alreadyTracked.guestbookCount = data.count;
       } else {
-        existing.push({
+        existingDedup.push({
           memorialId: memorial.id,
           memorialSlug: memorial.slug,
           memorialName: memorial.name,
@@ -266,7 +327,7 @@ const searchWithFamilyGrouping = (
           guestbookCount: data.count,
           photo: memorial.photos[0],
         });
-        personMemorials.set(normName, existing);
+        personMemorials.set(dedupKey, existingDedup);
       }
     }
 
@@ -357,18 +418,28 @@ const searchWithFamilyGrouping = (
   // Construire les résultats
   const results: SearchResultItem[] = [];
 
-  // Identifier les personnes multi-mémoriaux (apparaissent dans 2+ mémoriaux)
+  // Identifier les personnes multi-mémoriaux (apparaissent dans 2+ mémoriaux distincts)
   const multiMemorialPersons = new Set<string>();
-  for (const [normName, activities] of personMemorials) {
-    if (activities.length >= 2) {
-      multiMemorialPersons.add(normName);
+  for (const [dedupKey, activities] of personMemorials) {
+    // Compter les mémoriaux distincts
+    const uniqueMemorials = new Set(activities.map(a => a.memorialId));
+    if (uniqueMemorials.size >= 2) {
+      multiMemorialPersons.add(dedupKey);
+      // Ajouter aussi toutes les variantes pour le filtrage dans les groupes familiaux
+      const variants = dedupVariants.get(dedupKey) || [dedupKey];
+      variants.forEach(v => multiMemorialPersons.add(v));
     }
   }
 
   // Ajouter les groupes familiaux (en excluant les membres multi-mémoriaux qui auront leur propre carte)
   for (const group of familyGroups.values()) {
-    // Filtrer les membres qui seront affichés séparément
-    const membersToShow = group.members.filter(m => !multiMemorialPersons.has(m.normalizedName));
+    // Filtrer les membres qui seront affichés séparément (dédup fuzzy)
+    const membersToShow = group.members.filter(m => {
+      // Vérifier si ce membre a une clé de dédup multi-mémorial
+      const memberDedupKey = findDedupKey(m.normalizedName, dedupVariants);
+      return !multiMemorialPersons.has(m.normalizedName) && 
+             !(memberDedupKey && multiMemorialPersons.has(memberDedupKey));
+    });
     
     if (membersToShow.length > 0 || group.members.length === 0) {
       results.push({
@@ -425,21 +496,29 @@ const searchWithFamilyGrouping = (
         },
       });
 
-      // Mettre à jour le displayName correct
+      // Mettre à jour le displayName correct (dédup fuzzy)
       const lastResult = results[results.length - 1];
       if (lastResult.type === "multi_memorial") {
-        // Trouver le vrai nom d'affichage
+        const variants = dedupVariants.get(normName) || [normName];
+        let found = false;
         for (const memorial of memorials) {
-          if (normalizeString(memorial.author.name) === normName) {
+          const authorNorm = normalizeString(memorial.author.name);
+          if (variants.some(v => isSamePerson(authorNorm, v))) {
             lastResult.data.displayName = memorial.author.name;
+            found = true;
             break;
           }
-          for (const msg of memorial.guestbookMessages) {
-            if (normalizeString(msg.authorName) === normName) {
-              lastResult.data.displayName = msg.authorName;
-              break;
+          if (!found) {
+            for (const msg of memorial.guestbookMessages) {
+              const msgNorm = normalizeString(msg.authorName);
+              if (variants.some(v => isSamePerson(msgNorm, v))) {
+                lastResult.data.displayName = msg.authorName;
+                found = true;
+                break;
+              }
             }
           }
+          if (found) break;
         }
       }
     }
