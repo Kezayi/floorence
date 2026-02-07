@@ -1,70 +1,52 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, Search, Users, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { Brain, Search, Users, GitBranch, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/AdminSkeletons";
-import RelationCategoryBadge from "@/components/admin/RelationCategoryBadge";
+import { useSocialInferences, type SocialInference } from "@/hooks/useSocialInferences";
 
-const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 const ITEMS_PER_PAGE = 20;
 
-interface SocialUser {
-  userId: string;
-  authorName: string;
-  rolesSummary: string;
-  totalMemorialsLinked: number;
-  detailedInferences: Array<{
-    memorial_slug: string;
-    role: string;
-  }>;
-}
+/** Category badge style mapping */
+const getCategoryStyle = (cat: string): string => {
+  const upper = cat.toUpperCase();
+  if (upper.includes("FAMILLE DIRECTE")) return "bg-foreground/10 text-foreground border-foreground/20";
+  if (upper.includes("FAMILLE ELARGIE")) return "bg-muted text-muted-foreground border-muted-foreground/20";
+  if (upper.includes("ALLIES")) return "bg-[hsl(var(--gesture-candle)/0.15)] text-[hsl(var(--gesture-candle))] border-[hsl(var(--gesture-candle)/0.3)]";
+  if (upper.includes("SOCIO")) return "bg-[hsl(var(--gesture-flower)/0.15)] text-[hsl(var(--gesture-flower))] border-[hsl(var(--gesture-flower)/0.3)]";
+  return "bg-secondary text-secondary-foreground border-border";
+};
 
 const SocialIntelligence = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
-  const { data: users, isLoading } = useQuery<SocialUser[]>({
-    queryKey: ["admin-social-intelligence"],
-    ...CACHE_CONFIG,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_social_inferences")
-        .select("*")
-        .order("total_memorials_linked", { ascending: false });
+  const { data: users, isLoading } = useSocialInferences();
 
-      if (error) {
-        console.error("Error fetching social intelligence:", error);
-        return [];
-      }
-
-      return (data || []).map((row) => ({
-        userId: row.user_id || "",
-        authorName: row.author_name || "",
-        rolesSummary: row.roles_summary || "",
-        totalMemorialsLinked: Number(row.total_memorials_linked) || 0,
-        detailedInferences: Array.isArray(row.detailed_inferences)
-          ? (row.detailed_inferences as Array<{ memorial_slug: string; role: string }>)
-          : [],
-      }));
-    },
-  });
+  // Sort by total memorials descending
+  const sorted = useMemo(() => {
+    if (!users) return [];
+    return [...users].sort((a, b) => b.totalMemorials - a.totalMemorials);
+  }, [users]);
 
   // Filter and paginate
   const filtered = useMemo(() => {
-    if (!users) return [];
-    if (!search) return users;
+    if (!search) return sorted;
     const q = search.toLowerCase();
-    return users.filter(
+    return sorted.filter(
       (u) =>
         u.authorName.toLowerCase().includes(q) ||
-        u.rolesSummary.toLowerCase().includes(q)
+        u.detailLiens.some(
+          (d) =>
+            d.lien.toLowerCase().includes(q) ||
+            d.defunt.toLowerCase().includes(q) ||
+            d.categorie.toLowerCase().includes(q)
+        )
     );
-  }, [users, search]);
+  }, [sorted, search]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(
@@ -74,8 +56,13 @@ const SocialIntelligence = () => {
 
   // Stats
   const multiMemorialUsers = useMemo(
-    () => (users || []).filter((u) => u.totalMemorialsLinked > 1).length,
-    [users]
+    () => (sorted).filter((u) => u.totalMemorials > 1).length,
+    [sorted]
+  );
+
+  const uniqueCategories = useMemo(
+    () => new Set(sorted.flatMap((u) => u.detailLiens.map((d) => d.categorie))).size,
+    [sorted]
   );
 
   if (isLoading) return <TableSkeleton />;
@@ -100,7 +87,7 @@ const SocialIntelligence = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users?.length || 0}</div>
+            <div className="text-2xl font-bold">{sorted.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -121,13 +108,11 @@ const SocialIntelligence = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Brain className="w-4 h-4" />
-              Rôles détectés
+              Catégories détectées
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set((users || []).flatMap((u) => u.detailedInferences.map((d) => d.role))).size}
-            </div>
+            <div className="text-2xl font-bold">{uniqueCategories}</div>
             <p className="text-xs text-muted-foreground">Catégories actives</p>
           </CardContent>
         </Card>
@@ -137,7 +122,7 @@ const SocialIntelligence = () => {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Rechercher un contributeur…"
+          placeholder="Rechercher un contributeur, un lien, un défunt…"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -150,83 +135,14 @@ const SocialIntelligence = () => {
       {/* User List */}
       <div className="space-y-3">
         {paginated.map((user) => (
-          <Card
+          <UserCard
             key={user.userId}
-            className={`transition-all ${
-              expandedUser === user.userId ? "ring-1 ring-primary/30" : ""
-            }`}
-          >
-            <div
-              className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-              onClick={() =>
-                setExpandedUser(expandedUser === user.userId ? null : user.userId)
-              }
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="font-serif font-medium text-primary">
-                      {user.authorName.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-serif font-medium text-foreground truncate">
-                      {user.authorName}
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-sans truncate">
-                      {user.rolesSummary}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <Badge variant="outline" className="font-sans">
-                    {user.totalMemorialsLinked} mémorial
-                    {user.totalMemorialsLinked > 1 ? "x" : ""}
-                  </Badge>
-                  {user.totalMemorialsLinked > 1 && (
-                    <Badge className="bg-primary/10 text-primary border-primary/20 font-sans text-[10px]">
-                      Multi
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Expanded: detailed inferences */}
-              {expandedUser === user.userId && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
-                  <h4 className="text-xs font-sans font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                    Parcours complet
-                  </h4>
-                  {user.detailedInferences.map((inf, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between gap-3 p-2 bg-muted/30 rounded-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {inf.memorial_slug}
-                        </span>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] ${
-                          inf.role === "Famille directe"
-                            ? "bg-foreground/10 text-foreground border-foreground/20"
-                            : inf.role === "Alliés"
-                            ? "bg-[hsl(var(--gesture-candle)/0.15)] text-[hsl(var(--gesture-candle))] border-[hsl(var(--gesture-candle)/0.3)]"
-                            : inf.role.includes("Socio")
-                            ? "bg-[hsl(var(--gesture-flower)/0.15)] text-[hsl(var(--gesture-flower))] border-[hsl(var(--gesture-flower)/0.3)]"
-                            : "bg-muted text-muted-foreground border-border"
-                        }`}
-                      >
-                        {inf.role}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
+            user={user}
+            expanded={expandedUser === user.userId}
+            onToggle={() =>
+              setExpandedUser(expandedUser === user.userId ? null : user.userId)
+            }
+          />
         ))}
       </div>
 
@@ -264,6 +180,111 @@ const SocialIntelligence = () => {
         </div>
       )}
     </div>
+  );
+};
+
+/** Individual user card — extracted for clarity */
+const UserCard = ({
+  user,
+  expanded,
+  onToggle,
+}: {
+  user: SocialInference;
+  expanded: boolean;
+  onToggle: () => void;
+}) => {
+  // Derive a summary from detail_liens
+  const rolesSummary = useMemo(() => {
+    const categories = [...new Set(user.detailLiens.map((d) => d.categorie))];
+    return categories.join(", ") || "—";
+  }, [user.detailLiens]);
+
+  return (
+    <Card
+      className={`transition-all ${expanded ? "ring-1 ring-primary/30" : ""}`}
+    >
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="font-serif font-medium text-primary">
+                {user.authorName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-serif font-medium text-foreground truncate">
+                {user.authorName}
+              </h3>
+              <p className="text-xs text-muted-foreground font-sans truncate">
+                {rolesSummary}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Badge variant="outline" className="font-sans">
+              {user.totalMemorials} mémorial
+              {user.totalMemorials > 1 ? "x" : ""}
+            </Badge>
+            {user.totalMemorials > 1 && (
+              <Badge className="bg-primary/10 text-primary border-primary/20 font-sans text-[10px]">
+                Multi
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded: detailed inferences */}
+        {expanded && (
+          <div className="mt-4 pt-4 border-t border-border space-y-2">
+            <h4 className="text-xs font-sans font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              Parcours complet
+            </h4>
+            {user.detailLiens.map((dl, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-3 p-2 bg-muted/30 rounded-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs text-foreground font-sans font-medium">
+                    {dl.lien}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-sans truncate">
+                    de {dl.defunt}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">
+                    ({dl.slug})
+                  </span>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] shrink-0 ${getCategoryStyle(dl.categorie)}`}
+                >
+                  {dl.categorie}
+                </Badge>
+              </div>
+            ))}
+
+            {/* Suggested connections */}
+            {user.connexionsSuggerees.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Link2 className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-sans font-medium text-primary">
+                    Connexions suggérées
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground font-sans">
+                  {user.connexionsSuggerees.join(", ")}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 };
 

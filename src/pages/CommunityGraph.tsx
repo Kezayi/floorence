@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Link } from "react-router-dom";
-import { ChevronLeft, GitBranch, Users, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, GitBranch, Users, ZoomIn, ZoomOut, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -34,11 +35,27 @@ const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 /** Category color mapping */
 const getCategoryColor = (category: string): string => {
   const lower = category.toLowerCase();
-  if (lower.includes("famille directe") || lower.includes("famille élargie")) return "#1F2937";
-  if (lower.includes("allié")) return "hsl(45, 90%, 50%)";
-  if (lower.includes("socio") || lower.includes("ami")) return "hsl(340, 60%, 65%)";
+  if (lower.includes("famille directe") || lower.includes("famille élargie") || lower.includes("famille")) return "#1F2937";
+  if (lower.includes("allié") || lower.includes("allies")) return "hsl(45, 90%, 50%)";
+  if (lower.includes("socio") || lower.includes("ami") || lower.includes("coeur")) return "hsl(340, 60%, 65%)";
   return "#9CA3AF";
 };
+
+/** Classify a relation_category string into a filter group */
+const classifyCategory = (category: string): string => {
+  const lower = category.toLowerCase();
+  if (lower.includes("famille")) return "Famille directe";
+  if (lower.includes("allié") || lower.includes("allies")) return "Alliés";
+  if (lower.includes("socio") || lower.includes("ami") || lower.includes("coeur")) return "Socio cœur";
+  return "Autres";
+};
+
+const ALL_CATEGORIES = [
+  "Famille directe",
+  "Alliés",
+  "Socio cœur",
+  "Autres",
+];
 
 const CommunityGraph = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,6 +64,21 @@ const CommunityGraph = () => {
   const edgesRef = useRef<GraphEdge[]>([]);
   const [zoom, setZoom] = useState(1);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ALL_CATEGORIES));
+
+  const toggleFilter = (cat: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        // Don't allow deselecting all
+        if (next.size <= 1) return prev;
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
+      return next;
+    });
+  };
 
   useSEO({
     title: "Graphe de la Communauté — Floorence",
@@ -77,9 +109,17 @@ const CommunityGraph = () => {
     },
   });
 
+  // Filter posts based on active category filters
+  const filteredPosts = useMemo(() => {
+    if (!allPosts) return [];
+    return allPosts.filter((post) =>
+      activeFilters.has(classifyCategory(post.relation_category))
+    );
+  }, [allPosts, activeFilters]);
+
   // Build graph data
   const graphData = useMemo(() => {
-    if (!memorials || !allPosts) return { nodes: [], edges: [] };
+    if (!memorials || filteredPosts.length === 0) return { nodes: [], edges: [] };
 
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
@@ -88,9 +128,13 @@ const CommunityGraph = () => {
     const centerX = 400;
     const centerY = 300;
 
-    // Add deceased nodes (memorials)
-    memorials.forEach((m, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(memorials.length, 1);
+    // Collect memorial IDs that have posts
+    const activeMemorialIds = new Set(filteredPosts.map((p) => p.memorial_id));
+
+    // Add deceased nodes (only memorials with visible posts)
+    const activeMemorials = memorials.filter((m) => activeMemorialIds.has(m.id));
+    activeMemorials.forEach((m, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(activeMemorials.length, 1);
       const radius = 120;
       const node: GraphNode = {
         id: `memorial-${m.id}`,
@@ -108,7 +152,7 @@ const CommunityGraph = () => {
 
     // Group posts by user
     const userPosts = new Map<string, Array<{ memorialId: string; category: string; name: string }>>();
-    allPosts.forEach((post) => {
+    filteredPosts.forEach((post) => {
       const uid = post.user_id || `anon-${post.author_name}`;
       if (!userPosts.has(uid)) userPosts.set(uid, []);
       userPosts.get(uid)!.push({
@@ -156,7 +200,7 @@ const CommunityGraph = () => {
 
     // Contributor-Contributor edges (same category on same memorial)
     const memorialGroups = new Map<string, Map<string, string[]>>();
-    allPosts.forEach((post) => {
+    filteredPosts.forEach((post) => {
       const mid = post.memorial_id;
       const cat = post.relation_category;
       const uid = post.user_id || `anon-${post.author_name}`;
@@ -188,7 +232,7 @@ const CommunityGraph = () => {
     });
 
     return { nodes, edges };
-  }, [memorials, allPosts]);
+  }, [memorials, filteredPosts]);
 
   // Force simulation
   const simulate = useCallback(() => {
@@ -477,6 +521,34 @@ const CommunityGraph = () => {
                 <span className="text-xs italic">
                   Rendu : {useCanvas ? "Canvas (optimisé)" : "Canvas"}
                 </span>
+              </div>
+
+              {/* Category Filters */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-sans mr-1">Filtrer :</span>
+                {ALL_CATEGORIES.map((cat) => {
+                  const isActive = activeFilters.has(cat);
+                  const colorDot = getCategoryColor(cat);
+                  return (
+                    <Badge
+                      key={cat}
+                      variant={isActive ? "default" : "outline"}
+                      className={`cursor-pointer text-xs font-sans transition-all select-none ${
+                        isActive
+                          ? "bg-foreground text-background hover:bg-foreground/80"
+                          : "opacity-50 hover:opacity-80"
+                      }`}
+                      onClick={() => toggleFilter(cat)}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full mr-1.5 inline-block"
+                        style={{ backgroundColor: colorDot }}
+                      />
+                      {cat}
+                    </Badge>
+                  );
+                })}
               </div>
 
               {/* Zoom controls */}

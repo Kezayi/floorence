@@ -64,6 +64,8 @@ export type Database = {
           payment_reference: string | null
           photos: string[] | null
           relation_category: string
+          relation_group: string | null
+          relation_link: string | null
           updated_at: string
           user_id: string | null
         }
@@ -83,6 +85,8 @@ export type Database = {
           payment_reference?: string | null
           photos?: string[] | null
           relation_category: string
+          relation_group?: string | null
+          relation_link?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -102,6 +106,8 @@ export type Database = {
           payment_reference?: string | null
           photos?: string[] | null
           relation_category?: string
+          relation_group?: string | null
+          relation_link?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -406,9 +412,9 @@ export type Database = {
       v_social_inferences: {
         Row: {
           author_name: string | null
-          detailed_inferences: Json | null
-          roles_summary: string | null
-          total_memorials_linked: number | null
+          connexions_suggerees: Json | null
+          detail_liens: Json | null
+          total_memorials: number | null
           user_id: string | null
         }
         Relationships: []
