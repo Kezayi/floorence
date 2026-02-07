@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
+import { Flame, Flower2 } from "lucide-react";
+import { CrossIcon } from "./MemorialIcons";
 import { calculateAge } from "@/lib/dateUtils";
 import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
 import DemoBadge from "./DemoBadge";
@@ -91,15 +93,18 @@ const MemorialCard = ({
             {birthDate} — {deathDate}
           </p>
           
-          {/* Stats - Gestures with colored text labels */}
+          {/* Stats - Gestures with icons and colored labels */}
           <div className="flex items-center gap-4 md:gap-6 text-sm">
-            <span className="text-foreground font-medium">
+            <span className="flex items-center gap-1 text-foreground font-medium">
+              <CrossIcon size={14} />
               {ripCount} <span className="font-normal">RIP</span>
             </span>
-            <span className="text-[hsl(var(--gesture-candle))] font-medium">
+            <span className={`flex items-center gap-1 text-[hsl(var(--gesture-candle))] font-medium ${candleCount > 5 ? 'fervor-glow-candle rounded-sm px-1' : ''}`}>
+              <Flame size={14} />
               {candleCount} <span className="font-normal">Cierges</span>
             </span>
-            <span className="text-[hsl(var(--gesture-flower))] font-medium">
+            <span className={`flex items-center gap-1 text-[hsl(var(--gesture-flower))] font-medium ${flowerCount > 5 ? 'fervor-glow-flower rounded-sm px-1' : ''}`}>
+              <Flower2 size={14} />
               {flowerCount} <span className="font-normal">Fleurs</span>
             </span>
           </div>
@@ -152,13 +157,16 @@ const MemorialCard = ({
         {/* Overlay Info on Hover */}
         <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-white font-medium">
+            <span className="flex items-center gap-1 text-white font-medium">
+              <CrossIcon size={14} />
               {ripCount} <span className="font-normal opacity-80">RIP</span>
             </span>
-            <span className="text-[hsl(var(--gesture-candle))] font-medium">
+            <span className="flex items-center gap-1 text-[hsl(var(--gesture-candle))] font-medium">
+              <Flame size={14} />
               {candleCount} <span className="font-normal opacity-80">Cierges</span>
             </span>
-            <span className="text-[hsl(var(--gesture-flower))] font-medium">
+            <span className="flex items-center gap-1 text-[hsl(var(--gesture-flower))] font-medium">
+              <Flower2 size={14} />
               {flowerCount} <span className="font-normal opacity-80">Fleurs</span>
             </span>
           </div>
