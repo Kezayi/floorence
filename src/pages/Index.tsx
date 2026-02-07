@@ -243,6 +243,7 @@ const Index = () => {
                       type={memorial.type}
                       variant={viewMode === "list" ? "list" : "card"}
                       priority={index < 4}
+                      isDemo={memorial.isDemo}
                     />
                   ))}
                 </div>
