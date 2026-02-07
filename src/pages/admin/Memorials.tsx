@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Search, GitMerge, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -115,10 +115,11 @@ const Memorials = () => {
     pagination.resetPage();
   }, [searchQuery]);
 
-  const { data: memorials, isLoading } = useQuery({
+  const { data: memorials, isLoading, error: memorialsError, refetch: refetchMemorials } = useQuery({
     queryKey: ['admin-memorials', pagination.page, pagination.pageSize, searchQuery],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: 'always',
     queryFn: async () => {
       let query = supabase
         .from('memorials')
@@ -130,7 +131,10 @@ const Memorials = () => {
       }
 
       const { data, error } = await query.range(pagination.from, pagination.to);
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase memorials query error:', error);
+        throw new Error(`Erreur Supabase : ${error.message} (code: ${error.code})`);
+      }
       return data as Memorial[];
     },
   });
@@ -142,10 +146,13 @@ const Memorials = () => {
       if (!memorials || memorials.length === 0) return [];
       const creatorIds = [...new Set(memorials.map(m => m.created_by))];
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, display_name')
         .in('user_id', creatorIds);
-      if (error) throw error;
+      if (error) {
+        console.error('Profiles query error:', error);
+        return [];
+      }
       return data as Profile[];
     },
     enabled: !!memorials && memorials.length > 0,
@@ -387,6 +394,34 @@ const Memorials = () => {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (memorialsError) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold text-foreground mb-8">Gestion des Mémoriaux</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Erreur de chargement
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-2">
+              Impossible de charger les mémoriaux.
+            </p>
+            <code className="text-xs bg-muted px-3 py-1.5 rounded text-destructive mb-6 max-w-lg break-all">
+              {memorialsError.message}
+            </code>
+            <Button variant="outline" onClick={() => refetchMemorials()} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
