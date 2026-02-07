@@ -8,19 +8,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-// Noms interdits pour les auteurs
-const FORBIDDEN_NAMES = [
-  'super admin',
-  'admin',
-  'administrateur',
-  'test',
-  'utilisateur',
-  'anonymous',
-  'anonyme',
-  'system',
-  'système',
-];
+import { checkForbiddenName } from "@/lib/forbiddenNames";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -142,8 +130,8 @@ const CreateMemorial = () => {
       .single();
 
     if (profile?.display_name) {
-      const normalizedName = profile.display_name.toLowerCase().trim();
-      if (FORBIDDEN_NAMES.some(fn => normalizedName.includes(fn))) {
+      const forbidden = checkForbiddenName(profile.display_name);
+      if (forbidden) {
         toast.error("Veuillez mettre à jour votre profil avec votre vrai nom avant de créer un espace mémoriel.");
         navigate("/compte");
         return;

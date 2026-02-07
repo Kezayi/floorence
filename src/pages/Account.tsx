@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
+import { validateDisplayName } from "@/lib/forbiddenNames";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -164,8 +165,9 @@ const Account = () => {
   }, [user]);
 
   const handleCompleteProfile = async () => {
-    if (!displayName.trim()) {
-      toast.error("Le nom est obligatoire");
+    const nameError = validateDisplayName(displayName);
+    if (nameError) {
+      toast.error(nameError);
       return;
     }
 
@@ -185,8 +187,9 @@ const Account = () => {
   };
 
   const handleUpdateProfile = async () => {
-    if (!displayName.trim()) {
-      toast.error("Le nom est obligatoire");
+    const nameError = validateDisplayName(displayName);
+    if (nameError) {
+      toast.error(nameError);
       return;
     }
 

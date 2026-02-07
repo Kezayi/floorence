@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { getCleanRelationName, inferAllRelationships } from "@/lib/relationshipInference";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,44 +26,30 @@ const getCategoryType = (category: string): string => {
   const lowerCategory = category.toLowerCase();
   
   if (
-    lowerCategory.includes("fils") ||
-    lowerCategory.includes("fille") ||
-    lowerCategory.includes("père") ||
-    lowerCategory.includes("mère") ||
-    lowerCategory.includes("frère") ||
-    lowerCategory.includes("sœur") ||
-    lowerCategory.includes("soeur") ||
-    lowerCategory.includes("grand") ||
-    lowerCategory.includes("petit") ||
-    lowerCategory.includes("oncle") ||
-    lowerCategory.includes("tante") ||
-    lowerCategory.includes("cousin") ||
-    lowerCategory.includes("neveu") ||
-    lowerCategory.includes("nièce")
+    lowerCategory.includes("fils") || lowerCategory.includes("fille") ||
+    lowerCategory.includes("père") || lowerCategory.includes("mère") ||
+    lowerCategory.includes("frère") || lowerCategory.includes("sœur") ||
+    lowerCategory.includes("soeur") || lowerCategory.includes("grand") ||
+    lowerCategory.includes("petit") || lowerCategory.includes("oncle") ||
+    lowerCategory.includes("tante") || lowerCategory.includes("cousin") ||
+    lowerCategory.includes("neveu") || lowerCategory.includes("nièce")
   ) {
     return "famille";
   }
   
   if (
-    lowerCategory.includes("époux") ||
-    lowerCategory.includes("épouse") ||
-    lowerCategory.includes("mari") ||
-    lowerCategory.includes("femme") ||
-    lowerCategory.includes("beau") ||
-    lowerCategory.includes("belle") ||
-    lowerCategory.includes("gendre") ||
-    lowerCategory.includes("bru")
+    lowerCategory.includes("époux") || lowerCategory.includes("épouse") ||
+    lowerCategory.includes("mari") || lowerCategory.includes("femme") ||
+    lowerCategory.includes("beau") || lowerCategory.includes("belle") ||
+    lowerCategory.includes("gendre") || lowerCategory.includes("bru")
   ) {
     return "allies";
   }
   
   if (
-    lowerCategory.includes("ami") ||
-    lowerCategory.includes("connaissance") ||
-    lowerCategory.includes("collègue") ||
-    lowerCategory.includes("voisin") ||
-    lowerCategory.includes("camarade") ||
-    lowerCategory.includes("élève")
+    lowerCategory.includes("ami") || lowerCategory.includes("connaissance") ||
+    lowerCategory.includes("collègue") || lowerCategory.includes("voisin") ||
+    lowerCategory.includes("camarade") || lowerCategory.includes("élève")
   ) {
     return "amis";
   }
@@ -71,44 +57,36 @@ const getCategoryType = (category: string): string => {
   return "autre";
 };
 
-// Category colors for central dots and legend only
-const categoryColors: Record<string, string> = {
-  famille: "#3B82F6",   // Blue
-  allies: "#22C55E",    // Green
-  amis: "#EAB308",      // Yellow
-  autre: "#EF4444",     // Red
+// Palette Floorence : Noir (Direct), Doré (Alliance), Rose (Féminin), Gris (Autre)
+const categoryStyles: Record<string, { fill: string; label: string }> = {
+  famille: { fill: "hsl(0, 0%, 15%)", label: "Famille" },
+  allies: { fill: "hsl(45, 90%, 50%)", label: "Alliés" },
+  amis: { fill: "hsl(340, 60%, 65%)", label: "Amis" },
+  autre: { fill: "hsl(0, 0%, 55%)", label: "Autres" },
 };
 
 // Couleurs de la charte pour les liens inférés
 const inferredLinkColors = {
-  direct: "#000000",      // Noir - liens familiaux directs
-  alliance: "#D4AF37",    // Doré - liens par alliance
-  feminine: "#EC4899",    // Rose - membres féminins
-  default: "#6B7280",     // Gris - autres liens
+  direct: "hsl(0, 0%, 15%)",
+  alliance: "hsl(45, 90%, 50%)",
+  feminine: "hsl(340, 60%, 65%)",
+  default: "hsl(0, 0%, 65%)",
 };
 
-// Détermine la couleur du lien inféré selon la nature de la relation
 const getInferredLinkColor = (link: string, confidence: string): string => {
   const lowerLink = link.toLowerCase();
-  
-  // Liens par alliance
   if (lowerLink.includes("alliance") || lowerLink.includes("beau") || lowerLink.includes("belle")) {
     return inferredLinkColors.alliance;
   }
-  
-  // Liens féminins
   if (lowerLink.includes("mère") || lowerLink.includes("sœur") || lowerLink.includes("tante") || 
       lowerLink.includes("nièce") || lowerLink.includes("cousine") || lowerLink.includes("grand-mère")) {
     return inferredLinkColors.feminine;
   }
-  
-  // Liens directs (haute confiance)
   if (confidence === "high" && 
       (lowerLink.includes("frère") || lowerLink.includes("père") || lowerLink.includes("fils") ||
        lowerLink.includes("parent") || lowerLink.includes("oncle") || lowerLink.includes("neveu"))) {
     return inferredLinkColors.direct;
   }
-  
   return inferredLinkColors.default;
 };
 
@@ -125,30 +103,19 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Create unique nodes from posts
   const nodes = useMemo(() => {
     const uniqueAuthors = new Map<string, { name: string; category: string }>();
-    
     posts.forEach((post) => {
       if (!uniqueAuthors.has(post.authorId)) {
-        uniqueAuthors.set(post.authorId, {
-          name: post.authorName,
-          category: post.relationCategory,
-        });
+        uniqueAuthors.set(post.authorId, { name: post.authorName, category: post.relationCategory });
       }
     });
     
     const authorsList = Array.from(uniqueAuthors.entries());
-    
-    // Calculate positions in concentric circles based on category
     const graphNodes: GraphNode[] = [];
     
-    // Group by category type
     const byCategory: Record<string, Array<{ id: string; name: string; category: string }>> = {
-      famille: [],
-      allies: [],
-      amis: [],
-      autre: [],
+      famille: [], allies: [], amis: [], autre: [],
     };
     
     authorsList.forEach(([id, data]) => {
@@ -156,25 +123,19 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
       byCategory[type].push({ id, ...data });
     });
     
-    // Arrange in concentric circles with dynamic radius based on node count
     const categoryOrder = ["famille", "allies", "amis", "autre"];
     const totalNodes = authorsList.length;
-    
-    // Adjust base radius based on total nodes
-    const baseRadius = Math.max(80, Math.min(120, 60 + totalNodes * 5));
-    const radiusIncrement = Math.max(50, Math.min(70, 40 + totalNodes * 3));
+    const baseRadius = Math.max(90, Math.min(130, 70 + totalNodes * 5));
+    const radiusIncrement = Math.max(55, Math.min(75, 45 + totalNodes * 3));
     
     categoryOrder.forEach((catType, ringIndex) => {
       const items = byCategory[catType];
       if (items.length === 0) return;
-      
       const radius = baseRadius + ringIndex * radiusIncrement;
       
       items.forEach((item, idx) => {
-        // Calculate starting angle offset for each ring
         const startAngle = ringIndex * (Math.PI / 6);
         const angle = startAngle + (idx / items.length) * Math.PI * 2 - Math.PI / 2;
-        
         graphNodes.push({
           ...item,
           x: Math.cos(angle) * radius,
@@ -187,78 +148,40 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     return graphNodes;
   }, [posts]);
 
-  // Calculate dynamic viewBox to fit all nodes
   const viewBoxParams = useMemo(() => {
-    if (nodes.length === 0) {
-      return { minX: 0, minY: 0, width: 400, height: 400, center: 200 };
-    }
-    
-    // Find bounding box of all nodes
-    const padding = 80; // Space for labels
-    const centerPadding = 50; // Space for center node and label
-    
-    let minX = -centerPadding;
-    let maxX = centerPadding;
-    let minY = -centerPadding;
-    let maxY = centerPadding;
-    
+    if (nodes.length === 0) return { minX: 0, minY: 0, width: 400, height: 400 };
+    const padding = 90;
+    const centerPadding = 60;
+    let minX = -centerPadding, maxX = centerPadding, minY = -centerPadding, maxY = centerPadding;
     nodes.forEach(node => {
       minX = Math.min(minX, node.x - padding);
       maxX = Math.max(maxX, node.x + padding);
       minY = Math.min(minY, node.y - padding);
       maxY = Math.max(maxY, node.y + padding);
     });
-    
     const width = maxX - minX;
     const height = maxY - minY;
     const size = Math.max(width, height);
-    
-    // Center the viewBox
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-    
-    return {
-      minX: centerX - size / 2,
-      minY: centerY - size / 2,
-      width: size,
-      height: size,
-      center: 0, // Origin is now at 0,0
-    };
+    return { minX: centerX - size / 2, minY: centerY - size / 2, width: size, height: size };
   }, [nodes]);
 
-  // Infer relationships between living nodes
   const inferredLinks = useMemo(() => {
-    const messages = posts.map(p => ({
-      authorName: p.authorName,
-      relationCategory: p.relationCategory,
-    }));
+    const messages = posts.map(p => ({ authorName: p.authorName, relationCategory: p.relationCategory }));
     return inferAllRelationships(messages);
   }, [posts]);
 
-  // Create a map of node positions by author name for drawing inter-node links
   const nodePositionsByName = useMemo(() => {
     const map = new Map<string, { x: number; y: number }>();
-    nodes.forEach(node => {
-      map.set(node.name, { x: node.x, y: node.y });
-    });
+    nodes.forEach(node => map.set(node.name, { x: node.x, y: node.y }));
     return map;
   }, [nodes]);
 
-  // Zoom controls
-  const handleZoomIn = useCallback(() => {
-    setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP));
-  }, []);
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP)), []);
+  const handleResetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
-  const handleZoomOut = useCallback(() => {
-    setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP));
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, []);
-
-  // Mouse/Touch pan handlers
   const handlePanStart = useCallback((clientX: number, clientY: number) => {
     setIsPanning(true);
     setLastPanPoint({ x: clientX, y: clientY });
@@ -266,47 +189,32 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
 
   const handlePanMove = useCallback((clientX: number, clientY: number) => {
     if (!isPanning) return;
-    
     const deltaX = clientX - lastPanPoint.x;
     const deltaY = clientY - lastPanPoint.y;
-    
-    setPan(p => ({
-      x: p.x + deltaX / zoom,
-      y: p.y + deltaY / zoom,
-    }));
+    setPan(p => ({ x: p.x + deltaX / zoom, y: p.y + deltaY / zoom }));
     setLastPanPoint({ x: clientX, y: clientY });
   }, [isPanning, lastPanPoint, zoom]);
 
-  const handlePanEnd = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  const handlePanEnd = useCallback(() => setIsPanning(false), []);
 
-  // Mouse wheel zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
     setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z + delta)));
   }, []);
 
-  // Touch handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    if (e.touches.length === 1) handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
   }, [handlePanStart]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      handlePanMove(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    if (e.touches.length === 1) handlePanMove(e.touches[0].clientX, e.touches[0].clientY);
   }, [handlePanMove]);
 
-  // Responsive label size based on total nodes
   const labelFontSize = useMemo(() => {
-    const baseSize = 11;
-    if (nodes.length > 15) return baseSize - 2;
-    if (nodes.length > 10) return baseSize - 1;
-    return baseSize;
+    if (nodes.length > 15) return 9;
+    if (nodes.length > 10) return 10;
+    return 11;
   }, [nodes.length]);
 
   if (posts.length === 0) {
@@ -319,7 +227,6 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     );
   }
 
-  // Apply zoom and pan to viewBox
   const zoomedWidth = viewBoxParams.width / zoom;
   const zoomedHeight = viewBoxParams.height / zoom;
   const viewBoxMinX = viewBoxParams.minX + (viewBoxParams.width - zoomedWidth) / 2 - pan.x;
@@ -327,45 +234,25 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      {/* Zoom Controls */}
-      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm"
-          onClick={handleZoomIn}
-          disabled={zoom >= MAX_ZOOM}
-          title="Zoom avant"
-        >
-          <ZoomIn className="h-4 w-4" />
+      {/* Contrôles de zoom */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleZoomIn} disabled={zoom >= MAX_ZOOM}>
+          <ZoomIn className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm"
-          onClick={handleZoomOut}
-          disabled={zoom <= MIN_ZOOM}
-          title="Zoom arrière"
-        >
-          <ZoomOut className="h-4 w-4" />
+        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleZoomOut} disabled={zoom <= MIN_ZOOM}>
+          <ZoomOut className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 bg-background/90 backdrop-blur-sm"
-          onClick={handleResetView}
-          title="Réinitialiser la vue"
-        >
-          <Maximize2 className="h-4 w-4" />
+        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleResetView}>
+          <Maximize2 className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {/* Zoom level indicator */}
-      <div className="absolute top-2 left-2 z-10 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded font-sans">
+      {/* Indicateur de zoom */}
+      <div className="absolute top-3 left-3 z-10 text-[10px] text-muted-foreground bg-card/80 backdrop-blur-sm px-2 py-1 rounded-sm font-sans tracking-wider">
         {Math.round(zoom * 100)}%
       </div>
 
-      {/* Container responsive avec aspect-ratio */}
+      {/* Canvas SVG */}
       <div 
         className="w-full aspect-square max-w-[600px] mx-auto cursor-grab active:cursor-grabbing touch-none"
         onMouseDown={(e) => handlePanStart(e.clientX, e.clientY)}
@@ -382,41 +269,47 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
           className="w-full h-full select-none"
           preserveAspectRatio="xMidYMid meet"
         >
-          {/* Background subtle grid */}
           <defs>
-            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="10" cy="10" r="0.5" fill="hsl(var(--border))" />
-            </pattern>
-            {/* Drop shadow for labels */}
-            <filter id="labelShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="hsl(var(--background))" floodOpacity="0.9"/>
+            {/* Halo central */}
+            <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="hsl(0, 0%, 8%)" stopOpacity="0.15" />
+              <stop offset="70%" stopColor="hsl(0, 0%, 8%)" stopOpacity="0.04" />
+              <stop offset="100%" stopColor="hsl(0, 0%, 8%)" stopOpacity="0" />
+            </radialGradient>
+            {/* Ombre douce pour lisibilité des labels */}
+            <filter id="textGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+              <feFlood floodColor="hsl(0, 0%, 98%)" floodOpacity="0.85" result="color" />
+              <feComposite in="color" in2="blur" operator="in" result="shadow" />
+              <feMerge>
+                <feMergeNode in="shadow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
+            {/* Gradient doré pour alliance */}
+            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="hsl(45, 90%, 55%)" />
+              <stop offset="100%" stopColor="hsl(45, 70%, 42%)" />
+            </linearGradient>
           </defs>
-          <rect 
-            x={viewBoxParams.minX - 100} 
-            y={viewBoxParams.minY - 100} 
-            width={viewBoxParams.width + 200} 
-            height={viewBoxParams.height + 200} 
-            fill="url(#grid)" 
-            opacity="0.3" 
-          />
           
-          {/* Concentric circle guides - positioned at origin */}
-          {[80, 130, 180, 230, 280].map((radius, idx) => (
+          {/* Cercles concentriques élégants */}
+          {[90, 145, 200, 260].map((radius, idx) => (
             <circle
               key={radius}
-              cx={0}
-              cy={0}
-              r={radius}
+              cx={0} cy={0} r={radius}
               fill="none"
-              stroke="hsl(var(--border))"
+              stroke="hsl(0, 0%, 85%)"
               strokeWidth="0.5"
-              strokeDasharray="4 4"
-              opacity={0.4 - idx * 0.06}
+              strokeDasharray={idx === 0 ? "none" : "2 6"}
+              opacity={0.35 - idx * 0.05}
             />
           ))}
+
+          {/* Halo central subtil */}
+          <circle cx={0} cy={0} r={65} fill="url(#centerGlow)" />
           
-          {/* Inferred links between living nodes (dotted lines with colors) */}
+          {/* Liens inférés entre vivants */}
           <g className="inferred-links">
             {inferredLinks.map((link, idx) => {
               const fromPos = nodePositionsByName.get(link.fromAuthor);
@@ -424,14 +317,17 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
               if (!fromPos || !toPos) return null;
               
               const isHovered = hoveredLink === idx;
-              const baseOpacity = link.confidence === 'high' ? 0.6 : link.confidence === 'medium' ? 0.45 : 0.3;
-              const opacity = isHovered ? 1 : baseOpacity;
+              const baseOpacity = link.confidence === 'high' ? 0.5 : link.confidence === 'medium' ? 0.35 : 0.2;
+              const opacity = isHovered ? 0.9 : baseOpacity;
               const strokeColor = getInferredLinkColor(link.inferredLink, link.confidence);
-              const strokeWidth = isHovered ? 2.5 : (link.confidence === 'high' ? 1.5 : 1);
+              const strokeWidth = isHovered ? 2 : (link.confidence === 'high' ? 1.2 : 0.8);
               
-              // Position du milieu pour le label
+              // Courbe de Bézier au lieu de ligne droite pour plus d'élégance
               const midX = (fromPos.x + toPos.x) / 2;
               const midY = (fromPos.y + toPos.y) / 2;
+              // Déplacer le point de contrôle vers le centre pour une courbe subtile
+              const ctrlX = midX * 0.85;
+              const ctrlY = midY * 0.85;
               
               return (
                 <g 
@@ -440,52 +336,46 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
                   onMouseEnter={() => setHoveredLink(idx)}
                   onMouseLeave={() => setHoveredLink(null)}
                 >
-                  {/* Ligne de connexion */}
-                  <line
-                    x1={fromPos.x}
-                    y1={fromPos.y}
-                    x2={toPos.x}
-                    y2={toPos.y}
+                  <path
+                    d={`M ${fromPos.x} ${fromPos.y} Q ${ctrlX} ${ctrlY} ${toPos.x} ${toPos.y}`}
+                    fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    strokeDasharray={link.confidence === 'high' ? "none" : "4 3"}
+                    strokeDasharray={link.confidence === 'high' ? "none" : "3 4"}
                     opacity={opacity}
-                    className="transition-all duration-300"
+                    className="transition-all duration-500"
                   />
                   
-                  {/* Cercle au milieu pour indiquer le lien */}
+                  {/* Point de connexion au milieu de la courbe */}
                   <circle
-                    cx={midX}
-                    cy={midY}
-                    r={isHovered ? 4 : 3}
+                    cx={ctrlX + (midX - ctrlX) * 0.5}
+                    cy={ctrlY + (midY - ctrlY) * 0.5}
+                    r={isHovered ? 3.5 : 2}
                     fill={strokeColor}
                     opacity={opacity}
                     className="transition-all duration-300"
                   />
                   
-                  {/* Label visible au survol */}
+                  {/* Label au survol */}
                   {isHovered && (
                     <g>
                       <rect
-                        x={midX - 60}
-                        y={midY - 28}
-                        width="120"
-                        height="20"
-                        rx="3"
-                        fill="hsl(var(--background))"
+                        x={midX - 55} y={midY - 26}
+                        width="110" height="18"
+                        rx="2"
+                        fill="hsl(0, 0%, 98%)"
                         stroke={strokeColor}
-                        strokeWidth="1"
+                        strokeWidth="0.5"
                         opacity="0.95"
                       />
                       <text
-                        x={midX}
-                        y={midY - 14}
+                        x={midX} y={midY - 14}
                         textAnchor="middle"
-                        className="font-sans fill-foreground pointer-events-none"
-                        style={{ fontSize: '9px', fontWeight: 500 }}
+                        className="font-serif pointer-events-none"
+                        style={{ fontSize: '8px', fontWeight: 400, fill: 'hsl(0, 0%, 15%)' }}
                       >
-                        {link.inferredLink.length > 28 
-                          ? link.inferredLink.substring(0, 25) + "..." 
+                        {link.inferredLink.length > 25 
+                          ? link.inferredLink.substring(0, 22) + "…" 
                           : link.inferredLink}
                       </text>
                     </g>
@@ -495,62 +385,68 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
             })}
           </g>
           
-          {/* Connection lines to deceased (center) - Bold black lines */}
+          {/* Lignes de connexion vers le défunt (centre) */}
           <g className="connection-lines">
-            {nodes.map((node) => (
-              <line
-                key={`line-${node.id}`}
-                x1={0}
-                y1={0}
-                x2={node.x}
-                y2={node.y}
-                stroke="#000000"
-                strokeWidth={hoveredNode === node.id ? 3 : 2}
-                opacity={hoveredNode === node.id ? 1 : 0.7}
-                className="transition-all duration-300"
-              />
-            ))}
+            {nodes.map((node) => {
+              const style = categoryStyles[node.categoryType];
+              const isActive = hoveredNode === node.id;
+              return (
+                <line
+                  key={`line-${node.id}`}
+                  x1={0} y1={0}
+                  x2={node.x} y2={node.y}
+                  stroke={style.fill}
+                  strokeWidth={isActive ? 1.8 : 1}
+                  opacity={isActive ? 0.7 : 0.25}
+                  className="transition-all duration-500"
+                />
+              );
+            })}
           </g>
           
-          {/* Center node (deceased) */}
+          {/* Nœud central (défunt) */}
           <g className="center-node">
-            <circle
-              cx={0}
-              cy={0}
-              r="22"
-              fill="hsl(var(--primary))"
-              className="transition-transform duration-300"
-            />
-            <circle
-              cx={0}
-              cy={0}
-              r="26"
-              fill="none"
-              stroke="hsl(var(--primary))"
-              strokeWidth="1"
-              opacity="0.3"
-            />
-            {/* Center label with background */}
+            {/* Double cercle élégant */}
+            <circle cx={0} cy={0} r="28" fill="none" stroke="hsl(0, 0%, 15%)" strokeWidth="0.5" opacity="0.2" />
+            <circle cx={0} cy={0} r="20" fill="hsl(0, 0%, 8%)" />
+            <circle cx={0} cy={0} r="20" fill="none" stroke="hsl(0, 0%, 98%)" strokeWidth="0.5" opacity="0.3" />
+            {/* Initiale du défunt */}
             <text
-              x={0}
-              y={38}
+              x={0} y={5}
               textAnchor="middle"
-              className="font-serif fill-foreground"
-              style={{ fontSize: `${labelFontSize + 1}px`, fontWeight: 500 }}
-              filter="url(#labelShadow)"
+              className="font-serif pointer-events-none"
+              style={{ fontSize: '14px', fontWeight: 500, fill: 'hsl(0, 0%, 95%)' }}
+            >
+              {deceasedName.charAt(0).toUpperCase()}
+            </text>
+            {/* Nom sous le cercle */}
+            <text
+              x={0} y={42}
+              textAnchor="middle"
+              className="font-serif"
+              style={{ fontSize: `${labelFontSize + 2}px`, fontWeight: 500, fill: 'hsl(0, 0%, 15%)' }}
+              filter="url(#textGlow)"
             >
               {deceasedName.split(" ")[0]}
             </text>
+            <text
+              x={0} y={54}
+              textAnchor="middle"
+              className="font-sans"
+              style={{ fontSize: '7px', fontWeight: 400, fill: 'hsl(0, 0%, 50%)', letterSpacing: '0.1em', textTransform: 'uppercase' } as React.CSSProperties}
+              filter="url(#textGlow)"
+            >
+              défunt
+            </text>
           </g>
           
-          {/* Author nodes */}
+          {/* Nœuds des auteurs */}
           {nodes.map((node) => {
-            const color = categoryColors[node.categoryType];
+            const style = categoryStyles[node.categoryType];
             const isHovered = hoveredNode === node.id;
             
-            // Calculate label position to avoid overlap with center
             const angle = Math.atan2(node.y, node.x);
-            const labelOffset = 22;
+            const labelOffset = 24;
             const labelX = node.x + Math.cos(angle) * labelOffset * 0.3;
             const labelY = node.y + labelOffset;
             
@@ -561,37 +457,47 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}
               >
-                {/* Node circle - neutral stroke */}
+                {/* Halo au survol */}
+                {isHovered && (
+                  <circle
+                    cx={node.x} cy={node.y} r="18"
+                    fill="none"
+                    stroke={style.fill}
+                    strokeWidth="0.5"
+                    opacity="0.3"
+                    className="animate-[pulse-soft_2s_ease-in-out_infinite]"
+                  />
+                )}
+                
+                {/* Cercle extérieur */}
                 <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={isHovered ? 14 : 12}
-                  fill="hsl(var(--background))"
-                  stroke="hsl(var(--border))"
-                  strokeWidth={isHovered ? 2 : 1.5}
+                  cx={node.x} cy={node.y}
+                  r={isHovered ? 13 : 11}
+                  fill="hsl(0, 0%, 98%)"
+                  stroke={style.fill}
+                  strokeWidth={isHovered ? 1.5 : 0.8}
                   className="transition-all duration-300"
                 />
                 
-                {/* Inner dot - colored by category */}
+                {/* Point intérieur coloré */}
                 <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={isHovered ? 5 : 4}
-                  fill={color}
+                  cx={node.x} cy={node.y}
+                  r={isHovered ? 5 : 3.5}
+                  fill={style.fill}
                   className="transition-all duration-300"
                 />
                 
-                {/* Name label with shadow for readability */}
+                {/* Nom */}
                 <text
-                  x={labelX}
-                  y={labelY}
+                  x={labelX} y={labelY}
                   textAnchor="middle"
-                  className="font-serif fill-foreground pointer-events-none"
+                  className="font-serif pointer-events-none"
                   style={{ 
-                    fontSize: `${isHovered ? labelFontSize + 2 : labelFontSize}px`,
+                    fontSize: `${isHovered ? labelFontSize + 1 : labelFontSize}px`,
                     fontWeight: isHovered ? 500 : 400,
+                    fill: 'hsl(0, 0%, 20%)',
                   }}
-                  filter="url(#labelShadow)"
+                  filter="url(#textGlow)"
                 >
                   {node.name.split(" ")[0]}
                 </text>
@@ -601,15 +507,13 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </svg>
       </div>
       
-      {/* Tooltip for nodes */}
+      {/* Tooltip au survol d'un nœud */}
       {hoveredNode && !hoveredLink && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm border border-border shadow-lg rounded-sm px-3 py-2 animate-fade-in max-w-[90%] z-20">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card border border-border shadow-md rounded-sm px-4 py-3 animate-fade-in max-w-[85%] z-20">
           {nodes.filter(n => n.id === hoveredNode).map(node => {
-            // Trouver les liens de ce nœud avec d'autres
             const nodeLinks = inferredLinks.filter(
               l => l.fromAuthor === node.name || l.toAuthor === node.name
             );
-            
             return (
               <div key={node.id} className="text-center">
                 <div className="font-serif text-sm text-foreground">{node.name}</div>
@@ -617,18 +521,18 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
                   {getCleanRelationName(node.category)} du défunt
                 </div>
                 {nodeLinks.length > 0 && (
-                  <div className="mt-1.5 pt-1.5 border-t border-border/50">
-                    <div className="text-[10px] text-muted-foreground mb-1">
-                      Liens avec les autres proches :
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <div className="text-[10px] text-muted-foreground mb-1 font-sans uppercase tracking-wider">
+                      Liens entre proches
                     </div>
                     {nodeLinks.slice(0, 3).map((link, i) => (
-                      <div key={i} className="text-[10px] text-foreground/80">
+                      <div key={i} className="text-[11px] text-foreground/80 font-serif">
                         {link.inferredLink}
                       </div>
                     ))}
                     {nodeLinks.length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
-                        +{nodeLinks.length - 3} autres liens...
+                        +{nodeLinks.length - 3} autres…
                       </div>
                     )}
                   </div>
@@ -639,48 +543,38 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         </div>
       )}
       
-      {/* Legend with category colors and link types - responsive */}
-      <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4 text-xs font-sans text-muted-foreground px-2">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.famille }} />
-          <span>Famille</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.allies }} />
-          <span>Alliés</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.amis }} />
-          <span>Amis</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: categoryColors.autre }} />
-          <span>Autres</span>
-        </div>
+      {/* Légende — Palette Floorence */}
+      <div className="flex flex-wrap justify-center gap-4 mt-5 text-[11px] font-sans text-muted-foreground px-2">
+        {Object.entries(categoryStyles).map(([key, style]) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: style.fill }} />
+            <span className="tracking-wide">{style.label}</span>
+          </div>
+        ))}
       </div>
       
-      {/* Legend for inferred link colors */}
+      {/* Légende des liens inférés */}
       {inferredLinks.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-2 text-[10px] font-sans text-muted-foreground px-2">
-          <span className="text-muted-foreground/70">Liens entre proches :</span>
+        <div className="flex flex-wrap justify-center gap-3 mt-2 text-[10px] font-sans text-muted-foreground/70 px-2">
+          <span className="italic">Liens entre proches :</span>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.direct }} />
+            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.direct }} />
             <span>Direct</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.alliance }} />
+            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.alliance }} />
             <span>Alliance</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5" style={{ backgroundColor: inferredLinkColors.feminine }} />
+            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.feminine }} />
             <span>Féminin</span>
           </div>
         </div>
       )}
 
-      {/* Touch/drag hint */}
-      <p className="text-center text-xs text-muted-foreground mt-2 font-sans">
-        Glissez pour déplacer • Pincez ou utilisez la molette pour zoomer
+      {/* Aide navigation */}
+      <p className="text-center text-[10px] text-muted-foreground/50 mt-3 font-sans italic">
+        Glissez pour déplacer · Pincez ou molette pour zoomer
       </p>
     </div>
   );
