@@ -23,7 +23,7 @@ interface GuestbookFormProps {
     photos: string[];
     candleCount: number;
     flowerCount: number;
-  }) => void;
+  }) => void | Promise<void>;
 }
 
 const MAX_PHOTOS = 3;
@@ -125,25 +125,31 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   };
 
   const handleConfirmSubmit = async () => {
-     setIsSubmitting(true);
-     
-     // BETA: Direct submission - no payment required
-    onSubmit({
-      content: messageContent.trim(),
-      relationCategory: selectedRelation,
-      photos,
-      candleCount,
-      flowerCount,
-    });
+    setIsSubmitting(true);
+    
+    try {
+      // BETA: Direct submission - no payment required
+      await onSubmit({
+        content: messageContent.trim(),
+        relationCategory: selectedRelation,
+        photos,
+        candleCount,
+        flowerCount,
+      });
 
-    // Reset form
-    setMessageContent("");
-    setSelectedRelation("");
-    setPhotos([]);
-    setShowConfirmDialog(false);
-     setIsSubmitting(false);
-    setCandleCount(0);
-    setFlowerCount(0);
+      // Reset form only on success
+      setMessageContent("");
+      setSelectedRelation("");
+      setPhotos([]);
+      setCandleCount(0);
+      setFlowerCount(0);
+      setShowConfirmDialog(false);
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error("Une erreur est survenue lors de la publication");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canSubmit = messageContent.trim() && selectedRelation;
