@@ -15,6 +15,7 @@ interface GraphNode {
   label: string;
   type: "deceased" | "contributor";
   category?: string;
+  memorialId?: string;
   x: number;
   y: number;
   vx: number;
@@ -25,9 +26,25 @@ interface GraphNode {
 interface GraphEdge {
   source: string;
   target: string;
-  type: "direct" | "inferred";
+  type: "direct" | "inferred" | "memorial-relation" | "living-shared";
   category: string;
   label: string;
+  sharedDeceasedName?: string;
+}
+
+interface MemorialRelation {
+  id: string;
+  memorial_id_1: string;
+  memorial_id_2: string;
+  relation_type: string;
+}
+
+interface SocialInference {
+  user_id: string;
+  author_name: string;
+  total_memorials: number;
+  detail_liens: Array<{ defunt: string; lien: string; categorie: string; slug: string }> | null;
+  connexions_suggerees: string[] | null;
 }
 
 const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
@@ -64,6 +81,7 @@ const CommunityGraph = () => {
   const edgesRef = useRef<GraphEdge[]>([]);
   const [zoom, setZoom] = useState(1);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ALL_CATEGORIES));
 
   const toggleFilter = (cat: string) => {
@@ -109,6 +127,30 @@ const CommunityGraph = () => {
     },
   });
 
+  // Fetch memorial relations (dead-dead links)
+  const { data: memorialRelations } = useQuery({
+    queryKey: ["community-graph-memorial-relations"],
+    ...CACHE_CONFIG,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("memorial_relations")
+        .select("id, memorial_id_1, memorial_id_2, relation_type");
+      return (data || []) as MemorialRelation[];
+    },
+  });
+
+  // Fetch social inferences (living-living shared links)
+  const { data: socialInferences } = useQuery({
+    queryKey: ["community-graph-social-inferences"],
+    ...CACHE_CONFIG,
+    queryFn: async () => {
+      const { data } = await (supabase
+        .from('v_social_inferences' as any)
+        .select('*') as any);
+      return (data || []) as SocialInference[];
+    },
+  });
+
   // Filter posts based on active category filters
   const filteredPosts = useMemo(() => {
     if (!allPosts) return [];
@@ -131,7 +173,13 @@ const CommunityGraph = () => {
     // Collect memorial IDs that have posts
     const activeMemorialIds = new Set(filteredPosts.map((p) => p.memorial_id));
 
-    // Add deceased nodes (only memorials with visible posts)
+    // Also include memorials linked via memorial_relations
+    (memorialRelations || []).forEach((rel) => {
+      if (rel.memorial_id_1) activeMemorialIds.add(rel.memorial_id_1);
+      if (rel.memorial_id_2) activeMemorialIds.add(rel.memorial_id_2);
+    });
+
+    // Add deceased nodes
     const activeMemorials = memorials.filter((m) => activeMemorialIds.has(m.id));
     activeMemorials.forEach((m, i) => {
       const angle = (2 * Math.PI * i) / Math.max(activeMemorials.length, 1);
@@ -140,6 +188,7 @@ const CommunityGraph = () => {
         id: `memorial-${m.id}`,
         label: `${m.first_name} ${m.last_name}`,
         type: "deceased",
+        memorialId: m.id,
         x: centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 20,
         y: centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 20,
         vx: 0,
@@ -148,6 +197,21 @@ const CommunityGraph = () => {
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
+    });
+
+    // Memorial-Memorial edges (Pont des Ancêtres)
+    (memorialRelations || []).forEach((rel) => {
+      const srcId = `memorial-${rel.memorial_id_1}`;
+      const tgtId = `memorial-${rel.memorial_id_2}`;
+      if (nodeMap.has(srcId) && nodeMap.has(tgtId)) {
+        edges.push({
+          source: srcId,
+          target: tgtId,
+          type: "memorial-relation",
+          category: rel.relation_type,
+          label: rel.relation_type,
+        });
+      }
     });
 
     // Group posts by user
@@ -231,8 +295,64 @@ const CommunityGraph = () => {
       });
     });
 
+    // Living-Living shared links from v_social_inferences
+    if (socialInferences) {
+      const memorialNameMap = new Map<string, string>();
+      memorials.forEach(m => memorialNameMap.set(m.id, `${m.first_name} ${m.last_name}`));
+
+      // Build a map: user_id => list of memorials with relation
+      const userMemorialLinks = new Map<string, Array<{ memorialId: string; lien: string; defunt: string }>>();
+      socialInferences.forEach(si => {
+        if (!si.user_id || !si.detail_liens) return;
+        const liens = Array.isArray(si.detail_liens) ? si.detail_liens : [];
+        const memLinks: Array<{ memorialId: string; lien: string; defunt: string }> = [];
+        liens.forEach((l: any) => {
+          const memorial = memorials.find(m => m.slug === l.slug);
+          if (memorial) {
+            memLinks.push({ memorialId: memorial.id, lien: l.lien, defunt: l.defunt });
+          }
+        });
+        if (memLinks.length > 0) {
+          userMemorialLinks.set(si.user_id, memLinks);
+        }
+      });
+
+      // Find pairs of users sharing the same memorial with the same link type
+      const sharedLinkSet = new Set<string>();
+      const userEntries = Array.from(userMemorialLinks.entries());
+      for (let i = 0; i < userEntries.length; i++) {
+        for (let j = i + 1; j < userEntries.length; j++) {
+          const [uid1, links1] = userEntries[i];
+          const [uid2, links2] = userEntries[j];
+          
+          links1.forEach(l1 => {
+            links2.forEach(l2 => {
+              if (l1.memorialId === l2.memorialId && l1.lien === l2.lien) {
+                const key = [uid1, uid2].sort().join("|");
+                if (!sharedLinkSet.has(key) && !inferredEdgeSet.has(key)) {
+                  sharedLinkSet.add(key);
+                  const srcNode = `user-${uid1}`;
+                  const tgtNode = `user-${uid2}`;
+                  if (nodeMap.has(srcNode) && nodeMap.has(tgtNode)) {
+                    edges.push({
+                      source: srcNode,
+                      target: tgtNode,
+                      type: "living-shared",
+                      category: l1.lien,
+                      label: `${l1.lien} commun`,
+                      sharedDeceasedName: l1.defunt,
+                    });
+                  }
+                }
+              }
+            });
+          });
+        }
+      }
+    }
+
     return { nodes, edges };
-  }, [memorials, filteredPosts]);
+  }, [memorials, filteredPosts, memorialRelations, socialInferences]);
 
   // Force simulation
   const simulate = useCallback(() => {
@@ -264,7 +384,7 @@ const CommunityGraph = () => {
       }
     }
 
-    // Spring attraction (edges)
+    // Spring attraction (edges) — memorial-relation edges get stronger spring
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     edges.forEach((edge) => {
       const s = nodeMap.get(edge.source);
@@ -273,8 +393,10 @@ const CommunityGraph = () => {
       const dx = t.x - s.x;
       const dy = t.y - s.y;
       const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-      const displacement = dist - springLength;
-      const force = displacement * springStrength * alpha;
+      const targetLen = edge.type === "memorial-relation" ? 80 : springLength;
+      const str = edge.type === "memorial-relation" ? springStrength * 2 : springStrength;
+      const displacement = dist - targetLen;
+      const force = displacement * str * alpha;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
       s.vx += fx;
@@ -323,14 +445,32 @@ const CommunityGraph = () => {
       if (!s || !t) return;
 
       ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(t.x, t.y);
 
-      if (edge.type === "inferred") {
+      if (edge.type === "memorial-relation") {
+        // Golden thick line for ancestor bridges
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "hsl(45, 90%, 50%)";
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.8;
+      } else if (edge.type === "living-shared") {
+        // Fine dotted line for living-living shared links
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = "hsl(340, 60%, 65%)";
+        ctx.lineWidth = 1.2;
+        ctx.globalAlpha = 0.5;
+      } else if (edge.type === "inferred") {
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = "rgba(156,163,175,0.4)";
         ctx.lineWidth = 1;
       } else {
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
         ctx.setLineDash([]);
         ctx.strokeStyle = getCategoryColor(edge.category);
         ctx.lineWidth = 1.5;
@@ -339,6 +479,17 @@ const CommunityGraph = () => {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
+
+      // Label on memorial-relation edges
+      if (edge.type === "memorial-relation") {
+        const midX = (s.x + t.x) / 2;
+        const midY = (s.y + t.y) / 2;
+        ctx.fillStyle = "hsl(45, 90%, 35%)";
+        ctx.font = "bold 9px 'Inter', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(edge.label, midX, midY - 8);
+      }
     });
 
     // Draw nodes
@@ -390,27 +541,89 @@ const CommunityGraph = () => {
       );
     });
 
-    // Hovered node info
+    // Hovered node tooltip
     if (hoveredNode) {
-      const x = hoveredNode.x + hoveredNode.radius + 8;
-      const y = hoveredNode.y - 10;
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.strokeStyle = "rgba(0,0,0,0.1)";
+      const edges = edgesRef.current;
+      const x = hoveredNode.x + hoveredNode.radius + 10;
+      const y = hoveredNode.y - 30;
+      
+      // Gather connected info
+      const connectedEdges = edges.filter(
+        e => e.source === hoveredNode.id || e.target === hoveredNode.id
+      );
+      const lineageLinks = connectedEdges.filter(e => e.type === "memorial-relation");
+      const sharedLinks = connectedEdges.filter(e => e.type === "living-shared");
+      
+      const lines: string[] = [hoveredNode.label];
+      if (hoveredNode.type === "deceased") {
+        lines.push("Défunt");
+        if (lineageLinks.length > 0) {
+          lines.push(`Lignages : ${lineageLinks.map(l => l.label).join(", ")}`);
+        }
+      } else {
+        if (hoveredNode.category) lines.push(hoveredNode.category);
+        if (sharedLinks.length > 0) {
+          sharedLinks.forEach(sl => {
+            lines.push(`Connecté par ${sl.category} (${sl.sharedDeceasedName || ""})`);
+          });
+        }
+      }
+      
+      ctx.font = "10px 'Inter', sans-serif";
+      const lineHeight = 14;
+      const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+      const boxW = maxLineW + 20;
+      const boxH = lines.length * lineHeight + 12;
+      
+      ctx.fillStyle = "rgba(255,255,255,0.97)";
+      ctx.strokeStyle = "rgba(0,0,0,0.12)";
       ctx.lineWidth = 1;
-      const text = hoveredNode.label;
-      const metrics = ctx.measureText(text);
-      const boxW = metrics.width + 16;
       ctx.beginPath();
-      ctx.roundRect(x, y, boxW, 24, 4);
+      ctx.roundRect(x, y, boxW, boxH, 6);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#1F2937";
-      ctx.font = "11px 'Inter', sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, x + 8, y + 12);
+      
+      lines.forEach((line, i) => {
+        ctx.fillStyle = i === 0 ? "#1F2937" : "#6B7280";
+        ctx.font = i === 0 ? "bold 11px 'Inter', sans-serif" : "10px 'Inter', sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(line, x + 10, y + 6 + i * lineHeight);
+      });
     }
-  }, [zoom, hoveredNode]);
+
+    // Hovered edge tooltip
+    if (hoveredEdge && !hoveredNode) {
+      const nodeMap2 = new Map(nodesRef.current.map(n => [n.id, n]));
+      const s = nodeMap2.get(hoveredEdge.source);
+      const t = nodeMap2.get(hoveredEdge.target);
+      if (s && t) {
+        const mx = (s.x + t.x) / 2;
+        const my = (s.y + t.y) / 2;
+        let text = "";
+        if (hoveredEdge.type === "living-shared") {
+          text = `Connectés par leur lien commun de ${hoveredEdge.category} auprès de ${hoveredEdge.sharedDeceasedName || "défunt"}`;
+        } else if (hoveredEdge.type === "memorial-relation") {
+          text = `${s.label} et ${t.label} : ${hoveredEdge.label}`;
+        } else {
+          text = hoveredEdge.label;
+        }
+        ctx.font = "10px 'Inter', sans-serif";
+        const tw = ctx.measureText(text).width;
+        ctx.fillStyle = "rgba(255,255,255,0.97)";
+        ctx.strokeStyle = "rgba(0,0,0,0.12)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(mx - tw / 2 - 8, my - 22, tw + 16, 22, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#1F2937";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, mx, my - 11);
+      }
+    }
+  }, [zoom, hoveredNode, hoveredEdge]);
 
   // Animation loop
   useEffect(() => {
@@ -456,13 +669,36 @@ const CommunityGraph = () => {
       const mx = (e.clientX - rect.left) * scaleX / zoom;
       const my = (e.clientY - rect.top) * scaleY / zoom;
 
+      // Node detection
       const found = nodesRef.current.find((n) => {
         const dx = n.x - mx;
         const dy = n.y - my;
         return Math.sqrt(dx * dx + dy * dy) < n.radius + 4;
       });
-
       setHoveredNode(found || null);
+
+      // Edge detection (if no node hovered)
+      if (!found) {
+        const nodeMap = new Map(nodesRef.current.map(n => [n.id, n]));
+        const foundEdge = edgesRef.current.find((edge) => {
+          const s = nodeMap.get(edge.source);
+          const t = nodeMap.get(edge.target);
+          if (!s || !t) return false;
+          // Point-to-line distance
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const lenSq = dx * dx + dy * dy;
+          if (lenSq === 0) return false;
+          const param = Math.max(0, Math.min(1, ((mx - s.x) * dx + (my - s.y) * dy) / lenSq));
+          const projX = s.x + param * dx;
+          const projY = s.y + param * dy;
+          const distSq = (mx - projX) ** 2 + (my - projY) ** 2;
+          return distSq < 64; // 8px threshold
+        });
+        setHoveredEdge(foundEdge || null);
+      } else {
+        setHoveredEdge(null);
+      }
     },
     [zoom]
   );
@@ -579,9 +815,9 @@ const CommunityGraph = () => {
                 <canvas
                   ref={canvasRef}
                   className="w-full"
-                  style={{ maxHeight: "600px", aspectRatio: "4/3", cursor: hoveredNode ? "pointer" : "default" }}
+                  style={{ maxHeight: "600px", aspectRatio: "4/3", cursor: (hoveredNode || hoveredEdge) ? "pointer" : "default" }}
                   onMouseMove={handleMouseMove}
-                  onMouseLeave={() => setHoveredNode(null)}
+                  onMouseLeave={() => { setHoveredNode(null); setHoveredEdge(null); }}
                 />
               </div>
 
@@ -614,6 +850,14 @@ const CommunityGraph = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0 border-t-2 border-dashed border-muted-foreground/60" />
                   <span>Même communauté</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-0 border-t-[3px]" style={{ borderColor: "hsl(45, 90%, 50%)" }} />
+                  <span>Pont des Ancêtres</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-0 border-t-[1.5px] border-dotted" style={{ borderColor: "hsl(340, 60%, 65%)" }} />
+                  <span>Lien partagé</span>
                 </div>
               </div>
             </>
