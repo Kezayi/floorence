@@ -403,6 +403,16 @@ export type Database = {
         }
         Relationships: []
       }
+      v_social_inferences: {
+        Row: {
+          author_name: string | null
+          detailed_inferences: Json | null
+          roles_summary: string | null
+          total_memorials_linked: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       disable_contributions_after_funeral: { Args: never; Returns: undefined }

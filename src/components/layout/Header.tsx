@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search, GitBranch } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
@@ -135,6 +135,19 @@ const Header = () => {
                     >
                       <Search className="w-4 h-4" />
                       Recherche
+                    </Link>
+
+                    {/* Graphe communautaire */}
+                    <Link
+                      to="/communaute"
+                      className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
+                        isActive("/communaute")
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <GitBranch className="w-4 h-4" />
+                      Communauté
                     </Link>
                     
                     {/* Admin - uniquement pour admin/modérateur */}
