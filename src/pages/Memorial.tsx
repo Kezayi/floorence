@@ -416,7 +416,12 @@ const Memorial = () => {
 
       if (response.error) {
         console.error('Publish error:', response.error);
-        toast.error(response.error.message || "Erreur lors de la publication");
+        // Check for rate limiting (429)
+        if (response.data?.rateLimited || response.error.message?.includes('429')) {
+          toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
+        } else {
+          toast.error(response.error.message || "Erreur lors de la publication");
+        }
         return;
       }
 
@@ -424,6 +429,8 @@ const Memorial = () => {
         toast.success("Votre hommage a été publié avec succès");
         // Refresh the posts from database
         await fetchGuestbookPosts();
+      } else if (response.data?.rateLimited) {
+        toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
       } else {
         toast.error(response.data?.error || "Erreur lors de la publication");
       }
