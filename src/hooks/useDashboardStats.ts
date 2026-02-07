@@ -20,6 +20,7 @@ export interface DashboardStats {
   catAllies: number;
   catSocioCoeur: number;
   catAutres: number;
+  interMemorialLinks: number;
 }
 
 const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
@@ -60,6 +61,7 @@ export const useDashboardStats = () => {
         catAllies: Number(data.cat_allies) || 0,
         catSocioCoeur: Number(data.cat_socio_coeur) || 0,
         catAutres: Number(data.cat_autres) || 0,
+        interMemorialLinks: Number(data.inter_memorial_links) || 0,
       };
     },
   });

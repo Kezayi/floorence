@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
+import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame, AlertCircle, RefreshCw, TrendingUp, Heart } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -293,8 +293,8 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Gesture stats summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Gesture stats + Humanity Index */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -347,6 +347,47 @@ const Dashboard = () => {
                     : dashStats?.postsLastWeek ? '+∞' : '—'}
                 </span>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Humanity Index */}
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(45,90%,50%,0.06)] to-transparent pointer-events-none" />
+          <CardHeader className="relative">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Heart className="w-4 h-4 text-[hsl(340,60%,65%)]" />
+              Indice d'Humanité
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-4xl font-bold text-foreground tabular-nums">
+              {dashStats?.interMemorialLinks || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              liens inter-défunts créés
+            </p>
+            <div className="mt-4 pt-3 border-t border-border/50">
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Chaque lien relie deux mémoriaux et rapproche leurs communautés respectives. 
+                Plus cet indice est élevé, plus le maillage familial est dense.
+              </p>
+              {(dashStats?.interMemorialLinks || 0) > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="h-2 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${Math.min(100, ((dashStats?.interMemorialLinks || 0) / Math.max(dashStats?.totalMemorials || 1, 1)) * 100)}%`,
+                        background: 'linear-gradient(90deg, hsl(45, 90%, 50%), hsl(340, 60%, 65%))'
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {((dashStats?.interMemorialLinks || 0) / Math.max(dashStats?.totalMemorials || 1, 1) * 100).toFixed(0)}% de couverture
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -171,6 +171,45 @@ export type Database = {
           },
         ]
       }
+      memorial_relations: {
+        Row: {
+          id: string
+          is_demo: boolean | null
+          memorial_id_1: string | null
+          memorial_id_2: string | null
+          relation_type: string
+        }
+        Insert: {
+          id?: string
+          is_demo?: boolean | null
+          memorial_id_1?: string | null
+          memorial_id_2?: string | null
+          relation_type: string
+        }
+        Update: {
+          id?: string
+          is_demo?: boolean | null
+          memorial_id_1?: string | null
+          memorial_id_2?: string | null
+          relation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memorials: {
         Row: {
           biography: string | null
@@ -418,6 +457,7 @@ export type Database = {
           cat_famille_elargie: number | null
           cat_socio_coeur: number | null
           demo_memorials: number | null
+          inter_memorial_links: number | null
           posts_last_week: number | null
           posts_prev_week: number | null
           predicted_candles_next_week: number | null
