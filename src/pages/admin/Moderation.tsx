@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -94,10 +94,11 @@ const Moderation = () => {
     }
   }, [countData, pagination.setTotalCount]);
 
-  const { data: posts, isLoading } = useQuery({
+  const { data: posts, isLoading, error: postsError, refetch: refetchPosts } = useQuery({
     queryKey: ['admin-guestbook-posts', pagination.page, pagination.pageSize],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: 'always' as const,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
@@ -109,7 +110,10 @@ const Moderation = () => {
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Moderation posts query error:', error);
+        throw new Error(`Erreur Supabase : ${error.message} (code: ${error.code})`);
+      }
       return data as GuestbookPost[];
     },
   });
@@ -298,6 +302,32 @@ const Moderation = () => {
       deleteMutation.mutate(selectedPost.id);
     }
   };
+
+  if (postsError) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold text-foreground mb-8">Modération des Hommages</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-2">Erreur de chargement</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-2">
+              Impossible de charger les hommages à modérer.
+            </p>
+            <code className="text-xs bg-muted px-3 py-1.5 rounded text-destructive mb-6 max-w-lg break-all">
+              {postsError.message}
+            </code>
+            <Button variant="outline" onClick={() => refetchPosts()} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

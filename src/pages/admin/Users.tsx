@@ -41,6 +41,7 @@ import {
   Search,
   Users as UsersIcon,
   AlertTriangle,
+  AlertCircle,
   Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -73,16 +74,20 @@ const Users = () => {
   const pageSize = 20;
 
   // Fetch users from edge function
-  const { data: usersData, isLoading, refetch } = useQuery({
+  const { data: usersData, isLoading, error: usersError, refetch } = useQuery({
     queryKey: ['admin-all-users', page, pageSize],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: 'always' as const,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-users', {
         body: { action: 'list-users', page, pageSize },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin users edge function error:', error);
+        throw new Error(`Erreur serveur : ${error.message}`);
+      }
       if (data?.error) throw new Error(data.error);
       return data as { users: EnrichedUser[]; total: number };
     },
@@ -282,7 +287,24 @@ const Users = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {usersError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-2">Erreur de chargement</h3>
+              <p className="text-sm text-muted-foreground max-w-md mb-2">
+                Impossible de charger la liste des utilisateurs.
+              </p>
+              <code className="text-xs bg-muted px-3 py-1.5 rounded text-destructive mb-6 max-w-lg break-all">
+                {usersError.message}
+              </code>
+              <Button variant="outline" onClick={() => refetch()} className="gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Réessayer
+              </Button>
+            </div>
+          ) : isLoading ? (
             <div className="space-y-3 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4 animate-pulse">

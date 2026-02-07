@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame, AlertCircle, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,15 +29,16 @@ interface MemorialRanking {
 const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 
 const Dashboard = () => {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: ['admin-dashboard-stats'],
     ...CACHE_CONFIG,
+    refetchOnMount: 'always' as const,
     queryFn: async () => {
       const [memorialsRes, postsRes, transactionsRes, profilesRes] = await Promise.all([
         supabase.from('memorials').select('id', { count: 'exact', head: true }),
         supabase.from('guestbook_posts').select('id', { count: 'exact', head: true }),
         supabase.from('payment_transactions').select('amount, status, created_at'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles_public').select('user_id', { count: 'exact', head: true }),
       ]);
 
       const completedTransactions = (transactionsRes.data || [])
@@ -117,6 +119,32 @@ const Dashboard = () => {
 
   if (statsLoading) {
     return <DashboardSkeleton />;
+  }
+
+  if (statsError) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold text-foreground mb-8">Tableau de bord</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-2">Erreur de chargement</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-2">
+              Impossible de charger les statistiques du tableau de bord.
+            </p>
+            <code className="text-xs bg-muted px-3 py-1.5 rounded text-destructive mb-6 max-w-lg break-all">
+              {statsError.message}
+            </code>
+            <Button variant="outline" onClick={() => refetchStats()} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const statCards = [
