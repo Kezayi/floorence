@@ -1,18 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface DetailLien {
+  categorie: string;
+  defunt: string;
+  lien: string;
+  slug: string;
+}
+
 export interface SocialInference {
   userId: string;
   authorName: string;
-  rolesSummary: string;
-  totalMemorialsLinked: number;
-  detailedInferences: Array<{
-    memorial_slug: string;
-    role: string;
-  }>;
+  totalMemorials: number;
+  detailLiens: DetailLien[];
+  connexionsSuggerees: string[];
 }
 
 const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
+
+const parseRow = (row: Record<string, unknown>): SocialInference => ({
+  userId: (row.user_id as string) || "",
+  authorName: (row.author_name as string) || "",
+  totalMemorials: Number(row.total_memorials) || 0,
+  detailLiens: Array.isArray(row.detail_liens)
+    ? (row.detail_liens as DetailLien[])
+    : [],
+  connexionsSuggerees: Array.isArray(row.connexions_suggerees)
+    ? (row.connexions_suggerees as string[])
+    : [],
+});
 
 /** Fetch all social inferences from the view */
 export const useSocialInferences = () => {
@@ -29,15 +45,7 @@ export const useSocialInferences = () => {
         return [];
       }
 
-      return (data || []).map((row) => ({
-        userId: row.user_id || "",
-        authorName: row.author_name || "",
-        rolesSummary: row.roles_summary || "",
-        totalMemorialsLinked: Number(row.total_memorials_linked) || 0,
-        detailedInferences: Array.isArray(row.detailed_inferences)
-          ? (row.detailed_inferences as Array<{ memorial_slug: string; role: string }>)
-          : [],
-      }));
+      return (data || []).map(parseRow);
     },
   });
 };
@@ -59,15 +67,7 @@ export const useSocialInferenceByUser = (userId: string | undefined) => {
 
       if (error || !data) return null;
 
-      return {
-        userId: data.user_id || "",
-        authorName: data.author_name || "",
-        rolesSummary: data.roles_summary || "",
-        totalMemorialsLinked: Number(data.total_memorials_linked) || 0,
-        detailedInferences: Array.isArray(data.detailed_inferences)
-          ? (data.detailed_inferences as Array<{ memorial_slug: string; role: string }>)
-          : [],
-      };
+      return parseRow(data);
     },
   });
 };
