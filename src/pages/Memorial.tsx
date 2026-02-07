@@ -22,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
 import { calculateAge } from "@/lib/dateUtils";
-import { getRelationSortPriority } from "@/lib/relationCategoryUtils";
 import { toast } from "sonner";
 
 interface MemorialEvent {
@@ -248,23 +247,12 @@ const Memorial = () => {
     setCurrentGuestbookPage(1);
   }, [slug]);
 
-   // Pagination calculations — sorted by relation category priority (Famille directe first)
+   // Pagination calculations — chronological order (newest first)
   const totalGuestbookPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
-  
-  const sortedPosts = useMemo(() => {
-    return [...guestbookPosts].sort((a, b) => {
-      const priorityA = getRelationSortPriority(a.relationCategory);
-      const priorityB = getRelationSortPriority(b.relationCategory);
-      if (priorityA !== priorityB) return priorityA - priorityB;
-      // Within same category, keep chronological order (newest first)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [guestbookPosts]);
-
   const paginatedPosts = useMemo(() => {
     const startIndex = (currentGuestbookPage - 1) * POSTS_PER_PAGE;
-    return sortedPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
-  }, [sortedPosts, currentGuestbookPage, POSTS_PER_PAGE]);
+    return guestbookPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [guestbookPosts, currentGuestbookPage, POSTS_PER_PAGE]);
 
   // Calculate totals from all posts
   const totals = useMemo(() => {
