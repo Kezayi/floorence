@@ -26,6 +26,7 @@ import Index from "./pages/Index";
  const Vision = lazy(() => import("./pages/Vision"));
  const Mission = lazy(() => import("./pages/Mission"));
  const NotFound = lazy(() => import("./pages/NotFound"));
+ const CommunityGraph = lazy(() => import("./pages/CommunityGraph"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -36,6 +37,7 @@ const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+const AdminSocialIntelligence = lazy(() => import("./pages/admin/SocialIntelligence"));
 
 const queryClient = new QueryClient();
 
@@ -76,6 +78,7 @@ const App = () => (
                   <Route path="/confidentialite" element={<Confidentialite />} />
                   <Route path="/a-propos" element={<Vision />} />
                   <Route path="/mission" element={<Mission />} />
+                  <Route path="/communaute" element={<CommunityGraph />} />
 
                   {/* Admin routes */}
                   <Route path="/admin" element={
@@ -116,6 +119,11 @@ const App = () => (
                   <Route path="/admin/parametres" element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminSettings /></AdminLayout>
+                    </RequireAdmin>
+                  } />
+                  <Route path="/admin/intelligence-sociale" element={
+                    <RequireAdmin requireAdmin>
+                      <AdminLayout><AdminSocialIntelligence /></AdminLayout>
                     </RequireAdmin>
                   } />
 

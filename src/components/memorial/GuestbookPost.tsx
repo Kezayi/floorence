@@ -4,6 +4,7 @@ import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import AuthorTooltip from "./AuthorTooltip";
 
 export interface GuestbookPostData {
   id: string;
@@ -93,12 +94,14 @@ const GuestbookPost = ({
       {/* Author info */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <h4 className="font-serif text-lg text-memorial-dark-foreground">
-            {post.authorName}
-            {isDeletedUser && (
-              <span className="text-memorial-dark-muted ml-1">*</span>
-            )}
-          </h4>
+          <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
+            <h4 className="font-serif text-lg text-memorial-dark-foreground cursor-pointer hover:underline decoration-memorial-dark-muted/40 underline-offset-4 transition-all">
+              {post.authorName}
+              {isDeletedUser && (
+                <span className="text-memorial-dark-muted ml-1">*</span>
+              )}
+            </h4>
+          </AuthorTooltip>
           <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationCategory)}`}>
             {getRelationWithDeceased(post.relationCategory)}
           </span>
