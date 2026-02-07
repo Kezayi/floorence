@@ -37,7 +37,10 @@ const AuthVisionPanel = ({ onScrollToForm }: { onScrollToForm?: () => void }) =>
             Chaque hommage déposé, chaque cierge allumé est un fil que nous tendons entre le passé et l'avenir.
           </p>
           <p>
-            Entrez, créez un espace, honorez une vie. Ce sanctuaire est désormais le vôtre.&nbsp;»
+          Entrez, créez un espace, honorez une vie. Ce sanctuaire est désormais le vôtre.&nbsp;»
+          </p>
+          <p className="font-serif italic text-xl md:text-2xl pt-4" style={{ color: '#F5F0EB' }}>
+            Bienvenu à Floorence
           </p>
         </blockquote>
 
