@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, Search, Users, GitBranch, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
+import { Brain, Users, GitBranch, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/AdminSkeletons";
+import AdminSearchHeader, { useAdminFilters } from "@/components/admin/AdminSearchHeader";
 import { useSocialInferences, type SocialInference } from "@/hooks/useSocialInferences";
 
 const ITEMS_PER_PAGE = 20;
@@ -20,7 +20,7 @@ const getCategoryStyle = (cat: string): string => {
 };
 
 const SocialIntelligence = () => {
-  const [search, setSearch] = useState("");
+  const { filters, updateFilter } = useAdminFilters();
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
@@ -32,21 +32,39 @@ const SocialIntelligence = () => {
     return [...users].sort((a, b) => b.totalMemorials - a.totalMemorials);
   }, [users]);
 
-  // Filter and paginate
+  // Filter using AdminSearchHeader filters
   const filtered = useMemo(() => {
-    if (!search) return sorted;
-    const q = search.toLowerCase();
-    return sorted.filter(
-      (u) =>
-        u.authorName.toLowerCase().includes(q) ||
-        u.detailLiens.some(
-          (d) =>
-            d.lien.toLowerCase().includes(q) ||
-            d.defunt.toLowerCase().includes(q) ||
-            d.categorie.toLowerCase().includes(q)
-        )
-    );
-  }, [sorted, search]);
+    let result = sorted;
+
+    // Debounced text search
+    if (filters.debouncedSearch) {
+      const q = filters.debouncedSearch.toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.authorName.toLowerCase().includes(q) ||
+          u.detailLiens.some(
+            (d) =>
+              d.lien.toLowerCase().includes(q) ||
+              d.defunt.toLowerCase().includes(q) ||
+              d.categorie.toLowerCase().includes(q)
+          )
+      );
+    }
+
+    // Social group filter
+    if (filters.socialGroup !== "all") {
+      result = result.filter((u) =>
+        u.detailLiens.some((d) => d.categorie === filters.socialGroup)
+      );
+    }
+
+    return result;
+  }, [sorted, filters.debouncedSearch, filters.socialGroup]);
+
+  // Reset page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filters.debouncedSearch, filters.socialGroup]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(
@@ -56,7 +74,7 @@ const SocialIntelligence = () => {
 
   // Stats
   const multiMemorialUsers = useMemo(
-    () => (sorted).filter((u) => u.totalMemorials > 1).length,
+    () => sorted.filter((u) => u.totalMemorials > 1).length,
     [sorted]
   );
 
@@ -99,9 +117,7 @@ const SocialIntelligence = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{multiMemorialUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              Actifs sur 2+ espaces
-            </p>
+            <p className="text-xs text-muted-foreground">Actifs sur 2+ espaces</p>
           </CardContent>
         </Card>
         <Card>
@@ -118,19 +134,19 @@ const SocialIntelligence = () => {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher un contributeur, un lien, un défunt…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="pl-10"
-        />
-      </div>
+      {/* Search & Filters */}
+      <AdminSearchHeader
+        placeholder="Rechercher un contributeur, un lien, un défunt…"
+        showSocialGroup
+        filters={filters}
+        onChange={(f) => {
+          Object.entries(f).forEach(([k, v]) => {
+            if (filters[k as keyof typeof filters] !== v) {
+              updateFilter(k as keyof typeof filters, v);
+            }
+          });
+        }}
+      />
 
       {/* User List */}
       <div className="space-y-3">
@@ -193,16 +209,13 @@ const UserCard = ({
   expanded: boolean;
   onToggle: () => void;
 }) => {
-  // Derive a summary from detail_liens
   const rolesSummary = useMemo(() => {
     const categories = [...new Set(user.detailLiens.map((d) => d.categorie))];
     return categories.join(", ") || "—";
   }, [user.detailLiens]);
 
   return (
-    <Card
-      className={`transition-all ${expanded ? "ring-1 ring-primary/30" : ""}`}
-    >
+    <Card className={`transition-all ${expanded ? "ring-1 ring-primary/30" : ""}`}>
       <div
         className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={onToggle}
@@ -236,7 +249,6 @@ const UserCard = ({
           </div>
         </div>
 
-        {/* Expanded: detailed inferences */}
         {expanded && (
           <div className="mt-4 pt-4 border-t border-border space-y-2">
             <h4 className="text-xs font-sans font-medium text-muted-foreground uppercase tracking-wide mb-3">
@@ -267,7 +279,6 @@ const UserCard = ({
               </div>
             ))}
 
-            {/* Suggested connections */}
             {user.connexionsSuggerees.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border/50">
                 <div className="flex items-center gap-1.5 mb-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +34,7 @@ import {
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2 } from 'lucide-react';
+import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -69,7 +70,8 @@ interface Profile {
 const Memorials = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { filters, updateFilter } = useAdminFilters();
+  const searchQuery = filters.debouncedSearch;
   const [selectedMemorial, setSelectedMemorial] = useState<Memorial | null>(null);
   const [targetMemorialId, setTargetMemorialId] = useState<string>('');
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -85,9 +87,9 @@ const Memorials = () => {
 
   const pagination = useServerPagination(10);
 
-  // Fetch total count with search filter
+  // Fetch total count with search + status filter
   const { data: countData } = useQuery({
-    queryKey: ['admin-memorials-count', searchQuery],
+    queryKey: ['admin-memorials-count', searchQuery, filters.status],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
@@ -98,6 +100,8 @@ const Memorials = () => {
       if (searchQuery) {
         query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
       }
+      if (filters.status === 'demo') query = query.eq('is_demo', true);
+      if (filters.status === 'real') query = query.or('is_demo.eq.false,is_demo.is.null');
 
       const { count, error } = await query;
       if (error) throw error;
@@ -114,10 +118,10 @@ const Memorials = () => {
   // Reset to page 1 when search changes
   useEffect(() => {
     pagination.resetPage();
-  }, [searchQuery]);
+  }, [searchQuery, filters.status]);
 
   const { data: memorials, isLoading, error: memorialsError, refetch: refetchMemorials } = useQuery({
-    queryKey: ['admin-memorials', pagination.page, pagination.pageSize, searchQuery],
+    queryKey: ['admin-memorials', pagination.page, pagination.pageSize, searchQuery, filters.status],
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnMount: 'always',
@@ -130,6 +134,8 @@ const Memorials = () => {
       if (searchQuery) {
         query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
       }
+      if (filters.status === 'demo') query = query.eq('is_demo', true);
+      if (filters.status === 'real') query = query.or('is_demo.eq.false,is_demo.is.null');
 
       const { data, error } = await query.range(pagination.from, pagination.to);
       if (error) {
@@ -488,17 +494,18 @@ const Memorials = () => {
         />
       </div>
 
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un défunt..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
+      <AdminSearchHeader
+        placeholder="Rechercher un défunt par nom ou prénom…"
+        showStatus
+        filters={filters}
+        onChange={(f) => {
+          Object.entries(f).forEach(([k, v]) => {
+            if (filters[k as keyof typeof filters] !== v) {
+              updateFilter(k as keyof typeof filters, v);
+            }
+          });
+        }}
+      />
 
       <Card>
         <CardContent className="p-0">

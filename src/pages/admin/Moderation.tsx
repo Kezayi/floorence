@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRelationWithDeceased } from '@/lib/relationshipInference';
+import { getRelationCategory } from '@/lib/relationCategoryUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
+import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -58,6 +60,7 @@ interface GuestbookPost {
 const Moderation = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { filters, updateFilter, resetFilters, hasActiveFilters } = useAdminFilters();
   const [selectedPost, setSelectedPost] = useState<GuestbookPost | null>(null);
   const [hideReason, setHideReason] = useState('');
   const [showHideDialog, setShowHideDialog] = useState(false);
@@ -118,7 +121,41 @@ const Moderation = () => {
     },
   });
 
-  const { sortConfig, handleSort, sortedData } = useSortableTable(posts, 'created_at', 'desc');
+  // Client-side filtering from AdminSearchHeader
+  const filteredPosts = useMemo(() => {
+    if (!posts) return [];
+    return posts.filter((post) => {
+      // Text search (debounced)
+      if (filters.debouncedSearch) {
+        const q = filters.debouncedSearch.toLowerCase();
+        const memorialName = post.memorial
+          ? `${post.memorial.first_name} ${post.memorial.last_name}`.toLowerCase()
+          : '';
+        if (
+          !post.author_name.toLowerCase().includes(q) &&
+          !memorialName.includes(q) &&
+          !post.content.toLowerCase().includes(q)
+        )
+          return false;
+      }
+      // Social group filter
+      if (filters.socialGroup !== 'all') {
+        const cat = getRelationCategory(post.relation_category);
+        if (cat !== filters.socialGroup) return false;
+      }
+      // Date range
+      if (filters.dateFrom) {
+        if (post.created_at < filters.dateFrom) return false;
+      }
+      if (filters.dateTo) {
+        const endDate = filters.dateTo + 'T23:59:59';
+        if (post.created_at > endDate) return false;
+      }
+      return true;
+    });
+  }, [posts, filters.debouncedSearch, filters.socialGroup, filters.dateFrom, filters.dateTo]);
+
+  const { sortConfig, handleSort, sortedData } = useSortableTable(filteredPosts, 'created_at', 'desc');
 
   const hideMutation = useMutation({
     mutationFn: async ({ postId, reason }: { postId: string; reason: string }) => {
@@ -381,6 +418,20 @@ const Moderation = () => {
         />
       </div>
 
+      <AdminSearchHeader
+        placeholder="Rechercher par auteur, défunt ou contenu…"
+        showSocialGroup
+        showDateRange
+        filters={filters}
+        onChange={(f) => {
+          Object.entries(f).forEach(([k, v]) => {
+            if (filters[k as keyof typeof filters] !== v) {
+              updateFilter(k as keyof typeof filters, v);
+            }
+          });
+        }}
+      />
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -462,7 +513,7 @@ const Moderation = () => {
                     {post.is_hidden ? (
                       <Badge variant="destructive">Masqué</Badge>
                     ) : (
-                      <Badge className="bg-green-100 text-green-800 border-green-200">Visible</Badge>
+                      <Badge variant="outline" className="text-primary border-primary/30">Visible</Badge>
                     )}
                   </TableCell>
                   <TableCell>
