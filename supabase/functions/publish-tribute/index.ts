@@ -1,11 +1,15 @@
- import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
- import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
- import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
- 
- const corsHeaders = {
-   'Access-Control-Allow-Origin': '*',
-   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
- }
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+}
+
+// In-memory rate limiter (persists within function isolate lifetime)
+const rateLimitMap = new Map<string, number>()
+const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
  
  // Valid relation categories (French labels used by frontend for "Maillage" feature)
  const VALID_RELATION_CATEGORIES = [
@@ -108,11 +112,38 @@
  
      const userId = userData.user.id
      
-     // Get author name from user metadata or profile
-     let authorName = userData.user.user_metadata?.full_name || 
-                      userData.user.user_metadata?.display_name ||
-                      userData.user.email?.split('@')[0] || 
-                      'Utilisateur anonyme'
+      // Rate limiting: max 1 tribute per 30 seconds per user
+      const now = Date.now()
+      const lastRequest = rateLimitMap.get(userId)
+      if (lastRequest && now - lastRequest < RATE_LIMIT_MS) {
+        const remainingSeconds = Math.ceil((RATE_LIMIT_MS - (now - lastRequest)) / 1000)
+        console.log(`[RATE LIMIT] User ${userId} rate-limited, ${remainingSeconds}s remaining`)
+        return new Response(
+          JSON.stringify({ 
+            error: `Veuillez patienter ${remainingSeconds} secondes avant votre prochain hommage.`,
+            rateLimited: true
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Record this request timestamp
+      rateLimitMap.set(userId, now)
+
+      // Clean up old entries to prevent memory leaks (keep last 500)
+      if (rateLimitMap.size > 500) {
+        const entries = [...rateLimitMap.entries()]
+        entries.sort((a, b) => a[1] - b[1])
+        for (let i = 0; i < entries.length - 250; i++) {
+          rateLimitMap.delete(entries[i][0])
+        }
+      }
+
+      // Get author name from user metadata or profile
+      let authorName = userData.user.user_metadata?.full_name || 
+                       userData.user.user_metadata?.display_name ||
+                       userData.user.email?.split('@')[0] || 
+                       'Utilisateur anonyme'
      
      // Try to get display name from profiles table
      const { data: profile } = await supabase
