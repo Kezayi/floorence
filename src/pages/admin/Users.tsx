@@ -75,6 +75,8 @@ const Users = () => {
   // Fetch users from edge function
   const { data: usersData, isLoading, refetch } = useQuery({
     queryKey: ['admin-all-users', page, pageSize],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-users', {
         body: { action: 'list-users', page, pageSize },
@@ -281,8 +283,17 @@ const Users = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Chargement des utilisateurs...
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-28 bg-muted rounded" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                  </div>
+                  <div className="h-6 w-16 bg-muted rounded-full" />
+                </div>
+              ))}
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
