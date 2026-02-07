@@ -68,6 +68,8 @@ const AuditLogs = () => {
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['audit-logs'],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('audit_logs')
@@ -186,8 +188,19 @@ const AuditLogs = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Chargement de l'historique...
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 animate-pulse">
+                  <div className="space-y-1 shrink-0">
+                    <div className="h-4 w-20 bg-muted rounded" />
+                    <div className="h-3 w-14 bg-muted rounded" />
+                  </div>
+                  <div className="h-6 w-24 bg-muted rounded-full" />
+                  <div className="h-4 w-32 bg-muted rounded flex-1" />
+                  <div className="h-4 w-28 bg-muted rounded" />
+                  <div className="h-6 w-20 bg-muted rounded-full" />
+                </div>
+              ))}
             </div>
           ) : !filteredLogs || filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

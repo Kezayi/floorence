@@ -41,7 +41,7 @@ import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
-import { getRelationWithDeceased } from '@/lib/relationshipInference';
+import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
 
 interface Memorial {
   id: string;
@@ -87,6 +87,8 @@ const Memorials = () => {
   // Fetch total count with search filter
   const { data: countData } = useQuery({
     queryKey: ['admin-memorials-count', searchQuery],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       let query = supabase
         .from('memorials')
@@ -115,6 +117,8 @@ const Memorials = () => {
 
   const { data: memorials, isLoading } = useQuery({
     queryKey: ['admin-memorials', pagination.page, pagination.pageSize, searchQuery],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       let query = supabase
         .from('memorials')
@@ -364,7 +368,27 @@ const Memorials = () => {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Chargement...</div>;
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <div className="h-9 w-64 bg-muted rounded animate-pulse" />
+          <div className="h-10 w-44 bg-muted rounded animate-pulse" />
+        </div>
+        <div className="space-y-3 p-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-muted shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-36 bg-muted rounded" />
+                <div className="h-3 w-52 bg-muted rounded" />
+              </div>
+              <div className="h-6 w-16 bg-muted rounded-full" />
+              <div className="h-8 w-8 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const fetchAllMemorials = async () => {
@@ -491,7 +515,7 @@ const Memorials = () => {
                     <TableCell className="text-sm">{getCreatorName(memorial.created_by)}</TableCell>
                     <TableCell className="text-sm">
                       {memorial.creator_relation ? (
-                        <Badge variant="secondary">{getRelationWithDeceased(memorial.creator_relation)}</Badge>
+                        <RelationCategoryBadge relation={memorial.creator_relation} showCategory />
                       ) : (
                         <span className="text-muted-foreground italic">Non renseigné</span>
                       )}

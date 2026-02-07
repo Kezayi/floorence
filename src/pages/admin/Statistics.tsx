@@ -6,8 +6,10 @@ import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const Statistics = () => {
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-statistics'],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const today = new Date();
       const last30Days = subDays(today, 30);
@@ -107,6 +109,28 @@ const Statistics = () => {
       description: 'Dans les 30 derniers jours',
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div>
+        <div className="h-9 w-40 bg-muted rounded animate-pulse mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                <div className="h-5 w-5 bg-muted rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-muted rounded animate-pulse mb-1" />
+                <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

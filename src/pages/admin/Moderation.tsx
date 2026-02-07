@@ -34,6 +34,7 @@ import { useServerPagination } from '@/hooks/useServerPagination';
 import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
+import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
 
 interface GuestbookPost {
   id: string;
@@ -75,6 +76,8 @@ const Moderation = () => {
   // Fetch total count
   const { data: countData } = useQuery({
     queryKey: ['admin-guestbook-posts-count'],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { count, error } = await supabase
         .from('guestbook_posts')
@@ -93,6 +96,8 @@ const Moderation = () => {
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['admin-guestbook-posts', pagination.page, pagination.pageSize],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
@@ -295,7 +300,23 @@ const Moderation = () => {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Chargement...</div>;
+    return (
+      <div>
+        <div className="h-9 w-64 bg-muted rounded animate-pulse mb-8" />
+        <div className="space-y-3 p-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 animate-pulse">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-28 bg-muted rounded" />
+                <div className="h-3 w-64 bg-muted rounded" />
+              </div>
+              <div className="h-6 w-16 bg-muted rounded-full" />
+              <div className="h-8 w-8 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const fetchAllPosts = async () => {
@@ -384,7 +405,7 @@ const Moderation = () => {
                     {post.memorial ? `${post.memorial.first_name} ${post.memorial.last_name}` : '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{getRelationWithDeceased(post.relation_category)}</Badge>
+                    <RelationCategoryBadge relation={post.relation_category} showCategory />
                   </TableCell>
                   <TableCell className="max-w-[300px]">
                     <p className="line-clamp-2 text-sm">{post.content}</p>

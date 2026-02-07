@@ -6,6 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { DashboardSkeleton } from '@/components/admin/AdminSkeletons';
 
 interface DailyRevenue {
   date: string;
@@ -24,9 +25,12 @@ interface MemorialRanking {
   totalInteractions: number;
 }
 
+const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
+
 const Dashboard = () => {
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-dashboard-stats'],
+    ...CACHE_CONFIG,
     queryFn: async () => {
       const [memorialsRes, postsRes, transactionsRes, profilesRes] = await Promise.all([
         supabase.from('memorials').select('id', { count: 'exact', head: true }),
@@ -41,7 +45,6 @@ const Dashboard = () => {
       const totalRevenue = completedTransactions
         .reduce((sum, t) => sum + t.amount, 0);
 
-      // Group by day for the chart (last 30 days)
       const last30Days: DailyRevenue[] = [];
       for (let i = 29; i >= 0; i--) {
         const date = subDays(new Date(), i);
@@ -72,11 +75,10 @@ const Dashboard = () => {
     },
   });
 
-  // Fetch memorial rankings with post counts and gestures
   const { data: rankings } = useQuery({
     queryKey: ['admin-memorial-rankings'],
+    ...CACHE_CONFIG,
     queryFn: async () => {
-      // Get all memorials
       const { data: memorials } = await supabase
         .from('memorials')
         .select('id, slug, first_name, last_name')
@@ -84,70 +86,44 @@ const Dashboard = () => {
 
       if (!memorials || memorials.length === 0) return [];
 
-      // Get all guestbook posts with counts
-      const { data: posts } = await supabase
-        .from('guestbook_posts')
-        .select('memorial_id, candle_count, flower_count');
+      // Use optimized RPC for gesture stats
+      const memorialIds = memorials.map(m => m.id);
+      const { data: gestureStats } = await supabase
+        .rpc('get_memorial_gesture_stats', { p_memorial_ids: memorialIds });
 
-      // Aggregate by memorial
-      const memorialStats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
-      
-      (posts || []).forEach(post => {
-        if (!memorialStats[post.memorial_id]) {
-          memorialStats[post.memorial_id] = { postCount: 0, candles: 0, flowers: 0 };
-        }
-        memorialStats[post.memorial_id].postCount++;
-        memorialStats[post.memorial_id].candles += post.candle_count || 0;
-        memorialStats[post.memorial_id].flowers += post.flower_count || 0;
+      const statsMap: Record<string, { post_count: number; total_candles: number; total_flowers: number }> = {};
+      (gestureStats || []).forEach(s => {
+        statsMap[s.memorial_id] = s;
       });
 
-      // Map and sort by total interactions
       const rankings: MemorialRanking[] = memorials.map(m => {
-        const stats = memorialStats[m.id] || { postCount: 0, candles: 0, flowers: 0 };
+        const s = statsMap[m.id] || { post_count: 0, total_candles: 0, total_flowers: 0 };
         return {
           id: m.id,
           slug: m.slug,
           firstName: m.first_name,
           lastName: m.last_name,
-          postCount: stats.postCount,
-          totalCandles: stats.candles,
-          totalFlowers: stats.flowers,
-          totalInteractions: stats.postCount + stats.candles + stats.flowers,
+          postCount: Number(s.post_count),
+          totalCandles: Number(s.total_candles),
+          totalFlowers: Number(s.total_flowers),
+          totalInteractions: Number(s.post_count) + Number(s.total_candles) + Number(s.total_flowers),
         };
       });
 
-      // Sort by total interactions descending
       rankings.sort((a, b) => b.totalInteractions - a.totalInteractions);
-
-      return rankings.slice(0, 10); // Top 10
+      return rankings.slice(0, 10);
     },
   });
 
+  if (statsLoading) {
+    return <DashboardSkeleton />;
+  }
+
   const statCards = [
-    {
-      title: 'Comptes utilisateurs',
-      value: stats?.totalUsers || 0,
-      icon: Users,
-      color: 'text-purple-500',
-    },
-    {
-      title: 'Espaces mémoriels',
-      value: stats?.memorials || 0,
-      icon: Flower2,
-      color: 'text-primary',
-    },
-    {
-      title: 'Messages d\'hommage',
-      value: stats?.posts || 0,
-      icon: MessageSquare,
-      color: 'text-blue-500',
-    },
-    {
-      title: 'Chiffre d\'affaires',
-      value: `${(stats?.revenue || 0).toLocaleString()} FCFA`,
-      icon: DollarSign,
-      color: 'text-green-500',
-    },
+    { title: 'Comptes utilisateurs', value: stats?.totalUsers || 0, icon: Users, color: 'text-muted-foreground' },
+    { title: 'Espaces mémoriels', value: stats?.memorials || 0, icon: Flower2, color: 'text-primary' },
+    { title: 'Messages d\'hommage', value: stats?.posts || 0, icon: MessageSquare, color: 'text-muted-foreground' },
+    { title: 'Chiffre d\'affaires', value: `${(stats?.revenue || 0).toLocaleString()} FCFA`, icon: DollarSign, color: 'text-accent-green' },
   ];
 
   return (
@@ -174,7 +150,7 @@ const Dashboard = () => {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
+            <Trophy className="w-5 h-5 text-[hsl(var(--gesture-candle))]" />
             Classement des espaces mémoriels les plus actifs
           </CardTitle>
         </CardHeader>
@@ -188,9 +164,9 @@ const Dashboard = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0 ? 'bg-yellow-500 text-yellow-950' :
-                      index === 1 ? 'bg-gray-300 text-gray-700' :
-                      index === 2 ? 'bg-amber-600 text-amber-950' :
+                      index === 0 ? 'bg-[hsl(var(--gesture-candle))] text-foreground' :
+                      index === 1 ? 'bg-muted-foreground/30 text-foreground' :
+                      index === 2 ? 'bg-[hsl(var(--gesture-candle)/0.6)] text-foreground' :
                       'bg-muted-foreground/20 text-muted-foreground'
                     }`}>
                       {index + 1}
