@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -54,6 +54,7 @@ interface Memorial {
   photo_url: string | null;
   photos: string[] | null;
   is_active: boolean;
+  is_demo: boolean;
   merged_into: string | null;
   created_at: string;
   created_by: string;
@@ -123,7 +124,7 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, merged_into, created_at, created_by, creator_relation')
+        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, is_demo, merged_into, created_at, created_by, creator_relation')
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
@@ -157,6 +158,35 @@ const Memorials = () => {
     },
     enabled: !!memorials && memorials.length > 0,
   });
+
+  // Fetch gesture stats (hommage counts) for displayed memorials
+  const { data: gestureStats } = useQuery({
+    queryKey: ['admin-memorial-gesture-stats', memorials?.map(m => m.id)],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      if (!memorials || memorials.length === 0) return {};
+      const memorialIds = memorials.map(m => m.id);
+      const { data, error } = await supabase
+        .rpc('get_memorial_gesture_stats', { p_memorial_ids: memorialIds });
+      if (error) {
+        console.error('Gesture stats error:', error);
+        return {};
+      }
+      const stats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
+      (data || []).forEach((row: { memorial_id: string; post_count: number; total_candles: number; total_flowers: number }) => {
+        stats[row.memorial_id] = {
+          postCount: row.post_count,
+          candles: row.total_candles,
+          flowers: row.total_flowers,
+        };
+      });
+      return stats;
+    },
+    enabled: !!memorials && memorials.length > 0,
+  });
+
+  const getStats = (memorialId: string) => gestureStats?.[memorialId] || { postCount: 0, candles: 0, flowers: 0 };
 
   const getCreatorName = (createdBy: string) => {
     const profile = profiles?.find(p => p.user_id === createdBy);
@@ -501,6 +531,7 @@ const Memorials = () => {
                   currentSort={sortConfig}
                   onSort={handleSort}
                 />
+                <TableCell className="font-medium text-muted-foreground">Hommages</TableCell>
                 <SortableTableHeader
                   label="Date de création"
                   sortKey="created_at"
@@ -521,6 +552,7 @@ const Memorials = () => {
                 const duplicates = findDuplicates(memorial);
                 const hasDuplicates = duplicates && duplicates.length > 0;
                 const photoUrl = getPhotoUrl(memorial);
+                const stats = getStats(memorial.id);
 
                 return (
                   <TableRow key={memorial.id} className={memorial.merged_into ? 'opacity-50 bg-muted/30' : ''}>
@@ -555,6 +587,22 @@ const Memorials = () => {
                         <span className="text-muted-foreground italic">Non renseigné</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground" title="Messages">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          {stats.postCount}
+                        </span>
+                        <span className="flex items-center gap-1 text-[hsl(var(--gesture-candle))]" title="Cierges">
+                          <Flame className="w-3.5 h-3.5" />
+                          {stats.candles}
+                        </span>
+                        <span className="flex items-center gap-1 text-[hsl(var(--gesture-flower))]" title="Fleurs">
+                          <Flower2 className="w-3.5 h-3.5" />
+                          {stats.flowers}
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                       {format(new Date(memorial.created_at), 'dd MMM yyyy', { locale: fr })}
                     </TableCell>
@@ -563,9 +611,14 @@ const Memorials = () => {
                         {memorial.merged_into ? (
                           <Badge variant="outline">Fusionné</Badge>
                         ) : memorial.is_active ? (
-                          <Badge className="bg-green-100 text-green-800 border-green-200">En ligne</Badge>
+                          <Badge variant="outline" className="border-primary/30 text-primary">En ligne</Badge>
                         ) : (
                           <Badge variant="secondary">Inactif</Badge>
+                        )}
+                        {memorial.is_demo && (
+                          <Badge variant="outline" className="border-[hsl(var(--gesture-candle))] text-[hsl(var(--gesture-candle))] text-xs">
+                            Demo
+                          </Badge>
                         )}
                         {hasDuplicates && !memorial.merged_into && (
                           <Badge variant="destructive" className="text-xs">
@@ -615,7 +668,7 @@ const Memorials = () => {
               })}
               {(!sortedData || sortedData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Aucun mémorial trouvé.
                   </TableCell>
                 </TableRow>
