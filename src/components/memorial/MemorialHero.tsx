@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ProgressiveImage from "@/components/ui/ProgressiveImage";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff, Feather } from "lucide-react";
@@ -92,11 +93,11 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                     index === currentPhotoIndex ? 'active' : ''
                   }`}
                 >
-                  <img
+                  <ProgressiveImage
                     src={photo}
                     alt={`Portrait de ${memorial.name}`}
                     className="w-full h-full object-cover memorial-photo-grayscale"
-                    loading="lazy"
+                    priority={index === 0}
                   />
                 </div>
               ))}

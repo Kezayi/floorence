@@ -1,5 +1,7 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { calculateAge } from "@/lib/dateUtils";
+import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
 
 interface MemorialCardProps {
   id: string;
@@ -17,6 +19,7 @@ interface MemorialCardProps {
 }
 
 const MemorialCard = ({
+  id,
   slug,
   name,
   birthDate,
@@ -29,12 +32,16 @@ const MemorialCard = ({
   variant = "card",
   priority = false,
 }: MemorialCardProps) => {
+  const { prefetchMemorial } = useMemorialPrefetch();
+  const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
   const age = calculateAge(birthDate, deathDate);
   if (variant === "list") {
     return (
       <Link
         to={`/memorial/${slug}`}
         className="memorial-card group flex flex-row items-stretch bg-card hover:shadow-lg hover:shadow-black/5 transition-all duration-500"
+        onMouseEnter={handlePrefetch}
+        onTouchStart={handlePrefetch}
       >
         {/* Photo Portrait - Left */}
         <div className="w-24 md:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden bg-muted aspect-[3/4]">
@@ -98,6 +105,8 @@ const MemorialCard = ({
     <Link
       to={`/memorial/${slug}`}
       className="memorial-card group block"
+      onMouseEnter={handlePrefetch}
+      onTouchStart={handlePrefetch}
     >
       {/* Photo Portrait */}
       <div className="aspect-[3/4] relative overflow-hidden bg-muted">

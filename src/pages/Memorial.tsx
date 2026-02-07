@@ -266,7 +266,7 @@ const Memorial = () => {
     );
   }, [guestbookPosts]);
 
-  const currentUserId = "user-current";
+  const currentUserId = user?.id || "";
   const userHasPosted = guestbookPosts.some((post) => post.authorId === currentUserId);
 
   // Check if current user is the memorial owner
@@ -343,26 +343,64 @@ const Memorial = () => {
     funeralLocation: memorialData.funeralLocation,
   };
 
-  const handleAddCandles = (postId: string, count: number) => {
-    console.log(`Payment for ${count} candles on post ${postId}`);
-    setGuestbookPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? { ...post, candleCount: post.candleCount + count }
-          : post
-      )
+  const handleAddCandle = async (postId: string) => {
+    const post = guestbookPosts.find(p => p.id === postId);
+    if (!post || post.candleCount >= 10) return;
+
+    const prevCount = post.candleCount;
+    const newCount = prevCount + 1;
+
+    // Optimistic update — instant visual feedback
+    setGuestbookPosts(prev =>
+      prev.map(p => p.id === postId ? { ...p, candleCount: newCount } : p)
     );
+
+    // Background sync with database
+    if (isValidUUID(postId)) {
+      try {
+        const { error } = await supabase
+          .from('guestbook_posts')
+          .update({ candle_count: newCount })
+          .eq('id', postId);
+        if (error) throw error;
+      } catch {
+        // Rollback on failure
+        setGuestbookPosts(prev =>
+          prev.map(p => p.id === postId ? { ...p, candleCount: prevCount } : p)
+        );
+        toast.error("Erreur lors de l'ajout du cierge");
+      }
+    }
   };
 
-  const handleAddFlowers = (postId: string, count: number) => {
-    console.log(`Payment for ${count} flowers on post ${postId}`);
-    setGuestbookPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? { ...post, flowerCount: post.flowerCount + count }
-          : post
-      )
+  const handleAddFlower = async (postId: string) => {
+    const post = guestbookPosts.find(p => p.id === postId);
+    if (!post || post.flowerCount >= 10) return;
+
+    const prevCount = post.flowerCount;
+    const newCount = prevCount + 1;
+
+    // Optimistic update — instant visual feedback
+    setGuestbookPosts(prev =>
+      prev.map(p => p.id === postId ? { ...p, flowerCount: newCount } : p)
     );
+
+    // Background sync with database
+    if (isValidUUID(postId)) {
+      try {
+        const { error } = await supabase
+          .from('guestbook_posts')
+          .update({ flower_count: newCount })
+          .eq('id', postId);
+        if (error) throw error;
+      } catch {
+        // Rollback on failure
+        setGuestbookPosts(prev =>
+          prev.map(p => p.id === postId ? { ...p, flowerCount: prevCount } : p)
+        );
+        toast.error("Erreur lors du dépôt de fleur");
+      }
+    }
   };
 
   const handleSubmitPost = async (data: {
@@ -703,13 +741,13 @@ const Memorial = () => {
 
               {/* Posts List - Paginated */}
               <div className="divide-y divide-memorial-dark-muted/20 mt-8">
-                {paginatedPosts.map((post) => (
+              {paginatedPosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
                     post={post}
                     isOwner={post.authorId === currentUserId}
-                    onAddCandles={handleAddCandles}
-                    onAddFlowers={handleAddFlowers}
+                    onAddCandle={handleAddCandle}
+                    onAddFlower={handleAddFlower}
                   />
                 ))}
               </div>
