@@ -31,16 +31,16 @@ const AuthVisionPanel = ({ onScrollToForm }: { onScrollToForm?: () => void }) =>
             «&nbsp;La perte d'un être cher n'est pas seulement un vide, c'est une transformation. Elle redéfinit nos priorités et donne à la mémoire une dimension sacrée.
           </p>
           <p>
-            Floorence est né de cette volonté de transformer le manque en un sanctuaire fertile. C'est un lieu où le souvenir ne s'efface pas, mais s'enracine. Ici, nous tissons le maillage de nos familles pour que, dans cinquante&nbsp;ans, nos enfants sachent encore d'où ils viennent et sur quelles épaules ils ont grandi.
+            Floorence est né de cette volonté de transformer le manque en un sanctuaire fertile. C'est un lieu où le souvenir ne s'efface pas, mais s'enracine. Ici, nous tissons le maillage de nos familles pour que, toujours, nos enfants sachent d'où ils viennent et qui sont les leurs.
           </p>
           <p className="font-medium" style={{ color: '#D4CFC7' }}>
-            Chaque hommage déposé, chaque cierge allumé est un fil que nous tendons entre le passé et l'avenir.
+            Chaque RIP exprimé, chaque cierge allumé et chaque fleur déposée est une buche dans le foyer des liens sociaux...
           </p>
           <p>
-          Entrez, créez un espace, honorez une vie. Ce sanctuaire est désormais le vôtre.&nbsp;»
+            Entrez, créez un espace, honorez une vie. Ce sanctuaire est désormais le vôtre.&nbsp;»
           </p>
           <p className="font-serif italic text-xl md:text-2xl pt-4" style={{ color: '#F5F0EB' }}>
-            Bienvenu à Floorence.
+            Bienvenue à Floorence.
           </p>
         </blockquote>
 
