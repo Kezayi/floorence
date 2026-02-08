@@ -5,6 +5,7 @@ import { fr } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Calendar, MapPin, Cross, Flame } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
 
 interface MemorialEvent {
   id: string;
@@ -27,77 +28,59 @@ interface UpcomingEventsProps {
 }
 
 const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
-  const [events, setEvents] = useState<MemorialEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
   // Section icon based on type
   const SectionIcon = type === "funerals" ? Cross : Flame;
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        // Use full ISO timestamp for proper comparison with timestamp column
-        const now = new Date().toISOString();
-        
-        // Define event types based on the type prop (case-insensitive matching)
-        const eventTypes = type === "funerals" 
-          ? ["veillee", "inhumation", "VEILLEE", "INHUMATION"] 
-          : ["commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT"];
+  const { data: events = [], isLoading: loading } = useQuery({
+    queryKey: ['upcoming-events', type],
+    staleTime: 5 * 60 * 1000, // 5 min cache
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      
+      const eventTypes = type === "funerals" 
+        ? ["veillee", "inhumation", "VEILLEE", "INHUMATION"] 
+        : ["commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT"];
 
-        const { data, error } = await supabase
-          .from("memorial_events")
-          .select(`
-            id,
-            event_type,
-            event_date,
-            location,
-            description,
-            memorial_id,
-            memorials!memorial_events_memorial_id_fkey (
-              first_name,
-              last_name,
-              slug
-            )
-          `)
-          .gte("event_date", now)
-          .in("event_type", eventTypes)
-          .eq("is_public", true)
-          .order("event_date", { ascending: true })
-          .limit(5);
+      const { data, error } = await supabase
+        .from("memorial_events")
+        .select(`
+          id,
+          event_type,
+          event_date,
+          location,
+          description,
+          memorial_id,
+          memorials!memorial_events_memorial_id_fkey (
+            first_name,
+            last_name,
+            slug
+          )
+        `)
+        .gte("event_date", now)
+        .in("event_type", eventTypes)
+        .eq("is_public", true)
+        .order("event_date", { ascending: true })
+        .limit(5);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const formattedEvents = (data || []).map((event: any) => ({
-          ...event,
-          memorial: event.memorials,
-        }));
-
-        setEvents(formattedEvents);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
-  }, [type]);
+      return (data || []).map((event: any) => ({
+        ...event,
+        memorial: event.memorials,
+      })) as MemorialEvent[];
+    },
+  });
 
   const getEventTypeLabel = (eventType: string) => {
-    const type = eventType.toLowerCase();
-    switch (type) {
-      case "veillee":
-        return "Veillée";
-      case "inhumation":
-        return "Inhumation";
+    const t = eventType.toLowerCase();
+    switch (t) {
+      case "veillee": return "Veillée";
+      case "inhumation": return "Inhumation";
       case "commemoration":
-      case "recueillement":
-        return "Recueillement";
-      case "anniversary":
-        return "Anniversaire";
-      default:
-        return eventType;
+      case "recueillement": return "Recueillement";
+      case "anniversary": return "Anniversaire";
+      default: return eventType;
     }
   };
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 export type AppRole = 'admin' | 'moderator';
 
@@ -14,59 +14,27 @@ interface UseAdminRoleResult {
 
 export const useAdminRole = (): UseAdminRoleResult => {
   const { user, loading: authLoading } = useAuth();
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  const [roleLoading, setRoleLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchRoles = async () => {
-      // Wait for auth to complete
-      if (authLoading) {
-        return;
-      }
-      
-      if (!user) {
-        if (isMounted) {
-          setRoles([]);
-          setRoleLoading(false);
-        }
-        return;
-      }
+  const { data: roles = [], isLoading: roleLoading } = useQuery({
+    queryKey: ['user-roles', user?.id],
+    enabled: !!user && !authLoading,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes (roles rarely change)
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      if (!user) return [];
 
-      try {
-        // Use RPC function for faster and more reliable role check
-        const [adminResult, modResult] = await Promise.all([
-          supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
-          supabase.rpc('has_role', { _user_id: user.id, _role: 'moderator' })
-        ]);
+      const [adminResult, modResult] = await Promise.all([
+        supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
+        supabase.rpc('has_role', { _user_id: user.id, _role: 'moderator' })
+      ]);
 
-        if (isMounted) {
-          const fetchedRoles: AppRole[] = [];
-          if (adminResult.data) fetchedRoles.push('admin');
-          if (modResult.data) fetchedRoles.push('moderator');
-          setRoles(fetchedRoles);
-        }
-      } catch (err) {
-        console.error('Error fetching roles:', err);
-        if (isMounted) {
-          setRoles([]);
-        }
-      } finally {
-        if (isMounted) {
-          setRoleLoading(false);
-        }
-      }
-    };
+      const fetchedRoles: AppRole[] = [];
+      if (adminResult.data) fetchedRoles.push('admin');
+      if (modResult.data) fetchedRoles.push('moderator');
+      return fetchedRoles;
+    },
+  });
 
-    fetchRoles();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [user, authLoading]);
-
-  // Loading is true while auth OR role check is in progress
   const isLoading = authLoading || roleLoading;
 
   return {

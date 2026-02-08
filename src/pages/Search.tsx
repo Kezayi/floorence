@@ -1,6 +1,6 @@
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
-import { useMemorials } from "@/contexts/MemorialsContext";
+import { useMemorialsWithGuestbook } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
@@ -573,7 +573,7 @@ const SearchPage = () => {
   const navigate = useNavigate();
   const query = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(query);
-  const { memorials, loading: memorialsLoading } = useMemorials();
+  const { memorials, loading: memorialsLoading } = useMemorialsWithGuestbook();
   const { user } = useAuth();
   const { profile } = useProfile();
   

@@ -50,11 +50,14 @@ interface MemorialsContextType {
   loading: boolean;
   isRefetching: boolean;
   refetchMemorials: () => Promise<void>;
+  /** Lazy-loaded guestbook posts (only fetched when needed, e.g. Search page) */
+  guestbookByMemorial: Record<string, GuestbookMessage[]>;
+  guestbookLoading: boolean;
 }
 
 const MemorialsContext = createContext<MemorialsContextType | undefined>(undefined);
 
-// Fetch guestbook stats for all memorials using RPC function (bypasses RLS for aggregation)
+// Fetch guestbook stats for all memorials using RPC function
 const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string, { postCount: number; candles: number; flowers: number }>> => {
   if (memorialIds.length === 0) return {};
   
@@ -66,7 +69,6 @@ const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string
     return {};
   }
 
-  // Map RPC results to our stats format
   const stats: Record<string, { postCount: number; candles: number; flowers: number }> = {};
   (data || []).forEach((row: { memorial_id: string; post_count: number; total_candles: number; total_flowers: number }) => {
     stats[row.memorial_id] = {
@@ -83,7 +85,6 @@ const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string
 const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string, string>> => {
   if (creatorIds.length === 0) return {};
   
-  // Use profiles_public view to bypass RLS and avoid exposing sensitive data
   const { data, error } = await supabase
     .from('profiles_public')
     .select('user_id, display_name')
@@ -104,38 +105,7 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
   return profiles;
 };
 
-// Fetch guestbook posts for search (via RPC function to bypass RLS)
-const fetchGuestbookPosts = async (memorialIds: string[]): Promise<Record<string, GuestbookMessage[]>> => {
-  if (memorialIds.length === 0) return {};
-  
-  const { data, error } = await supabase
-    .rpc('get_public_guestbook_posts');
-
-  if (error) {
-    console.error('Error fetching guestbook posts:', error);
-    return {};
-  }
-
-  // Group by memorial_id
-  const postsByMemorial: Record<string, GuestbookMessage[]> = {};
-  (data || []).forEach((post: { id: string; memorial_id: string; author_name: string; relation_category: string; content: string; candle_count: number; flower_count: number }) => {
-    if (!postsByMemorial[post.memorial_id]) {
-      postsByMemorial[post.memorial_id] = [];
-    }
-    postsByMemorial[post.memorial_id].push({
-      id: post.id,
-      authorName: post.author_name,
-      relationCategory: post.relation_category,
-      content: post.content,
-      candleCount: post.candle_count,
-      flowerCount: post.flower_count,
-    });
-  });
-
-  return postsByMemorial;
-};
-
-// Fetch memorials from database
+// Fetch memorials from database — WITHOUT guestbook posts (deferred)
 const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }>; creatorProfiles: Record<string, string> }> => {
   const { data, error } = await supabase
     .from('memorials')
@@ -152,14 +122,15 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
 
   // Get unique creator IDs
   const creatorIds = [...new Set((data || []).map(m => m.created_by))];
-  
-  // Fetch creator profiles and guestbook posts in parallel
-  const [creatorProfiles, guestbookPosts] = await Promise.all([
+  const memorialIds = (data || []).map(m => m.id);
+
+  // Fetch creator profiles AND stats in parallel (was sequential before)
+  const [creatorProfiles, stats] = await Promise.all([
     fetchCreatorProfiles(creatorIds),
-    fetchGuestbookPosts((data || []).map(m => m.id))
+    fetchGuestbookStats(memorialIds),
   ]);
 
-  // Filter out base64 data from photos (safety guard for legacy data)
+  // Filter out base64 data from photos
   const getValidPhotos = (m: typeof data[0]): string[] => {
     const allPhotos = (m.photos && m.photos.length > 0) ? m.photos : (m.photo_url ? [m.photo_url] : []);
     return allPhotos.filter((p: string) => p && !p.startsWith('data:'));
@@ -179,7 +150,8 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
       name: creatorProfiles[m.created_by] || "Créateur",
       relation: m.creator_relation || "Créateur de l'espace",
     },
-    guestbookMessages: guestbookPosts[m.id] || [],
+    // Guestbook messages are now lazy-loaded separately
+    guestbookMessages: [],
     type: getMemorialType(formatDateFrench(m.death_date)),
     createdBy: m.created_by,
     donationEnabled: m.donation_enabled,
@@ -189,25 +161,58 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     isDemo: m.is_demo || false,
   }));
 
-  // Fetch stats for all memorials
-  const stats = memorialsFromDb.length > 0 
-    ? await fetchGuestbookStats(memorialsFromDb.map(m => m.id))
-    : {};
-
   return { memorials: memorialsFromDb, stats, creatorProfiles };
+};
+
+// Separate fetcher for guestbook posts (lazy, only for Search page)
+const fetchAllGuestbookPosts = async (): Promise<Record<string, GuestbookMessage[]>> => {
+  const { data, error } = await supabase
+    .rpc('get_public_guestbook_posts');
+
+  if (error) {
+    console.error('Error fetching guestbook posts:', error);
+    return {};
+  }
+
+  const postsByMemorial: Record<string, GuestbookMessage[]> = {};
+  (data || []).forEach((post: { id: string; memorial_id: string; author_name: string; relation_category: string; content: string; candle_count: number; flower_count: number }) => {
+    if (!postsByMemorial[post.memorial_id]) {
+      postsByMemorial[post.memorial_id] = [];
+    }
+    postsByMemorial[post.memorial_id].push({
+      id: post.id,
+      authorName: post.author_name,
+      relationCategory: post.relation_category,
+      content: post.content,
+      candleCount: post.candle_count,
+      flowerCount: post.flower_count,
+    });
+  });
+
+  return postsByMemorial;
 };
 
 export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
   
-  // React Query with caching: staleTime = 2 min, refetch on window focus
+  // Core memorials data (fast: no guestbook posts)
   const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['memorials-list'],
     queryFn: fetchMemorialsData,
-    staleTime: 2 * 60 * 1000, // 2 minutes cache
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
     retry: 2,
+  });
+
+  // Lazy guestbook posts — only fetched when accessed (Search page will trigger via useGuestbookPosts)
+  const { data: guestbookByMemorial = {}, isLoading: guestbookLoading } = useQuery({
+    queryKey: ['guestbook-posts-all'],
+    queryFn: fetchAllGuestbookPosts,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    // Don't fetch eagerly — only when something subscribes
+    enabled: false,
   });
 
   const memorials = data?.memorials ?? [];
@@ -217,7 +222,6 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   const memorialCards = useMemo<MemorialCardData[]>(() => 
     memorials.map(m => {
       const stats = memorialStats[m.id] || { postCount: 0, candles: 0, flowers: 0 };
-      // Use defaultPhotoIndex with bounds checking
       const safeIndex = (m.defaultPhotoIndex ?? 0) < m.photos.length ? (m.defaultPhotoIndex ?? 0) : 0;
       
       return {
@@ -241,7 +245,15 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <MemorialsContext.Provider value={{ memorials, memorialCards, loading: isLoading, isRefetching, refetchMemorials }}>
+    <MemorialsContext.Provider value={{ 
+      memorials, 
+      memorialCards, 
+      loading: isLoading, 
+      isRefetching, 
+      refetchMemorials,
+      guestbookByMemorial,
+      guestbookLoading,
+    }}>
       {children}
     </MemorialsContext.Provider>
   );
@@ -253,4 +265,35 @@ export const useMemorials = () => {
     throw new Error("useMemorials must be used within a MemorialsProvider");
   }
   return context;
+};
+
+/**
+ * Hook to lazy-load guestbook posts for search.
+ * Triggers the deferred query and merges posts into memorials.
+ */
+export const useMemorialsWithGuestbook = () => {
+  const context = useMemorials();
+  const queryClient = useQueryClient();
+
+  // Enable the lazy query on first use
+  const { data: guestbookByMemorial = {}, isLoading: guestbookLoading } = useQuery({
+    queryKey: ['guestbook-posts-all'],
+    queryFn: fetchAllGuestbookPosts,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  // Merge guestbook posts into memorials
+  const memorialsWithGuestbook = useMemo(() => 
+    context.memorials.map(m => ({
+      ...m,
+      guestbookMessages: guestbookByMemorial[m.id] || [],
+    })),
+  [context.memorials, guestbookByMemorial]);
+
+  return {
+    ...context,
+    memorials: memorialsWithGuestbook,
+    guestbookLoading,
+  };
 };
