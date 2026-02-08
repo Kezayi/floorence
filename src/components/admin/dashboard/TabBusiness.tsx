@@ -59,17 +59,17 @@ const TabBusiness = ({ stats }: Props) => {
 
   const statCards = [
     { title: 'Utilisateurs', value: stats.totalUsers, icon: Users, color: 'text-muted-foreground' },
-    { title: 'Espaces mémoriels', value: stats.totalMemorials, icon: Flower2, color: 'text-[hsl(45,90%,50%)]', sub: `${stats.realMemorials} réels · ${stats.demoMemorials} démo` },
+    { title: 'Espaces mémoriels', value: stats.totalMemorials, icon: Flower2, color: 'text-[hsl(var(--tab-business))]', sub: `${stats.realMemorials} réels · ${stats.demoMemorials} démo` },
     { title: 'Hommages visibles', value: stats.visiblePosts, icon: MessageSquare, color: 'text-muted-foreground', sub: `${stats.postsLastWeek} cette semaine` },
-    { title: 'Chiffre d\'affaires', value: `${stats.totalRevenue.toLocaleString()} XAF`, icon: DollarSign, color: 'text-[hsl(45,90%,50%)]' },
+    { title: 'Chiffre d\'affaires', value: `${stats.totalRevenue.toLocaleString()} XAF`, icon: DollarSign, color: 'text-[hsl(var(--tab-business))]' },
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-300">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="bg-card/80 backdrop-blur-sm border-border/50">
+          <Card key={stat.title} className="bg-card shadow-sm border-border/50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -87,10 +87,10 @@ const TabBusiness = ({ stats }: Props) => {
       </div>
 
       {/* Revenue Chart */}
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+      <Card className="bg-card shadow-sm border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-[hsl(45,90%,50%)]" />
+            <DollarSign className="w-5 h-5 text-[hsl(var(--tab-business))]" />
             Évolution du chiffre d'affaires (30 derniers jours)
           </CardTitle>
         </CardHeader>
@@ -129,8 +129,8 @@ const TabBusiness = ({ stats }: Props) => {
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="hsl(45, 90%, 50%)"
-                    fill="hsl(45, 90%, 50%, 0.15)"
+                    stroke="hsl(var(--tab-business))"
+                    fill="hsl(var(--tab-business) / 0.15)"
                     strokeWidth={2}
                   />
                 </AreaChart>

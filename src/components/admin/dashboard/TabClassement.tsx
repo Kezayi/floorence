@@ -77,8 +77,8 @@ const TabClassement = () => {
   }
 
   return (
-    <div className="animate-in fade-in-50 duration-300">
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <Card className="bg-card shadow-sm border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-[hsl(142,70%,45%)]" />

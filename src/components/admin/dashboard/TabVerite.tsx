@@ -14,7 +14,7 @@ interface Props {
 
 const TabVerite = ({ stats }: Props) => {
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-300">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Success Wall - Indicateurs de Vérité */}
       <SuccessWall />
 

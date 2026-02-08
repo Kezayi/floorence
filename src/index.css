@@ -66,6 +66,12 @@
     /* Admin theme */
     --admin-burgundy: 0 60% 25%;
 
+    /* Tab accent backgrounds (subtle wash) */
+    --tab-verite: 240 60% 55%;
+    --tab-classement: 142 70% 45%;
+    --tab-business: 45 90% 50%;
+    --tab-impact: 280 60% 55%;
+
     /* Gris Anthracite - Section identification */
     --memorial-anthracite: 220 13% 18%;
     --memorial-anthracite-foreground: 0 0% 92%;

@@ -10,10 +10,10 @@ interface Props {
 
 const TabImpact = ({ stats }: Props) => {
   return (
-    <div className="animate-in fade-in-50 duration-300">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Gesture Intensity */}
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card className="bg-card shadow-sm border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Flame className="w-4 h-4 text-[hsl(var(--gesture-candle))]" />

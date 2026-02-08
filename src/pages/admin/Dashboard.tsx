@@ -50,7 +50,7 @@ const Dashboard = () => {
         <TabsList className="w-full grid grid-cols-4 h-12 mb-6 bg-muted/60 p-1">
           <TabsTrigger
             value="verite"
-            className="relative data-[state=active]:bg-[hsl(240,60%,55%)] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(240,60%,55%)] transition-all text-xs sm:text-sm font-medium"
+            className="relative data-[state=active]:bg-[hsl(var(--tab-verite))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-verite))] transition-all text-xs sm:text-sm font-medium"
           >
             Vérité
             {(pendingCount ?? 0) > 0 && (
@@ -61,38 +61,46 @@ const Dashboard = () => {
           </TabsTrigger>
           <TabsTrigger
             value="classement"
-            className="data-[state=active]:bg-[hsl(142,70%,45%)] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(142,70%,45%)] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-classement))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-classement))] transition-all text-xs sm:text-sm font-medium"
           >
             Classement
           </TabsTrigger>
           <TabsTrigger
             value="business"
-            className="data-[state=active]:bg-[hsl(45,90%,45%)] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(45,90%,45%)] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-business))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-business))] transition-all text-xs sm:text-sm font-medium"
           >
             Business
           </TabsTrigger>
           <TabsTrigger
             value="impact"
-            className="data-[state=active]:bg-[hsl(280,60%,55%)] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(280,60%,55%)] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-impact))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-impact))] transition-all text-xs sm:text-sm font-medium"
           >
             Impact
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="verite">
-          {dashStats && <TabVerite stats={dashStats} />}
+          <div className="rounded-xl bg-[hsl(var(--tab-verite)/0.06)] p-4 transition-colors duration-300">
+            {dashStats && <TabVerite stats={dashStats} />}
+          </div>
         </TabsContent>
 
         <TabsContent value="classement">
-          <TabClassement />
+          <div className="rounded-xl bg-[hsl(var(--tab-classement)/0.06)] p-4 transition-colors duration-300">
+            <TabClassement />
+          </div>
         </TabsContent>
 
         <TabsContent value="business">
-          {dashStats && <TabBusiness stats={dashStats} />}
+          <div className="rounded-xl bg-[hsl(var(--tab-business)/0.06)] p-4 transition-colors duration-300">
+            {dashStats && <TabBusiness stats={dashStats} />}
+          </div>
         </TabsContent>
 
         <TabsContent value="impact">
-          {dashStats && <TabImpact stats={dashStats} />}
+          <div className="rounded-xl bg-[hsl(var(--tab-impact)/0.06)] p-4 transition-colors duration-300">
+            {dashStats && <TabImpact stats={dashStats} />}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
