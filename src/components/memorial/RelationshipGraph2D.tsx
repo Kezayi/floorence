@@ -21,48 +21,57 @@ interface GraphNode {
   categoryType: string;
 }
 
-// Map category to type
+// Map category to one of 5 social categories
 const getCategoryType = (category: string): string => {
-  const lowerCategory = category.toLowerCase();
-  
+  const lc = category.toLowerCase();
+
+  // Famille directe : parents, enfants, fratrie
   if (
-    lowerCategory.includes("fils") || lowerCategory.includes("fille") ||
-    lowerCategory.includes("père") || lowerCategory.includes("mère") ||
-    lowerCategory.includes("frère") || lowerCategory.includes("sœur") ||
-    lowerCategory.includes("soeur") || lowerCategory.includes("grand") ||
-    lowerCategory.includes("petit") || lowerCategory.includes("oncle") ||
-    lowerCategory.includes("tante") || lowerCategory.includes("cousin") ||
-    lowerCategory.includes("neveu") || lowerCategory.includes("nièce")
+    lc.includes("père") || lc.includes("mère") ||
+    lc.includes("fils") || lc.includes("fille") ||
+    lc.includes("frère") || lc.includes("sœur") || lc.includes("soeur")
   ) {
-    return "famille";
+    return "famille_directe";
   }
-  
+
+  // Famille élargie : grands-parents, petits-enfants, oncles, tantes, cousins, neveux
   if (
-    lowerCategory.includes("époux") || lowerCategory.includes("épouse") ||
-    lowerCategory.includes("mari") || lowerCategory.includes("femme") ||
-    lowerCategory.includes("beau") || lowerCategory.includes("belle") ||
-    lowerCategory.includes("gendre") || lowerCategory.includes("bru")
+    lc.includes("grand") || lc.includes("petit") ||
+    lc.includes("oncle") || lc.includes("tante") ||
+    lc.includes("cousin") || lc.includes("neveu") || lc.includes("nièce")
+  ) {
+    return "famille_elargie";
+  }
+
+  // Alliés : époux, beau-famille, gendre, bru
+  if (
+    lc.includes("époux") || lc.includes("épouse") ||
+    lc.includes("mari") || lc.includes("femme") ||
+    lc.includes("beau") || lc.includes("belle") ||
+    lc.includes("gendre") || lc.includes("bru")
   ) {
     return "allies";
   }
-  
+
+  // Socio cœur : amis, collègues, voisins, camarades
   if (
-    lowerCategory.includes("ami") || lowerCategory.includes("connaissance") ||
-    lowerCategory.includes("collègue") || lowerCategory.includes("voisin") ||
-    lowerCategory.includes("camarade") || lowerCategory.includes("élève")
+    lc.includes("ami") || lc.includes("connaissance") ||
+    lc.includes("collègue") || lc.includes("voisin") ||
+    lc.includes("camarade") || lc.includes("élève")
   ) {
-    return "amis";
+    return "socio_coeur";
   }
-  
+
   return "autre";
 };
 
-// Palette Floorence : Noir (Direct), Doré (Alliance), Rose (Féminin), Gris (Autre)
+// Palette 5 catégories sociales
 const categoryStyles: Record<string, { fill: string; label: string }> = {
-  famille: { fill: "hsl(0, 0%, 15%)", label: "Famille" },
-  allies: { fill: "hsl(45, 90%, 50%)", label: "Alliés" },
-  amis: { fill: "hsl(340, 60%, 65%)", label: "Amis" },
-  autre: { fill: "hsl(0, 0%, 55%)", label: "Autres" },
+  famille_directe: { fill: "hsl(0, 84%, 60%)",    label: "Famille directe" },   // Rouge
+  famille_elargie: { fill: "hsl(38, 92%, 50%)",   label: "Famille élargie" },   // Ambre
+  allies:          { fill: "hsl(160, 84%, 39%)",   label: "Alliés" },            // Émeraude
+  socio_coeur:     { fill: "hsl(217, 91%, 60%)",   label: "Socio cœur" },       // Bleu
+  autre:           { fill: "hsl(220, 9%, 46%)",    label: "Autres" },            // Gris
 };
 
 // Couleur du lien inféré basée sur la catégorie sémantique
@@ -96,7 +105,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     const graphNodes: GraphNode[] = [];
     
     const byCategory: Record<string, Array<{ id: string; name: string; category: string }>> = {
-      famille: [], allies: [], amis: [], autre: [],
+      famille_directe: [], famille_elargie: [], allies: [], socio_coeur: [], autre: [],
     };
     
     authorsList.forEach(([id, data]) => {
@@ -104,7 +113,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
       byCategory[type].push({ id, ...data });
     });
     
-    const categoryOrder = ["famille", "allies", "amis", "autre"];
+    const categoryOrder = ["famille_directe", "famille_elargie", "allies", "socio_coeur", "autre"];
     const totalNodes = authorsList.length;
     const baseRadius = Math.max(90, Math.min(130, 70 + totalNodes * 5));
     const radiusIncrement = Math.max(55, Math.min(75, 45 + totalNodes * 3));
@@ -538,18 +547,12 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
       {inferredLinks.length > 0 && (
         <div className="flex flex-wrap justify-center gap-3 mt-2 text-[10px] font-sans text-muted-foreground/70 px-2">
           <span className="italic">Liens entre proches :</span>
-          <div className="flex items-center gap-1">
-            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.famille.fill }} />
-            <span>Famille</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.allies.fill }} />
-            <span>Alliés</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.amis.fill }} />
-            <span>Amis</span>
-          </div>
+          {Object.entries(categoryStyles).map(([key, style]) => (
+            <div key={`leg-inf-${key}`} className="flex items-center gap-1">
+              <div className="w-5 h-0 border-t-[1.5px] border-dashed" style={{ borderColor: style.fill }} />
+              <span>{style.label}</span>
+            </div>
+          ))}
         </div>
       )}
 
