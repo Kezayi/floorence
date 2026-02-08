@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +34,7 @@ import {
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2 } from 'lucide-react';
+import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2, Link2 } from 'lucide-react';
 import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -69,6 +70,7 @@ interface Profile {
 
 const Memorials = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { filters, updateFilter } = useAdminFilters();
   const searchQuery = filters.debouncedSearch;
@@ -562,7 +564,11 @@ const Memorials = () => {
                 const stats = getStats(memorial.id);
 
                 return (
-                  <TableRow key={memorial.id} className={memorial.merged_into ? 'opacity-50 bg-muted/30' : ''}>
+                  <TableRow
+                    key={memorial.id}
+                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${memorial.merged_into ? 'opacity-50 bg-muted/30' : ''}`}
+                    onClick={() => navigate(`/admin/memoriaux/${memorial.id}`)}
+                  >
                     <TableCell>
                       <Avatar className="w-12 h-12">
                         <AvatarImage src={photoUrl || undefined} alt={`${memorial.first_name} ${memorial.last_name}`} />
@@ -573,7 +579,9 @@ const Memorials = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{memorial.first_name} {memorial.last_name}</span>
+                        <span className="font-medium text-primary underline-offset-4 hover:underline">
+                          {memorial.first_name} {memorial.last_name}
+                        </span>
                         {memorial.death_date && (
                           <span className="text-sm text-muted-foreground">
                             † {format(new Date(memorial.death_date), 'dd MMM yyyy', { locale: fr })}
@@ -634,12 +642,20 @@ const Memorials = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" asChild title="Voir">
+                        <Button variant="ghost" size="sm" asChild title="Voir le mémorial">
                           <a href={`/memorial/${memorial.slug}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="w-4 h-4" />
                           </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/admin/memoriaux/${memorial.id}`)}
+                          title="Gérer les liaisons"
+                        >
+                          <Link2 className="w-4 h-4 text-[hsl(45,90%,50%)]" />
                         </Button>
                         <Button
                           variant="ghost"

@@ -38,6 +38,7 @@ const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminSocialIntelligence = lazy(() => import("./pages/admin/SocialIntelligence"));
+const AdminMemorialDetail = lazy(() => import("./pages/admin/MemorialDetail"));
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,11 @@ const App = () => (
                   <Route path="/admin/memoriaux" element={
                     <RequireAdmin>
                       <AdminLayout><AdminMemorials /></AdminLayout>
+                    </RequireAdmin>
+                  } />
+                  <Route path="/admin/memoriaux/:id" element={
+                    <RequireAdmin>
+                      <AdminLayout><AdminMemorialDetail /></AdminLayout>
                     </RequireAdmin>
                   } />
                   <Route path="/admin/statistiques" element={
