@@ -40,7 +40,7 @@ interface MemorialEvent {
 }
 
 const MemorialInner = () => {
-  const { slug } = useParams();
+  const { slug, token } = useParams();
   const { memorials, loading: memorialsLoading } = useMemorials();
   const { user } = useAuth();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
@@ -54,18 +54,22 @@ const MemorialInner = () => {
   // Check if contributions are enabled globally
   const contributionsEnabled = settings?.contribution_link_template.enabled && settings?.contribution_link_template.url;
 
-  // Find the memorial by slug or legacy_slug from context
+  // Find the memorial by token, slug, or legacy_slug from context
   const memorialData = useMemo(() => {
-    // First try current slug
+    // First try by share_token (primary for /m/:token route)
+    if (token) {
+      return memorials.find((m) => m.shareToken === token) || null;
+    }
+    // Then try current slug
     const bySlug = memorials.find((m) => m.slug === slug);
     if (bySlug) return bySlug;
     
     // If not found, check legacy slugs for redirect
     return memorials.find((m) => m.legacySlug === slug);
-  }, [memorials, slug]);
+  }, [memorials, slug, token]);
 
-  // Check if we need to redirect from legacy slug to new slug
-  const shouldRedirect = memorialData && memorialData.legacySlug === slug && memorialData.slug !== slug;
+  // Check if we need to redirect from legacy slug to new secure token URL
+  const shouldRedirect = memorialData && slug && memorialData.legacySlug === slug && memorialData.slug !== slug;
 
   // Calculate age for SEO
   const ageAtDeath = useMemo(() => {
@@ -246,7 +250,7 @@ const MemorialInner = () => {
   // Reset page when memorial changes
   useEffect(() => {
     setCurrentGuestbookPage(1);
-  }, [slug]);
+  }, [slug, token]);
 
    // Pagination calculations — chronological order (newest first)
   const totalGuestbookPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
@@ -304,14 +308,17 @@ const MemorialInner = () => {
     description: memorialData?.bio,
     image: memorialData?.photos?.[memorialData.defaultPhotoIndex || 0] || memorialData?.photos?.[0],
     type: "article",
-    url: memorialData ? `${window.location.origin}/memorial/${memorialData.slug}` : undefined,
+    url: memorialData?.shareToken ? `${window.location.origin}/m/${memorialData.shareToken}` : undefined,
     deceasedName: memorialData?.name,
     age: ageAtDeath,
   });
 
-  // Handle legacy slug redirect (301 equivalent in SPA)
+  // Handle legacy slug redirect → redirect to token URL
   if (shouldRedirect && memorialData) {
-    return <Navigate to={`/memorial/${memorialData.slug}`} replace />;
+    const redirectTarget = memorialData.shareToken 
+      ? `/m/${memorialData.shareToken}` 
+      : `/memorial/${memorialData.slug}`;
+    return <Navigate to={redirectTarget} replace />;
   }
 
   // Show skeleton while data is loading

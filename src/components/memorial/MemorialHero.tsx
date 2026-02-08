@@ -215,7 +215,9 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               </button>
               
               <ShareButtons
-                url={`${window.location.origin}/memorial/${memorial.slug}`}
+                url={memorial.shareToken 
+                  ? `${window.location.origin}/m/${memorial.shareToken}` 
+                  : `${window.location.origin}/memorial/${memorial.slug}`}
                 title={`Hommage à ${memorial.name}`}
                 description={memorial.bio}
                 slug={memorial.slug}

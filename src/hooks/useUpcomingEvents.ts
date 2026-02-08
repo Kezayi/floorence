@@ -12,6 +12,7 @@ export interface UpcomingEvent {
     first_name: string;
     last_name: string;
     slug: string;
+    share_token: string | null;
   };
 }
 
@@ -48,7 +49,8 @@ export const useUpcomingEvents = () => {
           memorials!memorial_events_memorial_id_fkey (
             first_name,
             last_name,
-            slug
+            slug,
+            share_token
           )
         `)
         .gte("event_date", now)

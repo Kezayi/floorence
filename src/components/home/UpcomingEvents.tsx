@@ -64,7 +64,7 @@ const UpcomingEvents = ({ type, title, events, loading }: UpcomingEventsProps) =
           {events.map((event) => (
             <Link
               key={event.id}
-              to={`/memorial/${event.memorial?.slug}`}
+              to={event.memorial?.share_token ? `/m/${event.memorial.share_token}` : `/memorial/${event.memorial?.slug}`}
               className="block p-4 bg-secondary/30 rounded-sm hover:bg-secondary/60 transition-all duration-300 border border-transparent hover:border-border"
             >
               <div className="flex items-start justify-between gap-3">
