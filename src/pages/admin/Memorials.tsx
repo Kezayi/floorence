@@ -402,7 +402,7 @@ const Memorials = () => {
     return memorials?.filter(
       (m) =>
         m.id !== memorial.id &&
-        m.last_name.toLowerCase() === memorial.last_name.toLowerCase() &&
+        (m.last_name ?? '').toLowerCase() === (memorial.last_name ?? '').toLowerCase() &&
         !m.merged_into
     );
   };

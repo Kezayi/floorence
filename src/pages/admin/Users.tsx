@@ -202,19 +202,19 @@ const Users = () => {
   const filteredUsers = useMemo(() => {
     if (!usersData?.users) return [];
     return usersData.users.filter((user) => {
-      // Debounced text search
+      // Debounced text search — null-safe
       if (filters.debouncedSearch) {
         const term = filters.debouncedSearch.toLowerCase();
         if (
-          !user.email?.toLowerCase().includes(term) &&
-          !user.display_name?.toLowerCase().includes(term) &&
-          !user.phone?.includes(term)
+          !(user.email ?? '').toLowerCase().includes(term) &&
+          !(user.display_name ?? '').toLowerCase().includes(term) &&
+          !(user.phone ?? '').includes(term)
         )
           return false;
       }
       // Date range filter
-      if (filters.dateFrom && user.created_at < filters.dateFrom) return false;
-      if (filters.dateTo && user.created_at > filters.dateTo + 'T23:59:59') return false;
+      if (filters.dateFrom && (user.created_at ?? '') < filters.dateFrom) return false;
+      if (filters.dateTo && (user.created_at ?? '') > filters.dateTo + 'T23:59:59') return false;
       return true;
     });
   }, [usersData?.users, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);

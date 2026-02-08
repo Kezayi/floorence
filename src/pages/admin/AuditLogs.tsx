@@ -78,19 +78,19 @@ const AuditLogs = () => {
           return false;
         }
       }
-      // Text search (debounced)
+      // Text search (debounced) — null-safe
       if (filters.debouncedSearch) {
         const q = filters.debouncedSearch.toLowerCase();
         if (
-          !log.target_user_email?.toLowerCase().includes(q) &&
-          !log.performed_by_email?.toLowerCase().includes(q) &&
-          !log.action_type.toLowerCase().includes(q)
+          !(log.target_user_email ?? '').toLowerCase().includes(q) &&
+          !(log.performed_by_email ?? '').toLowerCase().includes(q) &&
+          !(log.action_type ?? '').toLowerCase().includes(q)
         )
           return false;
       }
       // Date range
-      if (filters.dateFrom && log.created_at < filters.dateFrom) return false;
-      if (filters.dateTo && log.created_at > filters.dateTo + 'T23:59:59') return false;
+      if (filters.dateFrom && (log.created_at ?? '') < filters.dateFrom) return false;
+      if (filters.dateTo && (log.created_at ?? '') > filters.dateTo + 'T23:59:59') return false;
       return true;
     });
   }, [logs, filters.actionType, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
