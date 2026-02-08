@@ -1,12 +1,8 @@
-import { lazy, Suspense } from 'react';
 import SuccessWall from '@/components/admin/SuccessWall';
 import PredictionCard from '@/components/admin/PredictionCard';
 import SocialDonutChart from '@/components/admin/SocialDonutChart';
 import SuperConnectorsWidget from '@/components/admin/SuperConnectorsWidget';
 import type { DashboardStats } from '@/hooks/useDashboardStats';
-import { Loader2 } from 'lucide-react';
-
-const AuditSuggestions = lazy(() => import('@/pages/admin/AuditSuggestions'));
 
 interface Props {
   stats: DashboardStats;
@@ -24,15 +20,6 @@ const TabVerite = ({ stats }: Props) => {
         <SocialDonutChart stats={stats} />
         <SuperConnectorsWidget />
       </div>
-
-      {/* Embedded Audit Suggestions */}
-      <Suspense fallback={
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      }>
-        <AuditSuggestions />
-      </Suspense>
     </div>
   );
 };
