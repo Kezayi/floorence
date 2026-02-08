@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { useAdminSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   accepted: {
@@ -50,6 +53,33 @@ const AuditSuggestions = () => {
     },
   });
 
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
+
+  const handleSendNotifications = async () => {
+    setIsSendingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("notify-lineage-revelation", {
+        method: "POST",
+      });
+
+      if (error) throw error;
+
+      const result = data as { sent?: number; suggestions_notified?: number };
+      if (result.sent && result.sent > 0) {
+        toast.success(
+          `📧 ${result.sent} email(s) envoyé(s) pour ${result.suggestions_notified} suggestion(s)`
+        );
+      } else {
+        toast.info("Aucune suggestion à notifier (toutes ont déjà été envoyées)");
+      }
+    } catch (err: any) {
+      console.error("Error sending notifications:", err);
+      toast.error("Erreur lors de l'envoi des notifications");
+    } finally {
+      setIsSendingEmails(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -58,16 +88,42 @@ const AuditSuggestions = () => {
     );
   }
 
+  // Count un-notified pending suggestions
+  const unnotifiedCount = links.filter(
+    (l) => l.status === "pending" && !(l as any).notifiedAt
+  ).length;
+
   return (
     <div>
-      <div className="flex items-center gap-3 mb-8">
-        <Brain className="w-7 h-7 text-[hsl(45,90%,50%)]" />
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Audit des Suggestions</h1>
-          <p className="text-sm text-muted-foreground">
-            Suivi de la précision de l'Intelligence de Lignage
-          </p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <Brain className="w-7 h-7 text-[hsl(45,90%,50%)]" />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Audit des Suggestions</h1>
+            <p className="text-sm text-muted-foreground">
+              Suivi de la précision de l'Intelligence de Lignage
+            </p>
+          </div>
         </div>
+        
+        {/* Send notifications button */}
+        <Button
+          onClick={handleSendNotifications}
+          disabled={isSendingEmails || stats.pending === 0}
+          className="gap-2 bg-gradient-to-r from-[hsl(45,80%,45%)] to-[hsl(40,75%,50%)] hover:from-[hsl(45,85%,40%)] hover:to-[hsl(40,80%,45%)] text-white"
+        >
+          {isSendingEmails ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+          Notifier les créateurs
+          {stats.pending > 0 && (
+            <Badge className="ml-1 bg-white/20 text-white text-[10px]">
+              {stats.pending}
+            </Badge>
+          )}
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -197,18 +253,32 @@ const AuditSuggestions = () => {
                           </p>
                         )}
                         {link.createdAt && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                          <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
                             {format(new Date(link.createdAt), "d MMM yyyy à HH:mm", {
                               locale: fr,
                             })}
+                            {link.notifiedAt && (
+                              <span className="inline-flex items-center gap-0.5 text-primary">
+                                <Mail className="w-2.5 h-2.5" />
+                                Notifié
+                              </span>
+                            )}
                           </p>
                         )}
                       </div>
                     </div>
-                    <Badge variant="outline" className={`gap-1 ${config.color} text-[10px] shrink-0 ml-3`}>
-                      <StatusIcon className="w-2.5 h-2.5" />
-                      {config.label}
-                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      {link.status === "pending" && !link.notifiedAt && (
+                        <Badge variant="outline" className="gap-1 border-muted-foreground/20 text-muted-foreground bg-muted/30 text-[10px]">
+                          <Mail className="w-2.5 h-2.5" />
+                          Non notifié
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className={`gap-1 ${config.color} text-[10px]`}>
+                        <StatusIcon className="w-2.5 h-2.5" />
+                        {config.label}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
