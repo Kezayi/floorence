@@ -386,6 +386,57 @@ export type Database = {
         }
         Relationships: []
       }
+      suggested_links: {
+        Row: {
+          created_at: string | null
+          created_by_ai: boolean | null
+          id: string
+          inference_logic: string | null
+          notified_admin: boolean | null
+          source_memorial_id: string | null
+          status: string | null
+          suggested_relation: string | null
+          target_memorial_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_ai?: boolean | null
+          id?: string
+          inference_logic?: string | null
+          notified_admin?: boolean | null
+          source_memorial_id?: string | null
+          status?: string | null
+          suggested_relation?: string | null
+          target_memorial_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_ai?: boolean | null
+          id?: string
+          inference_logic?: string | null
+          notified_admin?: boolean | null
+          source_memorial_id?: string | null
+          status?: string | null
+          suggested_relation?: string | null
+          target_memorial_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggested_links_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggested_links_target_memorial_id_fkey"
+            columns: ["target_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           description: string | null

@@ -11,7 +11,9 @@ import {
   History,
   Activity,
   Brain,
+  Sparkles,
 } from 'lucide-react';
+import { useAdminSuggestedLinks } from '@/hooks/useSuggestedLinks';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -20,6 +22,7 @@ const AdminSidebar = () => {
   const { isAdmin } = useAdminRole();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { stats } = useAdminSuggestedLinks();
 
   const handleSignOut = async () => {
     await signOut();
@@ -34,6 +37,7 @@ const AdminSidebar = () => {
     { to: '/admin/analytics', icon: Activity, label: 'Analytics', adminOnly: true },
     { to: '/admin/utilisateurs', icon: Users, label: 'Utilisateurs', adminOnly: true },
     { to: '/admin/intelligence-sociale', icon: Brain, label: 'Intelligence Sociale', adminOnly: true },
+    { to: '/admin/audit-suggestions', icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: '/admin/historique', icon: History, label: 'Historique', adminOnly: true },
     { to: '/admin/parametres', icon: Settings, label: 'Paramètres', adminOnly: true },
   ];
@@ -67,7 +71,12 @@ const AdminSidebar = () => {
               }
             >
               <item.icon className="w-5 h-5" />
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className="text-sm font-medium flex-1">{item.label}</span>
+              {item.badge && item.badge > 0 && (
+                <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
+              )}
             </NavLink>
           ))}
       </nav>
