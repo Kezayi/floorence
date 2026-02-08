@@ -49,13 +49,8 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/compte/publications" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
-                  Mes publications
-                </Link>
-              </li>
-              <li>
-                <Link to="/compte/suivis" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
-                  Mes suivis
+                <Link to="/communaute" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
+                  Communauté
                 </Link>
               </li>
             </ul>
