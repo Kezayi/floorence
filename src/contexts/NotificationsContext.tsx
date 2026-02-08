@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface Notification {
   id: string;
-  type: "NEW_MESSAGE" | "NEW_EVENT" | "MEMORIAL_UPDATE" | "LINK_REQUEST";
+  type: "NEW_MESSAGE" | "NEW_EVENT" | "MEMORIAL_UPDATE" | "LINK_REQUEST" | "SUGGESTED_LINK";
   memorialSlug: string;
   memorialName: string;
   message: string;
@@ -37,6 +37,7 @@ interface NotificationsContextType {
   acceptLinkRequest: (requestId: string) => Promise<void>;
   rejectLinkRequest: (requestId: string) => Promise<void>;
   pendingLinkRequests: number;
+  pendingSuggestions: number;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
@@ -108,6 +109,35 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     },
   });
 
+  // Fetch pending suggested links count for the current user
+  const { data: suggestedLinksCount = 0 } = useQuery({
+    queryKey: ["pending-suggested-links-count", user?.id],
+    enabled: !!user,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const { data: myMemorials } = await supabase
+        .from("memorials")
+        .select("id")
+        .or(`created_by.eq.${user.id},heir_user_id.eq.${user.id}`);
+
+      if (!myMemorials || myMemorials.length === 0) return 0;
+
+      const myIds = myMemorials.map((m) => m.id);
+
+      const { count, error } = await supabase
+        .from("suggested_links")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .or(`source_memorial_id.in.(${myIds.join(",")}),target_memorial_id.in.(${myIds.join(",")})`);
+
+      if (error) return 0;
+      return count || 0;
+    },
+  });
+
   // Convert link requests to notifications
   const linkRequestNotifications: Notification[] = (linkRequests || [])
     .filter((req) => !dismissedRequests.has(req.id))
@@ -124,7 +154,20 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       relationType: req.relationType,
     }));
 
-  const allNotifications = [...linkRequestNotifications, ...notifications];
+  // Build suggested link notifications
+  const suggestedLinkNotifications: Notification[] = suggestedLinksCount > 0
+    ? [{
+        id: "suggested-links-summary",
+        type: "SUGGESTED_LINK" as const,
+        memorialSlug: "",
+        memorialName: "",
+        message: `${suggestedLinksCount} nouveau${suggestedLinksCount > 1 ? "x" : ""} lien${suggestedLinksCount > 1 ? "s" : ""} potentiel${suggestedLinksCount > 1 ? "s" : ""} détecté${suggestedLinksCount > 1 ? "s" : ""}. Venez confirmer votre lignée.`,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      }]
+    : [];
+
+  const allNotifications = [...suggestedLinkNotifications, ...linkRequestNotifications, ...notifications];
 
   // Reset state when user logs out
   useEffect(() => {
@@ -242,6 +285,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         acceptLinkRequest,
         rejectLinkRequest,
         pendingLinkRequests,
+        pendingSuggestions: suggestedLinksCount,
       }}
     >
       {children}

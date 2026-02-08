@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search, GitBranch } from "lucide-react";
+import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search, GitBranch, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useHasMemorials, useUserSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import NotificationBell from "./NotificationBell";
 
 const Header = () => {
@@ -11,6 +12,8 @@ const Header = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
   const { isAdminOrMod } = useAdminRole();
+  const hasMemorials = useHasMemorials();
+  const { pendingCount } = useUserSuggestedLinks();
 
   // Menu items selon l'état de connexion
   const navItems = user
@@ -149,6 +152,26 @@ const Header = () => {
                       <GitBranch className="w-4 h-4" />
                       Communauté
                     </Link>
+
+                    {/* Liens Suggérés - uniquement pour créateurs de mémoriaux */}
+                    {user && hasMemorials && (
+                      <Link
+                        to="/liens-suggeres"
+                        className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
+                          isActive("/liens-suggeres")
+                            ? "bg-[hsl(45,90%,50%)]/10 text-[hsl(45,70%,35%)] font-medium"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Liens Suggérés
+                        {pendingCount > 0 && (
+                          <span className="ml-auto w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                            {pendingCount > 9 ? "9+" : pendingCount}
+                          </span>
+                        )}
+                      </Link>
+                    )}
                     
                     {/* Admin - uniquement pour admin/modérateur */}
                     {user && isAdminOrMod && (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, Check, Trash2, MessageCircle, Calendar, RefreshCw, Link2, CheckCircle2, XCircle } from "lucide-react";
+import { Bell, Check, Trash2, MessageCircle, Calendar, RefreshCw, Link2, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ const notificationIcons = {
   NEW_EVENT: Calendar,
   MEMORIAL_UPDATE: RefreshCw,
   LINK_REQUEST: Link2,
+  SUGGESTED_LINK: Sparkles,
 };
 
 const NotificationBell = () => {
@@ -113,21 +114,24 @@ const NotificationBell = () => {
         <div className="max-h-96 overflow-y-auto">
           {notifications.length > 0 ? (
             notifications.map((notification) => {
-              const Icon = notificationIcons[notification.type];
-              const isLinkRequest = notification.type === "LINK_REQUEST";
-              const isProcessing = notification.linkRequestId
-                ? processingIds.has(notification.linkRequestId)
-                : false;
+               const Icon = notificationIcons[notification.type];
+               const isLinkRequest = notification.type === "LINK_REQUEST";
+               const isSuggestedLink = notification.type === "SUGGESTED_LINK";
+               const isProcessing = notification.linkRequestId
+                 ? processingIds.has(notification.linkRequestId)
+                 : false;
 
               return (
                 <div
                   key={notification.id}
                   className={`flex items-start gap-3 p-4 border-b border-border last:border-0 ${
                     !notification.isRead ? "bg-primary/5" : ""
-                  } ${isLinkRequest ? "cursor-default" : ""}`}
+                  } ${isLinkRequest || isSuggestedLink ? "cursor-default" : ""}`}
                 >
                   <div className={`p-2 rounded-full shrink-0 ${
-                    isLinkRequest
+                    isSuggestedLink
+                      ? "bg-[hsl(45,90%,50%,0.2)] text-[hsl(45,90%,50%)]"
+                      : isLinkRequest
                       ? "bg-[hsl(45,90%,50%,0.2)] text-[hsl(45,90%,50%)]"
                       : !notification.isRead
                       ? "bg-primary/20 text-primary"
@@ -137,7 +141,9 @@ const NotificationBell = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-sans ${!notification.isRead ? "font-medium" : ""}`}>
-                      {isLinkRequest ? (
+                      {isSuggestedLink ? (
+                        <span className="text-[hsl(45,90%,50%)]">Intelligence de Lignage</span>
+                      ) : isLinkRequest ? (
                         <span className="text-[hsl(45,90%,50%)]">Demande d'union</span>
                       ) : (
                         notification.memorialName
@@ -146,6 +152,18 @@ const NotificationBell = () => {
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                       {notification.message}
                     </p>
+
+                    {/* CTA for suggested links */}
+                    {isSuggestedLink && (
+                      <Link
+                        to="/liens-suggeres"
+                        onClick={() => setIsOpen(false)}
+                        className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-[hsl(45,70%,35%)] hover:text-[hsl(45,90%,50%)] transition-colors"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Voir les suggestions
+                      </Link>
+                    )}
 
                     {/* Accept / Reject buttons for link requests */}
                     {isLinkRequest && notification.linkRequestId && (
@@ -173,7 +191,7 @@ const NotificationBell = () => {
                       </div>
                     )}
 
-                    {!isLinkRequest && (
+                    {!isLinkRequest && !isSuggestedLink && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatTimeAgo(notification.createdAt)}
                       </p>
