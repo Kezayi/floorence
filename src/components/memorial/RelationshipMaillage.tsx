@@ -185,37 +185,94 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
   );
 };
 
-// Pagination
-const INFERENCES_PER_PAGE = 5;
+// Groupage par individu
+interface GroupedPerson {
+  name: string;
+  relationWithDeceased: string;
+  connections: Array<{
+    otherName: string;
+    otherRelationWithDeceased: string;
+    inferredLink: string;
+    confidence: "high" | "medium" | "low";
+  }>;
+  bestConfidence: "high" | "medium" | "low";
+}
+
+const groupByPerson = (relationships: InferredRelationship[]): GroupedPerson[] => {
+  const personMap = new Map<string, GroupedPerson>();
+  const seenPairs = new Set<string>();
+
+  for (const rel of relationships) {
+    // Clé de paire normalisée pour éviter les doublons bidirectionnels
+    const pairKey = [rel.fromAuthor, rel.toAuthor].sort().join("|");
+    if (seenPairs.has(pairKey)) continue;
+    seenPairs.add(pairKey);
+
+    // Ajouter la connexion au premier individu (fromAuthor)
+    if (!personMap.has(rel.fromAuthor)) {
+      personMap.set(rel.fromAuthor, {
+        name: rel.fromAuthor,
+        relationWithDeceased: getRelationWithDeceased(rel.fromRelation),
+        connections: [],
+        bestConfidence: rel.confidence,
+      });
+    }
+    const fromPerson = personMap.get(rel.fromAuthor)!;
+    fromPerson.connections.push({
+      otherName: rel.toAuthor,
+      otherRelationWithDeceased: getRelationWithDeceased(rel.toRelation),
+      inferredLink: rel.inferredLink,
+      confidence: rel.confidence,
+    });
+    // Mettre à jour la meilleure confiance
+    const confOrder = { high: 0, medium: 1, low: 2 };
+    if (confOrder[rel.confidence] < confOrder[fromPerson.bestConfidence]) {
+      fromPerson.bestConfidence = rel.confidence;
+    }
+  }
+
+  // Trier : plus de connexions d'abord, puis par confiance
+  return Array.from(personMap.values()).sort((a, b) => {
+    if (b.connections.length !== a.connections.length) return b.connections.length - a.connections.length;
+    const confOrder = { high: 0, medium: 1, low: 2 };
+    return confOrder[a.bestConfidence] - confOrder[b.bestConfidence];
+  });
+};
+
+const PERSONS_PER_PAGE = 5;
 
 const InferredRelationshipsSection = ({ relationships }: { relationships: InferredRelationship[] }) => {
+  const grouped = useMemo(() => groupByPerson(relationships), [relationships]);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(relationships.length / INFERENCES_PER_PAGE);
-  const startIndex = (currentPage - 1) * INFERENCES_PER_PAGE;
-  const endIndex = startIndex + INFERENCES_PER_PAGE;
-  const paginatedRelationships = relationships.slice(startIndex, endIndex);
-  
+  const totalPages = Math.ceil(grouped.length / PERSONS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PERSONS_PER_PAGE;
+  const endIndex = startIndex + PERSONS_PER_PAGE;
+  const paginatedPersons = grouped.slice(startIndex, endIndex);
+  const totalConnections = grouped.reduce((sum, p) => sum + p.connections.length, 0);
+
   return (
     <div className="bg-muted/30 border border-border/60 p-6 rounded-sm">
       <div className="flex items-center gap-2 mb-1">
         <Link2 className="w-4 h-4 text-foreground/60" />
         <h4 className="font-serif text-lg">Liens de parenté retrouvés</h4>
-        <span className="text-sm text-muted-foreground font-sans">({relationships.length})</span>
+        <span className="text-sm text-muted-foreground font-sans">
+          ({grouped.length} personnes · {totalConnections} liens)
+        </span>
       </div>
       <p className="text-xs text-muted-foreground mb-5 font-sans italic">
-        Liens déduits automatiquement à partir des relations avec le défunt
+        Liens déduits automatiquement, groupés par individu
       </p>
-      
+
       <div className="space-y-3">
-        {paginatedRelationships.map((rel, index) => (
-          <InferredRelationshipCard key={startIndex + index} relationship={rel} />
+        {paginatedPersons.map((person) => (
+          <PersonGroupCard key={person.name} person={person} />
         ))}
       </div>
-      
+
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
           <span className="text-xs text-muted-foreground font-sans">
-            {startIndex + 1}–{Math.min(endIndex, relationships.length)} sur {relationships.length}
+            {startIndex + 1}–{Math.min(endIndex, grouped.length)} sur {grouped.length}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -246,30 +303,26 @@ const InferredRelationshipsSection = ({ relationships }: { relationships: Inferr
   );
 };
 
-const InferredRelationshipCard = ({ relationship }: { relationship: InferredRelationship }) => {
-  const badge = confidenceBadges[relationship.confidence];
-  
+const PersonGroupCard = ({ person }: { person: GroupedPerson }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-card/80 rounded-sm border border-border/40">
-      <div className="flex-1 min-w-0">
-        <div className="font-serif text-foreground truncate">{relationship.fromAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.fromRelation)}</div>
+    <div className="p-4 bg-card/80 rounded-sm border border-border/40">
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="w-3.5 h-3.5 text-foreground/50" />
+        <span className="font-serif text-foreground font-medium">{person.name}</span>
+        <span className="text-xs text-muted-foreground font-sans">— {person.relationWithDeceased}</span>
       </div>
-      
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="h-px w-4 bg-border/60 hidden sm:block" />
-        <div className="flex flex-col items-center">
-          <span className={`text-xs px-3 py-1 rounded-sm border font-serif ${badge.className}`}>
-            {relationship.inferredLink}
-          </span>
-          <span className="text-[10px] text-muted-foreground mt-1 font-sans italic">{badge.label}</span>
-        </div>
-        <div className="h-px w-4 bg-border/60 hidden sm:block" />
-      </div>
-      
-      <div className="flex-1 min-w-0 sm:text-right">
-        <div className="font-serif text-foreground truncate">{relationship.toAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.toRelation)}</div>
+      <div className="space-y-1.5 ml-5">
+        {person.connections.map((conn, idx) => {
+          const badge = confidenceBadges[conn.confidence];
+          return (
+            <div key={idx} className="flex items-center gap-2 text-sm flex-wrap">
+              <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+              <span className={`text-xs px-2 py-0.5 rounded-sm border font-serif ${badge.className}`}>
+                {conn.inferredLink}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
