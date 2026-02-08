@@ -3,6 +3,11 @@ import { getCleanRelationName, inferAllRelationships } from "@/lib/relationshipI
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+interface InterMemorialLink {
+  name: string;
+  relationType: string;
+}
+
 interface RelationshipGraph2DProps {
   deceasedName: string;
   posts: Array<{
@@ -10,6 +15,7 @@ interface RelationshipGraph2DProps {
     authorName: string;
     relationCategory: string;
   }>;
+  interMemorialLinks?: InterMemorialLink[];
 }
 
 interface GraphNode {
@@ -84,7 +90,9 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
 
-const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) => {
+const GOLD_COLOR = "#D4AF37";
+
+const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: RelationshipGraph2DProps) => {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredLink, setHoveredLink] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -207,7 +215,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
     return 11;
   }, [nodes.length]);
 
-  if (posts.length === 0) {
+  if (posts.length === 0 && (!interMemorialLinks || interMemorialLinks.length === 0)) {
     return (
       <div className="flex items-center justify-center h-[300px] bg-muted/30 rounded-sm">
         <p className="text-sm text-muted-foreground font-sans">
@@ -429,6 +437,63 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
               défunt
             </text>
           </g>
+
+          {/* Nœuds défunts liés — Pont des Ancêtres (ligne dorée) */}
+          {(interMemorialLinks || []).map((link, idx) => {
+            const count = interMemorialLinks?.length || 1;
+            const startAngle = -Math.PI * 0.75;
+            const angleSpread = Math.PI * 1.5;
+            const angle = count === 1
+              ? -Math.PI / 4
+              : startAngle + (idx / count) * angleSpread;
+            const r = 75;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+
+            return (
+              <g key={`inter-memorial-${idx}`}>
+                {/* Ligne dorée épaisse */}
+                <line
+                  x1={0} y1={0} x2={x} y2={y}
+                  stroke={GOLD_COLOR}
+                  strokeWidth={3}
+                  opacity={0.85}
+                  className="transition-all duration-500"
+                />
+                {/* Halo doré */}
+                <circle cx={x} cy={y} r={22} fill="none" stroke={GOLD_COLOR} strokeWidth="0.5" opacity="0.25" />
+                {/* Cercle noir avec bordure dorée */}
+                <circle cx={x} cy={y} r={16} fill="hsl(0, 0%, 8%)" />
+                <circle cx={x} cy={y} r={16} fill="none" stroke={GOLD_COLOR} strokeWidth={1.5} opacity={0.8} />
+                {/* Initiale dorée */}
+                <text
+                  x={x} y={y + 4} textAnchor="middle"
+                  className="font-serif pointer-events-none"
+                  style={{ fontSize: '11px', fontWeight: 500, fill: GOLD_COLOR }}
+                >
+                  {link.name.charAt(0).toUpperCase()}
+                </text>
+                {/* Nom sous le nœud */}
+                <text
+                  x={x} y={y + 32} textAnchor="middle"
+                  className="font-serif"
+                  style={{ fontSize: `${labelFontSize}px`, fontWeight: 500, fill: GOLD_COLOR }}
+                  filter="url(#textGlow)"
+                >
+                  {link.name.split(" ")[0]}
+                </text>
+                {/* Label de relation */}
+                <text
+                  x={x} y={y + 44} textAnchor="middle"
+                  className="font-sans"
+                  style={{ fontSize: '7px', fontWeight: 400, fill: 'hsl(0, 0%, 50%)', letterSpacing: '0.08em', textTransform: 'uppercase' } as React.CSSProperties}
+                  filter="url(#textGlow)"
+                >
+                  {link.relationType}
+                </text>
+              </g>
+            );
+          })}
           
           {/* Nœuds des auteurs */}
           {nodes.map((node) => {
@@ -541,6 +606,12 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
             <span className="tracking-wide">{style.label}</span>
           </div>
         ))}
+        {interMemorialLinks && interMemorialLinks.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 rounded-full" style={{ backgroundColor: GOLD_COLOR }} />
+            <span className="tracking-wide" style={{ color: GOLD_COLOR }}>Pont des Ancêtres</span>
+          </div>
+        )}
       </div>
       
       {/* Légende des liens inférés */}

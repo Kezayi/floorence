@@ -559,3 +559,74 @@ export const inferUserToPersonRelation = (
 // ============================================================================
 
 export const getRelationshipData = () => relationVectors;
+
+// ============================================================================
+// GENRE-AWARE RELATION LABELS
+// ============================================================================
+
+const GENDERED_PAIRS: Record<string, string> = {
+  'Fils': 'Fille', 'Frère': 'Sœur', 'Père': 'Mère',
+  'Grand-père': 'Grand-mère', 'Petit-fils': 'Petite-fille',
+  'Oncle': 'Tante', 'Neveu': 'Nièce', 'Cousin': 'Cousine',
+  'Époux': 'Épouse', 'Gendre': 'Belle-fille',
+  'Beau-père': 'Belle-mère', 'Beau-frère': 'Belle-sœur',
+};
+
+const INVERSE_RELATIONS: Record<string, string> = {
+  'Fils': 'Père', 'Fille': 'Mère', 'Père': 'Fils', 'Mère': 'Fille',
+  'Frère': 'Frère', 'Sœur': 'Sœur',
+  'Grand-père': 'Petit-fils', 'Grand-mère': 'Petite-fille',
+  'Petit-fils': 'Grand-père', 'Petite-fille': 'Grand-mère',
+  'Oncle': 'Neveu', 'Tante': 'Nièce', 'Neveu': 'Oncle', 'Nièce': 'Tante',
+  'Cousin': 'Cousin', 'Cousine': 'Cousine',
+  'Époux': 'Épouse', 'Épouse': 'Époux',
+};
+
+const LIKELY_FEMININE = /^(marie|thérèse|therese|odile|claire|félicité|felicite|pauline|jeanne|catherine|rose|anne|lucie|sophie|emma|léa|lea|julie|alice|sarah|nathalie|sylvie|christine|monique|françoise|francoise|nicole|isabelle|patricia|caroline|florence|sandra|valérie|valerie|véronique|veronique|brigitte|cécile|cecile|hélène|helene|marguerite|antoinette|béatrice|beatrice|chantal|colette|denise|dominique|éliane|eliane|évelyne|evelyne|geneviève|genevieve|georgette|germaine|ghislaine|henriette|huguette|irène|irene|jacqueline|jocelyne|josiane|josette|laurence|liliane|madeleine|marcelle|martine|michèle|michele|mireille|nadine|pierrette|raymonde|renée|renee|simone|suzanne|yvette|yvonne)/i;
+
+const LIKELY_MASCULINE = /^(jean|pierre|paul|joseph|samuel|guy|roger|simplice|david|michel|jacques|philippe|andré|andre|louis|charles|henri|daniel|françois|francois|patrick|bernard|thierry|alain|marc|éric|eric|robert|richard|claude|yves|serge|gérard|gerard|georges|lucien|raymond|maurice|rené|rene|marcel|alfred|armand|augustin|émile|emile|etienne|gaston|gilbert|gustave|léon|leon|maxime|nicolas|olivier|pascal|quentin|raphaël|raphael|stéphane|stephane|sylvain|vincent|xavier)/i;
+
+/**
+ * Adapte un label de relation au genre du prénom donné.
+ * Ex: getGenderAwareRelation("Fils", "Thérèse") → "Fille"
+ */
+export const getGenderAwareRelation = (relationType: string, firstName: string): string => {
+  const cleanFirst = firstName.trim();
+
+  let isFeminine = false;
+  let isMasculine = false;
+
+  if (LIKELY_FEMININE.test(cleanFirst)) {
+    isFeminine = true;
+  } else if (LIKELY_MASCULINE.test(cleanFirst)) {
+    isMasculine = true;
+  } else {
+    const lower = cleanFirst.toLowerCase();
+    if (lower.endsWith('e') || lower.endsWith('a') || lower.endsWith('ine') || lower.endsWith('elle') || lower.endsWith('ette')) {
+      isFeminine = true;
+    }
+  }
+
+  if (isFeminine && GENDERED_PAIRS[relationType]) {
+    return GENDERED_PAIRS[relationType];
+  }
+
+  const reverseMap = Object.fromEntries(Object.entries(GENDERED_PAIRS).map(([m, f]) => [f, m]));
+  if (isMasculine && reverseMap[relationType]) {
+    return reverseMap[relationType];
+  }
+
+  return relationType;
+};
+
+/**
+ * Inverse une relation et l'accorde au genre du prénom cible.
+ * Ex: getInverseRelation("Fils", "Samuel") → "Père"
+ */
+export const getInverseRelation = (relationType: string, targetFirstName: string): string => {
+  const inverse = INVERSE_RELATIONS[relationType];
+  if (inverse) {
+    return getGenderAwareRelation(inverse, targetFirstName);
+  }
+  return relationType;
+};

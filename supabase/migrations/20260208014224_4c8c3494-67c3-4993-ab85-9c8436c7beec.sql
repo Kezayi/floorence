@@ -1,0 +1,1 @@
+ALTER FUNCTION public.check_relationship_coherence() SET search_path = public;
