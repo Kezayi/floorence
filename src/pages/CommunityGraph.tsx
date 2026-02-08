@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -50,12 +50,31 @@ interface SocialInference {
 const CACHE_CONFIG = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 
 /** Category color mapping */
-const getCategoryColor = (category: string): string => {
+/** Inferred link color palette — aligned with RelationshipGraph2D categories */
+const inferredLinkColors: Record<string, string> = {
+  famille_directe: "hsl(0, 84%, 60%)",     // Rouge
+  famille_elargie: "hsl(38, 92%, 50%)",    // Ambre
+  allies:          "hsl(160, 84%, 39%)",    // Émeraude
+  socio_coeur:     "hsl(217, 91%, 60%)",   // Bleu
+  autre:           "hsl(220, 9%, 46%)",     // Gris
+};
+
+const GOLD_COLOR = "#D4AF37";
+
+/** Classify a category string to a palette key */
+const toPaletteKey = (category: string): string => {
   const lower = category.toLowerCase();
-  if (lower.includes("famille directe") || lower.includes("famille élargie") || lower.includes("famille")) return "#1F2937";
-  if (lower.includes("allié") || lower.includes("allies")) return "hsl(45, 90%, 50%)";
-  if (lower.includes("socio") || lower.includes("ami") || lower.includes("coeur")) return "hsl(340, 60%, 65%)";
-  return "#9CA3AF";
+  if (lower.includes("père") || lower.includes("mère") || lower.includes("fils") || lower.includes("fille") || lower.includes("frère") || lower.includes("sœur") || lower.includes("soeur") || lower.includes("famille directe")) return "famille_directe";
+  if (lower.includes("grand") || lower.includes("oncle") || lower.includes("tante") || lower.includes("cousin") || lower.includes("neveu") || lower.includes("nièce") || lower.includes("famille élargie") || lower.includes("famille elargie")) return "famille_elargie";
+  if (lower.includes("époux") || lower.includes("épouse") || lower.includes("beau") || lower.includes("belle") || lower.includes("gendre") || lower.includes("bru") || lower.includes("allié") || lower.includes("allies")) return "allies";
+  if (lower.includes("ami") || lower.includes("collègue") || lower.includes("voisin") || lower.includes("camarade") || lower.includes("socio") || lower.includes("coeur")) return "socio_coeur";
+  if (lower.includes("famille")) return "famille_directe";
+  return "autre";
+};
+
+const getCategoryColor = (category: string): string => {
+  const key = toPaletteKey(category);
+  return inferredLinkColors[key] || inferredLinkColors.autre;
 };
 
 /** Classify a relation_category string into a filter group */
@@ -394,8 +413,8 @@ const CommunityGraph = () => {
       const dx = t.x - s.x;
       const dy = t.y - s.y;
       const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-      const targetLen = edge.type === "memorial-relation" ? 80 : springLength;
-      const str = edge.type === "memorial-relation" ? springStrength * 2 : springStrength;
+      const targetLen = edge.type === "memorial-relation" ? 60 : springLength;
+      const str = edge.type === "memorial-relation" ? springStrength * 5 : springStrength;
       const displacement = dist - targetLen;
       const force = displacement * str * alpha;
       const fx = (dx / dist) * force;
@@ -404,6 +423,14 @@ const CommunityGraph = () => {
       s.vy += fy;
       t.vx -= fx;
       t.vy -= fy;
+    });
+
+    // Stronger center gravity for deceased nodes (attract to center)
+    nodes.forEach((n) => {
+      if (n.type === "deceased") {
+        n.vx += (centerX - n.x) * 0.008;
+        n.vy += (centerY - n.y) * 0.008;
+      }
     });
 
     // Center gravity
@@ -448,28 +475,34 @@ const CommunityGraph = () => {
       ctx.beginPath();
 
       if (edge.type === "memorial-relation") {
-        // Golden thick line for ancestor bridges
+        // Golden thick line for Pont des Ancêtres — prioritaire
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
         ctx.setLineDash([]);
-        ctx.strokeStyle = "hsl(45, 90%, 50%)";
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = GOLD_COLOR;
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = 0.9;
+        // Golden glow effect
+        ctx.shadowColor = GOLD_COLOR;
+        ctx.shadowBlur = 6;
       } else if (edge.type === "living-shared") {
-        // Fine dotted line for living-living shared links
+        // Fine dotted line — colorée par catégorie
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-        ctx.setLineDash([2, 3]);
-        ctx.strokeStyle = "hsl(340, 60%, 65%)";
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = getCategoryColor(edge.category);
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.65;
+      } else if (edge.type === "inferred") {
+        // Lien inféré — coloré par catégorie (pointillé)
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = getCategoryColor(edge.category);
         ctx.lineWidth = 1.2;
         ctx.globalAlpha = 0.5;
-      } else if (edge.type === "inferred") {
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(t.x, t.y);
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "rgba(156,163,175,0.4)";
-        ctx.lineWidth = 1;
       } else {
+        // Lien direct (Défunt → Vivant) — trait plein coloré
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
         ctx.setLineDash([]);
@@ -478,18 +511,30 @@ const CommunityGraph = () => {
         ctx.globalAlpha = 0.6;
       }
       ctx.stroke();
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
 
-      // Label on memorial-relation edges
+      // Label on memorial-relation edges (Pont des Ancêtres)
       if (edge.type === "memorial-relation") {
         const midX = (s.x + t.x) / 2;
         const midY = (s.y + t.y) / 2;
-        ctx.fillStyle = "hsl(45, 90%, 35%)";
+        // Background pill for label
         ctx.font = "bold 9px 'Inter', sans-serif";
+        const labelText = edge.label;
+        const tw = ctx.measureText(labelText).width;
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.beginPath();
+        ctx.roundRect(midX - tw / 2 - 6, midY - 16, tw + 12, 16, 3);
+        ctx.fill();
+        ctx.strokeStyle = GOLD_COLOR;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.fillStyle = "#8B6914";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(edge.label, midX, midY - 8);
+        ctx.fillText(labelText, midX, midY - 8);
       }
     });
 
@@ -601,27 +646,54 @@ const CommunityGraph = () => {
       if (s && t) {
         const mx = (s.x + t.x) / 2;
         const my = (s.y + t.y) / 2;
-        let text = "";
+        let title = "";
+        let subtitle = "";
+        const edgeColor = hoveredEdge.type === "memorial-relation"
+          ? GOLD_COLOR
+          : getCategoryColor(hoveredEdge.category);
+        
         if (hoveredEdge.type === "living-shared") {
-          text = `Connectés par leur lien commun de ${hoveredEdge.category} auprès de ${hoveredEdge.sharedDeceasedName || "défunt"}`;
+          title = `Liés en tant que ${hoveredEdge.category}`;
+          subtitle = hoveredEdge.sharedDeceasedName
+            ? `Via le mémorial de ${hoveredEdge.sharedDeceasedName}`
+            : "Lien partagé";
         } else if (hoveredEdge.type === "memorial-relation") {
-          text = `${s.label} et ${t.label} : ${hoveredEdge.label}`;
+          title = `Pont des Ancêtres`;
+          subtitle = `${s.label} ↔ ${t.label} : ${hoveredEdge.label}`;
+        } else if (hoveredEdge.type === "inferred") {
+          title = `Même communauté`;
+          subtitle = `${hoveredEdge.category}`;
         } else {
-          text = hoveredEdge.label;
+          title = hoveredEdge.label;
         }
-        ctx.font = "10px 'Inter', sans-serif";
-        const tw = ctx.measureText(text).width;
+        
+        ctx.font = "bold 10px 'Inter', sans-serif";
+        const titleW = ctx.measureText(title).width;
+        ctx.font = "9px 'Inter', sans-serif";
+        const subtitleW = subtitle ? ctx.measureText(subtitle).width : 0;
+        const maxW = Math.max(titleW, subtitleW);
+        const boxW = maxW + 24;
+        const boxH = subtitle ? 36 : 22;
+        
         ctx.fillStyle = "rgba(255,255,255,0.97)";
-        ctx.strokeStyle = "rgba(0,0,0,0.12)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = edgeColor;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.roundRect(mx - tw / 2 - 8, my - 22, tw + 16, 22, 4);
+        ctx.roundRect(mx - boxW / 2, my - boxH - 4, boxW, boxH, 5);
         ctx.fill();
         ctx.stroke();
+        
         ctx.fillStyle = "#1F2937";
+        ctx.font = "bold 10px 'Inter', sans-serif";
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(text, mx, my - 11);
+        ctx.textBaseline = "top";
+        ctx.fillText(title, mx, my - boxH + 2);
+        
+        if (subtitle) {
+          ctx.fillStyle = "#6B7280";
+          ctx.font = "9px 'Inter', sans-serif";
+          ctx.fillText(subtitle, mx, my - boxH + 18);
+        }
       }
     }
   }, [zoom, hoveredNode, hoveredEdge]);
@@ -658,6 +730,32 @@ const CommunityGraph = () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [graphData, simulate, draw]);
+
+  // Realtime sync — auto-update when memorial_relations change
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel('community-graph-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'memorial_relations' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["community-graph-memorial-relations"] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'guestbook_posts' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["community-graph-posts"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Mouse hover detection
   const handleMouseMove = useCallback(
@@ -823,41 +921,37 @@ const CommunityGraph = () => {
               </div>
 
               {/* Legend */}
+              {/* Légende — Nœuds */}
               <div className="flex flex-wrap items-center gap-5 mt-6 text-xs text-muted-foreground font-sans">
+                <span className="font-medium text-foreground/70">Nœuds :</span>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-4 rounded-full bg-[#1F2937]" />
                   <span>Défunt</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#1F2937" }} />
-                  <span>Famille</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "hsl(45, 90%, 50%)" }} />
-                  <span>Alliés</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "hsl(340, 60%, 65%)" }} />
-                  <span>Socio cœur</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full bg-[#9CA3AF]" />
-                  <span>Autres</span>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
+                {Object.entries(inferredLinkColors).map(([key, color]) => (
+                  <div key={key} className="flex items-center gap-1.5">
+                    <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: color }} />
+                    <span>{key === "famille_directe" ? "Famille directe" : key === "famille_elargie" ? "Famille élargie" : key === "allies" ? "Alliés" : key === "socio_coeur" ? "Socio cœur" : "Autres"}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Légende — Liens */}
+              <div className="flex flex-wrap items-center gap-5 mt-2 text-xs text-muted-foreground font-sans">
+                <span className="font-medium text-foreground/70">Liens :</span>
+                <div className="flex items-center gap-2">
                   <div className="w-6 h-0 border-t-2 border-foreground/60" />
                   <span>Lien direct</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-0 border-t-2 border-dashed border-muted-foreground/60" />
-                  <span>Même communauté</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-0 border-t-[3px]" style={{ borderColor: "hsl(45, 90%, 50%)" }} />
+                  <div className="w-6 h-0 border-t-[4px]" style={{ borderColor: GOLD_COLOR }} />
                   <span>Pont des Ancêtres</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-0 border-t-[1.5px] border-dotted" style={{ borderColor: "hsl(340, 60%, 65%)" }} />
+                  <div className="w-6 h-0 border-t-[1.5px] border-dashed" style={{ borderColor: inferredLinkColors.famille_directe }} />
+                  <span>Même communauté</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-0 border-t-[1.5px] border-dotted" style={{ borderColor: inferredLinkColors.socio_coeur }} />
                   <span>Lien partagé</span>
                 </div>
               </div>
