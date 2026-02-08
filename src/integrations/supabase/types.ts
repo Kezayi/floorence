@@ -571,6 +571,7 @@ export type Database = {
         Args: { first_name: string; last_name: string }
         Returns: string
       }
+      generate_suggested_links: { Args: never; Returns: undefined }
       get_memorial_gesture_stats: {
         Args: { p_memorial_ids: string[] }
         Returns: {
