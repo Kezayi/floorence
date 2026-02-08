@@ -1,9 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, TrendingUp, Users, MessageSquare } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { BarChart3, TrendingUp, Users, MessageSquare, Flame } from 'lucide-react';
+import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const Statistics = () => {
   const { data: stats, isLoading } = useQuery({
@@ -62,19 +69,35 @@ const Statistics = () => {
         (p) => new Date(p.created_at) < last7Days && new Date(p.created_at) >= subDays(today, 14)
       ).length || 0;
 
-      const growthRate = previous7DaysPosts > 0
-        ? Math.round(((last7DaysPosts - previous7DaysPosts) / previous7DaysPosts) * 100)
-        : 0;
+      // Smart growth: handle zero-baseline weeks
+      const hasActivityLastWeek = last7DaysPosts > 0;
+      const hasPreviousActivity = previous7DaysPosts > 0;
+
+      let growthLabel: string;
+      if (!hasActivityLastWeek && !hasPreviousActivity) {
+        growthLabel = 'Aucune activité récente';
+      } else if (!hasPreviousActivity && hasActivityLastWeek) {
+        growthLabel = `Nouveaux cette semaine : ${last7DaysPosts}`;
+      } else {
+        const rate = Math.round(((last7DaysPosts - previous7DaysPosts) / previous7DaysPosts) * 100);
+        growthLabel = `${rate >= 0 ? '+' : ''}${rate}%`;
+      }
+
+      // Compute max for Y-axis ceiling (round up to nearest 10 + margin)
+      const allPostCounts = Object.values(dailyStats).map(d => d.posts);
+      const rawMax = Math.max(...allPostCounts, 1);
+      const yAxisMax = Math.ceil(rawMax * 1.1 / 10) * 10; // +10% margin, rounded
 
       return {
         totalPosts30Days: recentPosts?.length || 0,
         totalMemorials30Days: recentMemorials?.length || 0,
         totalCandles,
         totalFlowers,
-        growthRate,
+        growthLabel,
+        yAxisMax,
         dailyStats: Object.entries(dailyStats)
           .sort(([a], [b]) => a.localeCompare(b))
-          .slice(-14) // Last 14 days
+          .slice(-14)
           .map(([date, data]) => ({
             date: format(new Date(date), 'dd MMM', { locale: fr }),
             ...data,
@@ -82,6 +105,10 @@ const Statistics = () => {
       };
     },
   });
+
+  const chartConfig: ChartConfig = {
+    posts: { label: 'Messages', color: 'hsl(var(--primary))' },
+  };
 
   const statCards = [
     {
@@ -158,32 +185,42 @@ const Statistics = () => {
           <CardTitle>Évolution (14 derniers jours)</CardTitle>
         </CardHeader>
         <CardContent>
-          {stats?.growthRate !== undefined && (
+          {stats?.growthLabel && (
             <p className="text-sm text-muted-foreground mb-4">
-              Croissance hebdomadaire :{' '}
-              <span className={stats.growthRate >= 0 ? 'text-green-500' : 'text-red-500'}>
-                {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate}%
-              </span>
+              <Flame className="inline w-3.5 h-3.5 mr-1 text-primary" />
+              {stats.growthLabel}
             </p>
           )}
-          
-          <div className="h-48 flex items-end gap-1">
-            {stats?.dailyStats.map((day, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center">
-                <div
-                  className="w-full bg-primary rounded-t"
-                  style={{
-                    height: `${Math.max((day.posts / (Math.max(...stats.dailyStats.map(d => d.posts)) || 1)) * 100, 4)}%`,
-                    minHeight: day.posts > 0 ? '4px' : '2px',
-                  }}
-                  title={`${day.posts} message(s)`}
-                />
-                <span className="text-[10px] text-muted-foreground mt-2 rotate-45 origin-left">
-                  {day.date}
-                </span>
-              </div>
-            ))}
-          </div>
+
+          <ChartContainer config={chartConfig} className="h-64 w-full">
+            <BarChart data={stats?.dailyStats} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/40" />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11 }}
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11 }}
+                domain={[0, stats?.yAxisMax ?? 'auto']}
+                allowDecimals={false}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar
+                dataKey="posts"
+                fill="hsl(var(--primary))"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={40}
+              />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
     </div>
