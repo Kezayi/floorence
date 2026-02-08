@@ -65,29 +65,10 @@ const categoryStyles: Record<string, { fill: string; label: string }> = {
   autre: { fill: "hsl(0, 0%, 55%)", label: "Autres" },
 };
 
-// Couleurs de la charte pour les liens inférés
-const inferredLinkColors = {
-  direct: "hsl(0, 0%, 15%)",
-  alliance: "hsl(45, 90%, 50%)",
-  feminine: "hsl(340, 60%, 65%)",
-  default: "hsl(0, 0%, 65%)",
-};
-
-const getInferredLinkColor = (link: string, confidence: string): string => {
-  const lowerLink = link.toLowerCase();
-  if (lowerLink.includes("alliance") || lowerLink.includes("beau") || lowerLink.includes("belle")) {
-    return inferredLinkColors.alliance;
-  }
-  if (lowerLink.includes("mère") || lowerLink.includes("sœur") || lowerLink.includes("tante") || 
-      lowerLink.includes("nièce") || lowerLink.includes("cousine") || lowerLink.includes("grand-mère")) {
-    return inferredLinkColors.feminine;
-  }
-  if (confidence === "high" && 
-      (lowerLink.includes("frère") || lowerLink.includes("père") || lowerLink.includes("fils") ||
-       lowerLink.includes("parent") || lowerLink.includes("oncle") || lowerLink.includes("neveu"))) {
-    return inferredLinkColors.direct;
-  }
-  return inferredLinkColors.default;
+// Couleur du lien inféré basée sur la catégorie sémantique
+const getInferredLinkColor = (link: string): string => {
+  const categoryType = getCategoryType(link);
+  return categoryStyles[categoryType]?.fill ?? categoryStyles.autre.fill;
 };
 
 const MIN_ZOOM = 0.5;
@@ -317,10 +298,10 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
               if (!fromPos || !toPos) return null;
               
               const isHovered = hoveredLink === idx;
-              const baseOpacity = link.confidence === 'high' ? 0.5 : link.confidence === 'medium' ? 0.35 : 0.2;
-              const opacity = isHovered ? 0.9 : baseOpacity;
-              const strokeColor = getInferredLinkColor(link.inferredLink, link.confidence);
-              const strokeWidth = isHovered ? 2 : (link.confidence === 'high' ? 1.2 : 0.8);
+              const baseOpacity = link.confidence === 'high' ? 0.7 : link.confidence === 'medium' ? 0.55 : 0.4;
+              const opacity = isHovered ? 1 : baseOpacity;
+              const strokeColor = getInferredLinkColor(link.inferredLink);
+              const strokeWidth = isHovered ? 2.5 : (link.confidence === 'high' ? 1.8 : 1.3);
               
               // Courbe de Bézier au lieu de ligne droite pour plus d'élégance
               const midX = (fromPos.x + toPos.x) / 2;
@@ -341,7 +322,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    strokeDasharray={link.confidence === 'high' ? "none" : "3 4"}
+                    strokeDasharray="4 3"
                     opacity={opacity}
                     className="transition-all duration-500"
                   />
@@ -350,7 +331,7 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
                   <circle
                     cx={ctrlX + (midX - ctrlX) * 0.5}
                     cy={ctrlY + (midY - ctrlY) * 0.5}
-                    r={isHovered ? 3.5 : 2}
+                    r={isHovered ? 4.5 : 3}
                     fill={strokeColor}
                     opacity={opacity}
                     className="transition-all duration-300"
@@ -558,16 +539,16 @@ const RelationshipGraph2D = ({ deceasedName, posts }: RelationshipGraph2DProps) 
         <div className="flex flex-wrap justify-center gap-3 mt-2 text-[10px] font-sans text-muted-foreground/70 px-2">
           <span className="italic">Liens entre proches :</span>
           <div className="flex items-center gap-1">
-            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.direct }} />
-            <span>Direct</span>
+            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.famille.fill }} />
+            <span>Famille</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.alliance }} />
-            <span>Alliance</span>
+            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.allies.fill }} />
+            <span>Alliés</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-5 h-[1px]" style={{ backgroundColor: inferredLinkColors.feminine }} />
-            <span>Féminin</span>
+            <div className="w-5 h-[1.5px] border-t border-dashed" style={{ borderColor: categoryStyles.amis.fill }} />
+            <span>Amis</span>
           </div>
         </div>
       )}
