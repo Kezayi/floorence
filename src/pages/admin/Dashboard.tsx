@@ -140,7 +140,7 @@ const Dashboard = () => {
     { title: 'Utilisateurs', value: dashStats?.totalUsers || 0, icon: Users, color: 'text-muted-foreground' },
     { title: 'Espaces mémoriels', value: dashStats?.totalMemorials || 0, icon: Flower2, color: 'text-primary', sub: dashStats ? `${dashStats.realMemorials} réels · ${dashStats.demoMemorials} démo` : undefined },
     { title: 'Hommages visibles', value: dashStats?.visiblePosts || 0, icon: MessageSquare, color: 'text-muted-foreground', sub: dashStats ? `${dashStats.postsLastWeek} cette semaine` : undefined },
-    { title: 'Chiffre d\'affaires', value: `${(dashStats?.totalRevenue || 0).toLocaleString()} FCFA`, icon: DollarSign, color: 'text-[hsl(var(--accent-green))]' },
+    { title: 'Chiffre d\'affaires', value: `${(dashStats?.totalRevenue || 0).toLocaleString()} XAF`, icon: DollarSign, color: 'text-[hsl(var(--accent-green))]' },
   ];
 
   return (
@@ -272,7 +272,7 @@ const Dashboard = () => {
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px',
                     }}
-                    formatter={(value: number) => [`${value.toLocaleString()} FCFA`, 'Revenus']}
+                    formatter={(value: number) => [`${value.toLocaleString()} XAF`, 'Revenus']}
                     labelFormatter={(label) => label}
                   />
                   <Area
