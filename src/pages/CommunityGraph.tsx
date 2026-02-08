@@ -134,7 +134,8 @@ const CommunityGraph = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("memorial_relations")
-        .select("id, memorial_id_1, memorial_id_2, relation_type");
+        .select("id, memorial_id_1, memorial_id_2, relation_type")
+        .eq("status", "accepted");
       return (data || []) as MemorialRelation[];
     },
   });

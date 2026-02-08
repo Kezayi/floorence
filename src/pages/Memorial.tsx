@@ -8,6 +8,8 @@ import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
 import AnniversaryReminder from "@/components/memorial/AnniversaryReminder";
 import EditMemorialDialog from "@/components/memorial/EditMemorialDialog";
 import AddEventDialog from "@/components/memorial/AddEventDialog";
+import RequestLinkDialog from "@/components/memorial/RequestLinkDialog";
+import InferredLinkSuggestions from "@/components/memorial/InferredLinkSuggestions";
 import DemoGuide from "@/components/memorial/DemoGuide";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
@@ -646,22 +648,33 @@ const Memorial = () => {
               <TabsContent value="notice" className="mt-0">
                 <div className="max-w-2xl space-y-6">
                   {/* Edit button for owner */}
-                  {isOwner && (
-                    <div className="flex justify-end gap-3">
-                      <EditMemorialDialog
+                   {isOwner && (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap justify-end gap-3">
+                        <EditMemorialDialog
+                          memorialId={memorial.id}
+                          initialData={{
+                            bio: memorial.bio,
+                            funeralDate: memorial.funeralDate,
+                            funeralLocation: memorial.funeralLocation,
+                            photos: memorial.photos,
+                            defaultPhotoIndex: 0,
+                          }}
+                          onSave={handleMemorialUpdated}
+                        />
+                        <AddEventDialog
+                          memorialId={memorial.id}
+                          onEventAdded={fetchEventsAgain}
+                        />
+                        <RequestLinkDialog
+                          memorialId={memorial.id}
+                          memorialName={memorial.name}
+                        />
+                      </div>
+                      {/* Inference suggestions for auto-linking */}
+                      <InferredLinkSuggestions
                         memorialId={memorial.id}
-                        initialData={{
-                          bio: memorial.bio,
-                          funeralDate: memorial.funeralDate,
-                          funeralLocation: memorial.funeralLocation,
-                          photos: memorial.photos,
-                          defaultPhotoIndex: 0,
-                        }}
-                        onSave={handleMemorialUpdated}
-                      />
-                      <AddEventDialog
-                        memorialId={memorial.id}
-                        onEventAdded={fetchEventsAgain}
+                        memorialName={memorial.name}
                       />
                     </div>
                   )}
