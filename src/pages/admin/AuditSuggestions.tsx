@@ -116,46 +116,53 @@ const AuditSuggestions = () => {
       queryClient.invalidateQueries({ queryKey: ["live-activity"] }),
     ]);
 
-  const handleMagicValidation = async () => {
-    const toValidate = pendingLinks.filter((l) => selectedIds.has(l.id));
-    if (toValidate.length === 0) return;
+  const hasSelection = selectedIds.size > 0;
 
+  const handleMagicValidation = async () => {
     setIsMagicValidating(true);
     try {
-      let merged = 0;
-      for (const link of toValidate) {
-        // Check for duplicate accepted relation
-        const { data: existing } = await supabase
-          .from("memorial_relations")
-          .select("id")
-          .or(
-            `and(memorial_id_1.eq.${link.sourceMemorialId},memorial_id_2.eq.${link.targetMemorialId}),and(memorial_id_1.eq.${link.targetMemorialId},memorial_id_2.eq.${link.sourceMemorialId})`
-          )
-          .eq("relation_type", link.suggestedRelation)
-          .eq("status", "accepted")
-          .maybeSingle();
+      if (hasSelection) {
+        // Selective mode: process only checked items client-side
+        const toValidate = pendingLinks.filter((l) => selectedIds.has(l.id));
+        let merged = 0;
+        for (const link of toValidate) {
+          const { data: existing } = await supabase
+            .from("memorial_relations")
+            .select("id")
+            .or(
+              `and(memorial_id_1.eq.${link.sourceMemorialId},memorial_id_2.eq.${link.targetMemorialId}),and(memorial_id_1.eq.${link.targetMemorialId},memorial_id_2.eq.${link.sourceMemorialId})`
+            )
+            .eq("relation_type", link.suggestedRelation)
+            .eq("status", "accepted")
+            .maybeSingle();
 
-        if (!existing) {
-          const { error: insertErr } = await supabase.from("memorial_relations").insert({
-            memorial_id_1: link.sourceMemorialId,
-            memorial_id_2: link.targetMemorialId,
-            relation_type: link.suggestedRelation,
-            status: "accepted",
-          });
-          if (!insertErr) merged++;
+          if (!existing) {
+            const { error: insertErr } = await supabase.from("memorial_relations").insert({
+              memorial_id_1: link.sourceMemorialId,
+              memorial_id_2: link.targetMemorialId,
+              relation_type: link.suggestedRelation,
+              status: "accepted",
+            });
+            if (!insertErr) merged++;
+          }
+
+          await supabase
+            .from("suggested_links")
+            .update({ status: "accepted", notified_admin: true })
+            .eq("id", link.id);
         }
 
-        // Mark suggestion as accepted
-        await supabase
-          .from("suggested_links")
-          .update({ status: "accepted", notified_admin: true })
-          .eq("id", link.id);
-      }
-
-      if (merged > 0) {
-        toast.success(`✨ ${merged} lien(s) fusionné(s) avec succès !`, { duration: 6000 });
+        if (merged > 0) {
+          toast.success(`✨ ${merged} lien(s) fusionné(s) avec succès !`, { duration: 6000 });
+        } else {
+          toast.info("Les liens sélectionnés étaient déjà fusionnés. Statuts mis à jour.");
+        }
       } else {
-        toast.info("Les liens sélectionnés étaient déjà fusionnés. Statuts mis à jour.");
+        // Bulk mode: validate ALL pending via RPC
+        const { data, error } = await supabase.rpc("admin_force_validate_all_suggestions");
+        if (error) throw error;
+        const result = data as { status?: string; message?: string; count?: number } | null;
+        toast.success(`✨ ${result?.message || "Tous les liens ont été fusionnés avec succès !"}`, { duration: 6000 });
       }
 
       setSelectedIds(new Set());
@@ -193,13 +200,13 @@ const AuditSuggestions = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Magic validation button — operates on selected pending suggestions */}
+          {/* Magic validation button — dual mode: selection or bulk */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   onClick={handleMagicValidation}
-                  disabled={isMagicValidating || selectedIds.size === 0}
+                  disabled={isMagicValidating || stats.pending === 0}
                   className="gap-2 bg-gradient-to-r from-[hsl(260,70%,55%)] to-[hsl(280,65%,50%)] hover:from-[hsl(260,75%,50%)] hover:to-[hsl(280,70%,45%)] text-white shadow-lg shadow-[hsl(260,70%,55%)]/20"
                 >
                   {isMagicValidating ? (
@@ -207,16 +214,18 @@ const AuditSuggestions = () => {
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  Fusionner la sélection
-                  {selectedIds.size > 0 && (
+                  {hasSelection ? "Fusionner la sélection" : "Fusionner tout le flux"}
+                  {(hasSelection ? selectedIds.size : stats.pending) > 0 && (
                     <Badge className="ml-1 bg-white/20 text-white text-[10px]">
-                      {selectedIds.size}
+                      {hasSelection ? selectedIds.size : stats.pending}
                     </Badge>
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[260px] text-center">
-                Valide les suggestions sélectionnées et crée les liens de parenté correspondants.
+              <TooltipContent side="bottom" className="max-w-[280px] text-center">
+                {hasSelection
+                  ? "Valide les suggestions sélectionnées et crée les liens de parenté correspondants."
+                  : "Réservé à la Bêta : Valide instantanément toutes les suggestions en attente pour les profils fantômes."}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
