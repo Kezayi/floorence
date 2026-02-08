@@ -192,35 +192,41 @@ const Statistics = () => {
             </p>
           )}
 
-          <ChartContainer config={chartConfig} className="h-64 w-full">
-            <BarChart data={stats?.dailyStats} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/40" />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 11 }}
-                interval={0}
-                angle={-35}
-                textAnchor="end"
-                height={50}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 11 }}
-                domain={[0, stats?.yAxisMax ?? 'auto']}
-                allowDecimals={false}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar
-                dataKey="posts"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={40}
-              />
-            </BarChart>
-          </ChartContainer>
+          {stats?.dailyStats && stats.dailyStats.some(d => d.posts > 0) ? (
+            <ChartContainer config={chartConfig} className="h-64 w-full">
+              <BarChart data={stats.dailyStats} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/40" />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11 }}
+                  domain={[0, stats.yAxisMax ?? 'auto']}
+                  allowDecimals={false}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar
+                  dataKey="posts"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              <p>Aucune activité détectée sur les 14 derniers jours.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
