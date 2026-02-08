@@ -235,6 +235,7 @@ const Index = () => {
                       key={memorial.id}
                       id={memorial.id}
                       slug={memorial.slug}
+                      shareToken={memorial.shareToken}
                       name={memorial.name}
                       birthDate={memorial.birthDate}
                       deathDate={memorial.deathDate}

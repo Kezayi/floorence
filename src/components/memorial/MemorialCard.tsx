@@ -9,6 +9,7 @@ import DemoBadge from "./DemoBadge";
 interface MemorialCardProps {
   id: string;
   slug: string;
+  shareToken?: string | null;
   name: string;
   birthDate: string;
   deathDate: string;
@@ -25,6 +26,7 @@ interface MemorialCardProps {
 const MemorialCard = ({
   id,
   slug,
+  shareToken,
   name,
   birthDate,
   deathDate,
@@ -40,10 +42,12 @@ const MemorialCard = ({
   const { prefetchMemorial } = useMemorialPrefetch();
   const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
   const age = calculateAge(birthDate, deathDate);
+  // Prefer obfuscated token URL, fallback to slug
+  const memorialUrl = shareToken ? `/m/${shareToken}` : `/memorial/${slug}`;
   if (variant === "list") {
     return (
       <Link
-        to={`/memorial/${slug}`}
+        to={memorialUrl}
         className="memorial-card group flex flex-row items-stretch bg-card hover:shadow-lg hover:shadow-black/5 transition-all duration-500"
         onMouseEnter={handlePrefetch}
         onTouchStart={handlePrefetch}
@@ -116,7 +120,7 @@ const MemorialCard = ({
   // Default card variant
   return (
     <Link
-      to={`/memorial/${slug}`}
+      to={memorialUrl}
       className="memorial-card group block"
       onMouseEnter={handlePrefetch}
       onTouchStart={handlePrefetch}

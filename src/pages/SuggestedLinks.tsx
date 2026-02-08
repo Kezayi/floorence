@@ -48,7 +48,7 @@ const SuggestionItem = ({
       {/* Relation chain */}
       <div className="flex items-center gap-2 flex-wrap py-1">
         <Link
-          to={`/memorial/${suggestion.sourceSlug}`}
+          to={suggestion.sourceShareToken ? `/m/${suggestion.sourceShareToken}` : `/memorial/${suggestion.sourceSlug}`}
           className="font-serif font-semibold text-lg text-foreground hover:text-primary transition-colors"
         >
           {suggestion.sourceName}
@@ -59,7 +59,7 @@ const SuggestionItem = ({
         </span>
         <ArrowRight className="w-5 h-5 text-[hsl(45,90%,50%)] shrink-0" />
         <Link
-          to={`/memorial/${suggestion.targetSlug}`}
+          to={suggestion.targetShareToken ? `/m/${suggestion.targetShareToken}` : `/memorial/${suggestion.targetSlug}`}
           className="font-serif font-semibold text-lg text-foreground hover:text-primary transition-colors"
         >
           {suggestion.targetName}

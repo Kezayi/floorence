@@ -29,7 +29,7 @@ import Index from "./pages/Index";
  const NotFound = lazy(() => import("./pages/NotFound"));
  const CommunityGraph = lazy(() => import("./pages/CommunityGraph"));
  const SuggestedLinks = lazy(() => import("./pages/SuggestedLinks"));
- const ShareTokenRedirect = lazy(() => import("./components/memorial/ShareTokenRedirect"));
+ // ShareTokenRedirect no longer needed — Memorial page handles both slug and token
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -71,9 +71,10 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/recherche" element={<Search />} />
+                  {/* Primary obfuscated route — resolves token to memorial */}
+                  <Route path="/m/:token" element={<Memorial />} />
+                  {/* Legacy slug route — backward compat for shared links */}
                   <Route path="/memorial/:slug" element={<Memorial />} />
-                  {/* Obfuscated share token route — resolves token to memorial */}
-                  <Route path="/m/:token" element={<ShareTokenRedirect />} />
                   <Route path="/compte" element={<Account />} />
                   <Route path="/creer" element={
                     <RequireAuth>

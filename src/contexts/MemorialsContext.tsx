@@ -34,6 +34,7 @@ interface ExtendedSearchableMemorial extends SearchableMemorial {
 interface MemorialCardData {
   id: string;
   slug: string;
+  shareToken: string | null;
   name: string;
   birthDate: string;
   deathDate: string;
@@ -228,6 +229,7 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
       return {
         id: m.id,
         slug: m.slug,
+        shareToken: m.shareToken || null,
         name: m.name,
         birthDate: m.birthDate,
         deathDate: m.deathDate,

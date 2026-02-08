@@ -170,7 +170,9 @@ const CreateMemorial = () => {
       }
 
        toast.success("Espace mémoriel créé avec succès !");
-       navigate(`/memorial/${createData.memorial.slug}`);
+       // Navigate to token URL if available, fallback to slug
+       const shareToken = createData.memorial.share_token;
+       navigate(shareToken ? `/m/${shareToken}` : `/memorial/${createData.memorial.slug}`);
 
     } catch (error) {
       console.error('Submit error:', error);

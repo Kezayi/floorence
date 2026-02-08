@@ -22,6 +22,8 @@ export interface SuggestedLink {
   targetName: string;
   sourceSlug: string;
   targetSlug: string;
+  sourceShareToken: string | null;
+  targetShareToken: string | null;
 }
 
 /**
@@ -42,14 +44,14 @@ export const useUserSuggestedLinks = () => {
       // Get memorials owned by user
       const { data: myMemorials } = await supabase
         .from("memorials")
-        .select("id, first_name, last_name, slug")
+        .select("id, first_name, last_name, slug, share_token")
         .or(`created_by.eq.${user.id},heir_user_id.eq.${user.id}`);
 
       if (!myMemorials || myMemorials.length === 0) return [];
 
       const myIds = myMemorials.map((m) => m.id);
       const memorialMap = new Map(
-        myMemorials.map((m) => [m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug }])
+        myMemorials.map((m) => [m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token }])
       );
 
       // Get pending suggestions where source or target is one of my memorials
@@ -77,17 +79,17 @@ export const useUserSuggestedLinks = () => {
       if (missingIds.length > 0) {
         const { data: otherMemorials } = await supabase
           .from("memorials")
-          .select("id, first_name, last_name, slug")
+          .select("id, first_name, last_name, slug, share_token")
           .in("id", missingIds);
 
         (otherMemorials || []).forEach((m) => {
-          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug });
+          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token });
         });
       }
 
       return links.map((l): SuggestedLink => {
-        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "" };
-        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "" };
+        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
+        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
         return {
           id: l.id,
           sourceMemorialId: l.source_memorial_id || "",
@@ -102,6 +104,8 @@ export const useUserSuggestedLinks = () => {
           targetName: target.name,
           sourceSlug: source.slug,
           targetSlug: target.slug,
+          sourceShareToken: source.shareToken,
+          targetShareToken: target.shareToken,
         };
       });
     },
@@ -260,21 +264,21 @@ export const useAdminSuggestedLinks = () => {
         if (l.target_memorial_id) allIds.add(l.target_memorial_id);
       });
 
-      const memorialMap = new Map<string, { name: string; slug: string }>();
+      const memorialMap = new Map<string, { name: string; slug: string; shareToken: string | null }>();
       if (allIds.size > 0) {
         const { data: memorials } = await supabase
           .from("memorials")
-          .select("id, first_name, last_name, slug")
+          .select("id, first_name, last_name, slug, share_token")
           .in("id", Array.from(allIds));
 
         (memorials || []).forEach((m) => {
-          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug });
+          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token });
         });
       }
 
       const enriched: SuggestedLink[] = allLinks.map((l) => {
-        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "" };
-        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "" };
+        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
+        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
         return {
           id: l.id,
           sourceMemorialId: l.source_memorial_id || "",
@@ -289,6 +293,8 @@ export const useAdminSuggestedLinks = () => {
           targetName: target.name,
           sourceSlug: source.slug,
           targetSlug: target.slug,
+          sourceShareToken: source.shareToken,
+          targetShareToken: target.shareToken,
         };
       });
 
