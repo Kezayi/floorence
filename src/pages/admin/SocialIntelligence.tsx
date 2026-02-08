@@ -36,25 +36,25 @@ const SocialIntelligence = () => {
   const filtered = useMemo(() => {
     let result = sorted;
 
-    // Debounced text search
+    // Debounced text search — null-safe
     if (filters.debouncedSearch) {
       const q = filters.debouncedSearch.toLowerCase();
       result = result.filter(
         (u) =>
-          u.authorName.toLowerCase().includes(q) ||
-          u.detailLiens.some(
+          (u.authorName ?? "").toLowerCase().includes(q) ||
+          (u.detailLiens ?? []).some(
             (d) =>
-              d.lien.toLowerCase().includes(q) ||
-              d.defunt.toLowerCase().includes(q) ||
-              d.categorie.toLowerCase().includes(q)
+              (d?.lien ?? "").toLowerCase().includes(q) ||
+              (d?.defunt ?? "").toLowerCase().includes(q) ||
+              (d?.categorie ?? "").toLowerCase().includes(q)
           )
       );
     }
 
-    // Social group filter
+    // Social group filter — null-safe
     if (filters.socialGroup !== "all") {
       result = result.filter((u) =>
-        u.detailLiens.some((d) => d.categorie === filters.socialGroup)
+        (u.detailLiens ?? []).some((d) => d?.categorie === filters.socialGroup)
       );
     }
 
@@ -210,7 +210,7 @@ const UserCard = ({
   onToggle: () => void;
 }) => {
   const rolesSummary = useMemo(() => {
-    const categories = [...new Set(user.detailLiens.map((d) => d.categorie))];
+    const categories = [...new Set((user.detailLiens ?? []).map((d) => d?.categorie ?? "—"))];
     return categories.join(", ") || "—";
   }, [user.detailLiens]);
 

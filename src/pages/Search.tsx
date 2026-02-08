@@ -73,7 +73,8 @@ type SearchResultItem =
 // NORMALISATION ET DÉDUPLICATION
 // ============================================================================
 
-const normalizeString = (str: string): string => {
+const normalizeString = (str: string | null | undefined): string => {
+  if (!str) return "";
   return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 

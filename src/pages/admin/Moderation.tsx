@@ -125,31 +125,31 @@ const Moderation = () => {
   const filteredPosts = useMemo(() => {
     if (!posts) return [];
     return posts.filter((post) => {
-      // Text search (debounced)
+      // Text search (debounced) — null-safe
       if (filters.debouncedSearch) {
         const q = filters.debouncedSearch.toLowerCase();
         const memorialName = post.memorial
-          ? `${post.memorial.first_name} ${post.memorial.last_name}`.toLowerCase()
+          ? `${post.memorial.first_name ?? ''} ${post.memorial.last_name ?? ''}`.toLowerCase()
           : '';
         if (
-          !post.author_name.toLowerCase().includes(q) &&
+          !(post.author_name ?? '').toLowerCase().includes(q) &&
           !memorialName.includes(q) &&
-          !post.content.toLowerCase().includes(q)
+          !(post.content ?? '').toLowerCase().includes(q)
         )
           return false;
       }
       // Social group filter
       if (filters.socialGroup !== 'all') {
-        const cat = getRelationCategory(post.relation_category);
+        const cat = getRelationCategory(post.relation_category ?? '');
         if (cat !== filters.socialGroup) return false;
       }
       // Date range
       if (filters.dateFrom) {
-        if (post.created_at < filters.dateFrom) return false;
+        if ((post.created_at ?? '') < filters.dateFrom) return false;
       }
       if (filters.dateTo) {
         const endDate = filters.dateTo + 'T23:59:59';
-        if (post.created_at > endDate) return false;
+        if ((post.created_at ?? '') > endDate) return false;
       }
       return true;
     });
