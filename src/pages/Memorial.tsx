@@ -13,6 +13,7 @@ import RequestLinkDialog from "@/components/memorial/RequestLinkDialog";
 import InferredLinkSuggestions from "@/components/memorial/InferredLinkSuggestions";
 import TransitiveDiscoveryWidget from "@/components/memorial/TransitiveDiscoveryWidget";
 import DemoGuide from "@/components/memorial/DemoGuide";
+import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
@@ -369,6 +370,13 @@ const MemorialInner = () => {
     );
   }
 
+  // Canonical URL for JSON-LD
+  const canonicalUrl = memorialData.shareToken 
+    ? `${window.location.origin}/m/${memorialData.shareToken}` 
+    : `${window.location.origin}/memorial/${memorialData.slug}`;
+
+  const bestPhoto = memorialData.photos?.[memorialData.defaultPhotoIndex || 0] || memorialData.photos?.[0] || null;
+
   // Create memorial object with additional computed properties
   const memorial = {
     ...memorialData,
@@ -536,6 +544,15 @@ const MemorialInner = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* JSON-LD Person Schema for SEO */}
+      <JsonLdPerson
+        name={memorialData.name}
+        birthDate={memorialData.birthDate}
+        deathDate={memorialData.deathDate}
+        description={memorialData.bio}
+        image={bestPhoto}
+        url={canonicalUrl}
+      />
       <Header />
 
       <main className="flex-1 pt-16 md:pt-20">
