@@ -7,7 +7,7 @@ import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, Al
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -53,6 +53,7 @@ const AuditSuggestions = () => {
     },
   });
 
+  const queryClient = useQueryClient();
   const [isSendingEmails, setIsSendingEmails] = useState(false);
 
   const handleSendNotifications = async () => {
@@ -67,11 +68,14 @@ const AuditSuggestions = () => {
       const result = data as { sent?: number; suggestions_notified?: number };
       if (result.sent && result.sent > 0) {
         toast.success(
-          `📧 ${result.sent} email(s) envoyé(s) pour ${result.suggestions_notified} suggestion(s)`
+          `📧 ${result.sent} email(s) envoyé(s) pour ${result.suggestions_notified} suggestion(s) — Notification envoyée avec succès`
         );
       } else {
-        toast.info("Aucune suggestion à notifier (toutes ont déjà été envoyées)");
+        toast.info("Aucune suggestion à notifier (toutes ont déjà été envoyées ou les créateurs n'ont pas d'email)");
       }
+
+      // Force immediate refetch to update badges and statuses
+      await queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] });
     } catch (err: any) {
       console.error("Error sending notifications:", err);
       toast.error("Erreur lors de l'envoi des notifications");
@@ -88,10 +92,8 @@ const AuditSuggestions = () => {
     );
   }
 
-  // Count un-notified pending suggestions
-  const unnotifiedCount = links.filter(
-    (l) => l.status === "pending" && !(l as any).notifiedAt
-  ).length;
+  // Count un-notified pending suggestions — aligned with edge function logic
+  const unnotifiedCount = stats.unnotifiedPending;
 
   return (
     <div>
@@ -106,10 +108,10 @@ const AuditSuggestions = () => {
           </div>
         </div>
         
-        {/* Send notifications button */}
+        {/* Send notifications button — disabled when no un-notified pending suggestions */}
         <Button
           onClick={handleSendNotifications}
-          disabled={isSendingEmails || stats.pending === 0}
+          disabled={isSendingEmails || unnotifiedCount === 0}
           className="gap-2 bg-gradient-to-r from-[hsl(45,80%,45%)] to-[hsl(40,75%,50%)] hover:from-[hsl(45,85%,40%)] hover:to-[hsl(40,80%,45%)] text-white"
         >
           {isSendingEmails ? (
@@ -118,9 +120,9 @@ const AuditSuggestions = () => {
             <Send className="w-4 h-4" />
           )}
           Notifier les créateurs
-          {stats.pending > 0 && (
+          {unnotifiedCount > 0 && (
             <Badge className="ml-1 bg-white/20 text-white text-[10px]">
-              {stats.pending}
+              {unnotifiedCount}
             </Badge>
           )}
         </Button>

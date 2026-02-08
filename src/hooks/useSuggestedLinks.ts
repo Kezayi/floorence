@@ -296,19 +296,22 @@ export const useAdminSuggestedLinks = () => {
       const accepted = allLinks.filter((l) => l.status === "accepted").length;
       const rejected = allLinks.filter((l) => l.status === "rejected").length;
       const pending = allLinks.filter((l) => l.status === "pending").length;
+      const unnotifiedPending = allLinks.filter(
+        (l) => l.status === "pending" && !l.notified_at
+      ).length;
       const decided = accepted + rejected;
       const rate = decided > 0 ? Math.round((accepted / decided) * 100) : 0;
 
       return {
         links: enriched,
-        stats: { total, accepted, rejected, pending, rate },
+        stats: { total, accepted, rejected, pending, unnotifiedPending, rate },
       };
     },
   });
 
   return {
     links: data?.links || [],
-    stats: data?.stats || { total: 0, accepted: 0, rejected: 0, pending: 0, rate: 0 },
+    stats: data?.stats || { total: 0, accepted: 0, rejected: 0, pending: 0, unnotifiedPending: 0, rate: 0 },
     isLoading,
   };
 };
