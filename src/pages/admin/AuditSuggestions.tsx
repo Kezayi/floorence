@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAdminSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   accepted: {
@@ -57,6 +58,26 @@ const AuditSuggestions = () => {
   const queryClient = useQueryClient();
   const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [isMagicValidating, setIsMagicValidating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const pendingLinks = useMemo(() => links.filter((l) => l.status === "pending"), [links]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === pendingLinks.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingLinks.map((l) => l.id)));
+    }
+  };
 
   const handleSendNotifications = async () => {
     setIsSendingEmails(true);
@@ -85,28 +106,60 @@ const AuditSuggestions = () => {
     }
   };
 
+  const refreshAllQueries = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["audit-logs-suggestions"] }),
+      queryClient.invalidateQueries({ queryKey: ["humanity-gauge"] }),
+      queryClient.invalidateQueries({ queryKey: ["success-wall"] }),
+      queryClient.invalidateQueries({ queryKey: ["live-activity"] }),
+    ]);
+
   const handleMagicValidation = async () => {
+    const toValidate = pendingLinks.filter((l) => selectedIds.has(l.id));
+    if (toValidate.length === 0) return;
+
     setIsMagicValidating(true);
     try {
-      const { data, error } = await supabase.rpc("admin_force_validate_all_suggestions");
-      if (error) throw error;
+      let merged = 0;
+      for (const link of toValidate) {
+        // Check for duplicate accepted relation
+        const { data: existing } = await supabase
+          .from("memorial_relations")
+          .select("id")
+          .or(
+            `and(memorial_id_1.eq.${link.sourceMemorialId},memorial_id_2.eq.${link.targetMemorialId}),and(memorial_id_1.eq.${link.targetMemorialId},memorial_id_2.eq.${link.sourceMemorialId})`
+          )
+          .eq("relation_type", link.suggestedRelation)
+          .eq("status", "accepted")
+          .maybeSingle();
 
-      const result = data as { status?: string; message?: string; count?: number } | null;
-      if (result?.count && result.count > 0) {
-        toast.success(`✨ ${result.message}`, { duration: 6000 });
-      } else {
-        toast.info("Aucune suggestion en attente à fusionner.");
+        if (!existing) {
+          const { error: insertErr } = await supabase.from("memorial_relations").insert({
+            memorial_id_1: link.sourceMemorialId,
+            memorial_id_2: link.targetMemorialId,
+            relation_type: link.suggestedRelation,
+            status: "accepted",
+          });
+          if (!insertErr) merged++;
+        }
+
+        // Mark suggestion as accepted
+        await supabase
+          .from("suggested_links")
+          .update({ status: "accepted", notified_admin: true })
+          .eq("id", link.id);
       }
 
-      // Refresh all related queries
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
-        queryClient.invalidateQueries({ queryKey: ["audit-logs-suggestions"] }),
-        queryClient.invalidateQueries({ queryKey: ["humanity-gauge"] }),
-        queryClient.invalidateQueries({ queryKey: ["success-wall"] }),
-        queryClient.invalidateQueries({ queryKey: ["live-activity"] }),
-      ]);
+      if (merged > 0) {
+        toast.success(`✨ ${merged} lien(s) fusionné(s) avec succès !`, { duration: 6000 });
+      } else {
+        toast.info("Les liens sélectionnés étaient déjà fusionnés. Statuts mis à jour.");
+      }
+
+      setSelectedIds(new Set());
+      await refreshAllQueries();
     } catch (err: any) {
       console.error("Error in magic validation:", err);
       toast.error("Erreur lors de la validation forcée");
@@ -140,13 +193,13 @@ const AuditSuggestions = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Magic validation button — admin only, beta tool */}
+          {/* Magic validation button — operates on selected pending suggestions */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   onClick={handleMagicValidation}
-                  disabled={isMagicValidating || stats.pending === 0}
+                  disabled={isMagicValidating || selectedIds.size === 0}
                   className="gap-2 bg-gradient-to-r from-[hsl(260,70%,55%)] to-[hsl(280,65%,50%)] hover:from-[hsl(260,75%,50%)] hover:to-[hsl(280,70%,45%)] text-white shadow-lg shadow-[hsl(260,70%,55%)]/20"
                 >
                   {isMagicValidating ? (
@@ -154,16 +207,16 @@ const AuditSuggestions = () => {
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  Fusionner tous les liens fantômes
-                  {stats.pending > 0 && (
+                  Fusionner la sélection
+                  {selectedIds.size > 0 && (
                     <Badge className="ml-1 bg-white/20 text-white text-[10px]">
-                      {stats.pending}
+                      {selectedIds.size}
                     </Badge>
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[260px] text-center">
-                Réservé à la Bêta : Valide instantanément toutes les suggestions pour les profils fantômes.
+                Valide les suggestions sélectionnées et crée les liens de parenté correspondants.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -292,8 +345,21 @@ const AuditSuggestions = () => {
 
       {/* Suggestions list */}
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Historique des suggestions</CardTitle>
+          {pendingLinks.length > 0 && (
+            <button
+              onClick={toggleSelectAll}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+            >
+              <Checkbox
+                checked={selectedIds.size === pendingLinks.length && pendingLinks.length > 0}
+                onCheckedChange={toggleSelectAll}
+                className="h-3.5 w-3.5"
+              />
+              {selectedIds.size === pendingLinks.length ? "Tout désélectionner" : `Tout sélectionner (${pendingLinks.length})`}
+            </button>
+          )}
         </CardHeader>
         <CardContent>
           {links.length > 0 ? (
@@ -301,13 +367,28 @@ const AuditSuggestions = () => {
               {links.map((link) => {
                 const config = statusConfig[link.status] || statusConfig.pending;
                 const StatusIcon = config.icon;
+                const isPending = link.status === "pending";
+                const isSelected = selectedIds.has(link.id);
 
                 return (
                   <div
                     key={link.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                      isSelected
+                        ? "bg-[hsl(260,70%,55%)]/5 border border-[hsl(260,70%,55%)]/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {isPending ? (
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(link.id)}
+                          className="shrink-0 h-5 w-5 border-[hsl(260,70%,55%)]/40 data-[state=checked]:bg-[hsl(260,70%,55%)] data-[state=checked]:border-[hsl(260,70%,55%)]"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 shrink-0" />
+                      )}
                       <div className="w-8 h-8 rounded-full bg-[hsl(45,90%,50%)]/10 flex items-center justify-center shrink-0">
                         <Brain className="w-4 h-4 text-[hsl(45,90%,50%)]" />
                       </div>
