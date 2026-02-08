@@ -710,6 +710,7 @@ const Memorial = () => {
                 <SecureDataDisplay blurPreview>
                   <RelationshipMaillage 
                     deceasedName={memorial.name}
+                    memorialId={memorial.id}
                     posts={guestbookPosts.map(post => ({
                       authorId: post.authorId,
                       authorName: post.authorName,

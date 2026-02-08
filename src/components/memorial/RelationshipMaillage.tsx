@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
-import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import RelationshipGraph2D from "./RelationshipGraph2D";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +10,7 @@ import { displayName } from "@/lib/privacyUtils";
 
 interface RelationshipMaillageProps {
   deceasedName: string;
+  memorialId?: string;
   posts: Array<{
     authorId: string;
     authorName: string;
@@ -70,9 +73,65 @@ const confidenceBadges = {
   low: { label: "Lien indirect", className: "bg-muted text-muted-foreground border-border" },
 };
 
-const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps) => {
+const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipMaillageProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
+
+  // Fetch inter-memorial links (Pont des Ancêtres)
+  const isValidUUID = memorialId ? /^[0-9a-f]{8}-/.test(memorialId) : false;
+  const { data: interMemorialLinks } = useQuery({
+    queryKey: ["memorial-relations-graph", memorialId],
+    enabled: !!memorialId && isValidUUID,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('memorial_relations')
+        .select('id, relation_type, memorial_id_1, memorial_id_2')
+        .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
+        .eq('status', 'accepted');
+
+      if (!data || data.length === 0) return [];
+
+      const linkedIds = data.map(r =>
+        r.memorial_id_1 === memorialId ? r.memorial_id_2 : r.memorial_id_1
+      ).filter((id): id is string => !!id);
+
+      if (linkedIds.length === 0) return [];
+
+      const { data: linkedMemorials } = await supabase
+        .from('memorials')
+        .select('id, first_name, last_name')
+        .in('id', linkedIds);
+
+      const nameMap = new Map(
+        (linkedMemorials || []).map(m => [m.id, `${m.first_name} ${m.last_name}`])
+      );
+      const firstNameMap = new Map(
+        (linkedMemorials || []).map(m => [m.id, m.first_name])
+      );
+
+      const currentFirstName = deceasedName.split(' ')[0];
+
+      return data.map(r => {
+        const isSource = r.memorial_id_1 === memorialId;
+        const linkedId = isSource ? r.memorial_id_2 : r.memorial_id_1;
+        if (!linkedId) return { name: 'Inconnu', relationType: r.relation_type };
+
+        let relationType: string;
+        if (isSource) {
+          relationType = getGenderAwareRelation(r.relation_type, currentFirstName);
+        } else {
+          relationType = getInverseRelation(r.relation_type, currentFirstName);
+        }
+
+        return {
+          name: nameMap.get(linkedId) || 'Inconnu',
+          relationType,
+        };
+      });
+    },
+  });
   const directRelations = useMemo(() => {
     const uniqueAuthors = new Map<string, { name: string; category: string }>();
     posts.forEach((post) => {
@@ -129,8 +188,28 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
         <>
           {/* Graphe 2D */}
           <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
-            <RelationshipGraph2D deceasedName={deceasedName} posts={posts} />
+            <RelationshipGraph2D deceasedName={deceasedName} posts={posts} interMemorialLinks={interMemorialLinks || []} />
           </div>
+
+          {/* Pont des Ancêtres */}
+          {interMemorialLinks && interMemorialLinks.length > 0 && (
+            <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 p-5 rounded-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Link2 className="w-4 h-4 text-[#D4AF37]" />
+                <h4 className="font-serif text-lg text-[#D4AF37]">Pont des Ancêtres</h4>
+              </div>
+              <div className="space-y-2">
+                {interMemorialLinks.map((link, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <div className="w-3 h-0.5 bg-[#D4AF37] rounded-full" />
+                    <span className="font-serif">
+                      {deceasedName.split(" ")[0]} — <span className="text-[#D4AF37]">{link.relationType}</span> de {displayName(link.name, isAuthenticated)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Relations directes */}
           <div className="bg-muted/30 border border-border/60 p-6 rounded-sm">
