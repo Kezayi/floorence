@@ -85,6 +85,13 @@ export default {
           DEFAULT: "hsl(var(--accent-green))",
           foreground: "hsl(var(--accent-green-foreground))",
         },
+        "ai-gold": {
+          DEFAULT: "hsl(var(--ai-gold))",
+          foreground: "hsl(var(--ai-gold-foreground))",
+          accent: "hsl(var(--ai-gold-accent))",
+        },
+        "gesture-candle": "hsl(var(--gesture-candle))",
+        "gesture-flower": "hsl(var(--gesture-flower))",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -103,11 +103,11 @@ const MemorialCard = ({
               <CrossIcon size={14} />
               {ripCount} <span className="font-normal">RIP</span>
             </span>
-            <span className={`flex items-center gap-1 text-[hsl(var(--gesture-candle))] font-medium ${candleCount > 5 ? 'fervor-glow-candle rounded-sm px-1' : ''}`}>
+            <span className={`flex items-center gap-1 text-gesture-candle font-medium ${candleCount > 5 ? 'fervor-glow-candle rounded-sm px-1' : ''}`}>
               <Flame size={14} />
               {candleCount} <span className="font-normal">Cierges</span>
             </span>
-            <span className={`flex items-center gap-1 text-[hsl(var(--gesture-flower))] font-medium ${flowerCount > 5 ? 'fervor-glow-flower rounded-sm px-1' : ''}`}>
+            <span className={`flex items-center gap-1 text-gesture-flower font-medium ${flowerCount > 5 ? 'fervor-glow-flower rounded-sm px-1' : ''}`}>
               <Flower2 size={14} />
               {flowerCount} <span className="font-normal">Fleurs</span>
             </span>
@@ -161,15 +161,15 @@ const MemorialCard = ({
         {/* Overlay Info on Hover */}
         <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-1 text-white font-medium">
+            <span className="flex items-center gap-1 text-memorial-dark-foreground font-medium">
               <CrossIcon size={14} />
               {ripCount} <span className="font-normal opacity-80">RIP</span>
             </span>
-            <span className="flex items-center gap-1 text-[hsl(var(--gesture-candle))] font-medium">
+            <span className="flex items-center gap-1 text-gesture-candle font-medium">
               <Flame size={14} />
               {candleCount} <span className="font-normal opacity-80">Cierges</span>
             </span>
-            <span className="flex items-center gap-1 text-[hsl(var(--gesture-flower))] font-medium">
+            <span className="flex items-center gap-1 text-gesture-flower font-medium">
               <Flower2 size={14} />
               {flowerCount} <span className="font-normal opacity-80">Fleurs</span>
             </span>
