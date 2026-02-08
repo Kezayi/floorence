@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // Try to find memorial by slug OR legacy_slug
     let { data: memorial } = await supabase
       .from('memorials')
-      .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date')
+      .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
       .eq('slug', slug)
       .eq('is_active', true)
       .eq('is_published', true)
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (!memorial) {
       const { data: legacyMemorial } = await supabase
         .from('memorials')
-        .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date')
+        .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
         .eq('legacy_slug', slug)
         .eq('is_active', true)
         .eq('is_published', true)
@@ -92,8 +92,8 @@ Deno.serve(async (req) => {
     const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : null;
     const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : null;
     
-    // Title with years if available
-    let ogTitle = `Hommage à ${fullName}`;
+    // Title: "Nom Complet (YYYY - YYYY) | Floorence : Honorer · Relier · Transmettre"
+    let ogTitle = fullName;
     if (birthYear && deathYear) {
       ogTitle += ` (${birthYear} - ${deathYear})`;
     }
@@ -104,19 +104,25 @@ Deno.serve(async (req) => {
       const birth = new Date(memorial.birth_date);
       const death = new Date(memorial.death_date);
       age = death.getFullYear() - birth.getFullYear();
-      // Adjust if birthday hasn't occurred yet in death year
       if (death.getMonth() < birth.getMonth() || 
           (death.getMonth() === birth.getMonth() && death.getDate() < birth.getDate())) {
         age--;
       }
     }
     
-    // Description with age if available
-    let ogDescription = `Rejoignez la communauté de mémoire de ${fullName}`;
+    // Description: use biography excerpt if available, otherwise default emotional copy
+    const biography = (memorial as any).biography;
+    let ogDescription: string;
+    if (biography && biography.length > 30) {
+      const truncated = biography.length > 120 ? biography.substring(0, 117) + '…' : biography;
+      ogDescription = `${truncated} — Découvrez l'espace mémoriel de ${fullName}`;
+    } else {
+      ogDescription = `Découvrez l'espace mémoriel de ${fullName}`;
+    }
     if (age !== null) {
       ogDescription += ` (${age} ans)`;
     }
-    ogDescription += ` sur Floorence. Laissez un message ou un geste de recueillement.`;
+    ogDescription += ` et rejoignez son maillage familial sur Floorence.`;
 
     // Get best photo - prefer photos array with default index, fallback to photo_url
     let imageUrl = DEFAULT_IMAGE;
@@ -127,19 +133,21 @@ Deno.serve(async (req) => {
       imageUrl = memorial.photo_url;
     }
 
+    const brandedTitle = `${ogTitle} | Floorence : Honorer \xb7 Relier \xb7 Transmettre`;
+
     // Generate minimal HTML with all necessary OG tags
     const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>${escapeHtml(ogTitle)} | Floorence</title>
+<title>${escapeHtml(brandedTitle)}</title>
 <meta name="description" content="${escapeHtml(ogDescription)}">
 <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="profile">
 <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
-<meta property="og:title" content="${escapeHtml(ogTitle)}">
+<meta property="og:title" content="${escapeHtml(brandedTitle)}">
 <meta property="og:description" content="${escapeHtml(ogDescription)}">
 <meta property="og:image" content="${escapeHtml(imageUrl)}">
 <meta property="og:image:width" content="1200">
@@ -149,7 +157,7 @@ Deno.serve(async (req) => {
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escapeHtml(ogTitle)}">
+<meta name="twitter:title" content="${escapeHtml(brandedTitle)}">
 <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
 <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
 

@@ -15,6 +15,7 @@ interface SEOProps {
 const DEFAULT_TITLE = "Floorence — Honorer, Relier et Transmettre";
 const DEFAULT_DESCRIPTION = "Floorence est une infrastructure mémorielle numérique. Honorez la mémoire de vos proches disparus avec dignité et sobriété.";
 const DEFAULT_IMAGE = "/icons/icon-512x512.png";
+const BRAND_SUFFIX = "Floorence : Honorer · Relier · Transmettre";
 
 /**
  * Generate a social sharing description for memorial pages.
@@ -27,7 +28,12 @@ const generateMemorialDescription = (
   bio?: string
 ): string => {
   const ageText = age ? ` (${age} ans)` : "";
-  return `Rejoignez la communauté de mémoire de ${name}${ageText} sur Floorence. Laissez un message ou un geste de recueillement.`;
+  // If there's a bio, use a truncated version as the hook
+  if (bio && bio.length > 30) {
+    const truncatedBio = bio.length > 120 ? bio.substring(0, 117) + "…" : bio;
+    return `${truncatedBio} — Découvrez l'espace mémoriel de ${name}${ageText} et rejoignez son maillage familial.`;
+  }
+  return `Découvrez l'espace mémoriel de ${name}${ageText} et rejoignez son maillage familial sur Floorence.`;
 };
 
 /**
@@ -44,8 +50,10 @@ export const useSEO = ({
   age,
 }: SEOProps = {}) => {
   useEffect(() => {
-    // Update document title
-    document.title = title ? `${title} | Floorence` : DEFAULT_TITLE;
+    // Update document title — use branded suffix for memorial pages
+    document.title = title
+      ? (deceasedName ? `${title} | ${BRAND_SUFFIX}` : `${title} | Floorence`)
+      : DEFAULT_TITLE;
 
     // Helper to update or create a meta tag
     const updateMeta = (selector: string, content: string, attribute = "content") => {
