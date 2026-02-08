@@ -81,7 +81,7 @@ const fetchGuestbookStats = async (memorialIds: string[]): Promise<Record<string
   return stats;
 };
 
-// Fetch creator profiles
+// Fetch creator profiles — with short-circuit for empty results
 const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string, string>> => {
   if (creatorIds.length === 0) return {};
   
@@ -90,13 +90,12 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
     .select('user_id, display_name')
     .in('user_id', creatorIds);
 
-  if (error) {
-    console.error('Error fetching creator profiles:', error);
+  if (error || !data || data.length === 0) {
     return {};
   }
 
   const profiles: Record<string, string> = {};
-  (data || []).forEach((profile: ProfileData) => {
+  data.forEach((profile: ProfileData) => {
     if (profile.user_id) {
       profiles[profile.user_id] = profile.display_name || 'Créateur';
     }
@@ -109,7 +108,7 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
 const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }>; creatorProfiles: Record<string, string> }> => {
   const { data, error } = await supabase
     .from('memorials')
-    .select('*')
+    .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo')
     .eq('is_published', true)
     .eq('is_active', true)
     .is('merged_into', null)
@@ -199,9 +198,9 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['memorials-list'],
     queryFn: fetchMemorialsData,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 

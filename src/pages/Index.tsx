@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
 import MemorialPagination from "@/components/home/MemorialPagination";
 import UpcomingEvents from "@/components/home/UpcomingEvents";
+import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
 import EmptyState from "@/components/ui/empty-state";
 import { LayoutGrid, Grid3X3, List, Square, Heart } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
@@ -29,6 +30,7 @@ const Index = () => {
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const { memorialCards, loading } = useMemorials();
+  const { data: eventsData, isLoading: eventsLoading } = useUpcomingEvents();
 
   // Set default view mode based on device
   useEffect(() => {
@@ -262,8 +264,8 @@ const Index = () => {
         <section className="px-4 py-6 md:px-8 md:py-10 border-t border-border">
           <div className="container mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-              <UpcomingEvents type="funerals" title="Prochains Obsèques" />
-              <UpcomingEvents type="gatherings" title="Prochains Recueillements" />
+              <UpcomingEvents type="funerals" title="Prochains Obsèques" events={eventsData?.funerals ?? []} loading={eventsLoading} />
+              <UpcomingEvents type="gatherings" title="Prochains Recueillements" events={eventsData?.gatherings ?? []} loading={eventsLoading} />
             </div>
           </div>
         </section>
