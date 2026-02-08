@@ -1,5 +1,5 @@
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -7,11 +7,14 @@ import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getCleanRelationName, getRelationWithDeceased, inferUserToPersonRelation, inferRelationship, UserRelationResult } from "@/lib/relationshipInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronRight, ArrowLeft, Search } from "lucide-react";
+import { ChevronRight, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import RelationshipGraphSearch from "@/components/search/RelationshipGraphSearch";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // ============================================================================
 // TYPES
@@ -538,33 +541,102 @@ const searchWithFamilyGrouping = (
 // COMPOSANT PRINCIPAL
 // ============================================================================
 
+// Skeleton pour les résultats de recherche
+const SearchResultSkeleton = () => (
+  <div className="space-y-6">
+    {[1, 2, 3].map((i) => (
+      <Card key={i} className="overflow-hidden">
+        <CardHeader className="pb-3 bg-muted/30 border-b border-border">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-14 h-16 rounded-sm" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 space-y-3">
+          {[1, 2].map((j) => (
+            <div key={j} className="flex items-center gap-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(query);
-  const { memorials } = useMemorials();
+  const { memorials, loading: memorialsLoading } = useMemorials();
   const { user } = useAuth();
   const { profile } = useProfile();
   
   const currentUserName = profile?.display_name || user?.email?.split("@")[0];
 
+  // Debounce la saisie — 300ms, minimum 2 caractères
+  const debouncedInput = useDebounce(searchInput, 300);
+
+  // Synchroniser le debounce avec les URL params (sans flash)
+  useEffect(() => {
+    const trimmed = debouncedInput.trim();
+    if (trimmed.length >= 2) {
+      setSearchParams({ q: trimmed }, { replace: true });
+    } else if (trimmed.length === 0 && query) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [debouncedInput]);
+
+  // Synchroniser l'input si on arrive avec un ?q= dans l'URL
+  useEffect(() => {
+    if (query && !searchInput) {
+      setSearchInput(query);
+    }
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      setSearchParams({ q: searchInput.trim() });
+    const trimmed = searchInput.trim();
+    if (trimmed.length >= 2) {
+      setSearchParams({ q: trimmed });
     }
   };
 
   // Recherche avec groupement familial
   const searchResults = useMemo(
-    () => query ? searchWithFamilyGrouping(query, memorials, currentUserName) : [],
+    () => query && query.length >= 2 ? searchWithFamilyGrouping(query, memorials, currentUserName) : [],
     [query, memorials, currentUserName]
   );
 
+  // Keep Previous Data : garder les anciens résultats tant que les nouveaux ne sont pas prêts
+  const previousResultsRef = useRef<SearchResultItem[]>([]);
+  const isSearching = debouncedInput.trim() !== query && searchInput.trim().length >= 2;
+
+  // Mettre à jour les résultats précédents seulement quand on a de vrais résultats
+  useEffect(() => {
+    if (searchResults.length > 0) {
+      previousResultsRef.current = searchResults;
+    }
+  }, [searchResults]);
+
+  // Résultats à afficher : nouveaux si disponibles, sinon les précédents pendant la transition
+  const displayResults = searchResults.length > 0 
+    ? searchResults 
+    : (isSearching && previousResultsRef.current.length > 0 
+        ? previousResultsRef.current 
+        : searchResults);
+
   // Comptage
-  const totalGroups = searchResults.filter(r => r.type === "family_group").length;
-  const totalProfiles = searchResults.filter(r => r.type === "multi_memorial").length;
+  const totalGroups = displayResults.filter(r => r.type === "family_group").length;
+  const totalProfiles = displayResults.filter(r => r.type === "multi_memorial").length;
+
+  // Message d'aide pour les requêtes trop courtes
+  const isTooShort = searchInput.trim().length > 0 && searchInput.trim().length < 2;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -602,21 +674,44 @@ const SearchPage = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Nom du défunt ou d'un proche..."
+                  placeholder="Nom du défunt ou d'un proche (min. 2 caractères)..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10 h-12 text-base bg-background border-border"
                   autoFocus
                 />
+                {/* Indicateur de recherche en cours */}
+                {isSearching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+                )}
               </div>
               <Button type="submit" className="h-12 px-6">
                 Rechercher
               </Button>
             </form>
+
+            {/* Avertissement: saisie trop courte */}
+            {isTooShort && (
+              <p className="text-xs text-muted-foreground font-sans mt-2">
+                Saisissez au moins 2 caractères pour lancer la recherche.
+              </p>
+            )}
+
+            {/* Barre de progression discrète pendant la transition */}
+            {isSearching && (
+              <div className="mt-2">
+                <Progress value={undefined} className="h-1 w-full [&>div]:animate-pulse" />
+              </div>
+            )}
           </div>
 
+          {/* Chargement initial des données */}
+          {memorialsLoading && query && (
+            <SearchResultSkeleton />
+          )}
+
           {/* Pas de recherche */}
-          {!query && (
+          {!query && !isTooShort && (
             <div className="text-center py-16">
               <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
               <p className="text-muted-foreground font-sans">
@@ -626,20 +721,23 @@ const SearchPage = () => {
           )}
 
           {/* Résultats de recherche */}
-          {query && (
+          {query && !memorialsLoading && (
             <div className="mb-4">
               <p className="text-muted-foreground font-sans text-sm">
                 {totalGroups > 0 && `${totalGroups} famille${totalGroups > 1 ? "s" : ""}`}
                 {totalGroups > 0 && totalProfiles > 0 && " • "}
                 {totalProfiles > 0 && `${totalProfiles} profil${totalProfiles > 1 ? "s" : ""} multi-mémorial`}
-                {totalGroups === 0 && totalProfiles === 0 && "Aucun résultat"}
+                {totalGroups === 0 && totalProfiles === 0 && !isSearching && "Aucun résultat"}
                 {" "}pour "{query}"
+                {isSearching && (
+                  <span className="text-xs text-muted-foreground/70 ml-2">(mise à jour…)</span>
+                )}
               </p>
             </div>
           )}
 
           {/* Aucun résultat */}
-          {query && searchResults.length === 0 && (
+          {query && !memorialsLoading && displayResults.length === 0 && !isSearching && (
             <div className="text-center py-16">
               <p className="text-muted-foreground font-sans text-lg mb-2">
                 Aucun résultat pour "{query}"
@@ -650,10 +748,10 @@ const SearchPage = () => {
             </div>
           )}
 
-          {/* Résultats groupés */}
-          {query && searchResults.length > 0 && (
-            <div className="space-y-6">
-              {searchResults.map((result, index) => {
+          {/* Résultats groupés — avec opacité réduite pendant la transition */}
+          {query && !memorialsLoading && displayResults.length > 0 && (
+            <div className={`space-y-6 transition-opacity duration-200 ${isSearching ? 'opacity-60' : 'opacity-100'}`}>
+              {displayResults.map((result, index) => {
                 if (result.type === "family_group") {
                   return (
                     <FamilyGroupCard 
