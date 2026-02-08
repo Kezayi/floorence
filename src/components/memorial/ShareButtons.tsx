@@ -124,7 +124,7 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
         return; // Success - don't show dropdown
       } catch (err) {
         // User cancelled or permission denied - fall through to dropdown
-        console.log("Native share unavailable:", err);
+        // Native share unavailable — fall through to dropdown
       }
     }
     

@@ -169,7 +169,6 @@ const CreateMemorial = () => {
         return;
       }
 
-       console.log('[BETA] Memorial created:', createData.memorial.slug);
        toast.success("Espace mémoriel créé avec succès !");
        navigate(`/memorial/${createData.memorial.slug}`);
 
