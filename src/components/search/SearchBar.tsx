@@ -29,7 +29,7 @@ const SearchBar = ({ className = "" }: SearchBarProps) => {
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
+    if (query.trim().length >= 2) {
       navigate(`/recherche?q=${encodeURIComponent(query.trim())}`);
     }
   }, [query, navigate]);
