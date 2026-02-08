@@ -3,7 +3,7 @@ import { useAdminSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send } from "lucide-react";
+import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -189,6 +189,25 @@ const AuditSuggestions = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Trigger automation indicator */}
+      <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-sm flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+          <Zap className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+            Trigger automatique actif
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+            </span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Chaque nouvelle relation acceptée déclenche automatiquement l'analyse transitive sur le périmètre familial concerné. Les 15 règles de découverte sont appliquées avec validation chronologique.
+          </p>
+        </div>
       </div>
 
       {/* Admin global alert */}
