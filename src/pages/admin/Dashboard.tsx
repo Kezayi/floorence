@@ -8,6 +8,7 @@ import { usePendingSuggestionsCount } from '@/hooks/usePendingSuggestionsCount';
 import TabVerite from '@/components/admin/dashboard/TabVerite';
 import TabClassement from '@/components/admin/dashboard/TabClassement';
 import TabBusiness from '@/components/admin/dashboard/TabBusiness';
+import TabSuggestions from '@/components/admin/dashboard/TabSuggestions';
 import TabImpact from '@/components/admin/dashboard/TabImpact';
 
 const Dashboard = () => {
@@ -47,33 +48,39 @@ const Dashboard = () => {
       <h1 className="text-3xl font-bold text-foreground mb-6">Tableau de bord</h1>
 
       <Tabs defaultValue="verite" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-12 mb-6 bg-muted/60 p-1">
+        <TabsList className="w-full grid grid-cols-5 h-12 mb-6 bg-muted/60 p-1">
           <TabsTrigger
             value="verite"
-            className="relative data-[state=active]:bg-[hsl(var(--tab-verite))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-verite))] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-verite))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-verite))] transition-all duration-300 text-xs sm:text-sm font-medium"
           >
             Vérité
-            {(pendingCount ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[hsl(25,95%,55%)] text-white text-[10px] font-bold flex items-center justify-center px-1">
-                {pendingCount}
-              </span>
-            )}
           </TabsTrigger>
           <TabsTrigger
             value="classement"
-            className="data-[state=active]:bg-[hsl(var(--tab-classement))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-classement))] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-classement))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-classement))] transition-all duration-300 text-xs sm:text-sm font-medium"
           >
             Classement
           </TabsTrigger>
           <TabsTrigger
             value="business"
-            className="data-[state=active]:bg-[hsl(var(--tab-business))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-business))] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-business))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-business))] transition-all duration-300 text-xs sm:text-sm font-medium"
           >
             Business
           </TabsTrigger>
           <TabsTrigger
+            value="suggestions"
+            className="relative data-[state=active]:bg-[hsl(var(--tab-suggestions))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-suggestions))] transition-all duration-300 text-xs sm:text-sm font-medium"
+          >
+            Suggestions
+            {(pendingCount ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[hsl(var(--tab-suggestions))] text-white text-[10px] font-bold flex items-center justify-center px-1 shadow-sm">
+                {pendingCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
             value="impact"
-            className="data-[state=active]:bg-[hsl(var(--tab-impact))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-impact))] transition-all text-xs sm:text-sm font-medium"
+            className="data-[state=active]:bg-[hsl(var(--tab-impact))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-impact))] transition-all duration-300 text-xs sm:text-sm font-medium"
           >
             Impact
           </TabsTrigger>
@@ -94,6 +101,12 @@ const Dashboard = () => {
         <TabsContent value="business">
           <div className="rounded-xl bg-[hsl(var(--tab-business)/0.06)] p-4 transition-colors duration-300">
             {dashStats && <TabBusiness stats={dashStats} />}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="suggestions">
+          <div className="rounded-xl bg-[hsl(var(--tab-suggestions)/0.25)] p-4 transition-colors duration-300">
+            <TabSuggestions />
           </div>
         </TabsContent>
 
