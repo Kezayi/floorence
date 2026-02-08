@@ -1,10 +1,12 @@
 import { useAdminSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2 } from "lucide-react";
+import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   accepted: {
@@ -26,6 +28,27 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 
 const AuditSuggestions = () => {
   const { links, stats, isLoading } = useAdminSuggestedLinks();
+
+  // Fetch audit logs for suggestion validations
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ["audit-logs-suggestions"],
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .eq("action_type", "memorial_relation_created")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) return [];
+      // Filter only those from suggested_link_validation
+      return (data || []).filter((log) => {
+        const details = log.details as Record<string, any> | null;
+        return details?.origin === "suggested_link_validation";
+      });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -112,18 +135,18 @@ const AuditSuggestions = () => {
         </Card>
       </div>
 
-      {/* Pending alert */}
+      {/* Admin global alert */}
       {stats.pending > 0 && (
-        <div className="mb-6 p-4 bg-[hsl(45,90%,50%)]/5 border border-[hsl(45,90%,50%)]/20 rounded-sm flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[hsl(45,90%,50%)]/20 flex items-center justify-center shrink-0">
-            <Clock className="w-4 h-4 text-[hsl(45,70%,35%)]" />
+        <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-destructive/15 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">
-              {stats.pending} suggestion{stats.pending > 1 ? "s" : ""} en attente de validation
+            <p className="text-sm font-semibold text-foreground">
+              {stats.pending} nouvelle{stats.pending > 1 ? "s" : ""} suggestion{stats.pending > 1 ? "s" : ""} attend{stats.pending > 1 ? "ent" : ""} la validation des créateurs
             </p>
             <p className="text-xs text-muted-foreground">
-              Les créateurs de mémoriaux doivent confirmer ou rejeter ces suggestions.
+              Surveillez le taux de transformation pour mesurer la précision de l'IA.
             </p>
           </div>
         </div>
@@ -202,6 +225,45 @@ const AuditSuggestions = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Audit Log - Validation History */}
+      {auditLogs.length > 0 && (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50 mt-6">
+          <CardHeader className="flex flex-row items-center gap-2">
+            <ScrollText className="w-5 h-5 text-primary" />
+            <CardTitle className="text-base">Journal d'audit des validations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {auditLogs.map((log) => {
+                const details = log.details as Record<string, any> | null;
+                return (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sans">
+                        <strong>{log.performed_by_email || "Utilisateur"}</strong> a validé le lien{" "}
+                        <strong>{details?.source_memorial}</strong>{" "}
+                        <span className="text-[hsl(45,90%,50%)] font-semibold">
+                          {details?.relation_type}
+                        </span>{" "}
+                        <strong>{details?.target_memorial}</strong>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {format(new Date(log.created_at), "d MMM yyyy à HH:mm", { locale: fr })}
+                        {" — "}Suggestion IA validée
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

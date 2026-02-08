@@ -2,6 +2,8 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { logAuditAction } from "@/lib/auditLogger";
+import { fireGoldenConfetti } from "@/lib/goldenConfetti";
 
 const CACHE_CONFIG = { staleTime: 60 * 1000, gcTime: 5 * 60 * 1000 };
 
@@ -103,10 +105,30 @@ export const useUserSuggestedLinks = () => {
     },
   });
 
-  // Validate: move to memorial_relations as accepted
+  // Validate: move to memorial_relations as accepted (with duplicate sealing)
   const validateMutation = useMutation({
     mutationFn: async (suggestion: SuggestedLink) => {
       if (!user) throw new Error("Not authenticated");
+
+      // Check if this link already exists (sealed by another creator)
+      const { data: existing } = await supabase
+        .from("memorial_relations")
+        .select("id")
+        .or(
+          `and(memorial_id_1.eq.${suggestion.sourceMemorialId},memorial_id_2.eq.${suggestion.targetMemorialId}),and(memorial_id_1.eq.${suggestion.targetMemorialId},memorial_id_2.eq.${suggestion.sourceMemorialId})`
+        )
+        .eq("relation_type", suggestion.suggestedRelation)
+        .eq("status", "accepted")
+        .maybeSingle();
+
+      if (existing) {
+        // Link already sealed by another creator — just mark this suggestion as accepted
+        await supabase
+          .from("suggested_links")
+          .update({ status: "accepted" })
+          .eq("id", suggestion.id);
+        return { ...suggestion, alreadySealed: true };
+      }
 
       // Create the relation
       const { error: insertError } = await supabase.from("memorial_relations").insert({
@@ -126,17 +148,52 @@ export const useUserSuggestedLinks = () => {
         .eq("id", suggestion.id);
       if (updateError) throw updateError;
 
-      return suggestion;
-    },
-    onSuccess: (suggestion) => {
-      toast.success(
-        `Lien validé : ${suggestion.sourceName} est ${suggestion.suggestedRelation} de ${suggestion.targetName}`,
-        { duration: 5000 }
+      // Also seal any duplicate pending suggestions for the same pair
+      await supabase
+        .from("suggested_links")
+        .update({ status: "accepted" })
+        .eq("status", "pending")
+        .or(
+          `and(source_memorial_id.eq.${suggestion.sourceMemorialId},target_memorial_id.eq.${suggestion.targetMemorialId}),and(source_memorial_id.eq.${suggestion.targetMemorialId},target_memorial_id.eq.${suggestion.sourceMemorialId})`
+        );
+
+      // Audit log
+      await logAuditAction(
+        "memorial_relation_created",
+        user.id,
+        user.email || null,
+        {
+          memorial_id: suggestion.sourceMemorialId,
+          source_memorial: suggestion.sourceName,
+          target_memorial: suggestion.targetName,
+          relation_type: suggestion.suggestedRelation,
+          origin: "suggested_link_validation",
+          suggestion_id: suggestion.id,
+        }
       );
+
+      return { ...suggestion, alreadySealed: false };
+    },
+    onSuccess: (result) => {
+      // Fire golden confetti celebration
+      fireGoldenConfetti();
+
+      if ((result as any).alreadySealed) {
+        toast.info(
+          `Ce lien a déjà été scellé par un autre créateur. Votre confirmation est enregistrée.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(
+          `🌿 Vérité scellée : ${result.sourceName} est ${result.suggestedRelation} de ${result.targetName}`,
+          { duration: 6000 }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["user-suggested-links"] });
       queryClient.invalidateQueries({ queryKey: ["memorial-relations-graph"] });
       queryClient.invalidateQueries({ queryKey: ["transitive-all-relations"] });
       queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-suggested-links-count"] });
     },
     onError: () => {
       toast.error("Erreur lors de la validation du lien");
@@ -156,6 +213,7 @@ export const useUserSuggestedLinks = () => {
       toast.info("Suggestion rejetée");
       queryClient.invalidateQueries({ queryKey: ["user-suggested-links"] });
       queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-suggested-links-count"] });
     },
     onError: () => {
       toast.error("Erreur lors du rejet");
