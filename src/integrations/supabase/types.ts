@@ -508,6 +508,14 @@ export type Database = {
         }
         Relationships: []
       }
+      v_admin_success_metrics: {
+        Row: {
+          active_families_engaged: number | null
+          success_rate_percent: number | null
+          total_reunions: number | null
+        }
+        Relationships: []
+      }
       v_dashboard_stats: {
         Row: {
           candles_last_week: number | null
