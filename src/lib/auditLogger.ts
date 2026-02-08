@@ -5,6 +5,7 @@ export type AuditActionType =
   | 'memorial_updated'
   | 'memorial_deleted'
   | 'memorial_merged'
+  | 'memorial_relation_created'
   | 'guestbook_post_updated'
   | 'guestbook_post_deleted'
   | 'guestbook_post_hidden'
