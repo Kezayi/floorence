@@ -16,6 +16,7 @@ export interface SuggestedLink {
   status: string;
   createdByAi: boolean;
   createdAt: string;
+  notifiedAt: string | null;
   // Enriched fields
   sourceName: string;
   targetName: string;
@@ -96,6 +97,7 @@ export const useUserSuggestedLinks = () => {
           status: l.status || "pending",
           createdByAi: l.created_by_ai ?? true,
           createdAt: l.created_at || "",
+          notifiedAt: (l as any).notified_at || null,
           sourceName: source.name,
           targetName: target.name,
           sourceSlug: source.slug,
@@ -282,6 +284,7 @@ export const useAdminSuggestedLinks = () => {
           status: l.status || "pending",
           createdByAi: l.created_by_ai ?? true,
           createdAt: l.created_at || "",
+          notifiedAt: (l as any).notified_at || null,
           sourceName: source.name,
           targetName: target.name,
           sourceSlug: source.slug,

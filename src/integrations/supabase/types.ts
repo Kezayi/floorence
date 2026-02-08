@@ -393,6 +393,7 @@ export type Database = {
           id: string
           inference_logic: string | null
           notified_admin: boolean | null
+          notified_at: string | null
           source_memorial_id: string | null
           status: string | null
           suggested_relation: string | null
@@ -404,6 +405,7 @@ export type Database = {
           id?: string
           inference_logic?: string | null
           notified_admin?: boolean | null
+          notified_at?: string | null
           source_memorial_id?: string | null
           status?: string | null
           suggested_relation?: string | null
@@ -415,6 +417,7 @@ export type Database = {
           id?: string
           inference_logic?: string | null
           notified_admin?: boolean | null
+          notified_at?: string | null
           source_memorial_id?: string | null
           status?: string | null
           suggested_relation?: string | null
