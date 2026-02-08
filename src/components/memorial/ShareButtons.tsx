@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { Share2, X, Copy, Check } from "lucide-react";
+import { Share2, X, Copy, Check, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 
 interface ShareButtonsProps {
   url: string;
@@ -23,12 +24,6 @@ const FacebookIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
-const InstagramIcon = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-  </svg>
-);
-
 /**
  * Generate the social preview URL that goes through the Edge Function
  * This ensures crawlers get proper OG meta tags
@@ -36,7 +31,6 @@ const InstagramIcon = ({ size = 20 }: { size?: number }) => (
 const getSocialShareUrl = (slug: string | undefined, fallbackUrl: string): string => {
   if (!slug) return fallbackUrl;
   
-  // Use the Edge Function URL for social sharing
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (supabaseUrl) {
     return `${supabaseUrl}/functions/v1/social-preview?slug=${encodeURIComponent(slug)}`;
@@ -50,14 +44,11 @@ const getSocialShareUrl = (slug: string | undefined, fallbackUrl: string): strin
  * Returns false in iframes/restricted contexts where permission is denied
  */
 const canUseNativeShare = (): boolean => {
-  // Check if navigator.share exists
   if (!navigator.share) return false;
   
-  // Check if we're in an iframe (often restricted)
   try {
     if (window.self !== window.top) return false;
   } catch {
-    // Cross-origin iframe - definitely can't use native share
     return false;
   }
   
@@ -68,69 +59,74 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   // Use social preview URL for crawlers, regular URL for native share
   const socialUrl = getSocialShareUrl(slug, url);
   const encodedSocialUrl = encodeURIComponent(socialUrl);
   const encodedTitle = encodeURIComponent(title);
+  const smsBody = encodeURIComponent(`${title} — ${socialUrl}`);
 
   const shareLinks = {
     whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedSocialUrl}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedSocialUrl}&quote=${encodedTitle}`,
+    sms: `sms:?body=${smsBody}`,
   };
 
   const handleCopyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(socialUrl);
       setCopied(true);
+      toast({
+        title: "Lien de mémoire copié",
+        description: "Partagez ce lien pour honorer ensemble cette mémoire.",
+      });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement("textarea");
-      textArea.value = url;
+      textArea.value = socialUrl;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("copy");
       document.body.removeChild(textArea);
       setCopied(true);
+      toast({
+        title: "Lien de mémoire copié",
+        description: "Partagez ce lien pour honorer ensemble cette mémoire.",
+      });
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [url]);
+  }, [socialUrl, toast]);
 
   const handleShare = useCallback((platform: string) => {
-    if (platform === "instagram") {
-      // Instagram doesn't support direct URL sharing, copy link instead
-      handleCopyLink();
-      return;
-    }
-
     const link = shareLinks[platform as keyof typeof shareLinks];
     if (link) {
-      // Use window.open with _blank target and noopener for security
-      window.open(link, "_blank", "noopener,noreferrer,width=600,height=400");
+      if (platform === "sms") {
+        // SMS uses same-window navigation on mobile
+        window.location.href = link;
+      } else {
+        window.open(link, "_blank", "noopener,noreferrer,width=600,height=400");
+      }
     }
     setIsOpen(false);
-  }, [shareLinks, handleCopyLink]);
+  }, [shareLinks]);
 
   const handleNativeShare = useCallback(async () => {
-    // Try native share only if available and not in restricted context
     if (canUseNativeShare()) {
       try {
         await navigator.share({
           title,
-          text: description,
-          url,
+          text: description || `Découvrez l'espace mémoriel sur Floorence`,
+          url: socialUrl,
         });
-        return; // Success - don't show dropdown
-      } catch (err) {
-        // User cancelled or permission denied - fall through to dropdown
-        // Native share unavailable — fall through to dropdown
+        return;
+      } catch {
+        // User cancelled or permission denied — fall through to dropdown
       }
     }
     
-    // Fallback: show dropdown menu
     setIsOpen(!isOpen);
-  }, [title, description, url, isOpen]);
+  }, [title, description, socialUrl, isOpen]);
 
   return (
     <div className="relative z-50">
@@ -186,14 +182,11 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
               </button>
               
               <button
-                onClick={() => handleShare("instagram")}
+                onClick={() => handleShare("sms")}
                 className="flex items-center gap-3 w-full px-3 py-2.5 text-left hover:bg-muted rounded-sm transition-colors"
               >
-                <span className="text-[#E4405F]">
-                  <InstagramIcon size={20} />
-                </span>
-                <span className="font-sans text-sm">Instagram</span>
-                <span className="text-xs text-muted-foreground ml-auto">(copie lien)</span>
+                <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                <span className="font-sans text-sm">SMS</span>
               </button>
               
               {/* Copy link button */}
