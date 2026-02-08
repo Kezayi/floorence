@@ -186,9 +186,9 @@ const InferredLinkSuggestions = ({ memorialId, memorialName }: InferredLinkSugge
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="bg-[hsl(45,90%,50%,0.06)] border border-[hsl(45,90%,50%,0.2)] rounded-lg p-4 space-y-3">
+    <div className="bg-ai-gold/[0.06] border border-ai-gold/20 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Lightbulb className="w-4 h-4 text-[hsl(45,90%,50%)]" />
+        <Lightbulb className="w-4 h-4 text-ai-gold" />
         <h4 className="text-sm font-medium">Suggestions de liaison</h4>
       </div>
       <p className="text-xs text-muted-foreground">
@@ -204,9 +204,9 @@ const InferredLinkSuggestions = ({ memorialId, memorialName }: InferredLinkSugge
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium truncate">{memorialName}</span>
-                <ArrowRight className="w-3 h-3 text-[hsl(45,90%,50%)] shrink-0" />
-                <span className="font-medium text-[hsl(45,90%,50%)]">{suggestion.suggestedRelationType}</span>
-                <ArrowRight className="w-3 h-3 text-[hsl(45,90%,50%)] shrink-0" />
+                <ArrowRight className="w-3 h-3 text-ai-gold shrink-0" />
+                <span className="font-medium text-ai-gold">{suggestion.suggestedRelationType}</span>
+                <ArrowRight className="w-3 h-3 text-ai-gold shrink-0" />
                 <span className="font-medium truncate">{suggestion.targetName}</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">
@@ -214,7 +214,7 @@ const InferredLinkSuggestions = ({ memorialId, memorialName }: InferredLinkSugge
               </p>
               <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full mt-1 ${
                 suggestion.confidence === "high"
-                  ? "bg-[hsl(var(--accent-green)/0.15)] text-[hsl(var(--accent-green))]"
+                  ? "bg-accent-green/15 text-accent-green"
                   : "bg-muted text-muted-foreground"
               }`}>
                 Confiance {suggestion.confidence === "high" ? "élevée" : "moyenne"}

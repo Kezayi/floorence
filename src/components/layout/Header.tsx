@@ -72,7 +72,7 @@ const Header = () => {
   return (
     <>
       {/* Top Header - Logo only */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#F9FAFB]/90 backdrop-blur-sm border-b border-border text-foreground">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border text-foreground">
         <div className="container mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo + Tagline */}
@@ -161,7 +161,7 @@ const Header = () => {
                         to="/liens-suggeres"
                         className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
                           isActive("/liens-suggeres")
-                            ? "bg-[hsl(45,90%,50%)]/10 text-[hsl(45,70%,35%)] font-medium"
+                            ? "bg-ai-gold/10 text-ai-gold-foreground font-medium"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                       >
@@ -217,7 +217,7 @@ const Header = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only (TikTok style) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black border-t border-white/10 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-memorial-dark border-t border-memorial-dark-foreground/10 safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
@@ -228,8 +228,8 @@ const Header = () => {
                 to={item.path}
                 className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
                   active
-                    ? "text-white"
-                    : "text-gray-400"
+                    ? "text-memorial-dark-foreground"
+                    : "text-memorial-dark-muted"
                 }`}
               >
                 <Icon className={`w-6 h-6 ${active ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />
@@ -247,7 +247,7 @@ const Header = () => {
               className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
                 location.pathname.startsWith(ADMIN_PREFIX)
                   ? "text-admin-burgundy"
-                  : "text-gray-400"
+                  : "text-memorial-dark-muted"
               }`}
             >
               <Settings className={`w-6 h-6 ${location.pathname.startsWith(ADMIN_PREFIX) ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />

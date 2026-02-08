@@ -63,6 +63,11 @@
     --accent-green: 142 70% 45%;
     --accent-green-foreground: 0 0% 100%;
 
+    /* AI Intelligence — Or doré pour suggestions */
+    --ai-gold: 45 90% 50%;
+    --ai-gold-foreground: 45 70% 35%;
+    --ai-gold-accent: 45 80% 40%;
+
     /* Admin theme */
     --admin-burgundy: 0 60% 25%;
 
