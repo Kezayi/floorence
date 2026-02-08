@@ -28,6 +28,7 @@ interface ExtendedSearchableMemorial extends SearchableMemorial {
   defaultPhotoIndex?: number;
   legacySlug?: string | null;
   isDemo?: boolean;
+  shareToken?: string | null;
 }
 
 interface MemorialCardData {
@@ -108,7 +109,7 @@ const fetchCreatorProfiles = async (creatorIds: string[]): Promise<Record<string
 const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemorial[]; stats: Record<string, { postCount: number; candles: number; flowers: number }>; creatorProfiles: Record<string, string> }> => {
   const { data, error } = await supabase
     .from('memorials')
-    .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo')
+    .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo, share_token')
     .eq('is_published', true)
     .eq('is_active', true)
     .is('merged_into', null)
@@ -158,6 +159,7 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     funeralLocation: m.funeral_location,
     defaultPhotoIndex: m.default_photo_index || 0,
     isDemo: m.is_demo || false,
+    shareToken: m.share_token || null,
   }));
 
   return { memorials: memorialsFromDb, stats, creatorProfiles };

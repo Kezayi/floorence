@@ -6,6 +6,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { useHasMemorials } from "@/hooks/useSuggestedLinks";
 import { usePendingSuggestionsCount } from "@/hooks/usePendingSuggestionsCount";
 import NotificationBell from "./NotificationBell";
+import { ADMIN_PREFIX } from "@/lib/adminRoutes";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -177,9 +178,9 @@ const Header = () => {
                     {/* Admin - uniquement pour admin/modérateur */}
                     {user && isAdminOrMod && (
                       <Link
-                        to="/admin"
+                        to={ADMIN_PREFIX}
                         className={`flex items-center gap-3 px-4 py-3 font-sans text-sm transition-colors ${
-                          location.pathname.startsWith("/admin")
+                          location.pathname.startsWith(ADMIN_PREFIX)
                             ? "bg-admin-burgundy/20 text-admin-burgundy font-medium"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
@@ -242,15 +243,15 @@ const Header = () => {
           {/* BackOffice - Mobile - uniquement pour admin/modérateur */}
           {user && isAdminOrMod && (
             <Link
-              to="/admin"
+              to={ADMIN_PREFIX}
               className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
-                location.pathname.startsWith("/admin")
+                location.pathname.startsWith(ADMIN_PREFIX)
                   ? "text-admin-burgundy"
                   : "text-gray-400"
               }`}
             >
-              <Settings className={`w-6 h-6 ${location.pathname.startsWith("/admin") ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />
-              <span className={`text-xs mt-1 font-sans ${location.pathname.startsWith("/admin") ? "font-medium" : ""}`}>
+              <Settings className={`w-6 h-6 ${location.pathname.startsWith(ADMIN_PREFIX) ? "stroke-[2.5px]" : "stroke-[1.5px]"}`} />
+              <span className={`text-xs mt-1 font-sans ${location.pathname.startsWith(ADMIN_PREFIX) ? "font-medium" : ""}`}>
                 Admin
               </span>
             </Link>

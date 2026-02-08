@@ -11,6 +11,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
+import { ADMIN_PREFIX } from "./lib/adminRoutes";
 
 // Eager load: Homepage (critical path)
 import Index from "./pages/Index";
@@ -28,6 +29,7 @@ import Index from "./pages/Index";
  const NotFound = lazy(() => import("./pages/NotFound"));
  const CommunityGraph = lazy(() => import("./pages/CommunityGraph"));
  const SuggestedLinks = lazy(() => import("./pages/SuggestedLinks"));
+ const ShareTokenRedirect = lazy(() => import("./components/memorial/ShareTokenRedirect"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -70,6 +72,8 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/recherche" element={<Search />} />
                   <Route path="/memorial/:slug" element={<Memorial />} />
+                  {/* Obfuscated share token route — resolves token to memorial */}
+                  <Route path="/m/:token" element={<ShareTokenRedirect />} />
                   <Route path="/compte" element={<Account />} />
                   <Route path="/creer" element={
                     <RequireAuth>
@@ -88,59 +92,59 @@ const App = () => (
                     </RequireAuth>
                   } />
 
-                  {/* Admin routes */}
-                  <Route path="/admin" element={
+                  {/* Admin routes — obfuscated prefix, real security via RequireAdmin */}
+                  <Route path={ADMIN_PREFIX} element={
                     <RequireAdmin>
                       <AdminLayout><AdminDashboard /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/moderation" element={
+                  <Route path={`${ADMIN_PREFIX}/moderation`} element={
                     <RequireAdmin>
                       <AdminLayout><AdminModeration /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/memoriaux" element={
+                  <Route path={`${ADMIN_PREFIX}/memoriaux`} element={
                     <RequireAdmin>
                       <AdminLayout><AdminMemorials /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/memoriaux/:id" element={
+                  <Route path={`${ADMIN_PREFIX}/memoriaux/:id`} element={
                     <RequireAdmin>
                       <AdminLayout><AdminMemorialDetail /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/statistiques" element={
+                  <Route path={`${ADMIN_PREFIX}/statistiques`} element={
                     <RequireAdmin>
                       <AdminLayout><AdminStatistics /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/analytics" element={
+                  <Route path={`${ADMIN_PREFIX}/analytics`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminAnalytics /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/utilisateurs" element={
+                  <Route path={`${ADMIN_PREFIX}/utilisateurs`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminUsers /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/historique" element={
+                  <Route path={`${ADMIN_PREFIX}/historique`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminAuditLogs /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/parametres" element={
+                  <Route path={`${ADMIN_PREFIX}/parametres`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminSettings /></AdminLayout>
                     </RequireAdmin>
                   } />
-                  <Route path="/admin/intelligence-sociale" element={
+                  <Route path={`${ADMIN_PREFIX}/intelligence-sociale`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminSocialIntelligence /></AdminLayout>
                     </RequireAdmin>
                   } />
 
-                  <Route path="/admin/audit-suggestions" element={
+                  <Route path={`${ADMIN_PREFIX}/audit-suggestions`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminAuditSuggestions /></AdminLayout>
                     </RequireAdmin>

@@ -241,6 +241,7 @@ export type Database = {
           merged_into: string | null
           photo_url: string | null
           photos: string[] | null
+          share_token: string | null
           slug: string
           updated_at: string
         }
@@ -268,6 +269,7 @@ export type Database = {
           merged_into?: string | null
           photo_url?: string | null
           photos?: string[] | null
+          share_token?: string | null
           slug: string
           updated_at?: string
         }
@@ -295,6 +297,7 @@ export type Database = {
           merged_into?: string | null
           photo_url?: string | null
           photos?: string[] | null
+          share_token?: string | null
           slug?: string
           updated_at?: string
         }
