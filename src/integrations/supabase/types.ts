@@ -582,7 +582,12 @@ export type Database = {
         Args: { first_name: string; last_name: string }
         Returns: string
       }
-      generate_suggested_links: { Args: never; Returns: undefined }
+      generate_suggested_links:
+        | { Args: never; Returns: undefined }
+        | {
+            Args: { p_memorial_id_1?: string; p_memorial_id_2?: string }
+            Returns: undefined
+          }
       get_memorial_gesture_stats: {
         Args: { p_memorial_ids: string[] }
         Returns: {
@@ -615,12 +620,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      inverse_normalized: { Args: { ntype: string }; Returns: string }
       is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
       is_memorial_creation_free: {
         Args: { p_funeral_date: string }
         Returns: boolean
       }
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
+      normalize_relation_type: { Args: { relation: string }; Returns: string }
+      normalized_to_label: { Args: { ntype: string }; Returns: string }
+      transitive_rule: { Args: { r_px: string; r_py: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
