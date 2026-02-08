@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -567,7 +568,7 @@ const Memorials = () => {
                   <TableRow
                     key={memorial.id}
                     className={`cursor-pointer transition-colors hover:bg-muted/50 ${memorial.merged_into ? 'opacity-50 bg-muted/30' : ''}`}
-                    onClick={() => navigate(`/admin/memoriaux/${memorial.id}`)}
+                    onClick={() => navigate(`${ADMIN_PREFIX}/memoriaux/${memorial.id}`)}
                   >
                     <TableCell>
                       <Avatar className="w-12 h-12">
@@ -652,7 +653,7 @@ const Memorials = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/admin/memoriaux/${memorial.id}`)}
+                          onClick={() => navigate(`${ADMIN_PREFIX}/memoriaux/${memorial.id}`)}
                           title="Gérer les liaisons"
                         >
                           <Link2 className="w-4 h-4 text-[hsl(45,90%,50%)]" />

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -354,7 +355,7 @@ const MemorialDetail = () => {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Mémorial introuvable.</p>
-        <Button variant="outline" onClick={() => navigate('/admin/memoriaux')} className="mt-4">
+        <Button variant="outline" onClick={() => navigate(`${ADMIN_PREFIX}/memoriaux`)} className="mt-4">
           Retour à la liste
         </Button>
       </div>
@@ -365,7 +366,7 @@ const MemorialDetail = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/memoriaux')} className="gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate(`${ADMIN_PREFIX}/memoriaux`)} className="gap-2">
           <ArrowLeft className="w-4 h-4" />
           Retour
         </Button>
@@ -536,7 +537,7 @@ const MemorialDetail = () => {
                               </span>
                               {otherSlug && (
                                 <Button variant="ghost" size="sm" asChild className="h-6 w-6 p-0">
-                                  <a href={`/admin/memoriaux/${otherId}`} title="Voir les détails">
+                                  <a href={`${ADMIN_PREFIX}/memoriaux/${otherId}`} title="Voir les détails">
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </Button>

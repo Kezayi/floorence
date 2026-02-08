@@ -23,9 +23,10 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const slug = url.searchParams.get('slug');
+    const token = url.searchParams.get('token');
     
-    if (!slug) {
-      return new Response(JSON.stringify({ error: 'Missing slug' }), { 
+    if (!slug && !token) {
+      return new Response(JSON.stringify({ error: 'Missing slug or token' }), { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -34,49 +35,65 @@ Deno.serve(async (req) => {
     const userAgent = req.headers.get('user-agent') || '';
     const isCrawler = CRAWLER_REGEX.test(userAgent);
     
-    console.log(`[social-preview] slug: ${slug}, crawler: ${isCrawler}, ua: ${userAgent.substring(0, 100)}`);
+    console.log(`[social-preview] slug: ${slug}, token: ${token}, crawler: ${isCrawler}, ua: ${userAgent.substring(0, 100)}`);
 
-    // Fetch memorial data first (needed for both crawlers and redirect)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!
     );
 
-    // Try to find memorial by slug OR legacy_slug
-    let { data: memorial } = await supabase
-      .from('memorials')
-      .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .eq('is_published', true)
-      .is('merged_into', null)
-      .maybeSingle();
+    let memorial: any = null;
 
-    // If not found by current slug, try legacy_slug
-    if (!memorial) {
-      const { data: legacyMemorial } = await supabase
+    // Priority: resolve by share_token first (obfuscated sharing), then by slug
+    if (token) {
+      const { data } = await supabase
         .from('memorials')
         .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
-        .eq('legacy_slug', slug)
+        .eq('share_token', token)
         .eq('is_active', true)
         .eq('is_published', true)
         .is('merged_into', null)
         .maybeSingle();
-      
-      if (legacyMemorial) {
-        memorial = legacyMemorial;
+      memorial = data;
+    }
+
+    if (!memorial && slug) {
+      // Try current slug
+      const { data } = await supabase
+        .from('memorials')
+        .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
+        .eq('slug', slug)
+        .eq('is_active', true)
+        .eq('is_published', true)
+        .is('merged_into', null)
+        .maybeSingle();
+      memorial = data;
+
+      // If not found by current slug, try legacy_slug
+      if (!memorial) {
+        const { data: legacyMemorial } = await supabase
+          .from('memorials')
+          .select('slug, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
+          .eq('legacy_slug', slug)
+          .eq('is_active', true)
+          .eq('is_published', true)
+          .is('merged_into', null)
+          .maybeSingle();
+        
+        if (legacyMemorial) {
+          memorial = legacyMemorial;
+        }
       }
     }
 
     if (!memorial) {
-      // Memorial not found - redirect to 404
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, 'Location': `${APP_BASE_URL}/404` },
       });
     }
 
-    // Always use the CANONICAL (current) slug for URLs - this ensures 301 behavior
+    // Always use the CANONICAL (current) slug for URLs
     const canonicalUrl = `${APP_BASE_URL}/memorial/${memorial.slug}`;
 
     // Redirect non-crawlers to the SPA with canonical URL
@@ -92,7 +109,6 @@ Deno.serve(async (req) => {
     const birthYear = memorial.birth_date ? new Date(memorial.birth_date).getFullYear() : null;
     const deathYear = memorial.death_date ? new Date(memorial.death_date).getFullYear() : null;
     
-    // Title: "Nom Complet (YYYY - YYYY) | Floorence : Honorer · Relier · Transmettre"
     let ogTitle = fullName;
     if (birthYear && deathYear) {
       ogTitle += ` (${birthYear} - ${deathYear})`;
@@ -110,8 +126,8 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Description: use biography excerpt if available, otherwise default emotional copy
-    const biography = (memorial as any).biography;
+    // Description: use biography excerpt if available
+    const biography = memorial.biography;
     let ogDescription: string;
     if (biography && biography.length > 30) {
       const truncated = biography.length > 120 ? biography.substring(0, 117) + '…' : biography;
@@ -124,7 +140,7 @@ Deno.serve(async (req) => {
     }
     ogDescription += ` et rejoignez son maillage familial sur Floorence.`;
 
-    // Get best photo - prefer photos array with default index, fallback to photo_url
+    // Get best photo
     let imageUrl = DEFAULT_IMAGE;
     if (memorial.photos && memorial.photos.length > 0) {
       const photoIndex = Math.min(memorial.default_photo_index ?? 0, memorial.photos.length - 1);
@@ -135,7 +151,6 @@ Deno.serve(async (req) => {
 
     const brandedTitle = `${ogTitle} | Floorence : Honorer \xb7 Relier \xb7 Transmettre`;
 
-    // Generate minimal HTML with all necessary OG tags
     const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -174,7 +189,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'public, max-age=3600',
       },
     });
 

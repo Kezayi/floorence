@@ -7,8 +7,10 @@ interface ShareButtonsProps {
   url: string;
   title: string;
   description?: string;
-  /** Slug for the memorial - used to generate social preview URL */
+  /** Slug for the memorial - used as fallback if no shareToken */
   slug?: string;
+  /** Obfuscated share token - preferred for external sharing URLs */
+  shareToken?: string | null;
 }
 
 // Custom social media icons
@@ -25,17 +27,27 @@ const FacebookIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 /**
- * Generate the social preview URL that goes through the Edge Function
- * This ensures crawlers get proper OG meta tags
+ * Generate the social preview URL via the Edge Function.
+ * Prefers share_token (obfuscated) over slug for anti-enumeration.
  */
-const getSocialShareUrl = (slug: string | undefined, fallbackUrl: string): string => {
-  if (!slug) return fallbackUrl;
-  
+const getSocialShareUrl = (
+  shareToken: string | null | undefined,
+  slug: string | undefined,
+  fallbackUrl: string,
+): string => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (supabaseUrl) {
+  if (!supabaseUrl) return fallbackUrl;
+
+  // Prefer share_token for obfuscated sharing
+  if (shareToken) {
+    return `${supabaseUrl}/functions/v1/social-preview?token=${encodeURIComponent(shareToken)}`;
+  }
+
+  // Fallback to slug if no token available
+  if (slug) {
     return `${supabaseUrl}/functions/v1/social-preview?slug=${encodeURIComponent(slug)}`;
   }
-  
+
   return fallbackUrl;
 };
 
@@ -55,14 +67,14 @@ const canUseNativeShare = (): boolean => {
   return true;
 };
 
-const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps) => {
+const ShareButtons = ({ url, title, description = "", slug, shareToken }: ShareButtonsProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  // Use social preview URL for crawlers, regular URL for native share
-  const socialUrl = getSocialShareUrl(slug, url);
+  // Use share_token-based URL for crawlers, regular URL for native share
+  const socialUrl = getSocialShareUrl(shareToken, slug, url);
   const encodedSocialUrl = encodeURIComponent(socialUrl);
   const encodedTitle = encodeURIComponent(title);
   const smsBody = encodeURIComponent(`${title} — ${socialUrl}`);
@@ -102,7 +114,6 @@ const ShareButtons = ({ url, title, description = "", slug }: ShareButtonsProps)
     const link = shareLinks[platform as keyof typeof shareLinks];
     if (link) {
       if (platform === "sms") {
-        // SMS uses same-window navigation on mobile
         window.location.href = link;
       } else {
         window.open(link, "_blank", "noopener,noreferrer,width=600,height=400");

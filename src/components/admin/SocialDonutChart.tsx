@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { DashboardStats } from '@/hooks/useDashboardStats';
@@ -29,7 +30,7 @@ const SocialDonutChart = ({ stats }: Props) => {
 
   const handleClick = (filter: string) => {
     // Navigate to moderation with social group filter pre-applied
-    navigate(`/admin/moderation?socialGroup=${encodeURIComponent(filter)}`);
+    navigate(`${ADMIN_PREFIX}/moderation?socialGroup=${encodeURIComponent(filter)}`);
   };
 
   return (

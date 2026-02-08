@@ -43,6 +43,7 @@ interface MemorialHeroProps {
     funeralLocation?: string | null;
     createdBy?: string;
      defaultPhotoIndex?: number;
+    shareToken?: string | null;
   };
   onScrollToGuestbook: () => void;
   gestureTotals?: GestureTotals;
@@ -218,6 +219,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 title={`Hommage à ${memorial.name}`}
                 description={memorial.bio}
                 slug={memorial.slug}
+                shareToken={memorial.shareToken}
               />
               
               {/* Edit button for creator */}

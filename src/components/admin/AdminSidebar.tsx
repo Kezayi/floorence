@@ -17,6 +17,7 @@ import { useAdminSuggestedLinks } from '@/hooks/useSuggestedLinks';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 
 const AdminSidebar = () => {
   const { isAdmin } = useAdminRole();
@@ -30,16 +31,16 @@ const AdminSidebar = () => {
   };
 
   const navItems = [
-    { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-    { to: '/admin/moderation', icon: MessageSquare, label: 'Modération' },
-    { to: '/admin/memoriaux', icon: Flower2, label: 'Mémoriaux' },
-    { to: '/admin/statistiques', icon: BarChart3, label: 'Statistiques' },
-    { to: '/admin/analytics', icon: Activity, label: 'Analytics', adminOnly: true },
-    { to: '/admin/utilisateurs', icon: Users, label: 'Utilisateurs', adminOnly: true },
-    { to: '/admin/intelligence-sociale', icon: Brain, label: 'Intelligence Sociale', adminOnly: true },
-    { to: '/admin/audit-suggestions', icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
-    { to: '/admin/historique', icon: History, label: 'Historique', adminOnly: true },
-    { to: '/admin/parametres', icon: Settings, label: 'Paramètres', adminOnly: true },
+    { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+    { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération' },
+    { to: `${ADMIN_PREFIX}/memoriaux`, icon: Flower2, label: 'Mémoriaux' },
+    { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques' },
+    { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/utilisateurs`, icon: Users, label: 'Utilisateurs', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'Intelligence Sociale', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
+    { to: `${ADMIN_PREFIX}/historique`, icon: History, label: 'Historique', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/parametres`, icon: Settings, label: 'Paramètres', adminOnly: true },
   ];
 
   return (
