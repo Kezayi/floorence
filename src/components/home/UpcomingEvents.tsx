@@ -1,76 +1,19 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Calendar, MapPin, Cross, Flame } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
-
-interface MemorialEvent {
-  id: string;
-  event_type: string;
-  event_date: string;
-  location: string | null;
-  description: string | null;
-  memorial_id: string;
-  memorial?: {
-    first_name: string;
-    last_name: string;
-    slug: string;
-  };
-}
+import type { UpcomingEvent } from "@/hooks/useUpcomingEvents";
 
 interface UpcomingEventsProps {
   type: "funerals" | "gatherings";
   title: string;
-  icon?: React.ReactNode;
+  events: UpcomingEvent[];
+  loading: boolean;
 }
 
-const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
-  // Section icon based on type
+const UpcomingEvents = ({ type, title, events, loading }: UpcomingEventsProps) => {
   const SectionIcon = type === "funerals" ? Cross : Flame;
-
-  const { data: events = [], isLoading: loading } = useQuery({
-    queryKey: ['upcoming-events', type],
-    staleTime: 5 * 60 * 1000, // 5 min cache
-    gcTime: 10 * 60 * 1000,
-    queryFn: async () => {
-      const now = new Date().toISOString();
-      
-      const eventTypes = type === "funerals" 
-        ? ["veillee", "inhumation", "VEILLEE", "INHUMATION"] 
-        : ["commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT"];
-
-      const { data, error } = await supabase
-        .from("memorial_events")
-        .select(`
-          id,
-          event_type,
-          event_date,
-          location,
-          description,
-          memorial_id,
-          memorials!memorial_events_memorial_id_fkey (
-            first_name,
-            last_name,
-            slug
-          )
-        `)
-        .gte("event_date", now)
-        .in("event_type", eventTypes)
-        .eq("is_public", true)
-        .order("event_date", { ascending: true })
-        .limit(5);
-
-      if (error) throw error;
-
-      return (data || []).map((event: any) => ({
-        ...event,
-        memorial: event.memorials,
-      })) as MemorialEvent[];
-    },
-  });
 
   const getEventTypeLabel = (eventType: string) => {
     const t = eventType.toLowerCase();
@@ -105,7 +48,6 @@ const UpcomingEvents = ({ type, title, icon }: UpcomingEventsProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Section Header */}
       <div className="flex items-center gap-3 pb-3 border-b border-border">
         <div className={`p-2 rounded-sm ${type === "funerals" ? "bg-foreground/5" : "bg-accent"}`}>
           <SectionIcon className={`w-5 h-5 ${type === "funerals" ? "text-foreground" : "text-accent-foreground"}`} />
