@@ -108,20 +108,46 @@ const relationVectors: Record<string, RelationVector> = {
 // ============================================================================
 
 export const getCleanRelationName = (relation: string): string => {
-  const data = relationVectors[relation];
+  const data = resolveRelationVector(relation);
   if (data) return data.cleanName;
   return relation.replace(/^(Son |Sa |Une |Un )/i, "");
 };
 
 export const getRelationWithDeceased = (relation: string): string => {
-  const data = relationVectors[relation];
+  const data = resolveRelationVector(relation);
   if (data) return data.withDeceased;
   const clean = getCleanRelationName(relation);
   return `${clean} du défunt`;
 };
 
 export const getRelationVector = (relation: string): RelationVector | null => {
-  return relationVectors[relation] || null;
+  return resolveRelationVector(relation);
+};
+
+/**
+ * Resolves a relation string to its vector, handling multiple formats:
+ * - Exact match: "Son Père"
+ * - Bare name: "Père" → tries "Son Père", "Sa Père"
+ * - Reverse lookup by cleanName: "Père" → matches cleanName in vectors
+ */
+const resolveRelationVector = (relation: string): RelationVector | null => {
+  // 1. Direct match
+  if (relationVectors[relation]) return relationVectors[relation];
+
+  // 2. Try with "Son " / "Sa " / "Un " / "Une " prefixes
+  const prefixes = ["Son ", "Sa ", "Un ", "Une "];
+  for (const prefix of prefixes) {
+    const key = prefix + relation;
+    if (relationVectors[key]) return relationVectors[key];
+  }
+
+  // 3. Reverse lookup by cleanName (case-insensitive)
+  const lowerRelation = relation.toLowerCase();
+  for (const [, vector] of Object.entries(relationVectors)) {
+    if (vector.cleanName.toLowerCase() === lowerRelation) return vector;
+  }
+
+  return null;
 };
 
 // ============================================================================
@@ -324,8 +350,8 @@ export const inferRelationship = (
   author1Name: string,
   author2Name: string
 ): { link: string; confidence: "high" | "medium" | "low" } | null => {
-  const vectorA = relationVectors[relation1];
-  const vectorB = relationVectors[relation2];
+  const vectorA = resolveRelationVector(relation1);
+  const vectorB = resolveRelationVector(relation2);
 
   if (!vectorA || !vectorB) return null;
 
@@ -389,8 +415,8 @@ export const inferUserToPersonRelation = (
   userRelation: string,
   personRelation: string
 ): UserRelationResult | null => {
-  const vectorUser = relationVectors[userRelation];
-  const vectorPerson = relationVectors[personRelation];
+  const vectorUser = resolveRelationVector(userRelation);
+  const vectorPerson = resolveRelationVector(personRelation);
 
   if (!vectorUser || !vectorPerson) return null;
 
