@@ -178,6 +178,8 @@ export type Database = {
           memorial_id_1: string | null
           memorial_id_2: string | null
           relation_type: string
+          requested_by: string | null
+          status: string | null
         }
         Insert: {
           id?: string
@@ -185,6 +187,8 @@ export type Database = {
           memorial_id_1?: string | null
           memorial_id_2?: string | null
           relation_type: string
+          requested_by?: string | null
+          status?: string | null
         }
         Update: {
           id?: string
@@ -192,6 +196,8 @@ export type Database = {
           memorial_id_1?: string | null
           memorial_id_2?: string | null
           relation_type?: string
+          requested_by?: string | null
+          status?: string | null
         }
         Relationships: [
           {
@@ -481,6 +487,31 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      v_unified_lineages: {
+        Row: {
+          memorial_id_1: string | null
+          memorial_id_2: string | null
+          name_1: string | null
+          name_2: string | null
+          relation_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
