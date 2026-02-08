@@ -47,7 +47,7 @@ const PaymentSuccess = () => {
         
         // Verify the reference matches
         if (reference && pendingTribute.reference !== reference) {
-          console.warn('Reference mismatch, ignoring pending tribute');
+          // Reference mismatch — silently ignore
           sessionStorage.removeItem('pendingTribute');
           setIsPublished(true);
           return;
@@ -73,7 +73,6 @@ const PaymentSuccess = () => {
           setError('Une erreur est survenue lors de la publication de votre hommage.');
           toast.error('Erreur lors de la publication');
         } else {
-          console.log('Tribute published:', data);
           toast.success('Votre hommage a été publié avec succès !');
           setIsPublished(true);
         }

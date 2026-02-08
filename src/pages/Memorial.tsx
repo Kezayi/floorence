@@ -16,6 +16,7 @@ import GuestbookPost, { GuestbookPostData } from "@/components/memorial/Guestboo
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GuestbookPagination from "@/components/memorial/GuestbookPagination";
 import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
+import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch } from "lucide-react";
 import { useMemorials } from "@/contexts/MemorialsContext";
@@ -188,21 +189,18 @@ const Memorial = () => {
    useEffect(() => {
      if (!memorialData?.id || !isValidUUID(memorialData.id)) return;
  
-     console.log('[Realtime] Subscribing to guestbook posts for:', memorialData.id);
-     
-     const channel = supabase
-       .channel(`guestbook-${memorialData.id}`)
-       .on(
-         'postgres_changes',
-         {
-           event: 'INSERT',
-           schema: 'public',
-           table: 'guestbook_posts',
-           filter: `memorial_id=eq.${memorialData.id}`,
-         },
-         (payload) => {
-           console.log('[Realtime] New post received:', payload.new);
-           const newPost = payload.new as {
+      const channel = supabase
+        .channel(`guestbook-${memorialData.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'guestbook_posts',
+            filter: `memorial_id=eq.${memorialData.id}`,
+          },
+          (payload) => {
+            const newPost = payload.new as {
              id: string;
              user_id: string | null;
              author_name: string;
@@ -238,10 +236,9 @@ const Memorial = () => {
        )
        .subscribe();
  
-     return () => {
-       console.log('[Realtime] Unsubscribing from guestbook posts');
-       supabase.removeChannel(channel);
-     };
+      return () => {
+        supabase.removeChannel(channel);
+      };
    }, [memorialData?.id]);
 
   // Reset page when memorial changes
@@ -707,17 +704,19 @@ const Memorial = () => {
               </div>
             </TabsContent>
 
-            {/* Maillage relationnel */}
+            {/* Maillage relationnel — Accès conditionnel */}
             <TabsContent value="relationships" className="mt-0">
               <div className="max-w-3xl">
-                <RelationshipMaillage 
-                  deceasedName={memorial.name}
-                  posts={guestbookPosts.map(post => ({
-                    authorId: post.authorId,
-                    authorName: post.authorName,
-                    relationCategory: post.relationCategory,
-                  }))}
-                />
+                <SecureDataDisplay blurPreview>
+                  <RelationshipMaillage 
+                    deceasedName={memorial.name}
+                    posts={guestbookPosts.map(post => ({
+                      authorId: post.authorId,
+                      authorName: post.authorName,
+                      relationCategory: post.relationCategory,
+                    }))}
+                  />
+                </SecureDataDisplay>
               </div>
             </TabsContent>
 
