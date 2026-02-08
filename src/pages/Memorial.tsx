@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import MemorialErrorBoundary from "@/components/memorial/MemorialErrorBoundary";
 import MemorialHero from "@/components/memorial/MemorialHero";
 import DeathNotice from "@/components/memorial/DeathNotice";
 import GatheringsCalendar from "@/components/memorial/GatheringsCalendar";
@@ -38,9 +39,9 @@ interface MemorialEvent {
   is_public: boolean;
 }
 
-const Memorial = () => {
+const MemorialInner = () => {
   const { slug } = useParams();
-  const { memorials } = useMemorials();
+  const { memorials, loading: memorialsLoading } = useMemorials();
   const { user } = useAuth();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
   
@@ -313,6 +314,33 @@ const Memorial = () => {
     return <Navigate to={`/memorial/${memorialData.slug}`} replace />;
   }
 
+  // Show skeleton while data is loading
+  if (memorialsLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 pt-20">
+          <div className="container mx-auto px-4 py-8 space-y-6 animate-pulse">
+            <div className="h-4 w-32 bg-muted rounded" />
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="w-full md:w-80 h-80 bg-muted rounded-sm" />
+              <div className="flex-1 space-y-4">
+                <div className="h-8 w-64 bg-muted rounded" />
+                <div className="h-4 w-48 bg-muted rounded" />
+                <div className="h-20 w-full bg-muted rounded" />
+                <div className="flex gap-4">
+                  <div className="h-10 w-28 bg-muted rounded" />
+                  <div className="h-10 w-28 bg-muted rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // If memorial not found, show error page
   if (!memorialData) {
     return (
@@ -532,7 +560,8 @@ const Memorial = () => {
             funeralDate: memorial.funeralDate,
             funeralLocation: memorial.funeralLocation,
             createdBy: memorial.createdBy,
-           defaultPhotoIndex: memorialData.defaultPhotoIndex || 0,
+            defaultPhotoIndex: memorialData?.defaultPhotoIndex || 0,
+            shareToken: memorialData?.shareToken,
             guestbookMessages: memorial.guestbookMessages.map(msg => ({
               authorName: msg.authorName,
               relationCategory: msg.relationCategory,
@@ -790,5 +819,12 @@ const Memorial = () => {
     </div>
   );
 };
+
+/** Wrapped with ErrorBoundary to prevent white-screen crashes */
+const Memorial = () => (
+  <MemorialErrorBoundary>
+    <MemorialInner />
+  </MemorialErrorBoundary>
+);
 
 export default Memorial;
