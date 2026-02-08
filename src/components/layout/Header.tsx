@@ -3,7 +3,8 @@ import { Menu, Home, PlusCircle, User, LogIn, LogOut, Settings, Search, GitBranc
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
-import { useHasMemorials, useUserSuggestedLinks } from "@/hooks/useSuggestedLinks";
+import { useHasMemorials } from "@/hooks/useSuggestedLinks";
+import { usePendingSuggestionsCount } from "@/hooks/usePendingSuggestionsCount";
 import NotificationBell from "./NotificationBell";
 
 const Header = () => {
@@ -13,7 +14,7 @@ const Header = () => {
   const { user, signOut } = useAuth();
   const { isAdminOrMod } = useAdminRole();
   const hasMemorials = useHasMemorials();
-  const { pendingCount } = useUserSuggestedLinks();
+  const pendingCount = usePendingSuggestionsCount();
 
   // Menu items selon l'état de connexion
   const navItems = user
