@@ -577,6 +577,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_force_validate_all_suggestions: { Args: never; Returns: Json }
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
       generate_secure_slug: {
         Args: { first_name: string; last_name: string }

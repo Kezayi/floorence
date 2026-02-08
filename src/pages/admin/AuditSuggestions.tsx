@@ -3,13 +3,14 @@ import { useAdminSuggestedLinks } from "@/hooks/useSuggestedLinks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send, Zap } from "lucide-react";
+import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send, Zap, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   accepted: {
@@ -55,6 +56,7 @@ const AuditSuggestions = () => {
 
   const queryClient = useQueryClient();
   const [isSendingEmails, setIsSendingEmails] = useState(false);
+  const [isMagicValidating, setIsMagicValidating] = useState(false);
 
   const handleSendNotifications = async () => {
     setIsSendingEmails(true);
@@ -74,13 +76,42 @@ const AuditSuggestions = () => {
         toast.info("Aucune suggestion à notifier (toutes ont déjà été envoyées ou les créateurs n'ont pas d'email)");
       }
 
-      // Force immediate refetch to update badges and statuses
       await queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] });
     } catch (err: any) {
       console.error("Error sending notifications:", err);
       toast.error("Erreur lors de l'envoi des notifications");
     } finally {
       setIsSendingEmails(false);
+    }
+  };
+
+  const handleMagicValidation = async () => {
+    setIsMagicValidating(true);
+    try {
+      const { data, error } = await supabase.rpc("admin_force_validate_all_suggestions");
+      if (error) throw error;
+
+      const result = data as { status?: string; message?: string; count?: number } | null;
+      if (result?.count && result.count > 0) {
+        toast.success(`✨ ${result.message}`, { duration: 6000 });
+      } else {
+        toast.info("Aucune suggestion en attente à fusionner.");
+      }
+
+      // Refresh all related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-suggested-links-audit"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-logs-suggestions"] }),
+        queryClient.invalidateQueries({ queryKey: ["humanity-gauge"] }),
+        queryClient.invalidateQueries({ queryKey: ["success-wall"] }),
+        queryClient.invalidateQueries({ queryKey: ["live-activity"] }),
+      ]);
+    } catch (err: any) {
+      console.error("Error in magic validation:", err);
+      toast.error("Erreur lors de la validation forcée");
+    } finally {
+      setIsMagicValidating(false);
     }
   };
 
@@ -108,24 +139,54 @@ const AuditSuggestions = () => {
           </div>
         </div>
         
-        {/* Send notifications button — disabled when no un-notified pending suggestions */}
-        <Button
-          onClick={handleSendNotifications}
-          disabled={isSendingEmails || unnotifiedCount === 0}
-          className="gap-2 bg-gradient-to-r from-[hsl(45,80%,45%)] to-[hsl(40,75%,50%)] hover:from-[hsl(45,85%,40%)] hover:to-[hsl(40,80%,45%)] text-white"
-        >
-          {isSendingEmails ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-          Notifier les créateurs
-          {unnotifiedCount > 0 && (
-            <Badge className="ml-1 bg-white/20 text-white text-[10px]">
-              {unnotifiedCount}
-            </Badge>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Magic validation button — admin only, beta tool */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleMagicValidation}
+                  disabled={isMagicValidating || stats.pending === 0}
+                  className="gap-2 bg-gradient-to-r from-[hsl(260,70%,55%)] to-[hsl(280,65%,50%)] hover:from-[hsl(260,75%,50%)] hover:to-[hsl(280,70%,45%)] text-white shadow-lg shadow-[hsl(260,70%,55%)]/20"
+                >
+                  {isMagicValidating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Fusionner tous les liens fantômes
+                  {stats.pending > 0 && (
+                    <Badge className="ml-1 bg-white/20 text-white text-[10px]">
+                      {stats.pending}
+                    </Badge>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px] text-center">
+                Réservé à la Bêta : Valide instantanément toutes les suggestions pour les profils fantômes.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Send notifications button */}
+          <Button
+            onClick={handleSendNotifications}
+            disabled={isSendingEmails || unnotifiedCount === 0}
+            className="gap-2 bg-gradient-to-r from-[hsl(45,80%,45%)] to-[hsl(40,75%,50%)] hover:from-[hsl(45,85%,40%)] hover:to-[hsl(40,80%,45%)] text-white"
+          >
+            {isSendingEmails ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            Notifier les créateurs
+            {unnotifiedCount > 0 && (
+              <Badge className="ml-1 bg-white/20 text-white text-[10px]">
+                {unnotifiedCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
