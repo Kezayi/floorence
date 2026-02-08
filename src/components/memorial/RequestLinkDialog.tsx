@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link2, Search, Loader2, ArrowRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Link2, Search, Loader2, ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,11 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
+import { getGenderAwareRelation } from "@/lib/relationshipInference";
+import { validateChronologicalCoherence } from "@/lib/chronologicalValidation";
 
 interface RequestLinkDialogProps {
   memorialId: string;
@@ -75,6 +78,13 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Source memorial from context
+  const sourceMemorial = useMemo(
+    () => memorials.find((m) => m.id === memorialId),
+    [memorials, memorialId]
+  );
+  const sourceFirstName = sourceMemorial?.name.split(" ")[0] || memorialName.split(" ")[0];
+
   // Filter memorials for search (exclude current memorial)
   const searchResults = useMemo(() => {
     if (!debouncedSearch || debouncedSearch.length < 2) return [];
@@ -93,8 +103,45 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
     [memorials, selectedMemorialId]
   );
 
+  // Gender-aware relation label
+  const genderAwareLabel = useMemo(() => {
+    if (!relationType) return "";
+    return getGenderAwareRelation(relationType, sourceFirstName);
+  }, [relationType, sourceFirstName]);
+
+  // Chronological validation — fetch raw birth dates via supabase
+  const [sourceBirthDate, setSourceBirthDate] = useState<string | null>(null);
+  const [targetBirthDate, setTargetBirthDate] = useState<string | null>(null);
+
+  // Fetch birth dates when dialog opens and memorial is selected
+  useEffect(() => {
+    if (!open) return;
+    supabase.from('memorials').select('birth_date').eq('id', memorialId).single()
+      .then(({ data }) => setSourceBirthDate(data?.birth_date || null));
+  }, [open, memorialId]);
+
+  useEffect(() => {
+    if (!selectedMemorialId) { setTargetBirthDate(null); return; }
+    supabase.from('memorials').select('birth_date').eq('id', selectedMemorialId).single()
+      .then(({ data }) => setTargetBirthDate(data?.birth_date || null));
+  }, [selectedMemorialId]);
+
+  const chronoValidation = useMemo(() => {
+    if (!relationType || !selectedMemorialId) return null;
+    return validateChronologicalCoherence(sourceBirthDate, targetBirthDate, relationType);
+  }, [relationType, selectedMemorialId, sourceBirthDate, targetBirthDate]);
+
   const handleSubmit = async () => {
     if (!user || !selectedMemorialId || !relationType) return;
+
+    // Block if chronologically invalid
+    if (chronoValidation && !chronoValidation.isValid) {
+      toast.error(chronoValidation.message || "Incohérence chronologique détectée.");
+      return;
+    }
+
+    // Apply gender-aware relation type
+    const finalRelationType = getGenderAwareRelation(relationType, sourceFirstName);
 
     setLoading(true);
     try {
@@ -115,7 +162,7 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
       const { error } = await supabase.from("memorial_relations").insert({
         memorial_id_1: memorialId,
         memorial_id_2: selectedMemorialId,
-        relation_type: relationType,
+        relation_type: finalRelationType,
         requested_by: user.id,
         status: "pending",
         is_demo: false,
@@ -241,7 +288,7 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
               <div className="flex flex-col items-center gap-1">
                 <ArrowRight className="w-5 h-5 text-[hsl(45,90%,50%)]" />
                 <span className="text-[10px] text-[hsl(45,90%,50%)] font-medium">
-                  {relationType || "..."}
+                  {genderAwareLabel || "..."}
                 </span>
               </div>
               <div className="text-center">
@@ -260,7 +307,7 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
                 2. Quel est le lien entre eux ?
               </Label>
               <p className="text-xs text-muted-foreground">
-                {memorialName} est <span className="font-medium">{relationType ? `le/la ${relationType}` : "___"}</span> de {selectedMemorial.name}
+                {memorialName} est <span className="font-medium">{genderAwareLabel ? genderAwareLabel : "___"}</span> de {selectedMemorial.name}
               </p>
               <Select value={relationType} onValueChange={setRelationType}>
                 <SelectTrigger>
@@ -284,8 +331,25 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
             </div>
           )}
 
+          {/* Chronological validation */}
+          {chronoValidation && !chronoValidation.isValid && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                {chronoValidation.message}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {chronoValidation && chronoValidation.isValid && chronoValidation.isVerified && relationType && (
+            <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-md">
+              <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-xs text-primary">{chronoValidation.details}</span>
+            </div>
+          )}
+
           {/* Info notice */}
-          {selectedMemorial && relationType && (
+          {selectedMemorial && relationType && chronoValidation?.isValid !== false && (
             <div className="bg-muted/50 border border-border rounded-lg p-3 text-xs text-muted-foreground">
               <p className="font-medium text-foreground mb-1">📬 Notification envoyée</p>
               <p>
@@ -302,7 +366,7 @@ const RequestLinkDialog = ({ memorialId, memorialName }: RequestLinkDialogProps)
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !selectedMemorialId || !relationType}
+            disabled={loading || !selectedMemorialId || !relationType || (chronoValidation !== null && !chronoValidation.isValid)}
             className="gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}

@@ -582,41 +582,64 @@ const INVERSE_RELATIONS: Record<string, string> = {
   'Époux': 'Épouse', 'Épouse': 'Époux',
 };
 
-const LIKELY_FEMININE = /^(marie|thérèse|therese|odile|claire|félicité|felicite|pauline|jeanne|catherine|rose|anne|lucie|sophie|emma|léa|lea|julie|alice|sarah|nathalie|sylvie|christine|monique|françoise|francoise|nicole|isabelle|patricia|caroline|florence|sandra|valérie|valerie|véronique|veronique|brigitte|cécile|cecile|hélène|helene|marguerite|antoinette|béatrice|beatrice|chantal|colette|denise|dominique|éliane|eliane|évelyne|evelyne|geneviève|genevieve|georgette|germaine|ghislaine|henriette|huguette|irène|irene|jacqueline|jocelyne|josiane|josette|laurence|liliane|madeleine|marcelle|martine|michèle|michele|mireille|nadine|pierrette|raymonde|renée|renee|simone|suzanne|yvette|yvonne)/i;
+// Base de données de prénoms féminins — francophones + gabonais + africains
+const LIKELY_FEMININE = /^(marie|thérèse|therese|odile|claire|félicité|felicite|pauline|jeanne|catherine|rose|anne|lucie|sophie|emma|léa|lea|julie|alice|sarah|nathalie|sylvie|christine|monique|françoise|francoise|nicole|isabelle|patricia|caroline|florence|sandra|valérie|valerie|véronique|veronique|brigitte|cécile|cecile|hélène|helene|marguerite|antoinette|béatrice|beatrice|chantal|colette|denise|éliane|eliane|évelyne|evelyne|geneviève|genevieve|georgette|germaine|ghislaine|henriette|huguette|irène|irene|jacqueline|jocelyne|josiane|josette|laurence|liliane|madeleine|marcelle|martine|michèle|michele|mireille|nadine|pierrette|raymonde|renée|renee|simone|suzanne|yvette|yvonne|angèle|angele|bernadette|charlotte|constance|edith|eugénie|eugenie|fatou|félicie|felicie|gloria|grâce|grace|honorine|judith|laure|léontine|leontine|mabika|marthe|mathilde|modeste|ndong|noëlle|noelle|pascaline|perpétue|perpetue|philomène|philomene|priscille|régine|regine|solange|stéphanie|stephanie|viviane|virginie|yolande|zita|adèle|adele|agathe|aïssatou|aissatou|aminata|assala|bintou|célestine|celestine|clémence|clemence|diane|estelle|fatoumata|fernande|fidèle|fidele|gabrielle|hyacinthe|inès|ines|joséphine|josephine|justine|léonie|leonie|mabondi|mboumba|moussavou|ngoua|ntsame|obame|obone|ondo|oyane|sabine|scholastique|séraphine|seraphine|thècle|thecle|ursule|xavière|xaviere)/i;
 
-const LIKELY_MASCULINE = /^(jean|pierre|paul|joseph|samuel|guy|roger|simplice|david|michel|jacques|philippe|andré|andre|louis|charles|henri|daniel|françois|francois|patrick|bernard|thierry|alain|marc|éric|eric|robert|richard|claude|yves|serge|gérard|gerard|georges|lucien|raymond|maurice|rené|rene|marcel|alfred|armand|augustin|émile|emile|etienne|gaston|gilbert|gustave|léon|leon|maxime|nicolas|olivier|pascal|quentin|raphaël|raphael|stéphane|stephane|sylvain|vincent|xavier)/i;
+// Base de données de prénoms masculins — francophones + gabonais + africains
+const LIKELY_MASCULINE = /^(jean|pierre|paul|joseph|samuel|guy|roger|simplice|david|michel|jacques|philippe|andré|andre|louis|charles|henri|daniel|françois|francois|patrick|bernard|thierry|alain|marc|éric|eric|robert|richard|claude|yves|serge|gérard|gerard|georges|lucien|raymond|maurice|rené|rene|marcel|alfred|armand|augustin|émile|emile|etienne|gaston|gilbert|gustave|léon|leon|maxime|nicolas|olivier|pascal|quentin|raphaël|raphael|stéphane|stephane|sylvain|vincent|xavier|albert|alexandre|alphonse|ambroise|anatole|antoine|barthélémy|barthelemy|benjamin|célestin|celestin|clément|clement|cyrille|dieudonné|dieudonne|edgard|edouard|emmanuel|fabien|félix|felix|firmin|frédéric|frederic|gauthier|grégoire|gregoire|hilaire|honoré|honore|hyacinthe|ignace|isidore|julien|justin|lambert|lazare|léopold|leopold|magloire|mamadou|mathieu|moïse|moise|narcisse|nestor|norbert|oumar|parfait|prosper|rodrigue|sébastien|sebastien|silvère|silvere|théodore|theodore|timothée|timothee|valentin|wilfried|zacharie|biyoghe|koumba|mbigou|mvoula|ndong|nguema|nze|obame|ondo|ovono)/i;
+
+// Terminaisons féminines communes (fallback si prénom non reconnu)
+const FEMININE_ENDINGS = ['-ette', '-ine', '-elle', '-ice', '-ise', '-ence', '-ande', '-aine'];
+const FEMININE_SUFFIX_REGEX = /(ette|ine|elle|ice|ise|ence|ande|aine|ia|ita|ila)$/i;
+
+/**
+ * Adapte un label de relation au genre du prénom donné.
+ * Ex: getGenderAwareRelation("Fils", "Thérèse") → "Fille"
+ */
+/**
+ * Infère le genre probable d'un prénom.
+ * Retourne "F", "M" ou "N" (neutre/inconnu).
+ * L'utilisateur peut toujours surcharger manuellement.
+ */
+export const inferGender = (firstName: string): Gender => {
+  const cleanFirst = firstName.trim();
+  
+  // 1. Vérification dans les bases de prénoms connus
+  if (LIKELY_FEMININE.test(cleanFirst)) return "F";
+  if (LIKELY_MASCULINE.test(cleanFirst)) return "M";
+  
+  // 2. Fallback : terminaisons féminines communes
+  if (FEMININE_SUFFIX_REGEX.test(cleanFirst.toLowerCase())) return "F";
+  
+  // 3. Prénoms ambigus (Claude, Dominique, Camille) → Neutre
+  return "N";
+};
+
+/**
+ * Fonction centrale d'accord grammatical.
+ * Retourne le label de relation accordé au genre.
+ * Ex: getRelationLabel("Fils", "F") → "Fille"
+ * Ex: getRelationLabel("Père", "F") → "Mère"
+ */
+export const getRelationLabel = (relationType: string, gender: Gender): string => {
+  if (gender === "F" && GENDERED_PAIRS[relationType]) {
+    return GENDERED_PAIRS[relationType];
+  }
+  const reverseMap = Object.fromEntries(Object.entries(GENDERED_PAIRS).map(([m, f]) => [f, m]));
+  if (gender === "M" && reverseMap[relationType]) {
+    return reverseMap[relationType];
+  }
+  return relationType;
+};
 
 /**
  * Adapte un label de relation au genre du prénom donné.
  * Ex: getGenderAwareRelation("Fils", "Thérèse") → "Fille"
  */
 export const getGenderAwareRelation = (relationType: string, firstName: string): string => {
-  const cleanFirst = firstName.trim();
-
-  let isFeminine = false;
-  let isMasculine = false;
-
-  if (LIKELY_FEMININE.test(cleanFirst)) {
-    isFeminine = true;
-  } else if (LIKELY_MASCULINE.test(cleanFirst)) {
-    isMasculine = true;
-  } else {
-    const lower = cleanFirst.toLowerCase();
-    if (lower.endsWith('e') || lower.endsWith('a') || lower.endsWith('ine') || lower.endsWith('elle') || lower.endsWith('ette')) {
-      isFeminine = true;
-    }
-  }
-
-  if (isFeminine && GENDERED_PAIRS[relationType]) {
-    return GENDERED_PAIRS[relationType];
-  }
-
-  const reverseMap = Object.fromEntries(Object.entries(GENDERED_PAIRS).map(([m, f]) => [f, m]));
-  if (isMasculine && reverseMap[relationType]) {
-    return reverseMap[relationType];
-  }
-
-  return relationType;
+  const gender = inferGender(firstName);
+  if (gender === "N") return relationType;
+  return getRelationLabel(relationType, gender);
 };
 
 /**
