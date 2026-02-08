@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame, AlertCircle, RefreshCw, TrendingUp, Heart } from 'lucide-react';
+import { Flower2, MessageSquare, DollarSign, Users, Trophy, Flame, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -12,6 +12,9 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import SocialDonutChart from '@/components/admin/SocialDonutChart';
 import SuperConnectorsWidget from '@/components/admin/SuperConnectorsWidget';
 import PredictionCard from '@/components/admin/PredictionCard';
+import SuccessWall from '@/components/admin/SuccessWall';
+import HumanityGauge from '@/components/admin/HumanityGauge';
+import LiveActivityFeed from '@/components/admin/LiveActivityFeed';
 
 interface DailyRevenue {
   date: string;
@@ -146,6 +149,9 @@ const Dashboard = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-foreground mb-8">Tableau de bord</h1>
+
+      {/* Success Wall - Indicateurs de Vérité */}
+      <SuccessWall />
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -293,7 +299,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Gesture stats + Humanity Index */}
+      {/* Gesture stats + Humanity Gauge + Live Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
           <CardHeader>
@@ -315,29 +321,19 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">Fleurs déposées</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <TrendingUp className="w-4 h-4" />
-              Activité hebdomadaire
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+            {/* Weekly stats */}
+            <div className="mt-4 pt-3 border-t border-border/50 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Hommages cette semaine</span>
-                <span className="font-bold">{dashStats?.postsLastWeek}</span>
+                <span className="text-xs text-muted-foreground">Hommages cette semaine</span>
+                <span className="text-sm font-bold">{dashStats?.postsLastWeek}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Semaine précédente</span>
-                <span className="font-bold">{dashStats?.postsPrevWeek}</span>
+                <span className="text-xs text-muted-foreground">Semaine précédente</span>
+                <span className="text-sm font-bold">{dashStats?.postsPrevWeek}</span>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                <span className="text-sm text-muted-foreground">Variation</span>
-                <span className={`font-bold ${
+              <div className="flex justify-between items-center pt-1 border-t border-border/30">
+                <span className="text-xs text-muted-foreground">Variation</span>
+                <span className={`text-sm font-bold ${
                   (dashStats?.postsLastWeek || 0) >= (dashStats?.postsPrevWeek || 0)
                     ? 'text-[hsl(var(--accent-green))]'
                     : 'text-destructive'
@@ -351,46 +347,14 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Humanity Index */}
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(45,90%,50%,0.06)] to-transparent pointer-events-none" />
-          <CardHeader className="relative">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Heart className="w-4 h-4 text-[hsl(340,60%,65%)]" />
-              Indice d'Humanité
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-4xl font-bold text-foreground tabular-nums">
-              {dashStats?.interMemorialLinks || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              liens inter-défunts créés
-            </p>
-            <div className="mt-4 pt-3 border-t border-border/50">
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Chaque lien relie deux mémoriaux et rapproche leurs communautés respectives. 
-                Plus cet indice est élevé, plus le maillage familial est dense.
-              </p>
-              {(dashStats?.interMemorialLinks || 0) > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${Math.min(100, ((dashStats?.interMemorialLinks || 0) / Math.max(dashStats?.totalMemorials || 1, 1)) * 100)}%`,
-                        background: 'linear-gradient(90deg, hsl(45, 90%, 50%), hsl(340, 60%, 65%))'
-                      }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    {((dashStats?.interMemorialLinks || 0) / Math.max(dashStats?.totalMemorials || 1, 1) * 100).toFixed(0)}% de couverture
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Humanity Gauge */}
+        <HumanityGauge
+          interMemorialLinks={dashStats?.interMemorialLinks || 0}
+          totalMemorials={dashStats?.totalMemorials || 0}
+        />
+
+        {/* Live Activity Feed */}
+        <LiveActivityFeed />
       </div>
     </div>
   );
