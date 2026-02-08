@@ -185,58 +185,96 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
   );
 };
 
-// Pagination
-const INFERENCES_PER_PAGE = 5;
+// ── Grouping logic ──
+interface RelationGroup {
+  label: string;
+  confidence: "high" | "medium" | "low";
+  members: InferredRelationship[];
+}
+
+/** Normalise inferred link text into a grouping key (e.g. "sont frères", "est l'oncle de") */
+const extractGroupKey = (link: string): string => {
+  // Replace proper names with placeholders to find the relationship pattern
+  // "Jean et Paul sont frères" → "sont frères"
+  // "Marie est la mère de Paul" → "est la mère de"
+  const patterns = [
+    /^.+?\bet\b\s+.+?\b(sont .+)$/i,             // "X et Y sont frères"
+    /^.+?\best\b\s+(possiblement .+?)\s+de\b/i,   // "X est possiblement le parent de Y"
+    /^.+?\best\b\s+(.+?)\s+de\b\s+.+$/i,          // "X est l'oncle de Y"
+    /^.+?\b(font partie .+)$/i,                     // "X et Y font partie du cercle"
+    /^.+?\b(connaissaient .+)$/i,                    // "X et Y connaissaient le défunt"
+  ];
+  for (const p of patterns) {
+    const m = link.match(p);
+    if (m) return m[1].trim();
+  }
+  return link;
+};
+
+const groupRelationships = (relationships: InferredRelationship[]): RelationGroup[] => {
+  // Deduplicate by sorted author-pair (safety net)
+  const deduped = new Map<string, InferredRelationship>();
+  relationships.forEach((r) => {
+    const key = [r.fromAuthor, r.toAuthor].sort().join("|");
+    if (!deduped.has(key)) deduped.set(key, r);
+  });
+
+  // Group by pattern + confidence
+  const groups = new Map<string, RelationGroup>();
+  deduped.forEach((rel) => {
+    const pattern = extractGroupKey(rel.inferredLink);
+    const gKey = `${rel.confidence}::${pattern}`;
+    if (!groups.has(gKey)) {
+      groups.set(gKey, { label: pattern, confidence: rel.confidence, members: [] });
+    }
+    groups.get(gKey)!.members.push(rel);
+  });
+
+  // Sort: high confidence first, then by member count desc
+  const order = { high: 0, medium: 1, low: 2 };
+  return Array.from(groups.values()).sort(
+    (a, b) => order[a.confidence] - order[b.confidence] || b.members.length - a.members.length
+  );
+};
+
+const GROUPS_PER_PAGE = 5;
 
 const InferredRelationshipsSection = ({ relationships }: { relationships: InferredRelationship[] }) => {
+  const groups = useMemo(() => groupRelationships(relationships), [relationships]);
+  const uniqueCount = useMemo(() => groups.reduce((s, g) => s + g.members.length, 0), [groups]);
+
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(relationships.length / INFERENCES_PER_PAGE);
-  const startIndex = (currentPage - 1) * INFERENCES_PER_PAGE;
-  const endIndex = startIndex + INFERENCES_PER_PAGE;
-  const paginatedRelationships = relationships.slice(startIndex, endIndex);
-  
+  const totalPages = Math.ceil(groups.length / GROUPS_PER_PAGE);
+  const startIndex = (currentPage - 1) * GROUPS_PER_PAGE;
+  const paginatedGroups = groups.slice(startIndex, startIndex + GROUPS_PER_PAGE);
+
   return (
     <div className="bg-muted/30 border border-border/60 p-6 rounded-sm">
       <div className="flex items-center gap-2 mb-1">
         <Link2 className="w-4 h-4 text-foreground/60" />
         <h4 className="font-serif text-lg">Liens de parenté retrouvés</h4>
-        <span className="text-sm text-muted-foreground font-sans">({relationships.length})</span>
+        <span className="text-sm text-muted-foreground font-sans">({uniqueCount})</span>
       </div>
       <p className="text-xs text-muted-foreground mb-5 font-sans italic">
         Liens déduits automatiquement à partir des relations avec le défunt
       </p>
-      
-      <div className="space-y-3">
-        {paginatedRelationships.map((rel, index) => (
-          <InferredRelationshipCard key={startIndex + index} relationship={rel} />
+
+      <div className="space-y-4">
+        {paginatedGroups.map((group, idx) => (
+          <GroupCard key={startIndex + idx} group={group} />
         ))}
       </div>
-      
+
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
           <span className="text-xs text-muted-foreground font-sans">
-            {startIndex + 1}–{Math.min(endIndex, relationships.length)} sur {relationships.length}
+            Page {currentPage} / {totalPages}
           </span>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="h-7 px-2"
-            >
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-7 px-2">
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-xs font-sans px-2">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="h-7 px-2"
-            >
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-7 px-2">
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -246,30 +284,33 @@ const InferredRelationshipsSection = ({ relationships }: { relationships: Inferr
   );
 };
 
-const InferredRelationshipCard = ({ relationship }: { relationship: InferredRelationship }) => {
-  const badge = confidenceBadges[relationship.confidence];
-  
+const GroupCard = ({ group }: { group: RelationGroup }) => {
+  const badge = confidenceBadges[group.confidence];
+
+  // Build a readable group title
+  const title = group.label.charAt(0).toUpperCase() + group.label.slice(1);
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-card/80 rounded-sm border border-border/40">
-      <div className="flex-1 min-w-0">
-        <div className="font-serif text-foreground truncate">{relationship.fromAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.fromRelation)}</div>
-      </div>
-      
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="h-px w-4 bg-border/60 hidden sm:block" />
-        <div className="flex flex-col items-center">
-          <span className={`text-xs px-3 py-1 rounded-sm border font-serif ${badge.className}`}>
-            {relationship.inferredLink}
-          </span>
-          <span className="text-[10px] text-muted-foreground mt-1 font-sans italic">{badge.label}</span>
+    <div className="p-4 bg-card/80 rounded-sm border border-border/40 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-serif text-sm text-foreground">{title}</span>
+          <span className="text-xs text-muted-foreground font-sans">({group.members.length})</span>
         </div>
-        <div className="h-px w-4 bg-border/60 hidden sm:block" />
+        <span className={`text-[10px] px-2 py-0.5 rounded-sm border font-sans shrink-0 ${badge.className}`}>
+          {badge.label}
+        </span>
       </div>
-      
-      <div className="flex-1 min-w-0 sm:text-right">
-        <div className="font-serif text-foreground truncate">{relationship.toAuthor}</div>
-        <div className="text-xs text-muted-foreground font-sans">{getRelationWithDeceased(relationship.toRelation)}</div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {group.members.map((rel, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm py-0.5">
+            <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+            <span className="font-serif truncate">{rel.fromAuthor}</span>
+            <span className="text-muted-foreground/60 text-xs">↔</span>
+            <span className="font-serif truncate">{rel.toAuthor}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
