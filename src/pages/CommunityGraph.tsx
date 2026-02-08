@@ -1,10 +1,12 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { maskName } from "@/lib/privacyUtils";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Link } from "react-router-dom";
-import { ChevronLeft, GitBranch, Users, ZoomIn, ZoomOut, Filter } from "lucide-react";
+import { ChevronLeft, GitBranch, Users, ZoomIn, ZoomOut, Filter, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +96,8 @@ const ALL_CATEGORIES = [
 ];
 
 const CommunityGraph = () => {
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const nodesRef = useRef<GraphNode[]>([]);
@@ -569,9 +573,10 @@ const CommunityGraph = () => {
       ctx.textBaseline = "top";
       
       const labelY = node.y + node.radius + 4;
-      const shortLabel = node.label.length > 14
-        ? node.label.substring(0, 14) + "…"
-        : node.label;
+      const rawLabel = isAuthenticated ? node.label : maskName(node.label);
+      const shortLabel = rawLabel.length > 14
+        ? rawLabel.substring(0, 14) + "…"
+        : rawLabel;
       ctx.fillText(shortLabel, node.x, labelY);
 
       // Initial inside circle
@@ -600,18 +605,22 @@ const CommunityGraph = () => {
       const lineageLinks = connectedEdges.filter(e => e.type === "memorial-relation");
       const sharedLinks = connectedEdges.filter(e => e.type === "living-shared");
       
-      const lines: string[] = [hoveredNode.label];
+      const tooltipName = isAuthenticated ? hoveredNode.label : maskName(hoveredNode.label);
+      const lines: string[] = [tooltipName];
       if (hoveredNode.type === "deceased") {
         lines.push("Défunt");
-        if (lineageLinks.length > 0) {
+        if (isAuthenticated && lineageLinks.length > 0) {
           lines.push(`Lignages : ${lineageLinks.map(l => l.label).join(", ")}`);
         }
       } else {
         if (hoveredNode.category) lines.push(hoveredNode.category);
-        if (sharedLinks.length > 0) {
+        if (isAuthenticated && sharedLinks.length > 0) {
           sharedLinks.forEach(sl => {
-            lines.push(`Connecté par ${sl.category} (${sl.sharedDeceasedName || ""})`);
+            lines.push(`Connecté par ${sl.category} (${sl.sharedDeceasedName ? maskName(sl.sharedDeceasedName) : ""})`);
           });
+        }
+        if (!isAuthenticated) {
+          lines.push("Connectez-vous pour voir les détails");
         }
       }
       
@@ -654,12 +663,14 @@ const CommunityGraph = () => {
         
         if (hoveredEdge.type === "living-shared") {
           title = `Liés en tant que ${hoveredEdge.category}`;
-          subtitle = hoveredEdge.sharedDeceasedName
+          subtitle = isAuthenticated && hoveredEdge.sharedDeceasedName
             ? `Via le mémorial de ${hoveredEdge.sharedDeceasedName}`
             : "Lien partagé";
         } else if (hoveredEdge.type === "memorial-relation") {
           title = `Pont des Ancêtres`;
-          subtitle = `${s.label} ↔ ${t.label} : ${hoveredEdge.label}`;
+          const sLabel = isAuthenticated ? s.label : maskName(s.label);
+          const tLabel = isAuthenticated ? t.label : maskName(t.label);
+          subtitle = `${sLabel} ↔ ${tLabel} : ${hoveredEdge.label}`;
         } else if (hoveredEdge.type === "inferred") {
           title = `Même communauté`;
           subtitle = `${hoveredEdge.category}`;

@@ -3,6 +3,8 @@ import { Users, Link2, GitBranch, ChevronLeft, ChevronRight } from "lucide-react
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased } from "@/lib/relationshipInference";
 import RelationshipGraph2D from "./RelationshipGraph2D";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { displayName } from "@/lib/privacyUtils";
 
 interface RelationshipMaillageProps {
   deceasedName: string;
@@ -69,6 +71,8 @@ const confidenceBadges = {
 };
 
 const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps) => {
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const directRelations = useMemo(() => {
     const uniqueAuthors = new Map<string, { name: string; category: string }>();
     posts.forEach((post) => {
@@ -153,7 +157,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
                       {members.map((rel, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm py-1">
                           <span className="w-1 h-1 rounded-full bg-border" />
-                          <span className="font-serif">{rel.name}</span>
+                          <span className="font-serif">{displayName(rel.name, isAuthenticated)}</span>
                           <span className={`text-xs ${getRelationColorClass(rel.category)}`}>
                             ({getCleanRelationName(rel.category)})
                           </span>
@@ -168,7 +172,7 @@ const RelationshipMaillage = ({ deceasedName, posts }: RelationshipMaillageProps
 
           {/* Liens inférés */}
           {inferredRelationships.length > 0 && (
-            <InferredRelationshipsSection relationships={inferredRelationships} />
+            <InferredRelationshipsSection relationships={inferredRelationships} isAuthenticated={isAuthenticated} />
           )}
 
           {inferredRelationships.length === 0 && directRelations.length > 1 && (
@@ -241,7 +245,7 @@ const groupByPerson = (relationships: InferredRelationship[]): GroupedPerson[] =
 
 const PERSONS_PER_PAGE = 5;
 
-const InferredRelationshipsSection = ({ relationships }: { relationships: InferredRelationship[] }) => {
+const InferredRelationshipsSection = ({ relationships, isAuthenticated }: { relationships: InferredRelationship[]; isAuthenticated: boolean }) => {
   const grouped = useMemo(() => groupByPerson(relationships), [relationships]);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(grouped.length / PERSONS_PER_PAGE);
@@ -265,7 +269,7 @@ const InferredRelationshipsSection = ({ relationships }: { relationships: Inferr
 
       <div className="space-y-3">
         {paginatedPersons.map((person) => (
-          <PersonGroupCard key={person.name} person={person} />
+          <PersonGroupCard key={person.name} person={person} isAuthenticated={isAuthenticated} />
         ))}
       </div>
 
@@ -303,12 +307,12 @@ const InferredRelationshipsSection = ({ relationships }: { relationships: Inferr
   );
 };
 
-const PersonGroupCard = ({ person }: { person: GroupedPerson }) => {
+const PersonGroupCard = ({ person, isAuthenticated }: { person: GroupedPerson; isAuthenticated: boolean }) => {
   return (
     <div className="p-4 bg-card/80 rounded-sm border border-border/40">
       <div className="flex items-center gap-2 mb-3">
         <Users className="w-3.5 h-3.5 text-foreground/50" />
-        <span className="font-serif text-foreground font-medium">{person.name}</span>
+        <span className="font-serif text-foreground font-medium">{displayName(person.name, isAuthenticated)}</span>
         <span className="text-xs text-muted-foreground font-sans">— {person.relationWithDeceased}</span>
       </div>
       <div className="space-y-1.5 ml-5">

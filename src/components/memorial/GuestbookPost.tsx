@@ -5,7 +5,8 @@ import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
-
+import { useAuth } from "@/contexts/AuthContext";
+import { displayName } from "@/lib/privacyUtils";
 export interface GuestbookPostData {
   id: string;
   authorId: string;
@@ -43,6 +44,8 @@ const GuestbookPost = ({
   onAddCandle,
   onAddFlower,
 }: GuestbookPostProps) => {
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState(0);
   const [candlePulse, setCandlePulse] = useState(false);
@@ -96,7 +99,7 @@ const GuestbookPost = ({
         <div>
           <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
             <h4 className="font-serif text-lg text-memorial-dark-foreground cursor-pointer hover:underline decoration-memorial-dark-muted/40 underline-offset-4 transition-all">
-              {post.authorName}
+              {displayName(post.authorName, isAuthenticated)}
               {isDeletedUser && (
                 <span className="text-memorial-dark-muted ml-1">*</span>
               )}
