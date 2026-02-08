@@ -36,12 +36,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Save, Loader2, Link2, Trash2, Check, X, Search, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Link2, Trash2, Check, X, Search, ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { logAuditAction } from '@/lib/auditLogger';
 import { useDebounce } from '@/hooks/useDebounce';
+import { getGenderAwareRelation, getInverseRelation, inferGender } from '@/lib/relationshipInference';
+import { validateChronologicalCoherence, isRelationBiologicallyVerified } from '@/lib/chronologicalValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Relation types for inter-memorial links (same as RequestLinkDialog)
 const interMemorialRelations: Record<string, { value: string; label: string }[]> = {
@@ -156,7 +159,7 @@ const MemorialDetail = () => {
       if (relatedIds.length === 0) return [];
       const { data, error } = await supabase
         .from('memorials')
-        .select('id, first_name, last_name, slug')
+        .select('id, first_name, last_name, slug, birth_date')
         .in('id', relatedIds);
       if (error) throw error;
       return data;
@@ -171,7 +174,7 @@ const MemorialDetail = () => {
       if (!debouncedLinkSearch || debouncedLinkSearch.length < 2) return [];
       const { data, error } = await supabase
         .from('memorials')
-        .select('id, first_name, last_name, death_date')
+        .select('id, first_name, last_name, death_date, birth_date')
         .neq('id', id!)
         .or(`first_name.ilike.%${debouncedLinkSearch}%,last_name.ilike.%${debouncedLinkSearch}%`)
         .limit(8);
@@ -191,9 +194,34 @@ const MemorialDetail = () => {
     return m ? `${m.first_name} ${m.last_name}` : relatedId.slice(0, 8);
   };
 
+  const getRelatedFirstName = (relatedId: string) => {
+    return relatedMemorials?.find(rm => rm.id === relatedId)?.first_name || '';
+  };
+
+  const getRelatedBirthDate = (relatedId: string) => {
+    return relatedMemorials?.find(rm => rm.id === relatedId)?.birth_date || null;
+  };
+
   const getRelatedSlug = (relatedId: string) => {
     return relatedMemorials?.find(rm => rm.id === relatedId)?.slug;
   };
+
+  // Chronological validation for new link
+  const chronoValidation = useMemo(() => {
+    if (!selectedTargetId || !linkRelationType) return null;
+    const target = searchResults?.find(m => m.id === selectedTargetId);
+    return validateChronologicalCoherence(
+      memorial?.birth_date,
+      target?.birth_date || null,
+      linkRelationType
+    );
+  }, [selectedTargetId, linkRelationType, memorial?.birth_date, searchResults]);
+
+  // Gender-aware relation label for new link preview
+  const genderAwareRelationLabel = useMemo(() => {
+    if (!linkRelationType || !memorial) return linkRelationType;
+    return getGenderAwareRelation(linkRelationType, memorial.first_name);
+  }, [linkRelationType, memorial]);
 
   // Save info mutation
   const saveMutation = useMutation({
@@ -230,6 +258,14 @@ const MemorialDetail = () => {
     mutationFn: async () => {
       if (!selectedTargetId || !linkRelationType) return;
 
+      // Chronological validation
+      if (chronoValidation && !chronoValidation.isValid) {
+        throw new Error(chronoValidation.message || 'Incohérence chronologique détectée.');
+      }
+
+      // Apply gender-aware relation type
+      const finalRelationType = memorial ? getGenderAwareRelation(linkRelationType, memorial.first_name) : linkRelationType;
+
       // Check duplicate
       const { data: existing } = await supabase
         .from('memorial_relations')
@@ -245,7 +281,7 @@ const MemorialDetail = () => {
       const { error } = await supabase.from('memorial_relations').insert({
         memorial_id_1: id!,
         memorial_id_2: selectedTargetId,
-        relation_type: linkRelationType,
+        relation_type: finalRelationType,
         requested_by: user?.id,
         status: 'accepted', // Admin creates directly as accepted
         is_demo: false,
@@ -471,7 +507,25 @@ const MemorialDetail = () => {
                     {relations.map(relation => {
                       const otherId = relation.memorial_id_1 === id ? relation.memorial_id_2 : relation.memorial_id_1;
                       const otherSlug = otherId ? getRelatedSlug(otherId) : null;
-                      const direction = relation.memorial_id_1 === id ? 'est' : 'de';
+                      const isSource = relation.memorial_id_1 === id;
+
+                      // Gender-aware label
+                      let displayRelationType: string;
+                      if (isSource && memorial) {
+                        displayRelationType = getGenderAwareRelation(relation.relation_type, memorial.first_name);
+                      } else if (otherId) {
+                        displayRelationType = getInverseRelation(relation.relation_type, memorial?.first_name || '');
+                      } else {
+                        displayRelationType = relation.relation_type;
+                      }
+
+                      // Verified badge
+                      const otherBirthDate = otherId ? getRelatedBirthDate(otherId) : null;
+                      const verified = isRelationBiologicallyVerified(
+                        memorial?.birth_date,
+                        otherBirthDate,
+                        isSource ? displayRelationType : relation.relation_type
+                      );
 
                       return (
                         <TableRow key={relation.id}>
@@ -490,9 +544,17 @@ const MemorialDetail = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">
-                              {fullName} {direction} <strong>{relation.relation_type}</strong> {direction === 'est' ? `de ${otherId ? getRelatedName(otherId) : ''}` : `de ${fullName}`}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">
+                                {fullName} est <strong>{displayRelationType}</strong> de {otherId ? getRelatedName(otherId) : ''}
+                              </span>
+                              {verified && (
+                                <Badge variant="outline" className="gap-1 text-[10px] border-primary/30 text-primary bg-primary/5">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Vérifié
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -618,7 +680,7 @@ const MemorialDetail = () => {
               <div className="space-y-2">
                 <Label>Type de lien</Label>
                 <p className="text-xs text-muted-foreground">
-                  {fullName} est <strong>{linkRelationType || '___'}</strong> de {selectedTarget?.first_name} {selectedTarget?.last_name}
+                  {fullName} est <strong>{genderAwareRelationLabel || '___'}</strong> de {selectedTarget?.first_name} {selectedTarget?.last_name}
                 </p>
                 <Select value={linkRelationType} onValueChange={setLinkRelationType}>
                   <SelectTrigger>
@@ -637,13 +699,34 @@ const MemorialDetail = () => {
                 </Select>
               </div>
             )}
+
+            {/* Chronological validation alert */}
+            {chronoValidation && !chronoValidation.isValid && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  {chronoValidation.message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {chronoValidation && chronoValidation.isValid && chronoValidation.isVerified && linkRelationType && (
+              <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-md">
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs text-primary">{chronoValidation.details}</span>
+              </div>
+            )}
+
+            {chronoValidation && chronoValidation.isValid && !chronoValidation.isVerified && chronoValidation.details && linkRelationType && (
+              <p className="text-xs text-muted-foreground italic">{chronoValidation.details}</p>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewLinkDialog(false)}>Annuler</Button>
             <Button
               onClick={() => createLinkMutation.mutate()}
-              disabled={!selectedTargetId || !linkRelationType || createLinkMutation.isPending}
+              disabled={!selectedTargetId || !linkRelationType || createLinkMutation.isPending || (chronoValidation !== null && !chronoValidation.isValid)}
               className="gap-2"
             >
               {createLinkMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
