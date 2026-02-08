@@ -10,6 +10,7 @@ import EditMemorialDialog from "@/components/memorial/EditMemorialDialog";
 import AddEventDialog from "@/components/memorial/AddEventDialog";
 import RequestLinkDialog from "@/components/memorial/RequestLinkDialog";
 import InferredLinkSuggestions from "@/components/memorial/InferredLinkSuggestions";
+import TransitiveDiscoveryWidget from "@/components/memorial/TransitiveDiscoveryWidget";
 import DemoGuide from "@/components/memorial/DemoGuide";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
@@ -706,7 +707,14 @@ const Memorial = () => {
 
             {/* Maillage relationnel — Accès conditionnel */}
             <TabsContent value="relationships" className="mt-0">
-              <div className="max-w-3xl">
+              <div className="max-w-3xl space-y-6">
+                {/* Transitive Discovery Widget — owner only */}
+                {isOwner && (
+                  <TransitiveDiscoveryWidget
+                    memorialId={memorial.id}
+                    memorialName={memorial.name}
+                  />
+                )}
                 <SecureDataDisplay blurPreview>
                   <RelationshipMaillage 
                     deceasedName={memorial.name}
