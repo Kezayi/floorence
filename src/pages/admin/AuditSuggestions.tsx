@@ -114,6 +114,9 @@ const AuditSuggestions = () => {
       queryClient.invalidateQueries({ queryKey: ["humanity-gauge"] }),
       queryClient.invalidateQueries({ queryKey: ["success-wall"] }),
       queryClient.invalidateQueries({ queryKey: ["live-activity"] }),
+      queryClient.invalidateQueries({ queryKey: ["memorial-relations-graph"] }),
+      queryClient.invalidateQueries({ queryKey: ["pending-suggested-links-count"] }),
+      queryClient.invalidateQueries({ queryKey: ["transitive-all-relations"] }),
     ]);
 
   const hasSelection = selectedIds.size > 0;
@@ -122,41 +125,34 @@ const AuditSuggestions = () => {
     setIsMagicValidating(true);
     try {
       if (hasSelection) {
-        // Selective mode: process only checked items client-side
+        // Selective mode: mark selected as "pending" ready for RPC, then call RPC
+        // First, ensure only selected items are pending (others temporarily set aside)
         const toValidate = pendingLinks.filter((l) => selectedIds.has(l.id));
-        let merged = 0;
-        for (const link of toValidate) {
-          const { data: existing } = await supabase
-            .from("memorial_relations")
-            .select("id")
-            .or(
-              `and(memorial_id_1.eq.${link.sourceMemorialId},memorial_id_2.eq.${link.targetMemorialId}),and(memorial_id_1.eq.${link.targetMemorialId},memorial_id_2.eq.${link.sourceMemorialId})`
-            )
-            .eq("relation_type", link.suggestedRelation)
-            .eq("status", "accepted")
-            .maybeSingle();
+        const toSkip = pendingLinks.filter((l) => !selectedIds.has(l.id));
 
-          if (!existing) {
-            const { error: insertErr } = await supabase.from("memorial_relations").insert({
-              memorial_id_1: link.sourceMemorialId,
-              memorial_id_2: link.targetMemorialId,
-              relation_type: link.suggestedRelation,
-              status: "accepted",
-            });
-            if (!insertErr) merged++;
-          }
-
+        // Temporarily mark non-selected pending items as "deferred" so RPC skips them
+        if (toSkip.length > 0) {
           await supabase
             .from("suggested_links")
-            .update({ status: "accepted", notified_admin: true })
-            .eq("id", link.id);
+            .update({ status: "deferred" })
+            .in("id", toSkip.map((l) => l.id));
         }
 
-        if (merged > 0) {
-          toast.success(`✨ ${merged} lien(s) fusionné(s) avec succès !`, { duration: 6000 });
-        } else {
-          toast.info("Les liens sélectionnés étaient déjà fusionnés. Statuts mis à jour.");
+        // Call RPC — it validates all remaining "pending" items (= our selection)
+        const { data, error } = await supabase.rpc("admin_force_validate_all_suggestions");
+        if (error) throw error;
+
+        // Restore deferred items back to pending
+        if (toSkip.length > 0) {
+          await supabase
+            .from("suggested_links")
+            .update({ status: "pending" })
+            .in("id", toSkip.map((l) => l.id));
         }
+
+        const result = data as { status?: string; message?: string; count?: number } | null;
+        const count = result?.count ?? toValidate.length;
+        toast.success(`✨ ${count} lien(s) fusionné(s) avec succès !`, { duration: 6000 });
       } else {
         // Bulk mode: validate ALL pending via RPC
         const { data, error } = await supabase.rpc("admin_force_validate_all_suggestions");
@@ -170,6 +166,16 @@ const AuditSuggestions = () => {
     } catch (err: any) {
       console.error("Error in magic validation:", err);
       toast.error("Erreur lors de la validation forcée");
+      // Safety: restore any deferred items on error
+      if (hasSelection) {
+        const toSkip = pendingLinks.filter((l) => !selectedIds.has(l.id));
+        if (toSkip.length > 0) {
+          await supabase
+            .from("suggested_links")
+            .update({ status: "pending" })
+            .in("id", toSkip.map((l) => l.id));
+        }
+      }
     } finally {
       setIsMagicValidating(false);
     }
