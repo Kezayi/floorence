@@ -41,6 +41,7 @@ interface FamilyMember {
 interface FamilyGroup {
   memorialId: string;
   memorialSlug: string;
+  memorialShareToken?: string | null;
   deceasedName: string;
   deceasedPhoto?: string;
   members: FamilyMember[];
@@ -53,6 +54,7 @@ interface MultiMemorialProfile {
   memorialActivities: Array<{
     memorialId: string;
     memorialSlug: string;
+    memorialShareToken?: string | null;
     memorialName: string;
     relation: string;
     isCreator: boolean;
@@ -204,6 +206,7 @@ const searchWithFamilyGrouping = (
   const personMemorials = new Map<string, Array<{
     memorialId: string;
     memorialSlug: string;
+    memorialShareToken?: string | null;
     memorialName: string;
     relation: string;
     isCreator: boolean;
@@ -236,6 +239,7 @@ const searchWithFamilyGrouping = (
         familyGroups.set(memorial.id, {
           memorialId: memorial.id,
           memorialSlug: memorial.slug,
+          memorialShareToken: (memorial as any).shareToken || null,
           deceasedName: memorial.name,
           deceasedPhoto: memorial.photos[0],
           members: [],
@@ -265,6 +269,7 @@ const searchWithFamilyGrouping = (
       existing.push({
         memorialId: memorial.id,
         memorialSlug: memorial.slug,
+        memorialShareToken: (memorial as any).shareToken || null,
         memorialName: memorial.name,
         relation: memorial.author.relation,
         isCreator: true,
@@ -325,6 +330,7 @@ const searchWithFamilyGrouping = (
         existingDedup.push({
           memorialId: memorial.id,
           memorialSlug: memorial.slug,
+          memorialShareToken: (memorial as any).shareToken || null,
           memorialName: memorial.name,
           relation: data.relation,
           isCreator: false,
@@ -409,6 +415,7 @@ const searchWithFamilyGrouping = (
         familyGroups.set(memorial.id, {
           memorialId: memorial.id,
           memorialSlug: memorial.slug,
+          memorialShareToken: (memorial as any).shareToken || null,
           deceasedName: memorial.name,
           deceasedPhoto: memorial.photos[0],
           members,
@@ -791,12 +798,13 @@ interface FamilyGroupCardProps {
 }
 
 const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
+  const groupUrl = group.memorialShareToken ? `/m/${group.memorialShareToken}` : `/memorial/${group.memorialSlug}`;
   return (
     <Card className="overflow-hidden">
       {/* Header du groupe = Mémorial pivot */}
       <CardHeader className="pb-3 bg-muted/30 border-b border-border">
         <Link 
-          to={`/memorial/${group.memorialSlug}`}
+          to={groupUrl}
           className="flex items-center gap-4 group"
         >
           <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0">
@@ -934,7 +942,7 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
           {profile.memorialActivities.map((activity) => (
             <Link
               key={activity.memorialId}
-              to={`/memorial/${activity.memorialSlug}`}
+              to={activity.memorialShareToken ? `/m/${activity.memorialShareToken}` : `/memorial/${activity.memorialSlug}`}
               className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 transition-colors group"
             >
               <div className="w-10 h-12 overflow-hidden rounded-sm bg-muted shrink-0">
