@@ -27,7 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
-import { calculateAge } from "@/lib/dateUtils";
+import { calculateAge, getMemorialType, formatDateFrench } from "@/lib/dateUtils";
 import { toast } from "sonner";
 
 interface MemorialEvent {
@@ -40,6 +40,37 @@ interface MemorialEvent {
   is_public: boolean;
 }
 
+/** Helper to check if string is valid UUID */
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
+/** Skeleton loader shown while memorial data is loading */
+const MemorialSkeleton = () => (
+  <div className="min-h-screen flex flex-col bg-background">
+    <Header />
+    <main className="flex-1 pt-20">
+      <div className="container mx-auto px-4 py-8 space-y-6 animate-pulse">
+        <div className="h-4 w-32 bg-muted rounded" />
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="w-full md:w-80 h-80 bg-muted rounded-sm" />
+          <div className="flex-1 space-y-4">
+            <div className="h-8 w-64 bg-muted rounded" />
+            <div className="h-4 w-48 bg-muted rounded" />
+            <div className="h-20 w-full bg-muted rounded" />
+            <div className="flex gap-4">
+              <div className="h-10 w-28 bg-muted rounded" />
+              <div className="h-10 w-28 bg-muted rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <Footer />
+  </div>
+);
+
 const MemorialInner = () => {
   const { slug, token } = useParams();
   const { memorials, loading: memorialsLoading } = useMemorials();
@@ -51,23 +82,120 @@ const MemorialInner = () => {
   const [eventsLoading, setEventsLoading] = useState(true);
   const { data: settings } = useSystemSettings();
   const POSTS_PER_PAGE = 5;
+
+  // ── DB Fallback State ──
+  // When memorial not found in context, query DB directly to prevent false 404s
+  const [dbFallback, setDbFallback] = useState<any>(null);
+  const [dbFallbackLoading, setDbFallbackLoading] = useState(false);
+  const [dbFallbackDone, setDbFallbackDone] = useState(false);
   
   // Check if contributions are enabled globally
-  const contributionsEnabled = settings?.contribution_link_template.enabled && settings?.contribution_link_template.url;
+  const contributionsEnabled = settings?.contribution_link_template?.enabled && settings?.contribution_link_template?.url;
 
   // Find the memorial by token, slug, or legacy_slug from context
-  const memorialData = useMemo(() => {
-    // First try by share_token (primary for /m/:token route)
+  const contextMemorial = useMemo(() => {
     if (token) {
       return memorials.find((m) => m.shareToken === token) || null;
     }
-    // Then try current slug
     const bySlug = memorials.find((m) => m.slug === slug);
     if (bySlug) return bySlug;
-    
-    // If not found, check legacy slugs for redirect
-    return memorials.find((m) => m.legacySlug === slug);
+    return memorials.find((m) => m.legacySlug === slug) || null;
   }, [memorials, slug, token]);
+
+  // DB Fallback: If context loaded but memorial not found, try direct DB query
+  useEffect(() => {
+    if (memorialsLoading || contextMemorial || dbFallbackDone) return;
+    
+    const fetchDirect = async () => {
+      setDbFallbackLoading(true);
+      try {
+        let query = supabase
+          .from('memorials')
+          .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo, share_token')
+          .eq('is_published', true)
+          .eq('is_active', true)
+          .is('merged_into', null);
+
+        if (token) {
+          query = query.eq('share_token', token);
+        } else if (slug) {
+          query = query.or(`slug.eq.${slug},legacy_slug.eq.${slug}`);
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) {
+          console.error('[Memorial] DB fallback error:', error);
+        } else if (data) {
+          console.info('[Memorial] Found via DB fallback:', data.id);
+          // Fetch creator profile
+          const { data: profileData } = await supabase
+            .from('profiles_public')
+            .select('display_name')
+            .eq('user_id', data.created_by)
+            .maybeSingle();
+
+          const photos = (data.photos && data.photos.length > 0)
+            ? data.photos.filter((p: string) => p && !p.startsWith('data:'))
+            : (data.photo_url ? [data.photo_url] : []);
+
+          setDbFallback({
+            id: data.id,
+            slug: data.slug,
+            legacySlug: data.legacy_slug || null,
+            name: `${data.first_name} ${data.last_name}`,
+            birthDate: formatDateFrench(data.birth_date),
+            deathDate: formatDateFrench(data.death_date),
+            bio: data.biography || "",
+            photos,
+            author: {
+              id: data.created_by,
+              name: profileData?.display_name || "Créateur",
+              relation: data.creator_relation || "Créateur de l'espace",
+            },
+            guestbookMessages: [],
+            type: getMemorialType(formatDateFrench(data.death_date)),
+            createdBy: data.created_by,
+            donationEnabled: data.donation_enabled,
+            funeralDate: data.funeral_date,
+            funeralLocation: data.funeral_location,
+            defaultPhotoIndex: data.default_photo_index || 0,
+            isDemo: data.is_demo || false,
+            shareToken: data.share_token || null,
+          });
+        } else {
+          console.warn('[Memorial] Not found in DB either. Token/slug:', token || slug);
+        }
+      } catch (err) {
+        console.error('[Memorial] DB fallback exception:', err);
+      } finally {
+        setDbFallbackLoading(false);
+        setDbFallbackDone(true);
+      }
+    };
+
+    fetchDirect();
+  }, [memorialsLoading, contextMemorial, dbFallbackDone, token, slug]);
+
+  // Use context memorial first, then DB fallback
+  const memorialData = contextMemorial || dbFallback;
+
+  // Diagnostic: Log memorial data for debugging
+  useEffect(() => {
+    if (memorialData) {
+      console.table({
+        id: memorialData.id,
+        name: memorialData.name,
+        slug: memorialData.slug,
+        shareToken: memorialData.shareToken,
+        type: memorialData.type,
+        photosCount: memorialData.photos?.length ?? 0,
+        hasAuthor: !!memorialData.author,
+        hasBio: !!memorialData.bio,
+        source: contextMemorial ? 'context' : 'db-fallback',
+      });
+    }
+  }, [memorialData?.id]);
 
   // Check if we need to redirect from legacy slug to new secure token URL
   const shouldRedirect = memorialData && slug && memorialData.legacySlug === slug && memorialData.slug !== slug;
@@ -78,18 +206,11 @@ const MemorialInner = () => {
     return calculateAge(memorialData.birthDate, memorialData.deathDate);
   }, [memorialData?.birthDate, memorialData?.deathDate]);
 
-  // Helper to check if string is valid UUID
-  const isValidUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
   // Fetch events from database (only for real UUIDs, not mock data)
   useEffect(() => {
     const fetchEvents = async () => {
       if (!memorialData?.id) return;
       
-      // Skip database fetch for mock data (non-UUID IDs)
       if (!isValidUUID(memorialData.id)) {
         setEventsLoading(false);
         setMemorialEvents([]);
@@ -127,19 +248,17 @@ const MemorialInner = () => {
   const fetchGuestbookPosts = useCallback(async () => {
     if (!memorialData?.id) return;
     
-    // Skip database fetch for mock data (non-UUID IDs)
     if (!isValidUUID(memorialData.id)) {
-      // For mock data, use the local messages
-      const mockPosts: GuestbookPostData[] = memorialData.guestbookMessages.map((msg, index) => ({
-        id: msg.id,
+      const mockPosts: GuestbookPostData[] = (memorialData.guestbookMessages || []).map((msg: any, index: number) => ({
+        id: msg?.id || `mock-${index}`,
         authorId: `user-${index}`,
-        authorName: msg.authorName,
-        relationCategory: msg.relationCategory,
-        content: msg.content,
+        authorName: msg?.authorName || "Anonyme",
+        relationCategory: msg?.relationCategory || "autre",
+        content: msg?.content || "",
         photos: [],
         createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-        candleCount: msg.candleCount || 0,
-        flowerCount: msg.flowerCount || 0,
+        candleCount: msg?.candleCount || 0,
+        flowerCount: msg?.flowerCount || 0,
       }));
       setGuestbookPosts(mockPosts);
       setPostsLoading(false);
@@ -148,7 +267,6 @@ const MemorialInner = () => {
 
     setPostsLoading(true);
     try {
-      // Use the RPC function to get public guestbook posts
       const { data, error } = await supabase
         .rpc('get_public_guestbook_posts', { p_memorial_id: memorialData.id });
 
@@ -156,26 +274,16 @@ const MemorialInner = () => {
         console.error('Error fetching guestbook posts:', error);
         setGuestbookPosts([]);
       } else {
-        const posts: GuestbookPostData[] = (data || []).map((post: {
-          id: string;
-          user_id: string | null;
-          author_name: string;
-          relation_category: string;
-          content: string;
-          photos: string[] | null;
-          created_at: string;
-          candle_count: number;
-          flower_count: number;
-        }) => ({
+        const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
           id: post.id,
           authorId: post.user_id || 'anonymous',
-          authorName: post.author_name,
-          relationCategory: post.relation_category,
-          content: post.content,
+          authorName: post.author_name || 'Anonyme',
+          relationCategory: post.relation_category || 'autre',
+          content: post.content || '',
           photos: post.photos || [],
           createdAt: post.created_at,
-          candleCount: post.candle_count,
-          flowerCount: post.flower_count,
+          candleCount: post.candle_count ?? 0,
+          flowerCount: post.flower_count ?? 0,
         }));
         setGuestbookPosts(posts);
       }
@@ -185,7 +293,7 @@ const MemorialInner = () => {
     } finally {
       setPostsLoading(false);
     }
-  }, [memorialData?.id, memorialData?.guestbookMessages]);
+  }, [memorialData?.id]);
 
   // Fetch posts when memorial changes
   useEffect(() => {
@@ -207,34 +315,22 @@ const MemorialInner = () => {
             filter: `memorial_id=eq.${memorialData.id}`,
           },
           (payload) => {
-            const newPost = payload.new as {
-             id: string;
-             user_id: string | null;
-             author_name: string;
-             relation_category: string;
-             content: string;
-             photos: string[] | null;
-             created_at: string;
-             candle_count: number;
-             flower_count: number;
-           };
+            const newPost = payload.new as any;
            
-           // Add the new post to the beginning of the list
            setGuestbookPosts((prev) => {
-             // Avoid duplicates
-             if (prev.some((p) => p.id === newPost.id)) return prev;
+             if (prev.some((p) => p.id === newPost?.id)) return prev;
              
              return [
                {
-                 id: newPost.id,
-                 authorId: newPost.user_id || 'anonymous',
-                 authorName: newPost.author_name,
-                 relationCategory: newPost.relation_category,
-                 content: newPost.content,
-                 photos: newPost.photos || [],
-                 createdAt: newPost.created_at,
-                 candleCount: newPost.candle_count,
-                 flowerCount: newPost.flower_count,
+                 id: newPost?.id,
+                 authorId: newPost?.user_id || 'anonymous',
+                 authorName: newPost?.author_name || 'Anonyme',
+                 relationCategory: newPost?.relation_category || 'autre',
+                 content: newPost?.content || '',
+                 photos: newPost?.photos || [],
+                 createdAt: newPost?.created_at,
+                 candleCount: newPost?.candle_count ?? 0,
+                 flowerCount: newPost?.flower_count ?? 0,
                },
                ...prev,
              ];
@@ -253,7 +349,7 @@ const MemorialInner = () => {
     setCurrentGuestbookPage(1);
   }, [slug, token]);
 
-   // Pagination calculations — chronological order (newest first)
+   // Pagination calculations
   const totalGuestbookPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
   const paginatedPosts = useMemo(() => {
     const startIndex = (currentGuestbookPage - 1) * POSTS_PER_PAGE;
@@ -265,8 +361,8 @@ const MemorialInner = () => {
     return guestbookPosts.reduce(
       (acc, post) => ({
         ripCount: acc.ripCount + 1,
-        candleCount: acc.candleCount + post.candleCount,
-        flowerCount: acc.flowerCount + post.flowerCount,
+        candleCount: acc.candleCount + (post.candleCount ?? 0),
+        flowerCount: acc.flowerCount + (post.flowerCount ?? 0),
       }),
       { ripCount: 0, candleCount: 0, flowerCount: 0 }
     );
@@ -278,13 +374,10 @@ const MemorialInner = () => {
   // Check if current user is the memorial owner
   const isOwner = user?.id === memorialData?.createdBy || false;
 
-  // Refetch memorial data after edit
   const handleMemorialUpdated = () => {
-    // Force refetch by refreshing the page data
     window.location.reload();
   };
 
-  // Refetch events after adding one
   const fetchEventsAgain = async () => {
     if (!memorialData?.id || !isValidUUID(memorialData.id)) return;
     
@@ -303,18 +396,18 @@ const MemorialInner = () => {
     }
   };
 
-  // SEO: Update meta tags for this memorial with enhanced social preview
+  // SEO
   useSEO({
     title: memorialData ? `Hommage à ${memorialData.name}` : undefined,
     description: memorialData?.bio,
-    image: memorialData?.photos?.[memorialData.defaultPhotoIndex || 0] || memorialData?.photos?.[0],
+    image: memorialData?.photos?.[memorialData?.defaultPhotoIndex || 0] || memorialData?.photos?.[0],
     type: "article",
     url: memorialData?.shareToken ? `${window.location.origin}/m/${memorialData.shareToken}` : undefined,
     deceasedName: memorialData?.name,
     age: ageAtDeath,
   });
 
-  // Handle legacy slug redirect → redirect to token URL
+  // Handle legacy slug redirect
   if (shouldRedirect && memorialData) {
     const redirectTarget = memorialData.shareToken 
       ? `/m/${memorialData.shareToken}` 
@@ -322,25 +415,42 @@ const MemorialInner = () => {
     return <Navigate to={redirectTarget} replace />;
   }
 
-  // Show skeleton while data is loading
-  if (memorialsLoading) {
+  // ── LOADING STATES ──
+  // Show skeleton while context OR DB fallback is loading
+  if (memorialsLoading || dbFallbackLoading) {
+    return <MemorialSkeleton />;
+  }
+
+  // If memorial not found after both context and DB fallback, show 404
+  if (!memorialData) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 pt-20">
-          <div className="container mx-auto px-4 py-8 space-y-6 animate-pulse">
-            <div className="h-4 w-32 bg-muted rounded" />
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="w-full md:w-80 h-80 bg-muted rounded-sm" />
-              <div className="flex-1 space-y-4">
-                <div className="h-8 w-64 bg-muted rounded" />
-                <div className="h-4 w-48 bg-muted rounded" />
-                <div className="h-20 w-full bg-muted rounded" />
-                <div className="flex gap-4">
-                  <div className="h-10 w-28 bg-muted rounded" />
-                  <div className="h-10 w-28 bg-muted rounded" />
-                </div>
-              </div>
+        <main className="flex-1 pt-20 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+              <span className="font-serif text-3xl text-muted-foreground">F</span>
+            </div>
+            <h1 className="text-2xl font-serif mb-3">Espace mémoriel introuvable</h1>
+            <p className="text-muted-foreground mb-6 font-sans text-sm">
+              L'espace mémoriel que vous recherchez n'existe pas ou a été supprimé.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    window.location.href = "/";
+                  }
+                }}
+                className="btn-ghost"
+              >
+                ← Retour
+              </button>
+              <Link to="/" className="btn-memorial">
+                Accueil
+              </Link>
             </div>
           </div>
         </main>
@@ -349,60 +459,52 @@ const MemorialInner = () => {
     );
   }
 
-  // If memorial not found, show error page
-  if (!memorialData) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Header />
-        <main className="flex-1 pt-20 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl mb-4">Espace mémoriel introuvable</h1>
-            <p className="text-muted-foreground mb-6">
-              L'espace mémoriel que vous recherchez n'existe pas ou a été supprimé.
-            </p>
-            <Link to="/" className="btn-memorial">
-              Retour à l'accueil
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Canonical URL for JSON-LD
-  const canonicalUrl = memorialData.shareToken 
+  // ── SAFE MEMORIAL OBJECT ──
+  // All properties defensively accessed with fallbacks
+  const canonicalUrl = memorialData?.shareToken 
     ? `${window.location.origin}/m/${memorialData.shareToken}` 
-    : `${window.location.origin}/memorial/${memorialData.slug}`;
+    : `${window.location.origin}/memorial/${memorialData?.slug || ''}`;
 
-  const bestPhoto = memorialData.photos?.[memorialData.defaultPhotoIndex || 0] || memorialData.photos?.[0] || null;
+  const safePhotos = memorialData?.photos || [];
+  const bestPhoto = safePhotos[memorialData?.defaultPhotoIndex || 0] || safePhotos[0] || null;
+  const safeName = memorialData?.name || "Inconnu";
+  const safeBio = memorialData?.bio || "";
+  const safeAuthor = memorialData?.author || { id: "", name: "Créateur", relation: "Créateur de l'espace" };
+  const safeGuestbookMessages = memorialData?.guestbookMessages || [];
+  const safeType = memorialData?.type || "PAST";
 
-  // Create memorial object with additional computed properties
   const memorial = {
-    ...memorialData,
+    id: memorialData?.id || "",
+    slug: memorialData?.slug || "",
+    name: safeName,
+    birthDate: memorialData?.birthDate || "",
+    deathDate: memorialData?.deathDate || "",
+    bio: safeBio,
+    photos: safePhotos,
+    author: safeAuthor,
     publishedAt: "Récemment",
-    enableContributions: memorialData?.type === "RECENT" && (memorialData?.donationEnabled ?? true),
+    enableContributions: safeType === "RECENT" && (memorialData?.donationEnabled ?? true),
     funeralDate: memorialData?.funeralDate ?? null,
     funeralLocation: memorialData?.funeralLocation ?? null,
-    bio: memorialData?.bio || "",
-    name: memorialData?.name || "",
-    photos: memorialData?.photos || [],
-    guestbookMessages: memorialData?.guestbookMessages || [],
+    guestbookMessages: safeGuestbookMessages,
+    type: safeType,
+    createdBy: memorialData?.createdBy || "",
+    defaultPhotoIndex: memorialData?.defaultPhotoIndex || 0,
+    shareToken: memorialData?.shareToken || null,
+    isDemo: memorialData?.isDemo || false,
   };
 
   const handleAddCandle = async (postId: string) => {
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || post.candleCount >= 10) return;
+    if (!post || (post.candleCount ?? 0) >= 10) return;
 
-    const prevCount = post.candleCount;
+    const prevCount = post.candleCount ?? 0;
     const newCount = prevCount + 1;
 
-    // Optimistic update — instant visual feedback
     setGuestbookPosts(prev =>
       prev.map(p => p.id === postId ? { ...p, candleCount: newCount } : p)
     );
 
-    // Background sync with database
     if (isValidUUID(postId)) {
       try {
         const { error } = await supabase
@@ -411,7 +513,6 @@ const MemorialInner = () => {
           .eq('id', postId);
         if (error) throw error;
       } catch {
-        // Rollback on failure
         setGuestbookPosts(prev =>
           prev.map(p => p.id === postId ? { ...p, candleCount: prevCount } : p)
         );
@@ -422,17 +523,15 @@ const MemorialInner = () => {
 
   const handleAddFlower = async (postId: string) => {
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || post.flowerCount >= 10) return;
+    if (!post || (post.flowerCount ?? 0) >= 10) return;
 
-    const prevCount = post.flowerCount;
+    const prevCount = post.flowerCount ?? 0;
     const newCount = prevCount + 1;
 
-    // Optimistic update — instant visual feedback
     setGuestbookPosts(prev =>
       prev.map(p => p.id === postId ? { ...p, flowerCount: newCount } : p)
     );
 
-    // Background sync with database
     if (isValidUUID(postId)) {
       try {
         const { error } = await supabase
@@ -441,7 +540,6 @@ const MemorialInner = () => {
           .eq('id', postId);
         if (error) throw error;
       } catch {
-        // Rollback on failure
         setGuestbookPosts(prev =>
           prev.map(p => p.id === postId ? { ...p, flowerCount: prevCount } : p)
         );
@@ -462,7 +560,6 @@ const MemorialInner = () => {
       return;
     }
 
-    // For mock data, just update local state
     if (!isValidUUID(memorialData.id)) {
       const newPost: GuestbookPostData = {
         id: `m${Date.now()}`,
@@ -480,7 +577,6 @@ const MemorialInner = () => {
       return;
     }
 
-    // For real memorials, call the edge function
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.access_token) {
@@ -501,7 +597,6 @@ const MemorialInner = () => {
 
       if (response.error) {
         console.error('Publish error:', response.error);
-        // Check for rate limiting (429)
         if (response.data?.rateLimited || response.error.message?.includes('429')) {
           toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
         } else {
@@ -512,7 +607,6 @@ const MemorialInner = () => {
 
       if (response.data?.success) {
         toast.success("Votre hommage a été publié avec succès");
-        // Refresh the posts from database
         await fetchGuestbookPosts();
       } else if (response.data?.rateLimited) {
         toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
@@ -533,7 +627,7 @@ const MemorialInner = () => {
     document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Convert death date for anniversary component (safely handle invalid dates)
+  // Convert death date for anniversary component
   const deathDateISO = (() => {
     if (!memorialData?.deathDate) return "";
     try {
@@ -549,10 +643,10 @@ const MemorialInner = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* JSON-LD Person Schema for SEO */}
       <JsonLdPerson
-        name={memorialData.name}
-        birthDate={memorialData.birthDate}
-        deathDate={memorialData.deathDate}
-        description={memorialData.bio}
+        name={safeName}
+        birthDate={memorial.birthDate}
+        deathDate={memorial.deathDate}
+        description={safeBio}
         image={bestPhoto}
         url={canonicalUrl}
       />
@@ -570,28 +664,28 @@ const MemorialInner = () => {
           </Link>
         </div>
         {/* Demo Guide Banner */}
-        {memorialData.isDemo && <DemoGuide />}
+        {memorial.isDemo && <DemoGuide />}
 
         {/* Hero Section */}
         <MemorialHero 
           memorial={{
             id: memorial.id,
             slug: memorial.slug,
-            name: memorial.name,
+            name: safeName,
             birthDate: memorial.birthDate,
             deathDate: memorial.deathDate,
-            bio: memorial.bio,
-            photos: memorial.photos,
-            author: memorial.author,
+            bio: safeBio,
+            photos: safePhotos,
+            author: safeAuthor,
             publishedAt: memorial.publishedAt,
             funeralDate: memorial.funeralDate,
             funeralLocation: memorial.funeralLocation,
             createdBy: memorial.createdBy,
-            defaultPhotoIndex: memorialData?.defaultPhotoIndex || 0,
-            shareToken: memorialData?.shareToken,
-            guestbookMessages: memorial.guestbookMessages.map(msg => ({
-              authorName: msg.authorName,
-              relationCategory: msg.relationCategory,
+            defaultPhotoIndex: memorial.defaultPhotoIndex,
+            shareToken: memorial.shareToken,
+            guestbookMessages: safeGuestbookMessages.map((msg: any) => ({
+              authorName: msg?.authorName || "Anonyme",
+              relationCategory: msg?.relationCategory || "autre",
             })),
           }}
           onScrollToGuestbook={scrollToGuestbook}
@@ -617,13 +711,13 @@ const MemorialInner = () => {
           }}
         />
 
-        {/* Anniversary Reminder - shown if death date exists */}
+        {/* Anniversary Reminder */}
         {deathDateISO && (
           <div className="container mx-auto px-4 pb-6">
             <div className="max-w-2xl">
               <AnniversaryReminder 
                 deathDate={deathDateISO} 
-                name={memorial.name} 
+                name={safeName} 
               />
             </div>
           </div>
@@ -632,30 +726,21 @@ const MemorialInner = () => {
         <div className="divider-elegant" />
 
         {/* Tabs Content */}
-        {/* Logique d'onglet par défaut : Si funeral_date < CurrentDate (00:00:00) → "Maillage" (relationships) */}
         {(() => {
-          // Algorithme de bascule robuste basé sur ISO 8601
-          // Compare funeral_date au début du jour actuel (00:00:00) pour éviter bascule prématurée
           const isPastFuneral = (() => {
             if (!memorial.funeralDate) return false;
             const funeralDateTime = new Date(memorial.funeralDate);
             if (isNaN(funeralDateTime.getTime())) return false;
-            
-            // Créer la date du jour actuel à 00:00:00 (minuit) en heure locale
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
-            // Le mémorial est "passé" si la date des obsèques est strictement antérieure à aujourd'hui
             return funeralDateTime.getTime() < today.getTime();
           })();
           
-          // Priorité : isPastFuneral (basé sur funeral_date) > type PAST (basé sur death_date)
           const defaultTab = isPastFuneral ? "relationships" : (memorial.type === "PAST" ? "relationships" : "notice");
           return (
         <section className="container mx-auto px-4 py-12">
           <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto flex-nowrap">
-              {/* Avis de décès - uniquement pour les décès récents */}
               {memorial.type !== "PAST" && (
                 <TabsTrigger
                   value="notice"
@@ -697,22 +782,20 @@ const MemorialInner = () => {
               )}
             </TabsList>
 
-            {/* Avis de décès + Programme obsèques */}
             {memorial.type !== "PAST" && (
               <TabsContent value="notice" className="mt-0">
                 <div className="max-w-2xl space-y-6">
-                  {/* Edit button for owner */}
                    {isOwner && (
                     <div className="space-y-4">
                       <div className="flex flex-wrap justify-end gap-3">
                         <EditMemorialDialog
                           memorialId={memorial.id}
                           initialData={{
-                            bio: memorial.bio,
+                            bio: safeBio,
                             funeralDate: memorial.funeralDate,
                             funeralLocation: memorial.funeralLocation,
-                            photos: memorial.photos,
-                            defaultPhotoIndex: 0,
+                            photos: safePhotos,
+                            defaultPhotoIndex: memorial.defaultPhotoIndex,
                           }}
                           onSave={handleMemorialUpdated}
                         />
@@ -722,23 +805,22 @@ const MemorialInner = () => {
                         />
                         <RequestLinkDialog
                           memorialId={memorial.id}
-                          memorialName={memorial.name}
+                          memorialName={safeName}
                         />
                       </div>
-                      {/* Inference suggestions for auto-linking */}
                       <InferredLinkSuggestions
                         memorialId={memorial.id}
-                        memorialName={memorial.name}
+                        memorialName={safeName}
                       />
                     </div>
                   )}
                   
                   <DeathNotice
                     memorial={{
-                      name: memorial.name,
+                      name: safeName,
                       birthDate: memorial.birthDate,
                       deathDate: memorial.deathDate,
-                      bio: memorial.bio,
+                      bio: safeBio,
                       funeralDate: memorial.funeralDate,
                       funeralLocation: memorial.funeralLocation,
                     }}
@@ -748,12 +830,11 @@ const MemorialInner = () => {
               </TabsContent>
             )}
 
-            {/* Recueillements / Calendrier */}
             <TabsContent value="gatherings" className="mt-0">
               <div className="max-w-2xl">
                 <GatheringsCalendar
                   events={memorialEvents}
-                  memorialName={memorial.name}
+                  memorialName={safeName}
                   memorialId={memorial.id}
                   isOwner={isOwner}
                   onAddEvent={fetchEventsAgain}
@@ -761,35 +842,32 @@ const MemorialInner = () => {
               </div>
             </TabsContent>
 
-            {/* Maillage relationnel — Accès conditionnel */}
             <TabsContent value="relationships" className="mt-0">
               <div className="max-w-3xl space-y-6">
-                {/* Transitive Discovery Widget — owner only */}
                 {isOwner && (
                   <TransitiveDiscoveryWidget
                     memorialId={memorial.id}
-                    memorialName={memorial.name}
+                    memorialName={safeName}
                   />
                 )}
                 <SecureDataDisplay blurPreview>
                   <RelationshipMaillage 
-                    deceasedName={memorial.name}
+                    deceasedName={safeName}
                     memorialId={memorial.id}
                     posts={guestbookPosts.map(post => ({
                       authorId: post.authorId,
-                      authorName: post.authorName,
-                      relationCategory: post.relationCategory,
+                      authorName: post?.authorName || "Anonyme",
+                      relationCategory: post?.relationCategory || "autre",
                     }))}
                   />
                 </SecureDataDisplay>
               </div>
             </TabsContent>
 
-            {/* Contributions - External Link */}
             {memorial.enableContributions && contributionsEnabled && (
               <TabsContent value="contributions" className="mt-0">
                 <div className="max-w-2xl">
-                  <ContributionLink deceasedName={memorial.name} />
+                  <ContributionLink deceasedName={safeName} />
                 </div>
               </TabsContent>
             )}
@@ -813,12 +891,10 @@ const MemorialInner = () => {
                 {guestbookPosts.length} message{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
-              {/* Message Form */}
               <div ref={guestbookFormRef}>
-                <GuestbookForm memorialId={memorialData.id} onSubmit={handleSubmitPost} />
+                <GuestbookForm memorialId={memorialData?.id || ""} onSubmit={handleSubmitPost} />
               </div>
 
-              {/* Posts List - Paginated */}
               <div className="divide-y divide-memorial-dark-muted/20 mt-8">
               {paginatedPosts.map((post) => (
                   <GuestbookPost
@@ -831,7 +907,6 @@ const MemorialInner = () => {
                 ))}
               </div>
 
-              {/* Pagination */}
               <GuestbookPagination
                 currentPage={currentGuestbookPage}
                 totalPages={totalGuestbookPages}
