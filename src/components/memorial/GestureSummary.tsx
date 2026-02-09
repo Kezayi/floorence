@@ -59,8 +59,8 @@ const GestureSummary = ({
           disabled={!userHasPosted}
           className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          <Flame size={20} className={`text-[hsl(var(--gesture-candle))] mb-0.5 ${hasCandleFervor ? 'animate-flicker' : ''}`} />
-          <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-[hsl(var(--gesture-candle))]' : ''}`}>
+          <Flame size={20} className={`text-gesture-candle mb-0.5 ${hasCandleFervor ? 'animate-flicker' : ''}`} />
+          <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-gesture-candle' : ''}`}>
             {totals.candleCount.toLocaleString("fr-FR")}
           </span>
           <span className="text-xs font-sans">Cierges</span>
@@ -70,8 +70,8 @@ const GestureSummary = ({
           disabled={!userHasPosted}
           className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          <Flower2 size={20} className={`text-[hsl(var(--gesture-flower))] mb-0.5 ${hasFlowerFervor ? 'animate-flicker' : ''}`} />
-          <span className={`text-2xl font-serif ${hasFlowerFervor ? 'text-[hsl(var(--gesture-flower))]' : ''}`}>
+          <Flower2 size={20} className={`text-gesture-flower mb-0.5 ${hasFlowerFervor ? 'animate-flicker' : ''}`} />
+          <span className={`text-2xl font-serif ${hasFlowerFervor ? 'text-gesture-flower' : ''}`}>
             {totals.flowerCount.toLocaleString("fr-FR")}
           </span>
           <span className="text-xs font-sans">Fleurs</span>

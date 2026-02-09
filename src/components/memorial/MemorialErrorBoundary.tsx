@@ -28,7 +28,20 @@ class MemorialErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("[MemorialErrorBoundary] Crash intercepté:", error, errorInfo);
+    console.error("[MemorialErrorBoundary] Stack composant:", errorInfo.componentStack);
+    console.error("[MemorialErrorBoundary] Message:", error?.message);
+    console.error("[MemorialErrorBoundary] Nom:", error?.name);
   }
+
+  handleBack = () => {
+    if (window.history.length > 1) {
+      this.setState({ hasError: false, error: null });
+      window.history.back();
+    } else {
+      this.setState({ hasError: false, error: null });
+      window.location.href = "/";
+    }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -45,9 +58,15 @@ class MemorialErrorBoundary extends Component<Props, State> {
               </h1>
               <p className="text-muted-foreground mb-6 font-sans text-sm">
                 L'espace mémoriel n'a pas pu être affiché correctement.
-                Veuillez réessayer ou revenir à l'accueil.
+                Veuillez réessayer ou revenir en arrière.
               </p>
               <div className="flex gap-3 justify-center">
+                <button
+                  onClick={this.handleBack}
+                  className="btn-ghost"
+                >
+                  ← Retour
+                </button>
                 <button
                   onClick={() => this.setState({ hasError: false, error: null })}
                   className="btn-ghost"
@@ -55,7 +74,7 @@ class MemorialErrorBoundary extends Component<Props, State> {
                   Réessayer
                 </button>
                 <Link to="/" className="btn-memorial">
-                  Retour à l'accueil
+                  Accueil
                 </Link>
               </div>
             </div>
