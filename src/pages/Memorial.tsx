@@ -381,9 +381,13 @@ const MemorialInner = () => {
   const memorial = {
     ...memorialData,
     publishedAt: "Récemment",
-    enableContributions: memorialData.type === "RECENT" && (memorialData.donationEnabled ?? true),
-    funeralDate: memorialData.funeralDate,
-    funeralLocation: memorialData.funeralLocation,
+    enableContributions: memorialData?.type === "RECENT" && (memorialData?.donationEnabled ?? true),
+    funeralDate: memorialData?.funeralDate ?? null,
+    funeralLocation: memorialData?.funeralLocation ?? null,
+    bio: memorialData?.bio || "",
+    name: memorialData?.name || "",
+    photos: memorialData?.photos || [],
+    guestbookMessages: memorialData?.guestbookMessages || [],
   };
 
   const handleAddCandle = async (postId: string) => {
@@ -531,10 +535,9 @@ const MemorialInner = () => {
 
   // Convert death date for anniversary component (safely handle invalid dates)
   const deathDateISO = (() => {
-    if (!memorialData.deathDate) return "";
+    if (!memorialData?.deathDate) return "";
     try {
       const date = new Date(memorialData.deathDate);
-      // Check if date is valid before calling toISOString
       if (isNaN(date.getTime())) return "";
       return date.toISOString();
     } catch {

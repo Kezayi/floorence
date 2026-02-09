@@ -21,8 +21,8 @@ interface RelationshipMaillageProps {
 // Palette Floorence — cohérente avec le graphe
 const categoryStyles: Record<string, { dot: string; label: string }> = {
   famille: { dot: "bg-foreground", label: "Famille" },
-  allies: { dot: "bg-[hsl(45,90%,50%)]", label: "Alliés" },
-  amis: { dot: "bg-[hsl(340,60%,65%)]", label: "Amis & Connaissances" },
+  allies: { dot: "bg-ai-gold", label: "Alliés" },
+  amis: { dot: "bg-gesture-flower", label: "Amis & Connaissances" },
   autre: { dot: "bg-muted-foreground", label: "Autres" },
 };
 
@@ -56,20 +56,20 @@ const getRelationColorClass = (relation: string): string => {
   if (relation.includes("Époux") || relation.includes("Épouse") || 
       relation.includes("Belle-") || relation.includes("Beau-") ||
       relation.includes("Gendre") || relation.includes("Bru")) {
-    return "text-[hsl(var(--gesture-candle))]";
+    return "text-gesture-candle";
   }
   if (relation.includes("Mère") || relation.includes("Fille") || 
       relation.includes("Sœur") || relation.includes("Tante") ||
       relation.includes("Nièce") || relation.includes("Cousine") ||
       relation.includes("Grand-mère") || relation.includes("Petite-")) {
-    return "text-[hsl(var(--gesture-flower))]";
+    return "text-gesture-flower";
   }
   return "text-foreground";
 };
 
 const confidenceBadges = {
   high: { label: "Lien direct", className: "bg-foreground/5 text-foreground border-foreground/15" },
-  medium: { label: "Lien probable", className: "bg-[hsl(45,90%,50%)]/10 text-[hsl(45,70%,35%)] border-[hsl(45,90%,50%)]/20" },
+  medium: { label: "Lien probable", className: "bg-ai-gold/10 text-ai-gold-foreground border-ai-gold/20" },
   low: { label: "Lien indirect", className: "bg-muted text-muted-foreground border-border" },
 };
 
@@ -193,17 +193,17 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
 
           {/* Pont des Ancêtres */}
           {interMemorialLinks && interMemorialLinks.length > 0 && (
-            <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 p-5 rounded-sm">
+            <div className="bg-ai-gold/5 border border-ai-gold/20 p-5 rounded-sm">
               <div className="flex items-center gap-2 mb-3">
-                <Link2 className="w-4 h-4 text-[#D4AF37]" />
-                <h4 className="font-serif text-lg text-[#D4AF37]">Pont des Ancêtres</h4>
+                <Link2 className="w-4 h-4 text-ai-gold" />
+                <h4 className="font-serif text-lg text-ai-gold">Pont des Ancêtres</h4>
               </div>
               <div className="space-y-2">
                 {interMemorialLinks.map((link, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-sm">
-                    <div className="w-3 h-0.5 bg-[#D4AF37] rounded-full" />
+                    <div className="w-3 h-0.5 bg-ai-gold rounded-full" />
                     <span className="font-serif">
-                      {deceasedName.split(" ")[0]} — <span className="text-[#D4AF37]">{link.relationType}</span> de {displayName(link.name, isAuthenticated)}
+                      {deceasedName.split(" ")[0]} — <span className="text-ai-gold">{link.relationType}</span> de {displayName(link.name, isAuthenticated)}
                     </span>
                   </div>
                 ))}

@@ -190,7 +190,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                   toggleFollow({
                     slug: memorial.slug,
                     name: memorial.name,
-                    photoUrl: memorial.photos[0],
+                    photoUrl: memorial.photos?.[0] || "",
                   });
                   toast({
                     title: checkIsFollowing(memorial.slug) ? "Mémorial retiré des suivis" : "Mémorial suivi",
