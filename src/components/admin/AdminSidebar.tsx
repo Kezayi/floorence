@@ -40,7 +40,7 @@ const AdminSidebar = () => {
     { to: `${ADMIN_PREFIX}/utilisateurs`, icon: Users, label: 'Utilisateurs', adminOnly: true },
     { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'Intelligence Sociale', adminOnly: true },
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
-    { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont Intermédiaires', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
     { to: `${ADMIN_PREFIX}/historique`, icon: History, label: 'Historique', adminOnly: true },
     { to: `${ADMIN_PREFIX}/parametres`, icon: Settings, label: 'Paramètres', adminOnly: true },
   ];

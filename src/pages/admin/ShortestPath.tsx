@@ -1,13 +1,13 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Route, Search, Users, ArrowRight } from "lucide-react";
+import { Route, Search, Users, ArrowRight, Crown, TreePine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
+import { analyzeKinship, formatDegree, type KinshipAnalysis } from "@/lib/kinshipCalculator";
 
 /* ── Types ── */
 interface MemorialOption {
@@ -112,6 +112,8 @@ const ShortestPath = () => {
   const [safePath, setSafePath] = useState<PathStep[] | null>(null);
   const [noPath, setNoPath] = useState(false);
   const [computing, setComputing] = useState(false);
+  const [kinship, setKinship] = useState<KinshipAnalysis | null>(null);
+  const [safeKinship, setSafeKinship] = useState<KinshipAnalysis | null>(null);
 
   const debouncedA = useDebounce(searchA, 300);
   const debouncedB = useDebounce(searchB, 300);
@@ -135,6 +137,8 @@ const ShortestPath = () => {
     setPathResult(null);
     setSafePath(null);
     setNoPath(false);
+    setKinship(null);
+    setSafeKinship(null);
 
     try {
       // Fetch all accepted relations
@@ -197,6 +201,7 @@ const ShortestPath = () => {
         isBlood: i === 0 ? false : isBloodRelation(shortRels[i - 1]),
       }));
       setPathResult(steps);
+      setKinship(analyzeKinship(shortRels));
 
       // Safe path (blood + alliance only)
       const safeResult = bfs(graph, selectedA.id, selectedB.id, true);
@@ -208,6 +213,7 @@ const ShortestPath = () => {
           isBlood: i === 0 ? false : isBloodRelation(safeRels[i - 1]),
         }));
         setSafePath(safeSteps);
+        setSafeKinship(analyzeKinship(safeRels));
       }
     } finally {
       setComputing(false);
@@ -234,11 +240,11 @@ const ShortestPath = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-        <Route className="w-8 h-8 text-primary" />
-        Pont des Intermédiaires
+        <TreePine className="w-8 h-8 text-ai-gold" />
+        Pont des Vivants
       </h1>
       <p className="text-muted-foreground mb-8 font-sans">
-        Trouvez le chemin relationnel entre deux personnes (max {MAX_DEGREES} degrés de séparation)
+        Découvrez les degrés de parenté entre deux personnes à travers leur héritage commun (max {MAX_DEGREES} degrés)
       </p>
 
       {/* Search fields */}
@@ -246,7 +252,7 @@ const ShortestPath = () => {
         <SearchField
           label="Personne A"
           value={searchA}
-          onChange={(v) => { setSearchA(v); setSelectedA(null); setPathResult(null); setSafePath(null); setNoPath(false); }}
+          onChange={(v) => { setSearchA(v); setSelectedA(null); setPathResult(null); setSafePath(null); setNoPath(false); setKinship(null); setSafeKinship(null); }}
           options={optionsA || []}
           selected={selectedA}
           onSelect={(o) => { setSelectedA(o); setSearchA(o.name); }}
@@ -254,7 +260,7 @@ const ShortestPath = () => {
         <SearchField
           label="Personne B"
           value={searchB}
-          onChange={(v) => { setSearchB(v); setSelectedB(null); setPathResult(null); setSafePath(null); setNoPath(false); }}
+          onChange={(v) => { setSearchB(v); setSelectedB(null); setPathResult(null); setSafePath(null); setNoPath(false); setKinship(null); setSafeKinship(null); }}
           options={optionsB || []}
           selected={selectedB}
           onSelect={(o) => { setSelectedB(o); setSearchB(o.name); }}
@@ -291,12 +297,14 @@ const ShortestPath = () => {
             title="Chemin le plus court"
             steps={pathResult}
             narrative={generateNarrative(pathResult)}
+            kinship={kinship}
           />
           {safePath && safePath.length !== pathResult.length && (
             <PathDisplay
               title="Chemin le plus sûr (sang & alliance)"
               steps={safePath}
               narrative={generateNarrative(safePath)}
+              kinship={safeKinship}
               isSafe
             />
           )}
@@ -372,11 +380,13 @@ const PathDisplay = ({
   steps,
   narrative,
   isSafe,
+  kinship,
 }: {
   title: string;
   steps: PathStep[];
   narrative: string;
   isSafe?: boolean;
+  kinship?: KinshipAnalysis | null;
 }) => (
   <Card className={isSafe ? "border-ai-gold/30" : ""}>
     <CardHeader className="pb-3">
@@ -389,49 +399,108 @@ const PathDisplay = ({
       </CardTitle>
     </CardHeader>
     <CardContent>
-      {/* Visual path */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-4">
-        {steps.map((step, i) => (
-          <div key={step.node.id} className="flex items-center gap-1 shrink-0">
-            {/* Connector */}
-            {i > 0 && (
-              <div className="flex items-center gap-1 px-1">
-                <div
-                  className={`h-[2px] w-8 md:w-12 ${
-                    step.isBlood
-                      ? "bg-[hsl(0,45%,30%)]/80"
-                      : "bg-ai-gold/60"
-                  }`}
-                />
-                <span className={`text-[9px] md:text-[10px] font-sans whitespace-nowrap ${
-                  step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
-                }`}>
-                  {step.relation}
-                </span>
-                <ArrowRight className={`w-3 h-3 ${
-                  step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
-                }`} />
-              </div>
-            )}
-            {/* Node */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-muted overflow-hidden border border-border grayscale">
-                {step.node.photo ? (
-                  <img src={step.node.photo} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-serif text-sm text-muted-foreground">
-                      {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <span className="font-serif text-[10px] md:text-xs text-foreground text-center mt-1 max-w-[80px] truncate">
-                {step.node.name}
+      {/* Kinship Analysis Card */}
+      {kinship && (
+        <div className="mb-5 p-4 rounded-md border border-ai-gold/20 bg-ai-gold/5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-ai-gold" />
+              <span className="font-serif text-sm font-semibold text-foreground">
+                {kinship.label}
               </span>
             </div>
+            <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px]">
+              {formatDegree(kinship.degree)}
+            </Badge>
           </div>
-        ))}
+
+          {kinship.commonAncestorIndex !== null && steps[kinship.commonAncestorIndex] && (
+            <p className="text-xs font-sans text-muted-foreground mt-1">
+              <span className="text-ai-gold">◆</span>{" "}
+              Racine commune :{" "}
+              <span className="font-medium text-foreground/80">
+                {steps[kinship.commonAncestorIndex].node.name}
+              </span>
+            </p>
+          )}
+
+          {kinship.hasAlliance && (
+            <p className="text-[10px] font-sans text-muted-foreground mt-1.5 italic">
+              Ce lien traverse une alliance matrimoniale
+            </p>
+          )}
+
+          <div className="flex items-center gap-1.5 mt-3">
+            <span className="text-[10px] font-sans text-muted-foreground">Confiance :</span>
+            {[0, 1, 2].map((i) => {
+              const filled = i < (kinship.confidence === "haute" ? 3 : kinship.confidence === "moyenne" ? 2 : 1);
+              return (
+                <div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-ai-gold" : "bg-muted-foreground/20"}`}
+                />
+              );
+            })}
+            <span className="text-[10px] font-sans text-muted-foreground capitalize ml-0.5">
+              {kinship.confidence}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Visual path */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-4">
+        {steps.map((step, i) => {
+          const isAncestor = kinship?.commonAncestorIndex === i;
+          return (
+            <div key={step.node.id} className="flex items-center gap-1 shrink-0">
+              {/* Connector */}
+              {i > 0 && (
+                <div className="flex items-center gap-1 px-1">
+                  <div
+                    className={`h-[2px] w-8 md:w-12 ${
+                      step.isBlood
+                        ? "bg-[hsl(0,45%,30%)]/80"
+                        : "bg-ai-gold/60"
+                    }`}
+                  />
+                  <span className={`text-[9px] md:text-[10px] font-sans whitespace-nowrap ${
+                    step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
+                  }`}>
+                    {step.relation}
+                  </span>
+                  <ArrowRight className={`w-3 h-3 ${
+                    step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
+                  }`} />
+                </div>
+              )}
+              {/* Node */}
+              <div className="flex flex-col items-center">
+                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-muted overflow-hidden grayscale ${
+                  isAncestor
+                    ? "ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
+                    : "border border-border"
+                }`}>
+                  {step.node.photo ? (
+                    <img src={step.node.photo} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="font-serif text-sm text-muted-foreground">
+                        {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <span className="font-serif text-[10px] md:text-xs text-foreground text-center mt-1 max-w-[80px] truncate">
+                  {step.node.name}
+                </span>
+                {isAncestor && (
+                  <span className="text-[8px] text-ai-gold font-sans mt-0.5">◆ Racine</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Narrative */}
