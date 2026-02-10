@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Route, Search, Users, ArrowRight, Crown, TreePine, User } from "lucide-react";
+import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
-import { analyzeKinship, formatDegree, type KinshipAnalysis } from "@/lib/kinshipCalculator";
+import { analyzeKinship, formatDegree, type KinshipAnalysis, type AmbiguousLink } from "@/lib/kinshipCalculator";
 
 /* ── Types ── */
 interface LivingOption {
@@ -441,7 +441,7 @@ const LivingSearchField = ({
   </Card>
 );
 
-/* ── Path Display with Kinship ── */
+/* ── Path Display with Kinship & Ambiguity ── */
 const PathDisplay = ({
   title,
   steps,
@@ -454,141 +454,250 @@ const PathDisplay = ({
   narrative: string;
   isSafe?: boolean;
   kinship?: KinshipAnalysis | null;
-}) => (
-  <Card className={isSafe ? "border-ai-gold/30" : ""}>
-    <CardHeader className="pb-3">
-      <CardTitle className="text-base font-serif flex items-center gap-2">
-        <Route className={`w-4 h-4 ${isSafe ? "text-ai-gold" : "text-primary"}`} />
-        {title}
-        <Badge variant="outline" className="ml-auto text-xs font-sans">
-          {steps.filter(s => !s.isLiving).length} intermédiaire{steps.filter(s => !s.isLiving).length > 1 ? "s" : ""}
-        </Badge>
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      {/* Kinship Analysis Card */}
-      {kinship && (
-        <div className="mb-5 p-4 rounded-md border border-ai-gold/20 bg-ai-gold/5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-ai-gold" />
-              <span className="font-serif text-sm font-semibold text-foreground">
-                {kinship.label}
+}) => {
+  const ambiguities = kinship?.ambiguities || [];
+
+  return (
+    <Card className={isSafe ? "border-ai-gold/30" : ""}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-serif flex items-center gap-2">
+          <Route className={`w-4 h-4 ${isSafe ? "text-ai-gold" : "text-primary"}`} />
+          {title}
+          <Badge variant="outline" className="ml-auto text-xs font-sans">
+            {steps.filter(s => !s.isLiving).length} intermédiaire{steps.filter(s => !s.isLiving).length > 1 ? "s" : ""}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Kinship Analysis Card */}
+        {kinship && (
+          <div className="mb-5 p-4 rounded-md border border-ai-gold/20 bg-ai-gold/5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-ai-gold" />
+                <span className="font-serif text-sm font-semibold text-foreground">
+                  {kinship.label}
+                </span>
+              </div>
+              <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px]">
+                {formatDegree(kinship.degree)}
+              </Badge>
+            </div>
+
+            {kinship.commonAncestorIndex !== null && steps[kinship.commonAncestorIndex] && (
+              <p className="text-xs font-sans text-muted-foreground mt-1">
+                <span className="text-ai-gold">◆</span>{" "}
+                Racine commune :{" "}
+                <span className="font-medium text-foreground/80">
+                  {steps[kinship.commonAncestorIndex].node.name}
+                </span>
+              </p>
+            )}
+
+            {kinship.hasAlliance && (
+              <p className="text-[10px] font-sans text-muted-foreground mt-1.5 italic">
+                Ce lien traverse une alliance matrimoniale
+              </p>
+            )}
+
+            <div className="flex items-center gap-1.5 mt-3">
+              <span className="text-[10px] font-sans text-muted-foreground">Confiance :</span>
+              {[0, 1, 2].map((i) => {
+                const filled = i < (kinship.confidence === "haute" ? 3 : kinship.confidence === "moyenne" ? 2 : 1);
+                return (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-ai-gold" : "bg-muted-foreground/20"}`}
+                  />
+                );
+              })}
+              <span className="text-[10px] font-sans text-muted-foreground capitalize ml-0.5">
+                {kinship.confidence}
               </span>
             </div>
-            <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px]">
-              {formatDegree(kinship.degree)}
-            </Badge>
           </div>
+        )}
 
-          {kinship.commonAncestorIndex !== null && steps[kinship.commonAncestorIndex] && (
-            <p className="text-xs font-sans text-muted-foreground mt-1">
-              <span className="text-ai-gold">◆</span>{" "}
-              Racine commune :{" "}
-              <span className="font-medium text-foreground/80">
-                {steps[kinship.commonAncestorIndex].node.name}
-              </span>
-            </p>
-          )}
-
-          {kinship.hasAlliance && (
-            <p className="text-[10px] font-sans text-muted-foreground mt-1.5 italic">
-              Ce lien traverse une alliance matrimoniale
-            </p>
-          )}
-
-          <div className="flex items-center gap-1.5 mt-3">
-            <span className="text-[10px] font-sans text-muted-foreground">Confiance :</span>
-            {[0, 1, 2].map((i) => {
-              const filled = i < (kinship.confidence === "haute" ? 3 : kinship.confidence === "moyenne" ? 2 : 1);
-              return (
-                <div
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-ai-gold" : "bg-muted-foreground/20"}`}
-                />
-              );
-            })}
-            <span className="text-[10px] font-sans text-muted-foreground capitalize ml-0.5">
-              {kinship.confidence}
-            </span>
+        {/* Ambiguity Alerts */}
+        {ambiguities.length > 0 && (
+          <div className="mb-5 space-y-3">
+            {ambiguities.map((amb, idx) => (
+              <AmbiguityAlert key={idx} ambiguity={amb} steps={steps} />
+            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Visual path */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-4">
-        {steps.map((step, i) => {
-          const isAncestor = kinship?.commonAncestorIndex === i;
-          const isLiving = step.isLiving;
-          return (
-            <div key={`${step.node.id}-${i}`} className="flex items-center gap-1 shrink-0">
-              {/* Connector */}
-              {i > 0 && (
-                <div className="flex items-center gap-1 px-1">
-                  <div
-                    className={`h-[2px] w-8 md:w-12 ${
-                      step.isBlood ? "bg-[hsl(0,45%,30%)]/80" : "bg-ai-gold/60"
-                    }`}
-                  />
-                  <span className={`text-[9px] md:text-[10px] font-sans whitespace-nowrap ${
-                    step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
+        {/* Visual path */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-4">
+          {steps.map((step, i) => {
+            const isAncestor = kinship?.commonAncestorIndex === i;
+            const isLiving = step.isLiving;
+            const isAmbiguous = ambiguities.some(a => a.stepIndex === i);
+            return (
+              <div key={`${step.node.id}-${i}`} className="flex items-center gap-1 shrink-0">
+                {/* Connector */}
+                {i > 0 && (
+                  <div className="flex items-center gap-1 px-1">
+                    {isAmbiguous ? (
+                      <div
+                        className={`h-[2px] w-8 md:w-12 border-t-2 border-dashed ${
+                          step.isBlood ? "border-[hsl(0,45%,30%)]/60" : "border-ai-gold/40"
+                        }`}
+                      />
+                    ) : (
+                      <div
+                        className={`h-[2px] w-8 md:w-12 ${
+                          step.isBlood ? "bg-[hsl(0,45%,30%)]/80" : "bg-ai-gold/60"
+                        }`}
+                      />
+                    )}
+                    <span className={`text-[9px] md:text-[10px] font-sans whitespace-nowrap ${
+                      isAmbiguous ? "text-orange-500 font-medium" :
+                      step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
+                    }`}>
+                      {isAmbiguous ? `${step.relation} ?` : step.relation}
+                    </span>
+                    <ArrowRight className={`w-3 h-3 ${
+                      isAmbiguous ? "text-orange-500" :
+                      step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
+                    }`} />
+                  </div>
+                )}
+                {/* Node */}
+                <div className="flex flex-col items-center">
+                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden ${
+                    isLiving
+                      ? "bg-primary/10 ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                      : isAmbiguous
+                        ? "bg-muted grayscale ring-2 ring-orange-400 ring-dashed ring-offset-2 ring-offset-background"
+                        : isAncestor
+                          ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
+                          : "bg-muted grayscale border border-border"
                   }`}>
-                    {step.relation}
+                    {step.node.photo ? (
+                      <img src={step.node.photo} alt="" className={`w-full h-full object-cover ${!isLiving ? "grayscale" : ""}`} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        {isLiving ? (
+                          <User className="w-5 h-5 text-primary" />
+                        ) : (
+                          <span className="font-serif text-sm text-muted-foreground">
+                            {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-[10px] md:text-xs text-center mt-1 max-w-[80px] truncate ${
+                    isLiving ? "font-sans font-medium text-primary" :
+                    isAmbiguous ? "font-serif text-orange-500" : "font-serif text-foreground"
+                  }`}>
+                    {step.node.name}
                   </span>
-                  <ArrowRight className={`w-3 h-3 ${
-                    step.isBlood ? "text-[hsl(0,45%,30%)]" : "text-ai-gold"
-                  }`} />
-                </div>
-              )}
-              {/* Node */}
-              <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden ${
-                  isLiving
-                    ? "bg-primary/10 ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
-                    : isAncestor
-                      ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
-                      : "bg-muted grayscale border border-border"
-                }`}>
-                  {step.node.photo ? (
-                    <img src={step.node.photo} alt="" className={`w-full h-full object-cover ${!isLiving ? "grayscale" : ""}`} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      {isLiving ? (
-                        <User className="w-5 h-5 text-primary" />
-                      ) : (
-                        <span className="font-serif text-sm text-muted-foreground">
-                          {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                        </span>
-                      )}
-                    </div>
+                  {isLiving && (
+                    <span className="text-[8px] text-primary font-sans mt-0.5">Vivant</span>
+                  )}
+                  {isAmbiguous && !isLiving && (
+                    <span className="text-[8px] text-orange-500 font-sans mt-0.5">⚠ À valider</span>
+                  )}
+                  {isAncestor && !isLiving && !isAmbiguous && (
+                    <span className="text-[8px] text-ai-gold font-sans mt-0.5">◆ Racine</span>
                   )}
                 </div>
-                <span className={`text-[10px] md:text-xs text-center mt-1 max-w-[80px] truncate ${
-                  isLiving ? "font-sans font-medium text-primary" : "font-serif text-foreground"
-                }`}>
-                  {step.node.name}
-                </span>
-                {isLiving && (
-                  <span className="text-[8px] text-primary font-sans mt-0.5">Vivant</span>
-                )}
-                {isAncestor && !isLiving && (
-                  <span className="text-[8px] text-ai-gold font-sans mt-0.5">◆ Racine</span>
-                )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* Narrative */}
-      <div className="mt-4 p-3 bg-muted/30 rounded-sm border border-border">
-        <p className="text-sm font-serif text-foreground/80 italic">
-          « {narrative} »
-        </p>
+        {/* Narrative */}
+        <div className="mt-4 p-3 bg-muted/30 rounded-sm border border-border">
+          <p className="text-sm font-serif text-foreground/80 italic">
+            « {narrative} »
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+/* ── Ambiguity Alert Card ── */
+const AmbiguityAlert = ({
+  ambiguity,
+  steps,
+}: {
+  ambiguity: AmbiguousLink;
+  steps: PathStep[];
+}) => {
+  const node = steps[ambiguity.stepIndex]?.node;
+  const prevNode = steps[ambiguity.stepIndex - 1]?.node;
+  const nextNode = steps[ambiguity.stepIndex + 1]?.node;
+
+  return (
+    <div className="p-3 rounded-md border border-orange-400/30 bg-orange-50/50 dark:bg-orange-950/10">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-sans font-semibold text-foreground mb-1">
+            Relation à valider
+          </p>
+          <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+            {prevNode && node && (
+              <>
+                <span className="font-medium text-foreground/80">{prevNode.name}</span>
+                {" est potentiellement "}
+              </>
+            )}
+            {ambiguity.alternatives.map((alt, i) => (
+              <span key={i}>
+                {i > 0 && (i === ambiguity.alternatives.length - 1 ? " ou " : ", ")}
+                <span className="font-medium text-orange-600 dark:text-orange-400">{alt}</span>
+              </span>
+            ))}
+            {node && (
+              <>
+                {" de "}
+                <span className="font-medium text-foreground/80">{node.name}</span>
+              </>
+            )}
+          </p>
+          <p className="text-[10px] font-sans text-muted-foreground/70 mt-1 italic">
+            {ambiguity.reason}
+          </p>
+
+          {/* Validation actions */}
+          <div className="flex flex-wrap gap-2 mt-2.5">
+            {ambiguity.alternatives.map((alt) => (
+              <button
+                key={alt}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-sans font-medium
+                  rounded-md border border-border bg-background hover:bg-primary/5 hover:border-primary/30
+                  transition-colors text-foreground/80"
+                onClick={() => {
+                  // Future: create memorial_relation entry
+                  console.log(`Validated: ${prevNode?.name} is ${alt} of ${node?.name}`);
+                }}
+              >
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+                {alt}
+              </button>
+            ))}
+            <button
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-sans font-medium
+                rounded-md border border-border bg-background hover:bg-destructive/5 hover:border-destructive/30
+                transition-colors text-muted-foreground"
+              onClick={() => {
+                console.log(`Dismissed ambiguity for ${node?.name}`);
+              }}
+            >
+              <XCircle className="w-3 h-3 text-destructive" />
+              Ignorer
+            </button>
+          </div>
+        </div>
       </div>
-    </CardContent>
-  </Card>
-);
+    </div>
+  );
+};
 
 /* ── Helpers ── */
 
