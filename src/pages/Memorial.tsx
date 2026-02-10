@@ -17,7 +17,6 @@ import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
-import GuestbookPagination from "@/components/memorial/GuestbookPagination";
 import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
 import LineageTree from "@/components/memorial/LineageTree";
 import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
@@ -28,6 +27,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
+import { useTabPrefetch } from "@/hooks/useTabPrefetch";
+import { useInView } from "react-intersection-observer";
 import { calculateAge, getMemorialType, formatDateFrench } from "@/lib/dateUtils";
 import { toast } from "sonner";
 
@@ -78,11 +79,11 @@ const MemorialInner = () => {
   const { user } = useAuth();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
   
-  const [currentGuestbookPage, setCurrentGuestbookPage] = useState(1);
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const { data: settings } = useSystemSettings();
-  const POSTS_PER_PAGE = 5;
+  const POSTS_PER_PAGE = 10;
+  const [visiblePostCount, setVisiblePostCount] = useState(POSTS_PER_PAGE);
 
   // ── DB Fallback State ──
   // When memorial not found in context, query DB directly to prevent false 404s
@@ -368,17 +369,27 @@ const MemorialInner = () => {
       };
    }, [memorialData?.id]);
 
-  // Reset page when memorial changes
+  // Reset visible count when memorial changes
   useEffect(() => {
-    setCurrentGuestbookPage(1);
+    setVisiblePostCount(POSTS_PER_PAGE);
   }, [slug, token]);
 
-   // Pagination calculations
-  const totalGuestbookPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
-  const paginatedPosts = useMemo(() => {
-    const startIndex = (currentGuestbookPage - 1) * POSTS_PER_PAGE;
-    return guestbookPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
-  }, [guestbookPosts, currentGuestbookPage, POSTS_PER_PAGE]);
+   // Infinite scroll: visible posts slice
+  const visiblePosts = useMemo(() => {
+    return guestbookPosts.slice(0, visiblePostCount);
+  }, [guestbookPosts, visiblePostCount]);
+
+  const hasMorePosts = visiblePostCount < guestbookPosts.length;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef } = useInView({
+    threshold: 0,
+    onChange: (inView) => {
+      if (inView && hasMorePosts) {
+        setVisiblePostCount((prev) => prev + POSTS_PER_PAGE);
+      }
+    },
+  });
 
   // Calculate totals from all posts
   const totals = useMemo(() => {
@@ -395,8 +406,8 @@ const MemorialInner = () => {
   const currentUserId = user?.id || "";
   const userHasPosted = guestbookPosts.some((post) => post.authorId === currentUserId);
 
-  // Check if current user is the memorial owner
   const isOwner = user?.id === memorialData?.createdBy || false;
+  const { prefetchTab } = useTabPrefetch(memorialData?.id || "");
 
   const handleMemorialUpdated = () => {
     window.location.reload();
@@ -776,28 +787,31 @@ const MemorialInner = () => {
                 </TabsTrigger>
               )}
               
-              <TabsTrigger
-                value="gatherings"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-              >
+                <TabsTrigger
+                  value="gatherings"
+                  onMouseEnter={() => prefetchTab("gatherings")}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+                >
                 <Calendar className="w-4 h-4" />
                 <span className="hidden sm:inline">Recueillements</span>
                 <span className="sm:hidden">Calendrier</span>
               </TabsTrigger>
               
-              <TabsTrigger
-                value="relationships"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-              >
+                <TabsTrigger
+                  value="relationships"
+                  onMouseEnter={() => prefetchTab("relationships")}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+                >
                 <GitBranch className="w-4 h-4" />
                 <span className="hidden sm:inline">Maillage</span>
                 <span className="sm:hidden">Liens</span>
               </TabsTrigger>
               
-              <TabsTrigger
-                value="lineage"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-              >
+                <TabsTrigger
+                  value="lineage"
+                  onMouseEnter={() => prefetchTab("lineage")}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+                >
                 <TreePine className="w-4 h-4" />
                 <span className="hidden sm:inline">Arbre</span>
                 <span className="sm:hidden">Arbre</span>
@@ -942,7 +956,7 @@ const MemorialInner = () => {
               </div>
 
               <div className="divide-y divide-memorial-dark-muted/20 mt-8">
-              {paginatedPosts.map((post) => (
+              {visiblePosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
                     post={post}
@@ -953,11 +967,16 @@ const MemorialInner = () => {
                 ))}
               </div>
 
-              <GuestbookPagination
-                currentPage={currentGuestbookPage}
-                totalPages={totalGuestbookPages}
-                onPageChange={setCurrentGuestbookPage}
-              />
+              {/* Infinite scroll sentinel */}
+              {hasMorePosts && (
+                <div ref={loadMoreRef} className="py-6 flex justify-center">
+                  <div className="flex gap-2">
+                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" />
+                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" style={{ animationDelay: "0.2s" }} />
+                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
