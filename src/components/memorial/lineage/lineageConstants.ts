@@ -74,13 +74,13 @@ export const classifyRelation = (relation: string): ClassifiedRelation => {
   if (SIBLING_RELATIONS.some(s => lower.includes(s))) {
     return { generation: 0, isLineage: true, linkStyle: "sibling", pillar: "nucleaire" };
   }
-  // Spouses (0)
+  // Spouses (0) — excluded from lineage tree
   if (SPOUSE_RELATIONS.some(s => lower.includes(s))) {
-    return { generation: 0, isLineage: true, linkStyle: "alliance", pillar: "alliance" };
+    return { generation: 0, isLineage: false, linkStyle: "alliance", pillar: "alliance" };
   }
-  // Alliance relations (beau-père, belle-mère, etc.)
+  // Alliance relations (beau-père, belle-mère, etc.) — excluded from lineage tree
   if (ALLIANCE_RELATIONS.some(a => lower.includes(a))) {
-    return { generation: 0, isLineage: true, linkStyle: "alliance", pillar: "alliance" };
+    return { generation: 0, isLineage: false, linkStyle: "alliance", pillar: "alliance" };
   }
   // Extended family (oncle, tante, cousin, etc.)
   if (EXTENDED_RELATIONS.some(e => lower.includes(e))) {
