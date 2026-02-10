@@ -4,6 +4,7 @@ import { getRelationWithDeceased } from '@/lib/relationshipInference';
 import { getRelationCategory } from '@/lib/relationCategoryUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,6 +51,7 @@ interface GuestbookPost {
   candle_count: number;
   flower_count: number;
   photos: string[] | null;
+  user_id: string | null;
   memorial?: {
     first_name: string;
     last_name: string;
@@ -107,7 +109,7 @@ const Moderation = () => {
         .from('guestbook_posts')
         .select(`
           id, author_name, content, relation_category, is_hidden, hidden_reason, 
-          created_at, memorial_id, candle_count, flower_count, photos,
+          created_at, memorial_id, candle_count, flower_count, photos, user_id,
           memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name, slug)
         `)
         .order('created_at', { ascending: false })
@@ -118,6 +120,27 @@ const Moderation = () => {
         throw new Error(`Erreur Supabase : ${error.message} (code: ${error.code})`);
       }
       return data as GuestbookPost[];
+    },
+  });
+
+  // Fetch avatars for all post authors
+  const authorUserIds = useMemo(() => {
+    if (!posts) return [];
+    return [...new Set(posts.map(p => p.user_id).filter(Boolean))] as string[];
+  }, [posts]);
+
+  const { data: avatarMap } = useQuery({
+    queryKey: ['admin-author-avatars', authorUserIds],
+    enabled: authorUserIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles_public')
+        .select('user_id, avatar_url, display_name')
+        .in('user_id', authorUserIds);
+      const map = new Map<string, { avatar_url: string | null; display_name: string | null }>();
+      (data || []).forEach((p: any) => map.set(p.user_id, { avatar_url: p.avatar_url, display_name: p.display_name }));
+      return map;
     },
   });
 
@@ -481,7 +504,23 @@ const Moderation = () => {
             <TableBody>
               {sortedData?.map((post) => (
                 <TableRow key={post.id} className={post.is_hidden ? 'opacity-60 bg-muted/30' : ''}>
-                  <TableCell className="font-medium">{post.author_name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const authorProfile = post.user_id ? avatarMap?.get(post.user_id) : null;
+                        const initials = post.author_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+                        return (
+                          <Avatar className="w-7 h-7 shrink-0">
+                            {authorProfile?.avatar_url ? (
+                              <AvatarImage src={authorProfile.avatar_url} alt={post.author_name} className="object-cover grayscale-[30%]" />
+                            ) : null}
+                            <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-sans">{initials}</AvatarFallback>
+                          </Avatar>
+                        );
+                      })()}
+                      <span>{post.author_name}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     {post.memorial ? `${post.memorial.first_name} ${post.memorial.last_name}` : '—'}
                   </TableCell>

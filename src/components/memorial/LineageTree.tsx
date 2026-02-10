@@ -112,16 +112,32 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
       }
 
       // Filter: only include posts whose relation classifies as lineage
-      return Array.from(authorMap.values())
+      const lineagePosts = Array.from(authorMap.values())
         .filter(post => {
           const classified = classifyRelation(post.relation_category);
           return classified.isLineage;
-        })
-        .map(post => ({
+        });
+
+      // Fetch avatars for tribute authors with user accounts
+      const userIds = [...new Set(lineagePosts.map(p => p.user_id).filter(Boolean))] as string[];
+      let avatarLookup = new Map<string, string | null>();
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles_public")
+          .select("user_id, avatar_url")
+          .in("user_id", userIds);
+
+        (profiles || []).forEach((p: any) => {
+          avatarLookup.set(p.user_id, p.avatar_url);
+        });
+      }
+
+      return lineagePosts.map(post => ({
           id: `tribute-${post.user_id || post.id}`,
           name: post.author_name,
           firstName: post.author_name.split(" ")[0],
-          photo: null as string | null,
+          photo: post.user_id ? avatarLookup.get(post.user_id) || null : null,
           shareToken: null as string | null,
           relation: post.relation_category,
           createdBy: post.user_id || "",

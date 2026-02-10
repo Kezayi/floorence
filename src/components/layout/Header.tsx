@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useHasMemorials } from "@/hooks/useSuggestedLinks";
 import { usePendingSuggestionsCount } from "@/hooks/usePendingSuggestionsCount";
+import { useProfile } from "@/hooks/useProfile";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import NotificationBell from "./NotificationBell";
 import { ADMIN_PREFIX } from "@/lib/adminRoutes";
 
@@ -16,6 +18,14 @@ const Header = () => {
   const { isAdminOrMod } = useAdminRole();
   const hasMemorials = useHasMemorials();
   const pendingCount = usePendingSuggestionsCount();
+  const { profile } = useProfile();
+
+  const userInitials = (profile?.display_name || user?.email?.split("@")[0] || "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   // Menu items selon l'état de connexion
   const navItems = user
@@ -93,18 +103,29 @@ const Header = () => {
               </span>
             </Link>
 
-            {/* Notification Bell + Hamburger Menu - Desktop Only */}
+            {/* Notification Bell + Avatar/Menu - Desktop Only */}
             <div className="hidden md:flex items-center gap-2">
               <NotificationBell />
               
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2.5 text-foreground hover:bg-background/50 rounded transition-colors"
+                  className="p-1.5 text-foreground hover:bg-background/50 rounded-full transition-colors"
                   aria-label="Menu"
                   aria-expanded={isMenuOpen}
                 >
-                  <Menu className="w-6 h-6" />
+                  {user ? (
+                    <Avatar className="w-8 h-8 border border-border">
+                      {profile?.avatar_url ? (
+                        <AvatarImage src={profile.avatar_url} alt={profile.display_name || "Avatar"} className="object-cover grayscale-[30%]" />
+                      ) : null}
+                      <AvatarFallback className="bg-muted text-muted-foreground text-xs font-serif">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Menu className="w-6 h-6" />
+                  )}
                 </button>
 
               {/* Dropdown Menu */}
