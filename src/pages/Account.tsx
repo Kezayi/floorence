@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, FileText, Heart, Calendar, Bell, Settings, LogOut, ChevronRight, Flame, Loader2, AlertCircle } from "lucide-react";
+import AvatarUpload from "@/components/account/AvatarUpload";
 import { FlameIcon, ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -344,10 +345,24 @@ const Account = () => {
 
                   {/* Content */}
                   <div className="min-h-[400px]">
-                    <TabsContent value="profil" className="mt-0">
+                     <TabsContent value="profil" className="mt-0">
                       <div className="bg-card border border-border rounded-sm p-6">
                         <h3 className="mb-6">Informations personnelles</h3>
-                        <div className="space-y-4">
+                        <div className="space-y-6">
+                          {/* Avatar Upload */}
+                          {user && (
+                            <AvatarUpload
+                              userId={user.id}
+                              currentAvatarUrl={profile?.avatar_url || null}
+                              displayName={profile?.display_name || null}
+                              onAvatarUpdated={(url) => {
+                                // Profile will auto-refresh via useProfile
+                              }}
+                            />
+                          )}
+
+                          <div className="border-t border-border pt-4" />
+
                           <div>
                             <label className="block text-sm font-sans text-muted-foreground mb-1">
                               Nom complet *

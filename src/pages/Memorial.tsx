@@ -282,10 +282,26 @@ const MemorialInner = () => {
         console.error('Error fetching guestbook posts:', error);
         setGuestbookPosts([]);
       } else {
+        // Fetch avatar URLs for all authors via profiles_public
+        const userIds = [...new Set((data || []).map((p: any) => p.user_id).filter(Boolean))];
+        let avatarMap = new Map<string, string | null>();
+
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles_public')
+            .select('user_id, avatar_url')
+            .in('user_id', userIds);
+
+          (profiles || []).forEach((p: any) => {
+            avatarMap.set(p.user_id, p.avatar_url);
+          });
+        }
+
         const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
           id: post.id,
           authorId: post.user_id || 'anonymous',
           authorName: post.author_name || 'Anonyme',
+          authorAvatarUrl: post.user_id ? avatarMap.get(post.user_id) || null : null,
           relationCategory: post.relation_category || 'autre',
           content: post.content || '',
           photos: post.photos || [],
