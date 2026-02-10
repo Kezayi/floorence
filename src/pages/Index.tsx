@@ -17,7 +17,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import WisdomBanner from "@/components/home/WisdomBanner";
 
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
@@ -92,7 +91,6 @@ const Index = () => {
       <Header />
 
       <main className="flex-1 pt-20 md:pt-24">
-        <WisdomBanner />
 
         {/* Memorial Grid */}
         <section className="px-4 py-6 md:px-8 md:py-10">
