@@ -25,8 +25,9 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
   const isValidUUID = /^[0-9a-f]{8}-/.test(memorialId);
   const [viewFilter, setViewFilter] = useState<ViewFilter>("complete");
 
-  const { data: relations, isLoading } = useQuery({
-    queryKey: ["lineage-tree", memorialId],
+  // 1. Fetch inter-memorial relations (Pont des Ancêtres)
+  const { data: interMemorialNodes, isLoading: loadingRelations } = useQuery({
+    queryKey: ["lineage-tree-relations", memorialId],
     enabled: isValidUUID,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -80,22 +81,75 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
           shareToken: linked.share_token || null,
           relation,
           createdBy: linked.created_by,
+          source: "memorial" as const,
         };
-      }).filter(Boolean) as Array<{ id: string; name: string; firstName: string; photo: string | null; shareToken: string | null; relation: string; createdBy: string }>;
+      }).filter(Boolean) as Array<{
+        id: string; name: string; firstName: string; photo: string | null;
+        shareToken: string | null; relation: string; createdBy: string; source: "memorial";
+      }>;
     },
   });
 
+  // 2. Fetch guestbook tributes with family relations (Le Semeur)
+  const { data: tributeNodes, isLoading: loadingTributes } = useQuery({
+    queryKey: ["lineage-tree-tributes", memorialId],
+    enabled: isValidUUID,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .rpc("get_public_guestbook_posts", { p_memorial_id: memorialId });
+
+      if (!data || data.length === 0) return [];
+
+      // Deduplicate by author (keep the one with the most specific relation)
+      const authorMap = new Map<string, typeof data[number]>();
+      for (const post of data) {
+        const key = post.user_id || post.author_name;
+        if (!authorMap.has(key)) {
+          authorMap.set(key, post);
+        }
+      }
+
+      return Array.from(authorMap.values()).map(post => ({
+        id: `tribute-${post.user_id || post.id}`,
+        name: post.author_name,
+        firstName: post.author_name.split(" ")[0],
+        photo: null as string | null,
+        shareToken: null as string | null,
+        relation: post.relation_category,
+        createdBy: post.user_id || "",
+        source: "tribute" as const,
+      }));
+    },
+  });
+
+  // Combine and deduplicate: memorial relations take priority over tribute nodes
+  const allNodes = useMemo(() => {
+    const memNodes = interMemorialNodes || [];
+    const tribNodes = tributeNodes || [];
+
+    // Names from memorial relations (already linked)
+    const memorialNames = new Set(memNodes.map(n => n.name.toLowerCase()));
+
+    // Add tribute nodes that don't duplicate memorial relation nodes
+    const uniqueTribNodes = tribNodes.filter(
+      t => !memorialNames.has(t.name.toLowerCase())
+    );
+
+    return [...memNodes, ...uniqueTribNodes];
+  }, [interMemorialNodes, tributeNodes]);
+
   // Classify into generations with the 5-pillar system
   const treeNodes = useMemo(() => {
-    if (!relations) return [];
-    return relations
+    return allNodes
       .map(r => {
         const classified = classifyRelation(r.relation);
         if (!classified.isLineage) return null;
         return { ...r, generation: classified.generation, linkStyle: classified.linkStyle } as TreeNode;
       })
       .filter(Boolean) as TreeNode[];
-  }, [relations]);
+  }, [allNodes]);
 
   // Apply view filter
   const filteredNodes = useMemo(() => {
@@ -119,6 +173,8 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
     });
     return Array.from(map.entries()).sort(([a], [b]) => a - b);
   }, [filteredNodes]);
+
+  const isLoading = loadingRelations || loadingTributes;
 
   if (isLoading) {
     return (
