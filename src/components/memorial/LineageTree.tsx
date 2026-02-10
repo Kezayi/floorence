@@ -214,7 +214,7 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         /* Tree Visualization */
         <div className="relative">
           {/* Central vertical line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60 -translate-x-1/2 hidden md:block" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-red-600/70 -translate-x-1/2 hidden md:block" />
 
           {/* Ancestor generations */}
           {generations
