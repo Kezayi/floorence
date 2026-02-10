@@ -40,6 +40,10 @@ const SPOUSE_RELATIONS = [
   "époux", "épouse", "mari", "femme", "conjoint", "conjointe",
 ];
 
+const SIBLING_RELATIONS = [
+  "frère", "sœur", "soeur", "demi-frère", "demi-sœur", "demi-soeur",
+];
+
 const classifyRelation = (relation: string): { generation: number; isLineage: boolean } => {
   const lower = relation.toLowerCase();
   
@@ -212,20 +216,22 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         </div>
       ) : (
         /* Tree Visualization */
-        <div className="relative">
-          {/* Central vertical line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-red-600/70 -translate-x-1/2 hidden md:block" />
+        <div className="relative animate-fade-in">
+          {/* Central vertical blood line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 hidden md:block bg-[hsl(0,45%,30%)]/80 animate-[grow-down_1.2s_ease-out]" 
+               style={{ transformOrigin: 'top', animation: 'grow-down 1.2s ease-out forwards' }} />
 
           {/* Ancestor generations */}
           {generations
             .filter(([gen]) => gen < 0)
-            .map(([gen, nodes]) => (
+            .map(([gen, nodes], i) => (
               <GenerationRow
                 key={gen}
                 generation={gen}
                 nodes={nodes}
                 isAuthenticated={isAuthenticated}
                 currentUserId={user?.id}
+                animDelay={i * 200}
               />
             ))}
 
@@ -250,7 +256,7 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
             </div>
           </div>
 
-          {/* Spouse row (generation 0) */}
+          {/* Spouse row (generation 0) — gold alliance links */}
           {generations
             .filter(([gen]) => gen === 0)
             .map(([gen, nodes]) => (
@@ -260,19 +266,22 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
                 nodes={nodes}
                 isAuthenticated={isAuthenticated}
                 currentUserId={user?.id}
+                isAlliance
+                animDelay={400}
               />
             ))}
 
           {/* Descendant generations */}
           {generations
             .filter(([gen]) => gen > 0)
-            .map(([gen, nodes]) => (
+            .map(([gen, nodes], i) => (
               <GenerationRow
                 key={gen}
                 generation={gen}
                 nodes={nodes}
                 isAuthenticated={isAuthenticated}
                 currentUserId={user?.id}
+                animDelay={600 + i * 200}
               />
             ))}
         </div>
@@ -287,13 +296,24 @@ interface GenerationRowProps {
   nodes: TreeNode[];
   isAuthenticated: boolean;
   currentUserId?: string;
+  isAlliance?: boolean;
+  animDelay?: number;
 }
 
-const GenerationRow = ({ generation, nodes, isAuthenticated, currentUserId }: GenerationRowProps) => {
+const GenerationRow = ({ generation, nodes, isAuthenticated, currentUserId, isAlliance, animDelay = 0 }: GenerationRowProps) => {
   const label = GENERATION_LABELS[generation] || "Famille";
+  const lineColor = isAlliance
+    ? "bg-ai-gold/60"
+    : "bg-[hsl(0,45%,30%)]/80";
 
   return (
-    <div className="relative py-4">
+    <div
+      className="relative py-4 animate-fade-in"
+      style={{ animationDelay: `${animDelay}ms`, animationFillMode: 'both' }}
+    >
+      {/* Horizontal connector */}
+      <div className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 h-[2px] ${lineColor}`} />
+
       {/* Generation label */}
       <div className="text-center mb-3">
         <span className="text-xs font-sans text-muted-foreground tracking-widest uppercase bg-background px-3 relative z-10">
