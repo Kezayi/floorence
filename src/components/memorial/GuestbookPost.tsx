@@ -7,10 +7,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
+import AuthorAvatar from "./AuthorAvatar";
+
 export interface GuestbookPostData {
   id: string;
   authorId: string;
   authorName: string;
+  authorAvatarUrl?: string | null;
   relationCategory: string;
   content: string;
   photos: string[];
@@ -94,20 +97,28 @@ const GuestbookPost = ({
 
   return (
     <article className="py-6 border-b border-memorial-dark-muted/20 last:border-0 animate-fade-in">
-      {/* Author info */}
+      {/* Author info with avatar */}
       <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
-            <h4 className="font-serif text-lg text-memorial-dark-foreground cursor-pointer hover:underline decoration-memorial-dark-muted/40 underline-offset-4 transition-all">
-              {displayName(post.authorName, isAuthenticated)}
-              {isDeletedUser && (
-                <span className="text-memorial-dark-muted ml-1">*</span>
-              )}
-            </h4>
-          </AuthorTooltip>
-          <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationCategory)}`}>
-            {getRelationWithDeceased(post.relationCategory)}
-          </span>
+        <div className="flex items-start gap-3">
+          <AuthorAvatar
+            avatarUrl={post.authorAvatarUrl}
+            authorName={post.authorName}
+            relationCategory={post.relationCategory}
+            size="sm"
+          />
+          <div>
+            <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
+              <h4 className="font-serif text-lg text-memorial-dark-foreground cursor-pointer hover:underline decoration-memorial-dark-muted/40 underline-offset-4 transition-all">
+                {displayName(post.authorName, isAuthenticated)}
+                {isDeletedUser && (
+                  <span className="text-memorial-dark-muted ml-1">*</span>
+                )}
+              </h4>
+            </AuthorTooltip>
+            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationCategory)}`}>
+              {getRelationWithDeceased(post.relationCategory)}
+            </span>
+          </div>
         </div>
         <time className="text-xs text-memorial-dark-muted font-sans">
           {formattedDate}
