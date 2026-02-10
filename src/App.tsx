@@ -44,6 +44,7 @@ const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminSocialIntelligence = lazy(() => import("./pages/admin/SocialIntelligence"));
 const AdminMemorialDetail = lazy(() => import("./pages/admin/MemorialDetail"));
 const AdminAuditSuggestions = lazy(() => import("./pages/admin/AuditSuggestions"));
+const AdminShortestPath = lazy(() => import("./pages/admin/ShortestPath"));
 
 const queryClient = new QueryClient();
 
@@ -155,6 +156,11 @@ const App = () => (
                   <Route path={`${ADMIN_PREFIX}/audit-suggestions`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminAuditSuggestions /></AdminLayout>
+                    </RequireAdmin>
+                  } />
+                  <Route path={`${ADMIN_PREFIX}/pont-intermediaires`} element={
+                    <RequireAdmin requireAdmin>
+                      <AdminLayout><AdminShortestPath /></AdminLayout>
                     </RequireAdmin>
                   } />
 
