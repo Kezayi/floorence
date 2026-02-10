@@ -70,9 +70,33 @@ export const classifyRelation = (relation: string): ClassifiedRelation => {
   if (PARENT_RELATIONS.some(p => lower.includes(p)) && !lower.includes("grand") && !lower.includes("beau") && !lower.includes("belle")) {
     return { generation: -1, isLineage: true, linkStyle: "blood", pillar: "nucleaire" };
   }
-  // Siblings (0)
+  // Oncles & Tantes (-1, same level as parents)
+  if (["oncle", "tante"].some(k => lower.includes(k)) && !lower.includes("grand")) {
+    return { generation: -1, isLineage: true, linkStyle: "extended", pillar: "elargie" };
+  }
+  // Grands-oncles & Grands-tantes (-2, same level as grandparents)
+  if (["grand-oncle", "grand-tante"].some(k => lower.includes(k))) {
+    return { generation: -2, isLineage: true, linkStyle: "extended", pillar: "elargie" };
+  }
+  // Siblings (1, same level as children)
   if (SIBLING_RELATIONS.some(s => lower.includes(s))) {
-    return { generation: 0, isLineage: true, linkStyle: "sibling", pillar: "nucleaire" };
+    return { generation: 1, isLineage: true, linkStyle: "sibling", pillar: "nucleaire" };
+  }
+  // Cousins (1, same level as children)
+  if (["cousin", "cousine"].some(k => lower.includes(k)) && !lower.includes("petit")) {
+    return { generation: 1, isLineage: true, linkStyle: "extended", pillar: "elargie" };
+  }
+  // Neveux & Nièces (2, same level as grandchildren)
+  if (["neveu", "nièce"].some(k => lower.includes(k)) && !lower.includes("petit")) {
+    return { generation: 2, isLineage: true, linkStyle: "extended", pillar: "elargie" };
+  }
+  // Petits-neveux & Petites-nièces (3)
+  if (["petit-neveu", "petite-nièce"].some(k => lower.includes(k))) {
+    return { generation: 3, isLineage: true, linkStyle: "extended", pillar: "elargie" };
+  }
+  // Petits-cousins (2)
+  if (["petit-cousin", "petite-cousine"].some(k => lower.includes(k))) {
+    return { generation: 2, isLineage: true, linkStyle: "extended", pillar: "elargie" };
   }
   // Spouses (0) — excluded from lineage tree
   if (SPOUSE_RELATIONS.some(s => lower.includes(s))) {
@@ -81,10 +105,6 @@ export const classifyRelation = (relation: string): ClassifiedRelation => {
   // Alliance relations (beau-père, belle-mère, etc.) — excluded from lineage tree
   if (ALLIANCE_RELATIONS.some(a => lower.includes(a))) {
     return { generation: 0, isLineage: false, linkStyle: "alliance", pillar: "alliance" };
-  }
-  // Extended family (oncle, tante, cousin, etc.)
-  if (EXTENDED_RELATIONS.some(e => lower.includes(e))) {
-    return { generation: 0, isLineage: true, linkStyle: "extended", pillar: "elargie" };
   }
   // Arrière-petits-enfants (3)
   if (GREAT_GRANDCHILD_RELATIONS.some(k => lower.includes(k))) {
@@ -106,9 +126,9 @@ export const classifyRelation = (relation: string): ClassifiedRelation => {
 export const GENERATION_LABELS: Record<number, string> = {
   [-3]: "Arrière-grands-parents",
   [-2]: "Grands-parents",
-  [-1]: "Parents",
-  [0]: "Fratrie & Alliances",
-  [1]: "Enfants",
+  [-1]: "Parents, Oncles & Tantes",
+  [0]: "De Cujus",
+  [1]: "Fratrie, Cousins & Enfants",
   [2]: "Petits-enfants",
   [3]: "Arrière-petits-enfants",
 };
