@@ -87,7 +87,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
     queryFn: async () => {
       const { data } = await supabase
         .from('memorial_relations')
-        .select('id, relation_type, relationship_type, memorial_id_1, memorial_id_2')
+        .select('id, relation_type, memorial_id_1, memorial_id_2')
         .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
         .eq('status', 'accepted');
 
@@ -116,7 +116,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
       return data.map(r => {
         const isSource = r.memorial_id_1 === memorialId;
         const linkedId = isSource ? r.memorial_id_2 : r.memorial_id_1;
-        const relType = r.relationship_type || r.relation_type;
+        const relType = r.relation_type;
         if (!linkedId) return { name: 'Inconnu', relationType: relType };
 
         let relationType: string;

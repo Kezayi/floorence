@@ -34,9 +34,9 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
     queryFn: async () => {
       const { data } = await supabase
         .from("memorial_relations")
-        .select("id, relation_type, relationship_type, memorial_id_1, memorial_id_2")
+        .select("id, relation_type, memorial_id_1, memorial_id_2, status")
         .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
-        .eq("status", "accepted");
+        .in("status", ["accepted", "pending"]);
 
       if (!data || data.length === 0) return [];
 
@@ -64,7 +64,7 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         const linked = memorialMap.get(linkedId);
         if (!linked) return null;
 
-        const relType = r.relationship_type || r.relation_type;
+        const relType = r.relation_type;
         const relation = isSource
           ? getGenderAwareRelation(relType, currentFirstName)
           : getInverseRelation(relType, currentFirstName);

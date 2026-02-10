@@ -32,7 +32,7 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("memorial_relations")
-        .select("id, memorial_id_1, memorial_id_2, relation_type, relationship_type, status");
+        .select("id, memorial_id_1, memorial_id_2, relation_type, status");
       if (error) {
         console.error("Error fetching relations:", error);
         return [];
@@ -41,7 +41,7 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
         id: r.id,
         memorialId1: r.memorial_id_1 || "",
         memorialId2: r.memorial_id_2 || "",
-        relationType: r.relationship_type || r.relation_type,
+        relationType: r.relation_type,
         status: r.status || "pending",
       }));
     },
