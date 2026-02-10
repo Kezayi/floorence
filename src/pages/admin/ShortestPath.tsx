@@ -4,23 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Route, Search, Users, ArrowRight, Crown, TreePine } from "lucide-react";
+import { Route, Search, Users, ArrowRight, Crown, TreePine, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { analyzeKinship, formatDegree, type KinshipAnalysis } from "@/lib/kinshipCalculator";
 
 /* ── Types ── */
-interface MemorialOption {
-  id: string;
+interface LivingOption {
+  userId: string;
   name: string;
-  shareToken: string | null;
-  photo: string | null;
-}
-
-interface GraphEdge {
-  from: string;
-  to: string;
-  relationType: string;
+  avatar: string | null;
 }
 
 interface PathNode {
@@ -32,8 +25,9 @@ interface PathNode {
 
 interface PathStep {
   node: PathNode;
-  relation: string; // relation label from prev to this
+  relation: string;
   isBlood: boolean;
+  isLiving?: boolean;
 }
 
 /* ── Relation classification ── */
@@ -69,8 +63,8 @@ const bfs = (
   startId: string,
   endId: string,
   bloodOnly: boolean
-): string[][] | null => {
-  if (startId === endId) return [[startId]];
+): { path: string[]; rels: string[] } | null => {
+  if (startId === endId) return { path: [startId], rels: [] };
 
   const visited = new Set<string>();
   const queue: { id: string; path: string[]; rels: string[] }[] = [
@@ -91,7 +85,7 @@ const bfs = (
       const newRels = [...current.rels, edge.rel];
 
       if (edge.to === endId) {
-        return [newPath, newRels];
+        return { path: newPath, rels: newRels };
       }
 
       visited.add(edge.to);
@@ -106,8 +100,8 @@ const bfs = (
 const ShortestPath = () => {
   const [searchA, setSearchA] = useState("");
   const [searchB, setSearchB] = useState("");
-  const [selectedA, setSelectedA] = useState<MemorialOption | null>(null);
-  const [selectedB, setSelectedB] = useState<MemorialOption | null>(null);
+  const [selectedA, setSelectedA] = useState<LivingOption | null>(null);
+  const [selectedB, setSelectedB] = useState<LivingOption | null>(null);
   const [pathResult, setPathResult] = useState<PathStep[] | null>(null);
   const [safePath, setSafePath] = useState<PathStep[] | null>(null);
   const [noPath, setNoPath] = useState(false);
@@ -118,57 +112,68 @@ const ShortestPath = () => {
   const debouncedA = useDebounce(searchA, 300);
   const debouncedB = useDebounce(searchB, 300);
 
-  // Autocomplete queries
-  const { data: optionsA } = useQuery({
-    queryKey: ["sp-search-a", debouncedA],
-    enabled: debouncedA.length >= 2 && !selectedA,
-    queryFn: () => searchMemorials(debouncedA),
-  });
-
-  const { data: optionsB } = useQuery({
-    queryKey: ["sp-search-b", debouncedB],
-    enabled: debouncedB.length >= 2 && !selectedB,
-    queryFn: () => searchMemorials(debouncedB),
-  });
-
-  const compute = useCallback(async () => {
-    if (!selectedA || !selectedB) return;
-    setComputing(true);
+  const resetResults = () => {
     setPathResult(null);
     setSafePath(null);
     setNoPath(false);
     setKinship(null);
     setSafeKinship(null);
+  };
+
+  // Autocomplete queries for living people
+  const { data: optionsA } = useQuery({
+    queryKey: ["sp-living-a", debouncedA],
+    enabled: debouncedA.length >= 2 && !selectedA,
+    queryFn: () => searchLivingPeople(debouncedA),
+  });
+
+  const { data: optionsB } = useQuery({
+    queryKey: ["sp-living-b", debouncedB],
+    enabled: debouncedB.length >= 2 && !selectedB,
+    queryFn: () => searchLivingPeople(debouncedB),
+  });
+
+  const compute = useCallback(async () => {
+    if (!selectedA || !selectedB) return;
+    setComputing(true);
+    resetResults();
 
     try {
-      // Fetch all accepted relations
+      // 1. Fetch memorial connections for both living people
+      const [connectionsA, connectionsB] = await Promise.all([
+        fetchUserMemorialConnections(selectedA.userId),
+        fetchUserMemorialConnections(selectedB.userId),
+      ]);
+
+      if (connectionsA.size === 0 || connectionsB.size === 0) {
+        setNoPath(true);
+        return;
+      }
+
+      // 2. Fetch all accepted relations & build memorial graph
       const { data: allRelations } = await supabase
         .from("memorial_relations")
         .select("memorial_id_1, memorial_id_2, relation_type")
         .eq("status", "accepted");
 
-      if (!allRelations || allRelations.length === 0) {
-        setNoPath(true);
-        return;
-      }
-
-      // Build adjacency list
       const graph = new Map<string, { to: string; rel: string }[]>();
       const allIds = new Set<string>();
 
-      for (const r of allRelations) {
+      for (const r of allRelations || []) {
         if (!r.memorial_id_1 || !r.memorial_id_2) continue;
         allIds.add(r.memorial_id_1);
         allIds.add(r.memorial_id_2);
-
         if (!graph.has(r.memorial_id_1)) graph.set(r.memorial_id_1, []);
         if (!graph.has(r.memorial_id_2)) graph.set(r.memorial_id_2, []);
-
         graph.get(r.memorial_id_1)!.push({ to: r.memorial_id_2, rel: r.relation_type });
         graph.get(r.memorial_id_2)!.push({ to: r.memorial_id_1, rel: r.relation_type });
       }
 
-      // Fetch memorial names for path display
+      // Add all connected memorial IDs for fetching details
+      for (const id of connectionsA.keys()) allIds.add(id);
+      for (const id of connectionsB.keys()) allIds.add(id);
+
+      // 3. Fetch memorial details
       const idsArray = Array.from(allIds);
       const { data: memorials } = await supabase
         .from("memorials")
@@ -177,7 +182,7 @@ const ShortestPath = () => {
 
       const memMap = new Map<string, PathNode>();
       for (const m of memorials || []) {
-        const photos = (m.photos && m.photos.length > 0) ? m.photos : m.photo_url ? [m.photo_url] : [];
+        const photos = m.photos?.length ? m.photos : m.photo_url ? [m.photo_url] : [];
         const idx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
         memMap.set(m.id, {
           id: m.id,
@@ -187,40 +192,97 @@ const ShortestPath = () => {
         });
       }
 
+      // 4. Find shortest path between any pair of A's & B's memorials
+      const findBestPath = (bloodOnly: boolean) => {
+        let best: { path: string[]; rels: string[]; startMemId: string; endMemId: string } | null = null;
+
+        for (const memAId of connectionsA.keys()) {
+          for (const memBId of connectionsB.keys()) {
+            // Same memorial → direct connection through one ancestor
+            if (memAId === memBId) {
+              return { path: [memAId], rels: [] as string[], startMemId: memAId, endMemId: memBId };
+            }
+            const result = bfs(graph, memAId, memBId, bloodOnly);
+            if (result && (!best || result.path.length < best.path.length)) {
+              best = { ...result, startMemId: memAId, endMemId: memBId };
+            }
+          }
+          if (best && best.path.length === 1) break;
+        }
+        return best;
+      };
+
+      // 5. Build steps with living endpoints
+      const buildSteps = (
+        result: { path: string[]; rels: string[]; startMemId: string; endMemId: string }
+      ): PathStep[] => {
+        const startRel = connectionsA.get(result.startMemId) || "Proche";
+        const endRel = connectionsB.get(result.endMemId) || "Proche";
+
+        const steps: PathStep[] = [];
+
+        // Living person A
+        steps.push({
+          node: { id: selectedA!.userId, name: selectedA!.name, photo: selectedA!.avatar, shareToken: null },
+          relation: "",
+          isBlood: false,
+          isLiving: true,
+        });
+
+        // Memorial chain (the deceased intermediaries)
+        for (let i = 0; i < result.path.length; i++) {
+          const memId = result.path[i];
+          const node = memMap.get(memId) || { id: memId, name: "Inconnu", photo: null, shareToken: null };
+          const rel = i === 0 ? startRel : result.rels[i - 1];
+          steps.push({
+            node,
+            relation: rel,
+            isBlood: isBloodRelation(rel),
+            isLiving: false,
+          });
+        }
+
+        // Living person B
+        steps.push({
+          node: { id: selectedB!.userId, name: selectedB!.name, photo: selectedB!.avatar, shareToken: null },
+          relation: endRel,
+          isBlood: isBloodRelation(endRel),
+          isLiving: true,
+        });
+
+        return steps;
+      };
+
       // Shortest path (any relation)
-      const shortResult = bfs(graph, selectedA.id, selectedB.id, false);
+      const shortResult = findBestPath(false);
       if (!shortResult) {
         setNoPath(true);
         return;
       }
 
-      const [shortPath, shortRels] = shortResult;
-      const steps: PathStep[] = shortPath.map((id, i) => ({
-        node: memMap.get(id) || { id, name: "Inconnu", photo: null, shareToken: null },
-        relation: i === 0 ? "" : shortRels[i - 1],
-        isBlood: i === 0 ? false : isBloodRelation(shortRels[i - 1]),
-      }));
+      const steps = buildSteps(shortResult);
       setPathResult(steps);
-      setKinship(analyzeKinship(shortRels));
+
+      // Kinship: include living-to-memorial relations in the degree count
+      const startRel = connectionsA.get(shortResult.startMemId) || "Proche";
+      const endRel = connectionsB.get(shortResult.endMemId) || "Proche";
+      setKinship(analyzeKinship([startRel, ...shortResult.rels, endRel]));
 
       // Safe path (blood + alliance only)
-      const safeResult = bfs(graph, selectedA.id, selectedB.id, true);
-      if (safeResult) {
-        const [safePath2, safeRels] = safeResult;
-        const safeSteps: PathStep[] = safePath2.map((id, i) => ({
-          node: memMap.get(id) || { id, name: "Inconnu", photo: null, shareToken: null },
-          relation: i === 0 ? "" : safeRels[i - 1],
-          isBlood: i === 0 ? false : isBloodRelation(safeRels[i - 1]),
-        }));
+      const safeResult = findBestPath(true);
+      if (safeResult && JSON.stringify(safeResult.path) !== JSON.stringify(shortResult.path)) {
+        const safeSteps = buildSteps(safeResult);
         setSafePath(safeSteps);
-        setSafeKinship(analyzeKinship(safeRels));
+        const safeStartRel = connectionsA.get(safeResult.startMemId) || "Proche";
+        const safeEndRel = connectionsB.get(safeResult.endMemId) || "Proche";
+        setSafeKinship(analyzeKinship([safeStartRel, ...safeResult.rels, safeEndRel]));
       }
     } finally {
       setComputing(false);
     }
   }, [selectedA, selectedB]);
 
-  // Generate narrative text
+  // Narrative generation adapted for living endpoints
   const generateNarrative = (steps: PathStep[]): string => {
     if (steps.length < 2) return "";
     const parts: string[] = [];
@@ -228,7 +290,11 @@ const ShortestPath = () => {
       const prev = steps[i - 1].node.name;
       const curr = steps[i].node.name;
       const rel = steps[i].relation || "lié à";
-      if (i === 1) {
+
+      // Last step: living person B — invert the relation
+      if (i === steps.length - 1 && steps[i].isLiving) {
+        parts.push(`dont ${curr} est ${rel}`);
+      } else if (i === 1) {
         parts.push(`${prev} est ${rel} de ${curr}`);
       } else {
         parts.push(`qui est ${rel} de ${curr}`);
@@ -244,23 +310,23 @@ const ShortestPath = () => {
         Pont des Vivants
       </h1>
       <p className="text-muted-foreground mb-8 font-sans">
-        Découvrez les degrés de parenté entre deux personnes à travers leur héritage commun (max {MAX_DEGREES} degrés)
+        Découvrez comment deux personnes vivantes sont reliées à travers leur héritage mémoriel commun (max {MAX_DEGREES} degrés)
       </p>
 
       {/* Search fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <SearchField
-          label="Personne A"
+        <LivingSearchField
+          label="Vivant A"
           value={searchA}
-          onChange={(v) => { setSearchA(v); setSelectedA(null); setPathResult(null); setSafePath(null); setNoPath(false); setKinship(null); setSafeKinship(null); }}
+          onChange={(v) => { setSearchA(v); setSelectedA(null); resetResults(); }}
           options={optionsA || []}
           selected={selectedA}
           onSelect={(o) => { setSelectedA(o); setSearchA(o.name); }}
         />
-        <SearchField
-          label="Personne B"
+        <LivingSearchField
+          label="Vivant B"
           value={searchB}
-          onChange={(v) => { setSearchB(v); setSelectedB(null); setPathResult(null); setSafePath(null); setNoPath(false); setKinship(null); setSafeKinship(null); }}
+          onChange={(v) => { setSearchB(v); setSelectedB(null); resetResults(); }}
           options={optionsB || []}
           selected={selectedB}
           onSelect={(o) => { setSelectedB(o); setSearchB(o.name); }}
@@ -270,12 +336,12 @@ const ShortestPath = () => {
       <div className="flex justify-center mb-8">
         <Button
           onClick={compute}
-          disabled={!selectedA || !selectedB || computing || selectedA.id === selectedB.id}
+          disabled={!selectedA || !selectedB || computing || selectedA.userId === selectedB.userId}
           className="gap-2"
           size="lg"
         >
           <Search className="w-4 h-4" />
-          {computing ? "Recherche en cours…" : "Trouver le chemin"}
+          {computing ? "Recherche en cours…" : "Trouver le lien"}
         </Button>
       </div>
 
@@ -299,7 +365,7 @@ const ShortestPath = () => {
             narrative={generateNarrative(pathResult)}
             kinship={kinship}
           />
-          {safePath && safePath.length !== pathResult.length && (
+          {safePath && (
             <PathDisplay
               title="Chemin le plus sûr (sang & alliance)"
               steps={safePath}
@@ -314,8 +380,8 @@ const ShortestPath = () => {
   );
 };
 
-/* ── Search Field with Autocomplete ── */
-const SearchField = ({
+/* ── Living Person Search Field ── */
+const LivingSearchField = ({
   label,
   value,
   onChange,
@@ -326,20 +392,23 @@ const SearchField = ({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: MemorialOption[];
-  selected: MemorialOption | null;
-  onSelect: (o: MemorialOption) => void;
+  options: LivingOption[];
+  selected: LivingOption | null;
+  onSelect: (o: LivingOption) => void;
 }) => (
   <Card>
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+      <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <User className="w-3.5 h-3.5" />
+        {label}
+      </CardTitle>
     </CardHeader>
     <CardContent>
       <div className="relative">
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Rechercher un nom…"
+          placeholder="Rechercher un vivant par nom…"
           className={selected ? "border-primary" : ""}
         />
         {selected && (
@@ -352,17 +421,15 @@ const SearchField = ({
         <div className="mt-2 border border-border rounded-md max-h-48 overflow-y-auto bg-background shadow-sm">
           {options.map((o) => (
             <button
-              key={o.id}
+              key={o.userId}
               onClick={() => onSelect(o)}
               className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors text-sm"
             >
-              <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
-                {o.photo ? (
-                  <img src={o.photo} alt="" className="w-full h-full object-cover grayscale" />
+              <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden shrink-0 flex items-center justify-center">
+                {o.avatar ? (
+                  <img src={o.avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-serif text-xs text-muted-foreground">
-                    {o.name.charAt(0)}
-                  </div>
+                  <User className="w-4 h-4 text-primary" />
                 )}
               </div>
               <span className="font-serif truncate">{o.name}</span>
@@ -374,7 +441,7 @@ const SearchField = ({
   </Card>
 );
 
-/* ── Path Display ── */
+/* ── Path Display with Kinship ── */
 const PathDisplay = ({
   title,
   steps,
@@ -394,7 +461,7 @@ const PathDisplay = ({
         <Route className={`w-4 h-4 ${isSafe ? "text-ai-gold" : "text-primary"}`} />
         {title}
         <Badge variant="outline" className="ml-auto text-xs font-sans">
-          {steps.length - 1} degré{steps.length - 1 > 1 ? "s" : ""}
+          {steps.filter(s => !s.isLiving).length} intermédiaire{steps.filter(s => !s.isLiving).length > 1 ? "s" : ""}
         </Badge>
       </CardTitle>
     </CardHeader>
@@ -452,16 +519,15 @@ const PathDisplay = ({
       <div className="flex items-center gap-1 overflow-x-auto pb-4">
         {steps.map((step, i) => {
           const isAncestor = kinship?.commonAncestorIndex === i;
+          const isLiving = step.isLiving;
           return (
-            <div key={step.node.id} className="flex items-center gap-1 shrink-0">
+            <div key={`${step.node.id}-${i}`} className="flex items-center gap-1 shrink-0">
               {/* Connector */}
               {i > 0 && (
                 <div className="flex items-center gap-1 px-1">
                   <div
                     className={`h-[2px] w-8 md:w-12 ${
-                      step.isBlood
-                        ? "bg-[hsl(0,45%,30%)]/80"
-                        : "bg-ai-gold/60"
+                      step.isBlood ? "bg-[hsl(0,45%,30%)]/80" : "bg-ai-gold/60"
                     }`}
                   />
                   <span className={`text-[9px] md:text-[10px] font-sans whitespace-nowrap ${
@@ -476,25 +542,36 @@ const PathDisplay = ({
               )}
               {/* Node */}
               <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-muted overflow-hidden grayscale ${
-                  isAncestor
-                    ? "ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
-                    : "border border-border"
+                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden ${
+                  isLiving
+                    ? "bg-primary/10 ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                    : isAncestor
+                      ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
+                      : "bg-muted grayscale border border-border"
                 }`}>
                   {step.node.photo ? (
-                    <img src={step.node.photo} alt="" className="w-full h-full object-cover" />
+                    <img src={step.node.photo} alt="" className={`w-full h-full object-cover ${!isLiving ? "grayscale" : ""}`} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="font-serif text-sm text-muted-foreground">
-                        {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                      </span>
+                      {isLiving ? (
+                        <User className="w-5 h-5 text-primary" />
+                      ) : (
+                        <span className="font-serif text-sm text-muted-foreground">
+                          {step.node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
-                <span className="font-serif text-[10px] md:text-xs text-foreground text-center mt-1 max-w-[80px] truncate">
+                <span className={`text-[10px] md:text-xs text-center mt-1 max-w-[80px] truncate ${
+                  isLiving ? "font-sans font-medium text-primary" : "font-serif text-foreground"
+                }`}>
                   {step.node.name}
                 </span>
-                {isAncestor && (
+                {isLiving && (
+                  <span className="text-[8px] text-primary font-sans mt-0.5">Vivant</span>
+                )}
+                {isAncestor && !isLiving && (
                   <span className="text-[8px] text-ai-gold font-sans mt-0.5">◆ Racine</span>
                 )}
               </div>
@@ -514,26 +591,88 @@ const PathDisplay = ({
 );
 
 /* ── Helpers ── */
-async function searchMemorials(query: string): Promise<MemorialOption[]> {
-  const { data } = await supabase
-    .from("memorials")
-    .select("id, first_name, last_name, photo_url, photos, default_photo_index, share_token")
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
-    .eq("is_active", true)
-    .is("merged_into", null)
-    .limit(10);
 
-  if (!data) return [];
-  return data.map((m) => {
-    const photos = m.photos?.length ? m.photos : m.photo_url ? [m.photo_url] : [];
-    const idx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
-    return {
-      id: m.id,
-      name: `${m.first_name} ${m.last_name}`,
-      shareToken: m.share_token || null,
-      photo: photos[idx] || null,
-    };
-  });
+/** Search for living people (guestbook authors + memorial creators) */
+async function searchLivingPeople(query: string): Promise<LivingOption[]> {
+  const [{ data: posts }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("guestbook_posts")
+      .select("user_id, author_name")
+      .ilike("author_name", `%${query}%`)
+      .not("user_id", "is", null)
+      .eq("is_hidden", false)
+      .limit(30),
+    supabase
+      .from("profiles")
+      .select("user_id, display_name, avatar_url")
+      .ilike("display_name", `%${query}%`)
+      .limit(20),
+  ]);
+
+  const userMap = new Map<string, { name: string; avatar: string | null }>();
+
+  for (const p of posts || []) {
+    if (p.user_id && !userMap.has(p.user_id)) {
+      userMap.set(p.user_id, { name: p.author_name, avatar: null });
+    }
+  }
+
+  for (const p of profiles || []) {
+    if (p.user_id && !userMap.has(p.user_id) && p.display_name) {
+      userMap.set(p.user_id, { name: p.display_name, avatar: p.avatar_url });
+    }
+  }
+
+  return Array.from(userMap.entries()).slice(0, 10).map(([userId, info]) => ({
+    userId,
+    name: info.name,
+    avatar: info.avatar,
+  }));
+}
+
+/** Fetch all memorial connections for a living user */
+async function fetchUserMemorialConnections(userId: string): Promise<Map<string, string>> {
+  const [{ data: posts }, { data: created }, { data: inherited }] = await Promise.all([
+    supabase
+      .from("guestbook_posts")
+      .select("memorial_id, relation_link, relation_category")
+      .eq("user_id", userId)
+      .eq("is_hidden", false),
+    supabase
+      .from("memorials")
+      .select("id, creator_relation")
+      .eq("created_by", userId)
+      .eq("is_active", true)
+      .is("merged_into", null),
+    supabase
+      .from("memorials")
+      .select("id")
+      .eq("heir_user_id", userId)
+      .eq("is_active", true)
+      .is("merged_into", null),
+  ]);
+
+  const connections = new Map<string, string>();
+
+  for (const p of posts || []) {
+    if (p.memorial_id && !connections.has(p.memorial_id)) {
+      connections.set(p.memorial_id, p.relation_link || p.relation_category || "Proche");
+    }
+  }
+
+  for (const m of created || []) {
+    if (!connections.has(m.id)) {
+      connections.set(m.id, m.creator_relation || "Créateur");
+    }
+  }
+
+  for (const m of inherited || []) {
+    if (!connections.has(m.id)) {
+      connections.set(m.id, "Héritier");
+    }
+  }
+
+  return connections;
 }
 
 export default ShortestPath;
