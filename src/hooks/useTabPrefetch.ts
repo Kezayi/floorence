@@ -23,7 +23,7 @@ export const useTabPrefetch = (memorialId: string) => {
             queryFn: async () => {
               const { data } = await supabase
                 .from("memorial_relations")
-                .select("id, relation_type, memorial_id_1, memorial_id_2, status")
+                .select("id, relation_type, relationship_type, memorial_id_1, memorial_id_2, status")
                 .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
                 .eq("status", "accepted");
               return data;
@@ -38,7 +38,7 @@ export const useTabPrefetch = (memorialId: string) => {
             queryFn: async () => {
               const { data } = await supabase
                 .from("memorial_relations")
-                .select("id, relation_type, memorial_id_1, memorial_id_2")
+                .select("id, relation_type, relationship_type, memorial_id_1, memorial_id_2")
                 .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
                 .eq("status", "accepted");
               return data;

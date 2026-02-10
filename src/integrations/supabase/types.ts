@@ -177,7 +177,10 @@ export type Database = {
           is_demo: boolean | null
           memorial_id_1: string | null
           memorial_id_2: string | null
+          person_a_id: string | null
+          person_b_id: string | null
           relation_type: string
+          relationship_type: string | null
           requested_by: string | null
           status: string | null
         }
@@ -186,7 +189,10 @@ export type Database = {
           is_demo?: boolean | null
           memorial_id_1?: string | null
           memorial_id_2?: string | null
+          person_a_id?: string | null
+          person_b_id?: string | null
           relation_type: string
+          relationship_type?: string | null
           requested_by?: string | null
           status?: string | null
         }
@@ -195,7 +201,10 @@ export type Database = {
           is_demo?: boolean | null
           memorial_id_1?: string | null
           memorial_id_2?: string | null
+          person_a_id?: string | null
+          person_b_id?: string | null
           relation_type?: string
+          relationship_type?: string | null
           requested_by?: string | null
           status?: string | null
         }
@@ -212,6 +221,20 @@ export type Database = {
             columns: ["memorial_id_2"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_person_a_id_fkey"
+            columns: ["person_a_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_person_b_id_fkey"
+            columns: ["person_b_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -170,7 +170,7 @@ const ShortestPath = () => {
       // 2. Fetch all accepted relations & build memorial graph
       const { data: allRelations } = await supabase
         .from("memorial_relations")
-        .select("memorial_id_1, memorial_id_2, relation_type")
+        .select("memorial_id_1, memorial_id_2, relation_type, relationship_type")
         .eq("status", "accepted");
 
       const graph = new Map<string, { to: string; rel: string }[]>();
@@ -182,8 +182,9 @@ const ShortestPath = () => {
         allIds.add(r.memorial_id_2);
         if (!graph.has(r.memorial_id_1)) graph.set(r.memorial_id_1, []);
         if (!graph.has(r.memorial_id_2)) graph.set(r.memorial_id_2, []);
-        graph.get(r.memorial_id_1)!.push({ to: r.memorial_id_2, rel: r.relation_type });
-        graph.get(r.memorial_id_2)!.push({ to: r.memorial_id_1, rel: r.relation_type });
+        const relType = r.relationship_type || r.relation_type;
+        graph.get(r.memorial_id_1)!.push({ to: r.memorial_id_2, rel: relType });
+        graph.get(r.memorial_id_2)!.push({ to: r.memorial_id_1, rel: relType });
       }
 
       // Add all connected memorial IDs for fetching details

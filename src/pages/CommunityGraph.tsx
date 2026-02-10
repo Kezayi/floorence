@@ -39,6 +39,7 @@ interface MemorialRelation {
   memorial_id_1: string;
   memorial_id_2: string;
   relation_type: string;
+  relationship_type?: string | null;
 }
 
 interface SocialInference {
@@ -157,7 +158,7 @@ const CommunityGraph = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("memorial_relations")
-        .select("id, memorial_id_1, memorial_id_2, relation_type")
+        .select("id, memorial_id_1, memorial_id_2, relation_type, relationship_type")
         .eq("status", "accepted");
       return (data || []) as MemorialRelation[];
     },
@@ -228,12 +229,13 @@ const CommunityGraph = () => {
       const srcId = `memorial-${rel.memorial_id_1}`;
       const tgtId = `memorial-${rel.memorial_id_2}`;
       if (nodeMap.has(srcId) && nodeMap.has(tgtId)) {
+        const relType = rel.relationship_type || rel.relation_type;
         edges.push({
           source: srcId,
           target: tgtId,
           type: "memorial-relation",
-          category: rel.relation_type,
-          label: rel.relation_type,
+          category: relType,
+          label: relType,
         });
       }
     });
