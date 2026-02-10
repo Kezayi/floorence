@@ -325,8 +325,8 @@
   }
 
 
-  /* Arbre de lignage — irrigation animation */
-  @keyframes grow-down {
+  /* Arbre de lignage — germination ascendante (racines → cimes) */
+  @keyframes grow-up {
     0% { transform: translateX(-50%) scaleY(0); opacity: 0; }
     100% { transform: translateX(-50%) scaleY(1); opacity: 1; }
   }

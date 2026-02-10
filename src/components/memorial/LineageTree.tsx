@@ -234,28 +234,46 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         </div>
       ) : (
         <div className="relative animate-fade-in">
-          {/* Central vertical blood line */}
+          {/* Central vertical blood line — grows from bottom (roots) to top (branches) */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 w-[2.5px] -translate-x-1/2 hidden md:block bg-[#800000]/80"
-            style={{ transformOrigin: "top", animation: "grow-down 1.2s ease-out forwards" }}
+            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 hidden md:block bg-[#800000]/80"
+            style={{
+              width: "3px",
+              transformOrigin: "bottom",
+              animation: "grow-up 1.4s ease-out forwards",
+            }}
           />
 
-          {/* Ancestors (top) */}
-          {ancestorGens.map(([gen, nodes], i) => (
+          {/* Descendants at TOP (branches / leaves) — sorted highest gen first */}
+          {[...descendantGens].reverse().map(([gen, nodes], i) => (
             <LineageGenerationRow
               key={gen}
               generation={gen}
               nodes={nodes}
               isAuthenticated={isAuthenticated}
               currentUserId={user?.id}
-              animDelay={i * 200}
+              animDelay={800 + i * 200}
+              treePosition="branch"
             />
           ))}
 
-          {/* De Cujus — central node */}
+          {/* Siblings & same-generation (generation 0) */}
+          {siblingAndAllianceGen.map(([gen, nodes]) => (
+            <LineageGenerationRow
+              key={gen}
+              generation={gen}
+              nodes={nodes}
+              isAuthenticated={isAuthenticated}
+              currentUserId={user?.id}
+              animDelay={600}
+              treePosition="trunk"
+            />
+          ))}
+
+          {/* De Cujus — central pivot */}
           <div className="relative z-10 flex justify-center py-6">
             <div className="flex flex-col items-center">
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[2.5px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
                 {deceasedPhoto ? (
                   <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
                 ) : (
@@ -273,27 +291,16 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
             </div>
           </div>
 
-          {/* Siblings & Alliances (generation 0) */}
-          {siblingAndAllianceGen.map(([gen, nodes]) => (
+          {/* Ancestors at BOTTOM (roots) — sorted closest first, deepest at very bottom */}
+          {ancestorGens.map(([gen, nodes], i) => (
             <LineageGenerationRow
               key={gen}
               generation={gen}
               nodes={nodes}
               isAuthenticated={isAuthenticated}
               currentUserId={user?.id}
-              animDelay={400}
-            />
-          ))}
-
-          {/* Descendants (bottom) */}
-          {descendantGens.map(([gen, nodes], i) => (
-            <LineageGenerationRow
-              key={gen}
-              generation={gen}
-              nodes={nodes}
-              isAuthenticated={isAuthenticated}
-              currentUserId={user?.id}
-              animDelay={600 + i * 200}
+              animDelay={i * 200}
+              treePosition="root"
             />
           ))}
         </div>
