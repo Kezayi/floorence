@@ -111,16 +111,21 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         }
       }
 
-      return Array.from(authorMap.values()).map(post => ({
-        id: `tribute-${post.user_id || post.id}`,
-        name: post.author_name,
-        firstName: post.author_name.split(" ")[0],
-        photo: null as string | null,
-        shareToken: null as string | null,
-        relation: post.relation_category,
-        createdBy: post.user_id || "",
-        source: "tribute" as const,
-      }));
+      // Only include Famille directe and Famille élargie in the tree
+      const ALLOWED_CATEGORIES = new Set(["Famille directe", "Famille élargie"]);
+
+      return Array.from(authorMap.values())
+        .filter(post => ALLOWED_CATEGORIES.has(post.relation_category))
+        .map(post => ({
+          id: `tribute-${post.user_id || post.id}`,
+          name: post.author_name,
+          firstName: post.author_name.split(" ")[0],
+          photo: null as string | null,
+          shareToken: null as string | null,
+          relation: post.relation_category,
+          createdBy: post.user_id || "",
+          source: "tribute" as const,
+        }));
     },
   });
 
