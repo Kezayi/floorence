@@ -77,7 +77,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
       const { data: pending } = await supabase
         .from("memorial_relations")
-        .select("id, memorial_id_1, memorial_id_2, relation_type, relationship_type, requested_by, status")
+        .select("id, memorial_id_1, memorial_id_2, relation_type, requested_by, status")
         .eq("status", "pending")
         .in("memorial_id_2", myIds);
 
@@ -108,7 +108,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
           sourceSlug: source.slug,
           targetMemorialName: target.name,
           targetSlug: target.slug,
-          relationType: req.relationship_type || req.relation_type,
+          relationType: req.relation_type,
         };
       });
     },

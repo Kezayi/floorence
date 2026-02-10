@@ -384,7 +384,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           phone: string | null
           profile_completed: boolean
           updated_at: string
@@ -394,7 +396,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           profile_completed?: boolean
           updated_at?: string
@@ -404,7 +408,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           profile_completed?: boolean
           updated_at?: string
