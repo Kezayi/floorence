@@ -27,32 +27,43 @@ const HommageFeatured = () => {
 
   useEffect(() => {
     const fetchTributes = async () => {
-      const { data } = await supabase
-        .from("guestbook_posts")
-        .select(`
-          id, author_name, relation_category, content, created_at, memorial_id,
-          memorials!guestbook_posts_memorial_fk (first_name, last_name, share_token)
-        `)
-        .eq("is_hidden", false)
-        .order("created_at", { ascending: false })
-        .limit(200);
+      // Use RPC to bypass RLS restrictions on guestbook_posts for anon users
+      const { data: posts } = await supabase.rpc("get_public_guestbook_posts");
 
-      if (data && data.length > 0) {
-        const mapped: FeaturedTribute[] = data
-          .filter((d: any) => d.memorials) // safety
-          .map((d: any) => ({
-            id: d.id,
-            author_name: d.author_name,
-            relation_category: d.relation_category,
-            content: d.content,
-            created_at: d.created_at,
-            memorial_id: d.memorial_id,
-            first_name: d.memorials.first_name,
-            last_name: d.memorials.last_name,
-            share_token: d.memorials.share_token,
-          }));
-        setTributes(mapped);
+      if (!posts || posts.length === 0) {
+        setLoaded(true);
+        return;
       }
+
+      // Fetch memorial info for all unique memorial_ids
+      const memorialIds = [...new Set(posts.map((p: any) => p.memorial_id))];
+      const { data: memorials } = await supabase
+        .from("memorials")
+        .select("id, first_name, last_name, share_token")
+        .in("id", memorialIds);
+
+      const memorialMap = new Map(
+        (memorials || []).map((m: any) => [m.id, m])
+      );
+
+      const mapped: FeaturedTribute[] = posts
+        .filter((p: any) => memorialMap.has(p.memorial_id))
+        .map((p: any) => {
+          const m = memorialMap.get(p.memorial_id)!;
+          return {
+            id: p.id,
+            author_name: p.author_name,
+            relation_category: p.relation_category,
+            content: p.content,
+            created_at: p.created_at,
+            memorial_id: p.memorial_id,
+            first_name: m.first_name,
+            last_name: m.last_name,
+            share_token: m.share_token,
+          };
+        });
+
+      setTributes(mapped);
       setLoaded(true);
     };
 
