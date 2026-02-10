@@ -111,11 +111,12 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         }
       }
 
-      // Only include Famille directe and Famille élargie in the tree
-      const ALLOWED_CATEGORIES = new Set(["Famille directe", "Famille élargie"]);
-
+      // Filter: only include posts whose relation classifies as lineage
       return Array.from(authorMap.values())
-        .filter(post => ALLOWED_CATEGORIES.has(post.relation_category))
+        .filter(post => {
+          const classified = classifyRelation(post.relation_category);
+          return classified.isLineage;
+        })
         .map(post => ({
           id: `tribute-${post.user_id || post.id}`,
           name: post.author_name,
