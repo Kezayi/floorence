@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
 
@@ -11,8 +12,9 @@ interface AuthorAvatarProps {
 /**
  * "Sceau d'Auteur" — circular avatar displayed next to tributes.
  * Shows a bordeaux border for "Famille directe" members (Trait de Sang).
+ * Fixed dimensions to prevent CLS.
  */
-const AuthorAvatar = ({ avatarUrl, authorName, relationCategory, size = "sm" }: AuthorAvatarProps) => {
+const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm" }: AuthorAvatarProps) => {
   const initials = authorName
     .split(" ")
     .map((n) => n[0])
@@ -39,6 +41,8 @@ const AuthorAvatar = ({ avatarUrl, authorName, relationCategory, size = "sm" }: 
           src={avatarUrl}
           alt={authorName}
           className="object-cover grayscale-[30%]"
+          width={size === "sm" ? 32 : 40}
+          height={size === "sm" ? 32 : 40}
         />
       ) : null}
       <AvatarFallback
@@ -48,6 +52,8 @@ const AuthorAvatar = ({ avatarUrl, authorName, relationCategory, size = "sm" }: 
       </AvatarFallback>
     </Avatar>
   );
-};
+});
+
+AuthorAvatar.displayName = "AuthorAvatar";
 
 export default AuthorAvatar;

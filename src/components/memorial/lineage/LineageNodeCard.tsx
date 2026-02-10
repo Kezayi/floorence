@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { displayName } from "@/lib/privacyUtils";
@@ -22,7 +23,7 @@ interface LineageNodeCardProps {
   isDeceased?: boolean;
 }
 
-const LineageNodeCard = ({ node, isAuthenticated, isCurrentUser, isDeceased = true }: LineageNodeCardProps) => {
+const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased = true }: LineageNodeCardProps) => {
   const initials = node.name.split(" ").map(n => n[0]).join("").slice(0, 2);
 
   const content = (
@@ -49,6 +50,8 @@ const LineageNodeCard = ({ node, isAuthenticated, isCurrentUser, isDeceased = tr
             alt={displayName(node.name, isAuthenticated)}
             className="w-full h-full object-cover"
             loading="lazy"
+            width={80}
+            height={80}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -89,6 +92,8 @@ const LineageNodeCard = ({ node, isAuthenticated, isCurrentUser, isDeceased = tr
   }
 
   return content;
-};
+});
+
+LineageNodeCard.displayName = "LineageNodeCard";
 
 export default LineageNodeCard;
