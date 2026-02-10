@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TreePine, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +7,11 @@ import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
+import LineageNodeCard, { type TreeNode } from "./lineage/LineageNodeCard";
+import LineageGenerationRow from "./lineage/LineageGenerationRow";
+import LineageViewFilter from "./lineage/LineageViewFilter";
+
 interface LineageTreeProps {
   memorialId: string;
   deceasedName: string;
@@ -15,78 +19,12 @@ interface LineageTreeProps {
   isOwner: boolean;
 }
 
-interface TreeNode {
-  id: string;
-  name: string;
-  firstName: string;
-  photo: string | null;
-  shareToken: string | null;
-  relation: string; // relation label relative to the deceased
-  generation: number; // -2 = grandparents, -1 = parents, 0 = self, 1 = children, 2 = grandchildren
-}
-
-// Parent/child relation keywords for filtering
-const PARENT_RELATIONS = [
-  "père", "mère", "parent", "papa", "maman",
-  "grand-père", "grand-mère", "grandpère", "grandmère",
-  "arrière-grand-père", "arrière-grand-mère",
-];
-const CHILD_RELATIONS = [
-  "fils", "fille", "enfant",
-  "petit-fils", "petite-fille",
-  "arrière-petit-fils", "arrière-petite-fille",
-];
-const SPOUSE_RELATIONS = [
-  "époux", "épouse", "mari", "femme", "conjoint", "conjointe",
-];
-
-const SIBLING_RELATIONS = [
-  "frère", "sœur", "soeur", "demi-frère", "demi-sœur", "demi-soeur",
-];
-
-const classifyRelation = (relation: string): { generation: number; isLineage: boolean } => {
-  const lower = relation.toLowerCase();
-  
-  if (lower.includes("arrière-grand-p") || lower.includes("arrière-grand-m")) {
-    return { generation: -3, isLineage: true };
-  }
-  if (lower.includes("grand-p") || lower.includes("grand-m") || lower.includes("grandp") || lower.includes("grandm")) {
-    return { generation: -2, isLineage: true };
-  }
-  if (PARENT_RELATIONS.some(p => lower.includes(p)) && !lower.includes("grand")) {
-    return { generation: -1, isLineage: true };
-  }
-  if (lower.includes("arrière-petit")) {
-    return { generation: 3, isLineage: true };
-  }
-  if (lower.includes("petit-fils") || lower.includes("petite-fille")) {
-    return { generation: 2, isLineage: true };
-  }
-  if (CHILD_RELATIONS.some(c => lower.includes(c)) && !lower.includes("petit") && !lower.includes("grand")) {
-    return { generation: 1, isLineage: true };
-  }
-  if (SPOUSE_RELATIONS.some(s => lower.includes(s))) {
-    return { generation: 0, isLineage: true };
-  }
-  return { generation: 0, isLineage: false };
-};
-
-const GENERATION_LABELS: Record<number, string> = {
-  [-3]: "Arrière-grands-parents",
-  [-2]: "Grands-parents",
-  [-1]: "Parents",
-  [0]: "Conjoint(e)",
-  [1]: "Enfants",
-  [2]: "Petits-enfants",
-  [3]: "Arrière-petits-enfants",
-};
-
 const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: LineageTreeProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const isValidUUID = /^[0-9a-f]{8}-/.test(memorialId);
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("complete");
 
-  // Fetch inter-memorial relations (accepted links)
   const { data: relations, isLoading } = useQuery({
     queryKey: ["lineage-tree", memorialId],
     enabled: isValidUUID,
@@ -125,7 +63,6 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
         const linked = memorialMap.get(linkedId);
         if (!linked) return null;
 
-        // Determine the relation label from the deceased's perspective
         const relation = isSource
           ? getGenderAwareRelation(r.relation_type, currentFirstName)
           : getInverseRelation(r.relation_type, currentFirstName);
@@ -144,32 +81,44 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
           relation,
           createdBy: linked.created_by,
         };
-      }).filter(Boolean) as Array<TreeNode & { createdBy: string }>;
+      }).filter(Boolean) as Array<{ id: string; name: string; firstName: string; photo: string | null; shareToken: string | null; relation: string; createdBy: string }>;
     },
   });
 
-  // Classify into lineage generations
+  // Classify into generations with the 5-pillar system
   const treeNodes = useMemo(() => {
     if (!relations) return [];
     return relations
       .map(r => {
-        const { generation, isLineage } = classifyRelation(r.relation);
-        if (!isLineage) return null;
-        return { ...r, generation };
+        const classified = classifyRelation(r.relation);
+        if (!classified.isLineage) return null;
+        return { ...r, generation: classified.generation, linkStyle: classified.linkStyle } as TreeNode;
       })
       .filter(Boolean) as TreeNode[];
   }, [relations]);
 
+  // Apply view filter
+  const filteredNodes = useMemo(() => {
+    switch (viewFilter) {
+      case "ascendance":
+        return treeNodes.filter(n => n.generation < 0);
+      case "descendance":
+        return treeNodes.filter(n => n.generation > 0);
+      case "complete":
+      default:
+        return treeNodes;
+    }
+  }, [treeNodes, viewFilter]);
+
   // Group by generation
   const generations = useMemo(() => {
     const map = new Map<number, TreeNode[]>();
-    treeNodes.forEach(node => {
+    filteredNodes.forEach(node => {
       if (!map.has(node.generation)) map.set(node.generation, []);
       map.get(node.generation)!.push(node);
     });
-    // Sort by generation number ascending (ancestors first)
     return Array.from(map.entries()).sort(([a], [b]) => a - b);
-  }, [treeNodes]);
+  }, [filteredNodes]);
 
   if (isLoading) {
     return (
@@ -181,22 +130,29 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
   }
 
   const isEmpty = treeNodes.length === 0;
+  const ancestorGens = generations.filter(([gen]) => gen < 0);
+  const siblingAndAllianceGen = generations.filter(([gen]) => gen === 0);
+  const descendantGens = generations.filter(([gen]) => gen > 0);
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h3 className="flex items-center gap-2 mb-2">
-          <TreePine className="w-5 h-5 text-foreground/70" />
-          Arbre de lignage
-        </h3>
-        <p className="font-serif text-muted-foreground">
-          La lignée de {deceasedName}
-        </p>
+      {/* Header with view filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 mb-1">
+            <TreePine className="w-5 h-5 text-foreground/70" />
+            Arbre de lignage
+          </h3>
+          <p className="font-serif text-muted-foreground text-sm">
+            La lignée de {deceasedName}
+          </p>
+        </div>
+        {!isEmpty && (
+          <LineageViewFilter value={viewFilter} onChange={setViewFilter} />
+        )}
       </div>
 
       {isEmpty ? (
-        /* Empty State */
         <div className="bg-muted/30 border border-border rounded-sm p-10 text-center">
           <TreePine className="w-10 h-10 mx-auto text-muted-foreground/40 mb-4" />
           <h4 className="text-lg font-serif mb-2">Aucune racine plantée</h4>
@@ -215,30 +171,29 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
           </p>
         </div>
       ) : (
-        /* Tree Visualization */
         <div className="relative animate-fade-in">
           {/* Central vertical blood line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 hidden md:block bg-[hsl(0,45%,30%)]/80 animate-[grow-down_1.2s_ease-out]" 
-               style={{ transformOrigin: 'top', animation: 'grow-down 1.2s ease-out forwards' }} />
+          <div
+            className="absolute left-1/2 top-0 bottom-0 w-[2.5px] -translate-x-1/2 hidden md:block bg-[#800000]/80"
+            style={{ transformOrigin: "top", animation: "grow-down 1.2s ease-out forwards" }}
+          />
 
-          {/* Ancestor generations */}
-          {generations
-            .filter(([gen]) => gen < 0)
-            .map(([gen, nodes], i) => (
-              <GenerationRow
-                key={gen}
-                generation={gen}
-                nodes={nodes}
-                isAuthenticated={isAuthenticated}
-                currentUserId={user?.id}
-                animDelay={i * 200}
-              />
-            ))}
+          {/* Ancestors (top) */}
+          {ancestorGens.map(([gen, nodes], i) => (
+            <LineageGenerationRow
+              key={gen}
+              generation={gen}
+              nodes={nodes}
+              isAuthenticated={isAuthenticated}
+              currentUserId={user?.id}
+              animDelay={i * 200}
+            />
+          ))}
 
-          {/* Central deceased node */}
+          {/* De Cujus — central node */}
           <div className="relative z-10 flex justify-center py-6">
             <div className="flex flex-col items-center">
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-primary bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[2.5px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
                 {deceasedPhoto ? (
                   <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
                 ) : (
@@ -252,147 +207,37 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
               <span className="mt-2 font-serif text-sm font-medium text-foreground text-center">
                 {deceasedName}
               </span>
-              <span className="text-xs text-primary font-sans">Défunt(e)</span>
+              <span className="text-xs text-primary font-sans italic">De Cujus</span>
             </div>
           </div>
 
-          {/* Spouse row (generation 0) — gold alliance links */}
-          {generations
-            .filter(([gen]) => gen === 0)
-            .map(([gen, nodes]) => (
-              <GenerationRow
-                key={gen}
-                generation={gen}
-                nodes={nodes}
-                isAuthenticated={isAuthenticated}
-                currentUserId={user?.id}
-                isAlliance
-                animDelay={400}
-              />
-            ))}
+          {/* Siblings & Alliances (generation 0) */}
+          {siblingAndAllianceGen.map(([gen, nodes]) => (
+            <LineageGenerationRow
+              key={gen}
+              generation={gen}
+              nodes={nodes}
+              isAuthenticated={isAuthenticated}
+              currentUserId={user?.id}
+              animDelay={400}
+            />
+          ))}
 
-          {/* Descendant generations */}
-          {generations
-            .filter(([gen]) => gen > 0)
-            .map(([gen, nodes], i) => (
-              <GenerationRow
-                key={gen}
-                generation={gen}
-                nodes={nodes}
-                isAuthenticated={isAuthenticated}
-                currentUserId={user?.id}
-                animDelay={600 + i * 200}
-              />
-            ))}
+          {/* Descendants (bottom) */}
+          {descendantGens.map(([gen, nodes], i) => (
+            <LineageGenerationRow
+              key={gen}
+              generation={gen}
+              nodes={nodes}
+              isAuthenticated={isAuthenticated}
+              currentUserId={user?.id}
+              animDelay={600 + i * 200}
+            />
+          ))}
         </div>
       )}
     </div>
   );
-};
-
-/* ── Generation Row ── */
-interface GenerationRowProps {
-  generation: number;
-  nodes: TreeNode[];
-  isAuthenticated: boolean;
-  currentUserId?: string;
-  isAlliance?: boolean;
-  animDelay?: number;
-}
-
-const GenerationRow = ({ generation, nodes, isAuthenticated, currentUserId, isAlliance, animDelay = 0 }: GenerationRowProps) => {
-  const label = GENERATION_LABELS[generation] || "Famille";
-  const lineColor = isAlliance
-    ? "bg-ai-gold/60"
-    : "bg-[hsl(0,45%,30%)]/80";
-
-  return (
-    <div
-      className="relative py-4 animate-fade-in"
-      style={{ animationDelay: `${animDelay}ms`, animationFillMode: 'both' }}
-    >
-      {/* Horizontal connector */}
-      <div className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 h-[2px] ${lineColor}`} />
-
-      {/* Generation label */}
-      <div className="text-center mb-3">
-        <span className="text-xs font-sans text-muted-foreground tracking-widest uppercase bg-background px-3 relative z-10">
-          {label}
-        </span>
-      </div>
-
-      {/* Nodes */}
-      <div className="flex flex-wrap justify-center gap-6 md:gap-8">
-        {nodes.map(node => (
-          <TreeNodeCard
-            key={node.id}
-            node={node}
-            isAuthenticated={isAuthenticated}
-            isCurrentUser={false}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* ── Tree Node Card ── */
-interface TreeNodeCardProps {
-  node: TreeNode;
-  isAuthenticated: boolean;
-  isCurrentUser: boolean;
-}
-
-const TreeNodeCard = ({ node, isAuthenticated, isCurrentUser }: TreeNodeCardProps) => {
-  const content = (
-    <div
-      className={`flex flex-col items-center group transition-all duration-300 ${
-        isCurrentUser ? "ring-2 ring-ai-gold/50 rounded-lg p-2 bg-ai-gold/5" : ""
-      }`}
-    >
-      <div
-        className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 border ${
-          isCurrentUser ? "border-ai-gold bg-ai-gold/20" : "border-border bg-muted"
-        }`}
-      >
-        {node.photo ? (
-          <img
-            src={node.photo}
-            alt={displayName(node.name, isAuthenticated)}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="font-serif text-lg text-muted-foreground">
-              {node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-            </span>
-          </div>
-        )}
-      </div>
-      <span className="mt-2 font-serif text-xs md:text-sm text-foreground text-center max-w-[100px] truncate">
-        {displayName(node.name, isAuthenticated)}
-      </span>
-      <span className="text-[10px] md:text-xs text-muted-foreground font-sans text-center">
-        {node.relation}
-      </span>
-    </div>
-  );
-
-  // Wrap in link if share token is available
-  if (node.shareToken) {
-    return (
-      <Link
-        to={`/m/${node.shareToken}`}
-        className="hover:opacity-80 transition-opacity"
-        title={`Voir l'espace mémoriel de ${displayName(node.name, isAuthenticated)}`}
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  return content;
 };
 
 export default LineageTree;
