@@ -88,6 +88,13 @@ const MemorialInner = () => {
   const [dbFallback, setDbFallback] = useState<any>(null);
   const [dbFallbackLoading, setDbFallbackLoading] = useState(false);
   const [dbFallbackDone, setDbFallbackDone] = useState(false);
+
+  // Reset DB fallback state when route params change (critical for client-side navigation)
+  useEffect(() => {
+    setDbFallback(null);
+    setDbFallbackDone(false);
+    setDbFallbackLoading(false);
+  }, [token, slug]);
   
   // Check if contributions are enabled globally
   const contributionsEnabled = settings?.contribution_link_template?.enabled && settings?.contribution_link_template?.url;
