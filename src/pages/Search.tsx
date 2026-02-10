@@ -245,6 +245,30 @@ const searchWithFamilyGrouping = (
           members: [],
         });
       }
+
+      // Track deceased in multi-memorial dedup (in case same person appears as contributor elsewhere)
+      const deceasedNorm = normalizeForDedup(memorial.name);
+      const deceasedDedupKey = findDedupKey(deceasedNorm, dedupVariants) || deceasedNorm;
+      if (!dedupVariants.has(deceasedDedupKey)) {
+        dedupVariants.set(deceasedDedupKey, [deceasedNorm]);
+      } else if (!dedupVariants.get(deceasedDedupKey)!.includes(deceasedNorm)) {
+        dedupVariants.get(deceasedDedupKey)!.push(deceasedNorm);
+      }
+      const existingDeceased = personMemorials.get(deceasedDedupKey) || [];
+      const alreadyTrackedDeceased = existingDeceased.find(e => e.memorialId === memorial.id);
+      if (!alreadyTrackedDeceased) {
+        existingDeceased.push({
+          memorialId: memorial.id,
+          memorialSlug: memorial.slug,
+          memorialShareToken: (memorial as any).shareToken || null,
+          memorialName: memorial.name,
+          relation: "Défunt(e)",
+          isCreator: false,
+          guestbookCount: 0,
+          photo: memorial.photos[0],
+        });
+        personMemorials.set(deceasedDedupKey, existingDeceased);
+      }
     }
 
     // 2. Chercher le créateur
