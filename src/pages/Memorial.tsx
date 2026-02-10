@@ -19,9 +19,10 @@ import GuestbookPost, { GuestbookPostData } from "@/components/memorial/Guestboo
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GuestbookPagination from "@/components/memorial/GuestbookPagination";
 import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
+import LineageTree from "@/components/memorial/LineageTree";
 import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch } from "lucide-react";
+import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch, TreePine } from "lucide-react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -777,6 +778,15 @@ const MemorialInner = () => {
                 <span className="sm:hidden">Liens</span>
               </TabsTrigger>
               
+              <TabsTrigger
+                value="lineage"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
+              >
+                <TreePine className="w-4 h-4" />
+                <span className="hidden sm:inline">Arbre</span>
+                <span className="sm:hidden">Arbre</span>
+              </TabsTrigger>
+              
               {memorial.enableContributions && contributionsEnabled && (
                 <TabsTrigger
                   value="contributions"
@@ -866,6 +876,19 @@ const MemorialInner = () => {
                       authorName: post?.authorName || "Anonyme",
                       relationCategory: post?.relationCategory || "autre",
                     }))}
+                  />
+                </SecureDataDisplay>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="lineage" className="mt-0">
+              <div className="max-w-3xl">
+                <SecureDataDisplay blurPreview>
+                  <LineageTree
+                    memorialId={memorial.id}
+                    deceasedName={safeName}
+                    deceasedPhoto={bestPhoto}
+                    isOwner={isOwner}
                   />
                 </SecureDataDisplay>
               </div>
