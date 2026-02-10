@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, memo } from "react";
 import { Link } from "react-router-dom";
 import { Flame, Flower2 } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
@@ -195,4 +195,4 @@ const MemorialCard = ({
   );
 };
 
-export default MemorialCard;
+export default memo(MemorialCard);

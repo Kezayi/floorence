@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { ChevronLeft, ChevronRight, X, Flame, Flower2 } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
@@ -269,4 +269,4 @@ const GuestbookPost = ({
   );
 };
 
-export default GuestbookPost;
+export default memo(GuestbookPost);
