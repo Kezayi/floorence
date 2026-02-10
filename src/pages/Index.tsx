@@ -3,6 +3,7 @@ import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
 import MemorialPagination from "@/components/home/MemorialPagination";
 import UpcomingEvents from "@/components/home/UpcomingEvents";
+import HommageFeatured from "@/components/home/HommageFeatured";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
 import EmptyState from "@/components/ui/empty-state";
 import { LayoutGrid, Grid3X3, List, Square, Heart } from "lucide-react";
@@ -91,6 +92,9 @@ const Index = () => {
       <Header />
 
       <main className="flex-1 pt-20 md:pt-24">
+
+        {/* Paroles d'Éternité — Featured Tribute */}
+        <HommageFeatured />
 
         {/* Memorial Grid */}
         <section className="px-4 py-6 md:px-8 md:py-10">
