@@ -1,12 +1,15 @@
 import { GENERATION_LABELS } from "./lineageConstants";
 import LineageNodeCard, { type TreeNode } from "./LineageNodeCard";
 
+type TreePosition = "root" | "trunk" | "branch";
+
 interface LineageGenerationRowProps {
   generation: number;
   nodes: TreeNode[];
   isAuthenticated: boolean;
   currentUserId?: string;
   animDelay?: number;
+  treePosition?: TreePosition;
 }
 
 const LineageGenerationRow = ({
@@ -15,6 +18,7 @@ const LineageGenerationRow = ({
   isAuthenticated,
   currentUserId,
   animDelay = 0,
+  treePosition = "trunk",
 }: LineageGenerationRowProps) => {
   const label = GENERATION_LABELS[generation] || "Famille";
 
@@ -31,8 +35,12 @@ const LineageGenerationRow = ({
     ? "bg-[#800000]/50"
     : "bg-[#800000]/80";
 
-  // Line thickness based on link type
-  const lineHeight = hasAlliance || hasExtended ? "h-[1.5px]" : "h-[2.5px]";
+  // Line thickness: thicker at roots (bottom), thinner at branches (top)
+  const lineHeight = treePosition === "root"
+    ? "h-[3px]"
+    : treePosition === "branch"
+    ? "h-[1.5px]"
+    : hasAlliance || hasExtended ? "h-[1.5px]" : "h-[2.5px]";
 
   return (
     <div
