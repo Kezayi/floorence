@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { useParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,6 +47,12 @@ const AdminAuditSuggestions = lazy(() => import("./pages/admin/AuditSuggestions"
 
 const queryClient = new QueryClient();
 
+// Force full remount when navigating between different memorials
+// Prevents stale state (dbFallbackDone, guestbook, events) from leaking between pages
+const MemorialWrapper = () => {
+  const { token, slug } = useParams();
+  return <Memorial key={token || slug || 'memorial'} />;
+};
 // Minimal loading fallback with logo fade animation
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -72,9 +79,9 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/recherche" element={<Search />} />
                   {/* Primary obfuscated route — resolves token to memorial */}
-                  <Route path="/m/:token" element={<Memorial />} />
+                  <Route path="/m/:token" element={<MemorialWrapper />} />
                   {/* Legacy slug route — backward compat for shared links */}
-                  <Route path="/memorial/:slug" element={<Memorial />} />
+                  <Route path="/memorial/:slug" element={<MemorialWrapper />} />
                   <Route path="/compte" element={<Account />} />
                   <Route path="/creer" element={
                     <RequireAuth>
