@@ -4,10 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle, Shield, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { analyzeKinship, formatDegree, type KinshipAnalysis, type AmbiguousLink } from "@/lib/kinshipCalculator";
+import {
+  scoreRelation, scorePath, classifyRelation, getDominantPathType,
+  getPathTypeLabel, identifyRelay, findStrongestPath,
+  generateContactPlan, type RelayInfo, type PathType,
+} from "@/lib/relayScoring";
 
 /* ── Types ── */
 interface LivingOption {
@@ -104,10 +109,16 @@ const ShortestPath = () => {
   const [selectedB, setSelectedB] = useState<LivingOption | null>(null);
   const [pathResult, setPathResult] = useState<PathStep[] | null>(null);
   const [safePath, setSafePath] = useState<PathStep[] | null>(null);
+  const [strongestPath, setStrongestPath] = useState<PathStep[] | null>(null);
   const [noPath, setNoPath] = useState(false);
   const [computing, setComputing] = useState(false);
   const [kinship, setKinship] = useState<KinshipAnalysis | null>(null);
   const [safeKinship, setSafeKinship] = useState<KinshipAnalysis | null>(null);
+  const [strongestKinship, setStrongestKinship] = useState<KinshipAnalysis | null>(null);
+  const [relay, setRelay] = useState<RelayInfo | null>(null);
+  const [strongestRelay, setStrongestRelay] = useState<RelayInfo | null>(null);
+  const [strongestScore, setStrongestScore] = useState(0);
+  const [shortestScore, setShortestScore] = useState(0);
 
   const debouncedA = useDebounce(searchA, 300);
   const debouncedB = useDebounce(searchB, 300);
@@ -115,9 +126,15 @@ const ShortestPath = () => {
   const resetResults = () => {
     setPathResult(null);
     setSafePath(null);
+    setStrongestPath(null);
     setNoPath(false);
     setKinship(null);
     setSafeKinship(null);
+    setStrongestKinship(null);
+    setRelay(null);
+    setStrongestRelay(null);
+    setStrongestScore(0);
+    setShortestScore(0);
   };
 
   // Autocomplete queries for living people
@@ -263,10 +280,48 @@ const ShortestPath = () => {
       const steps = buildSteps(shortResult);
       setPathResult(steps);
 
-      // Kinship: include living-to-memorial relations in the degree count
+      // Kinship & score for shortest path
       const startRel = connectionsA.get(shortResult.startMemId) || "Proche";
       const endRel = connectionsB.get(shortResult.endMemId) || "Proche";
-      setKinship(analyzeKinship([startRel, ...shortResult.rels, endRel]));
+      const allRels = [startRel, ...shortResult.rels, endRel];
+      setKinship(analyzeKinship(allRels));
+      setShortestScore(scorePath(allRels));
+
+      // Relay for shortest path
+      const nodeNames = steps.map(s => s.node.name);
+      setRelay(identifyRelay(allRels, nodeNames));
+
+      // 6. Find STRONGEST path (weighted by trust score)
+      let globalBestStrong: { path: string[]; rels: string[]; score: number; startMemId: string; endMemId: string } | null = null;
+
+      for (const memAId of connectionsA.keys()) {
+        for (const memBId of connectionsB.keys()) {
+          if (memAId === memBId) continue;
+          const result = findStrongestPath(graph, memAId, memBId, MAX_DEGREES);
+          if (result) {
+            const startR = connectionsA.get(memAId) || "Proche";
+            const endR = connectionsB.get(memBId) || "Proche";
+            const totalScore = scoreRelation(startR) + result.score + scoreRelation(endR);
+            if (!globalBestStrong || totalScore > globalBestStrong.score) {
+              globalBestStrong = { ...result, score: totalScore, startMemId: memAId, endMemId: memBId };
+            }
+          }
+        }
+      }
+
+      // Only show strongest if different from shortest
+      if (globalBestStrong && JSON.stringify(globalBestStrong.path) !== JSON.stringify(shortResult.path)) {
+        const strongSteps = buildSteps(globalBestStrong);
+        setStrongestPath(strongSteps);
+        const strongStartRel = connectionsA.get(globalBestStrong.startMemId) || "Proche";
+        const strongEndRel = connectionsB.get(globalBestStrong.endMemId) || "Proche";
+        const strongAllRels = [strongStartRel, ...globalBestStrong.rels, strongEndRel];
+        setStrongestKinship(analyzeKinship(strongAllRels));
+        setStrongestScore(globalBestStrong.score);
+
+        const strongNodeNames = strongSteps.map(s => s.node.name);
+        setStrongestRelay(identifyRelay(strongAllRels, strongNodeNames));
+      }
 
       // Safe path (blood + alliance only)
       const safeResult = findBestPath(true);
@@ -359,12 +414,30 @@ const ShortestPath = () => {
 
       {pathResult && (
         <div className="space-y-6">
+          {/* Strongest path (primary recommendation) */}
+          {strongestPath && (
+            <PathDisplay
+              title="Chemin le plus solide (Relais de Confiance)"
+              steps={strongestPath}
+              narrative={generateNarrative(strongestPath)}
+              kinship={strongestKinship}
+              relay={strongestRelay}
+              score={strongestScore}
+              isStrongest
+            />
+          )}
+
+          {/* Shortest path */}
           <PathDisplay
-            title="Chemin le plus court"
+            title={strongestPath ? "Chemin le plus court" : "Chemin le plus court (aussi le plus solide)"}
             steps={pathResult}
             narrative={generateNarrative(pathResult)}
             kinship={kinship}
+            relay={!strongestPath ? relay : undefined}
+            score={shortestScore}
           />
+
+          {/* Safe path */}
           {safePath && (
             <PathDisplay
               title="Chemin le plus sûr (sang & alliance)"
@@ -441,34 +514,93 @@ const LivingSearchField = ({
   </Card>
 );
 
-/* ── Path Display with Kinship & Ambiguity ── */
+/* ── Path Display with Kinship, Relay & Score ── */
 const PathDisplay = ({
   title,
   steps,
   narrative,
   isSafe,
   kinship,
+  relay,
+  score,
+  isStrongest,
 }: {
   title: string;
   steps: PathStep[];
   narrative: string;
   isSafe?: boolean;
   kinship?: KinshipAnalysis | null;
+  relay?: RelayInfo | null;
+  score?: number;
+  isStrongest?: boolean;
 }) => {
   const ambiguities = kinship?.ambiguities || [];
 
   return (
-    <Card className={isSafe ? "border-ai-gold/30" : ""}>
+    <Card className={isStrongest ? "border-ai-gold/40 shadow-[0_0_15px_-5px_hsl(var(--ai-gold)/0.3)]" : isSafe ? "border-ai-gold/30" : ""}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-serif flex items-center gap-2">
-          <Route className={`w-4 h-4 ${isSafe ? "text-ai-gold" : "text-primary"}`} />
+          {isStrongest ? (
+            <Shield className="w-4 h-4 text-ai-gold" />
+          ) : (
+            <Route className={`w-4 h-4 ${isSafe ? "text-ai-gold" : "text-primary"}`} />
+          )}
           {title}
-          <Badge variant="outline" className="ml-auto text-xs font-sans">
-            {steps.filter(s => !s.isLiving).length} intermédiaire{steps.filter(s => !s.isLiving).length > 1 ? "s" : ""}
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {score !== undefined && score > 0 && (
+              <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px] font-sans gap-1">
+                <Zap className="w-2.5 h-2.5" />
+                {score} pts
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs font-sans">
+              {steps.filter(s => !s.isLiving).length} intermédiaire{steps.filter(s => !s.isLiving).length > 1 ? "s" : ""}
+            </Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Relay / Plan de Contact */}
+        {relay && (
+          <div className="mb-5 p-4 rounded-md border border-ai-gold/30 bg-ai-gold/5">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-ai-gold" />
+              <span className="font-serif text-sm font-semibold text-foreground">
+                Plan de Contact
+              </span>
+              <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px] ml-auto">
+                Relais de Confiance
+              </Badge>
+            </div>
+            <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+              {relay.reason}
+            </p>
+            {steps[relay.stepIndex] && (
+              <div className="mt-3 flex items-center gap-3 p-2 rounded-md bg-background/60 border border-ai-gold/20">
+                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-ai-gold ring-offset-2 ring-offset-background shadow-[0_0_10px_-2px_hsl(var(--ai-gold)/0.4)]">
+                  {steps[relay.stepIndex].node.photo ? (
+                    <img src={steps[relay.stepIndex].node.photo!} alt="" className="w-full h-full object-cover grayscale" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <span className="font-serif text-xs text-muted-foreground">
+                        {steps[relay.stepIndex].node.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-serif font-medium text-foreground">
+                    {steps[relay.stepIndex].node.name}
+                  </p>
+                  <p className="text-[10px] font-sans text-ai-gold">
+                    Score de confiance : {relay.trustScore}/20
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Kinship Analysis Card */}
         {kinship && (
           <div className="mb-5 p-4 rounded-md border border-ai-gold/20 bg-ai-gold/5">
@@ -533,6 +665,7 @@ const PathDisplay = ({
             const isAncestor = kinship?.commonAncestorIndex === i;
             const isLiving = step.isLiving;
             const isAmbiguous = ambiguities.some(a => a.stepIndex === i);
+            const isRelay = relay?.stepIndex === i;
             return (
               <div key={`${step.node.id}-${i}`} className="flex items-center gap-1 shrink-0">
                 {/* Connector */}
@@ -568,11 +701,13 @@ const PathDisplay = ({
                   <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden ${
                     isLiving
                       ? "bg-primary/10 ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
-                      : isAmbiguous
-                        ? "bg-muted grayscale ring-2 ring-orange-400 ring-dashed ring-offset-2 ring-offset-background"
-                        : isAncestor
-                          ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
-                          : "bg-muted grayscale border border-border"
+                      : isRelay
+                        ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background shadow-[0_0_12px_-2px_hsl(var(--ai-gold)/0.5)]"
+                        : isAmbiguous
+                          ? "bg-muted grayscale ring-2 ring-orange-400 ring-dashed ring-offset-2 ring-offset-background"
+                          : isAncestor
+                            ? "bg-muted grayscale ring-2 ring-ai-gold ring-offset-2 ring-offset-background"
+                            : "bg-muted grayscale border border-border"
                   }`}>
                     {step.node.photo ? (
                       <img src={step.node.photo} alt="" className={`w-full h-full object-cover ${!isLiving ? "grayscale" : ""}`} />
@@ -590,6 +725,7 @@ const PathDisplay = ({
                   </div>
                   <span className={`text-[10px] md:text-xs text-center mt-1 max-w-[80px] truncate ${
                     isLiving ? "font-sans font-medium text-primary" :
+                    isRelay ? "font-serif font-semibold text-ai-gold" :
                     isAmbiguous ? "font-serif text-orange-500" : "font-serif text-foreground"
                   }`}>
                     {step.node.name}
@@ -597,10 +733,13 @@ const PathDisplay = ({
                   {isLiving && (
                     <span className="text-[8px] text-primary font-sans mt-0.5">Vivant</span>
                   )}
-                  {isAmbiguous && !isLiving && (
+                  {isRelay && !isLiving && (
+                    <span className="text-[8px] text-ai-gold font-sans mt-0.5 font-medium">★ Relais</span>
+                  )}
+                  {isAmbiguous && !isLiving && !isRelay && (
                     <span className="text-[8px] text-orange-500 font-sans mt-0.5">⚠ À valider</span>
                   )}
-                  {isAncestor && !isLiving && !isAmbiguous && (
+                  {isAncestor && !isLiving && !isAmbiguous && !isRelay && (
                     <span className="text-[8px] text-ai-gold font-sans mt-0.5">◆ Racine</span>
                   )}
                 </div>
