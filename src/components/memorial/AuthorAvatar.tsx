@@ -2,6 +2,21 @@ import { memo } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
 
+/** Palette sobre pour les initiales d'avatar (gris, bordeaux, or) */
+const FALLBACK_PALETTES = [
+  "bg-[hsl(0_0%_30%)] text-[hsl(0_0%_85%)]",         // gris anthracite
+  "bg-[hsl(0_70%_20%)] text-[hsl(0_0%_90%)]",         // bordeaux foncé
+  "bg-[hsl(43_56%_28%)] text-[hsl(43_56%_85%)]",      // or sombre
+  "bg-[hsl(0_0%_40%)] text-[hsl(0_0%_90%)]",          // gris moyen
+  "bg-[hsl(0_40%_30%)] text-[hsl(0_0%_88%)]",         // brun-rouge
+];
+
+function getFallbackColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return FALLBACK_PALETTES[Math.abs(hash) % FALLBACK_PALETTES.length];
+}
+
 interface AuthorAvatarProps {
   avatarUrl: string | null | undefined;
   authorName: string;
@@ -46,7 +61,7 @@ const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm
         />
       ) : null}
       <AvatarFallback
-        className={`bg-memorial-dark-muted/30 text-memorial-dark-muted ${textSize} font-sans`}
+        className={`${getFallbackColor(authorName)} ${textSize} font-sans`}
       >
         {initials}
       </AvatarFallback>
