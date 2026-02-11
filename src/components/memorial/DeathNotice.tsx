@@ -24,18 +24,23 @@ interface DeathNoticeProps {
 }
 
 const eventTypeLabels: Record<string, string> = {
-  WAKE: "Veillée",
-  BURIAL: "Inhumation",
-  COMMEMORATION: "Commémoration",
-  ANNIVERSARY: "Anniversaire",
+  "Programme des obsèques": "Programme des obsèques",
+  "Recueillement": "Recueillement",
+  // Legacy support
+  WAKE: "Programme des obsèques",
+  BURIAL: "Programme des obsèques",
+  COMMEMORATION: "Recueillement",
+  ANNIVERSARY: "Recueillement",
   GATHERING: "Recueillement",
 };
 
 const eventTypeIcons: Record<string, string> = {
-  WAKE: "🕯️",
+  "Programme des obsèques": "⚰️",
+  "Recueillement": "🤝",
+  WAKE: "⚰️",
   BURIAL: "⚰️",
-  COMMEMORATION: "🙏",
-  ANNIVERSARY: "💐",
+  COMMEMORATION: "🤝",
+  ANNIVERSARY: "🤝",
   GATHERING: "🤝",
 };
 
@@ -50,9 +55,9 @@ const formatEventDate = (dateStr: string): string => {
 };
 
 const DeathNotice = ({ memorial, events = [] }: DeathNoticeProps) => {
-  // Filter only funeral-related events (WAKE, BURIAL, COMMEMORATION)
+  // Filter Programme des obsèques events
   const funeralEvents = events.filter(e => 
-    ['WAKE', 'BURIAL', 'COMMEMORATION'].includes(e.event_type)
+    e.event_type === 'Programme des obsèques' || ['WAKE', 'BURIAL', 'COMMEMORATION'].includes(e.event_type)
   );
 
   return (

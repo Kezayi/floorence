@@ -16,15 +16,11 @@ const UpcomingEvents = ({ type, title, events, loading }: UpcomingEventsProps) =
   const SectionIcon = type === "funerals" ? Cross : Flame;
 
   const getEventTypeLabel = (eventType: string) => {
+    if (eventType === "Programme des obsèques") return "Programme des obsèques";
+    if (eventType === "Recueillement") return "Recueillement";
     const t = eventType.toLowerCase();
-    switch (t) {
-      case "veillee": return "Veillée";
-      case "inhumation": return "Inhumation";
-      case "commemoration":
-      case "recueillement": return "Recueillement";
-      case "anniversary": return "Anniversaire";
-      default: return eventType;
-    }
+    if (["veillee", "inhumation", "wake", "burial"].includes(t)) return "Programme des obsèques";
+    return "Recueillement";
   };
 
   if (loading) {

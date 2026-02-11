@@ -28,13 +28,10 @@
    triggerButton?: React.ReactNode;
  }
  
- const eventTypes = [
-   { value: "WAKE", label: "Veillée", icon: "🕯️" },
-   { value: "BURIAL", label: "Inhumation", icon: "⚰️" },
-   { value: "COMMEMORATION", label: "Commémoration", icon: "🙏" },
-   { value: "GATHERING", label: "Recueillement", icon: "🤝" },
-   { value: "ANNIVERSARY", label: "Anniversaire", icon: "💐" },
- ];
+const eventTypes = [
+    { value: "Programme des obsèques", label: "Programme des obsèques", icon: "⚰️" },
+    { value: "Recueillement", label: "Recueillement", icon: "🤝" },
+  ];
  
  const AddEventDialog = ({ memorialId, onEventAdded, triggerButton }: AddEventDialogProps) => {
    const [open, setOpen] = useState(false);

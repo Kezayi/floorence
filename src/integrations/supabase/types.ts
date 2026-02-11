@@ -262,10 +262,12 @@ export type Database = {
           last_name: string
           legacy_slug: string | null
           merged_into: string | null
+          network_size: number | null
           photo_url: string | null
           photos: string[] | null
           share_token: string | null
           slug: string
+          social_density_score: number | null
           total_candles: number | null
           total_flowers: number | null
           total_posts: number | null
@@ -293,10 +295,12 @@ export type Database = {
           last_name: string
           legacy_slug?: string | null
           merged_into?: string | null
+          network_size?: number | null
           photo_url?: string | null
           photos?: string[] | null
           share_token?: string | null
           slug: string
+          social_density_score?: number | null
           total_candles?: number | null
           total_flowers?: number | null
           total_posts?: number | null
@@ -324,10 +328,12 @@ export type Database = {
           last_name?: string
           legacy_slug?: string | null
           merged_into?: string | null
+          network_size?: number | null
           photo_url?: string | null
           photos?: string[] | null
           share_token?: string | null
           slug?: string
+          social_density_score?: number | null
           total_candles?: number | null
           total_flowers?: number | null
           total_posts?: number | null
