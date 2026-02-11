@@ -452,7 +452,7 @@ const MemorialInner = () => {
 
   // ── LOADING STATES ──
   // Show skeleton while context OR DB fallback is loading
-  if (memorialsLoading || dbFallbackLoading) {
+  if (memorialsLoading || dbFallbackLoading || (!contextMemorial && !dbFallback && !dbFallbackDone)) {
     return <MemorialSkeleton />;
   }
 
