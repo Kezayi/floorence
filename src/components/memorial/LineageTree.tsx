@@ -114,10 +114,11 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         }
       }
 
-      // Filter: only include posts whose relation classifies as lineage
+      // Filter: only include posts whose relation_link classifies as lineage
       const lineagePosts = Array.from(authorMap.values())
         .filter(post => {
-          const classified = classifyRelation(post.relation_category);
+          // Use relation_link ("Sa Mère") not relation_category ("famille_directe")
+          const classified = classifyRelation(post.relation_link || post.relation_category);
           return classified.isLineage;
         });
 
@@ -142,7 +143,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
           firstName: post.author_name.split(" ")[0],
           photo: post.user_id ? avatarLookup.get(post.user_id) || null : null,
           shareToken: null as string | null,
-          relation: post.relation_category,
+          relation: post.relation_link || post.relation_category,
           createdBy: post.user_id || "",
           source: "tribute" as const,
         }));
