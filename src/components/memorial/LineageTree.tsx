@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
+import { inferGender } from "@/lib/genderInference";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
@@ -20,6 +21,7 @@ interface LineageTreeProps {
 }
 
 const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: LineageTreeProps) => {
+  const deceasedGender = inferGender(deceasedName.split(" ")[0]);
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const isValidUUID = /^[0-9a-f]{8}-/.test(memorialId);
@@ -329,6 +331,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
               currentUserId={user?.id}
               animDelay={800 + i * 200}
               treePosition="branch"
+              deceasedGender={deceasedGender}
             />
           ))}
 
@@ -342,6 +345,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
               currentUserId={user?.id}
               animDelay={600}
               treePosition="trunk"
+              deceasedGender={deceasedGender}
             />
           ))}
 
@@ -369,6 +373,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                         isAuthenticated={isAuthenticated}
                         isCurrentUser={false}
                         isDeceased={true}
+                        deceasedGender={deceasedGender}
                       />
                     </div>
                   ))}
@@ -403,6 +408,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
               currentUserId={user?.id}
               animDelay={i * 200}
               treePosition="root"
+              deceasedGender={deceasedGender}
             />
           ))}
         </div>
