@@ -25,6 +25,7 @@ import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch, TreePine } fro
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { inferGender } from "@/lib/genderInference";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useSEO } from "@/hooks/useSEO";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
@@ -966,6 +967,7 @@ const MemorialInner = () => {
                     key={post.id}
                     post={post}
                     isOwner={post.authorId === currentUserId}
+                    deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
                     onAddCandle={handleAddCandle}
                     onAddFlower={handleAddFlower}
                   />
