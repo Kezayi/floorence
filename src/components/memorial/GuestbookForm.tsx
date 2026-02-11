@@ -1,6 +1,6 @@
- import { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus } from "lucide-react";
- import RelationSelect from "./RelationSelect";
+import RelationSelect, { type RelationSelection } from "./RelationSelect";
  import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +20,7 @@ interface GuestbookFormProps {
   onSubmit: (data: {
     content: string;
     relationCategory: string;
+    relationLink: string;
     photos: string[];
     candleCount: number;
     flowerCount: number;
@@ -34,6 +35,7 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
   const { isAdminOrMod } = useAdminRole();
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,7 +133,8 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
       // BETA: Direct submission - no payment required
       await onSubmit({
         content: messageContent.trim(),
-        relationCategory: selectedRelation,
+        relationCategory: selectedCategory,
+        relationLink: selectedRelation,
         photos,
         candleCount,
         flowerCount,
@@ -140,6 +143,7 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
       // Reset form only on success
       setMessageContent("");
       setSelectedRelation("");
+      setSelectedCategory("");
       setPhotos([]);
       setCandleCount(0);
       setFlowerCount(0);
@@ -158,7 +162,13 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
     <>
       <form onSubmit={handleSubmitClick} className="mb-12">
         <div className="space-y-4">
-          <RelationSelect value={selectedRelation} onChange={setSelectedRelation} />
+          <RelationSelect
+            value={selectedRelation}
+            onChange={(sel: RelationSelection) => {
+              setSelectedRelation(sel.link);
+              setSelectedCategory(sel.category);
+            }}
+          />
 
           <textarea
             value={messageContent}

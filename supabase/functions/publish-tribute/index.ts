@@ -67,9 +67,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
    content: z.string()
      .min(1, 'Message content is required')
      .max(5000, 'Message content exceeds 5000 characters'),
-   relationCategory: z.enum(VALID_RELATION_CATEGORIES, {
-     errorMap: () => ({ message: 'Invalid relation category' })
-   }),
+   relationCategory: z.string().min(1, 'Relation category is required'),
+   relationLink: z.string().min(1, 'Relation link is required').optional().default(''),
    photos: z.array(z.string().url().or(z.string().startsWith('data:image/')))
      .max(3, 'Maximum 3 photos allowed')
      .default([]),
@@ -184,6 +183,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
        memorialId, 
        content, 
        relationCategory, 
+       relationLink,
        photos, 
        candleCount, 
        flowerCount 
@@ -199,6 +199,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
          user_id: userId,
          author_name: authorName,
          relation_category: relationCategory,
+         relation_link: relationLink || null,
          content: content,
          photos: photos,
          candle_count: candleCount,

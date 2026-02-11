@@ -304,6 +304,7 @@ const MemorialInner = () => {
           authorName: post.author_name || 'Anonyme',
           authorAvatarUrl: post.user_id ? avatarMap.get(post.user_id) || null : null,
           relationCategory: post.relation_category || 'autre',
+          relationLink: post.relation_link || null,
           content: post.content || '',
           photos: post.photos || [],
           createdAt: post.created_at,
@@ -345,18 +346,19 @@ const MemorialInner = () => {
            setGuestbookPosts((prev) => {
              if (prev.some((p) => p.id === newPost?.id)) return prev;
              
-             return [
-               {
-                 id: newPost?.id,
-                 authorId: newPost?.user_id || 'anonymous',
-                 authorName: newPost?.author_name || 'Anonyme',
-                 relationCategory: newPost?.relation_category || 'autre',
-                 content: newPost?.content || '',
-                 photos: newPost?.photos || [],
-                 createdAt: newPost?.created_at,
-                 candleCount: newPost?.candle_count ?? 0,
-                 flowerCount: newPost?.flower_count ?? 0,
-               },
+              return [
+                {
+                  id: newPost?.id,
+                  authorId: newPost?.user_id || 'anonymous',
+                  authorName: newPost?.author_name || 'Anonyme',
+                  relationCategory: newPost?.relation_category || 'autre',
+                  relationLink: newPost?.relation_link || null,
+                  content: newPost?.content || '',
+                  photos: newPost?.photos || [],
+                  createdAt: newPost?.created_at,
+                  candleCount: newPost?.candle_count ?? 0,
+                  flowerCount: newPost?.flower_count ?? 0,
+                },
                ...prev,
              ];
            });
@@ -586,6 +588,7 @@ const MemorialInner = () => {
   const handleSubmitPost = async (data: {
     content: string;
     relationCategory: string;
+    relationLink: string;
     photos: string[];
     candleCount: number;
     flowerCount: number;
@@ -601,6 +604,7 @@ const MemorialInner = () => {
         authorId: user.id,
         authorName: user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur",
         relationCategory: data.relationCategory,
+        relationLink: data.relationLink,
         content: data.content,
         photos: data.photos,
         createdAt: new Date().toISOString(),
@@ -624,6 +628,7 @@ const MemorialInner = () => {
           memorialId: memorialData.id,
           content: data.content,
           relationCategory: data.relationCategory,
+          relationLink: data.relationLink,
           photos: data.photos,
           candleCount: data.candleCount,
           flowerCount: data.flowerCount,

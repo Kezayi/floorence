@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle } from "lucide-react";
-import RelationSelect from "@/components/memorial/RelationSelect";
+import RelationSelect, { type RelationSelection } from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -505,8 +505,8 @@ const CreateMemorial = () => {
                       </label>
                       <RelationSelect
                         value={formData.authorRelation}
-                        onChange={(value) =>
-                          setFormData((prev) => ({ ...prev, authorRelation: value }))
+                        onChange={(sel: RelationSelection) =>
+                          setFormData((prev) => ({ ...prev, authorRelation: sel.link }))
                         }
                         variant="light"
                       />

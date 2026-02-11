@@ -657,6 +657,7 @@ export type Database = {
           memorial_id: string
           photos: string[]
           relation_category: string
+          relation_link: string
           updated_at: string
           user_id: string
         }[]
