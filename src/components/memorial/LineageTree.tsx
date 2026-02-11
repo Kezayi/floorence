@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TreePine, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ interface LineageTreeProps {
   isOwner: boolean;
 }
 
-const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: LineageTreeProps) => {
+const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: LineageTreeProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const isValidUUID = /^[0-9a-f]{8}-/.test(memorialId);
@@ -201,9 +201,45 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-40 w-full" />
+      <div className="space-y-8">
+        {/* Header skeleton */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-6 w-40" />
+        </div>
+        {/* Tree skeleton — mimics generation rows */}
+        <div className="flex flex-col items-center gap-6">
+          {/* Ancestor row */}
+          <div className="flex gap-8 justify-center">
+            {[1, 2].map(i => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-2.5 w-12" />
+              </div>
+            ))}
+          </div>
+          {/* Connector line */}
+          <Skeleton className="h-[2px] w-1/3" />
+          {/* De Cujus */}
+          <div className="flex flex-col items-center gap-2">
+            <Skeleton className="w-20 h-20 md:w-24 md:h-24 rounded-full" />
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          {/* Connector line */}
+          <Skeleton className="h-[2px] w-1/3" />
+          {/* Descendant row */}
+          <div className="flex gap-8 justify-center">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-2.5 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -324,6 +360,8 @@ const LineageTree = ({ memorialId, deceasedName, deceasedPhoto, isOwner }: Linea
       )}
     </div>
   );
-};
+});
+
+LineageTree.displayName = "LineageTree";
 
 export default LineageTree;

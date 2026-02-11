@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { GENERATION_LABELS } from "./lineageConstants";
 import LineageNodeCard, { type TreeNode } from "./LineageNodeCard";
 
@@ -12,7 +13,7 @@ interface LineageGenerationRowProps {
   treePosition?: TreePosition;
 }
 
-const LineageGenerationRow = ({
+const LineageGenerationRow = memo(({
   generation,
   nodes,
   isAuthenticated,
@@ -73,6 +74,8 @@ const LineageGenerationRow = ({
       </div>
     </div>
   );
-};
+});
+
+LineageGenerationRow.displayName = "LineageGenerationRow";
 
 export default LineageGenerationRow;
