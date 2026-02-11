@@ -192,7 +192,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
         <>
           {/* Graphe 2D */}
           <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
-            <RelationshipGraph2D deceasedName={deceasedName} posts={posts} interMemorialLinks={interMemorialLinks || []} />
+            <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
           </div>
 
           {/* Pont des Ancêtres */}

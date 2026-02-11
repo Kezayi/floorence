@@ -14,6 +14,7 @@ interface RelationshipGraph2DProps {
     authorId: string;
     authorName: string;
     relationCategory: string;
+    relationLink?: string | null;
   }>;
   interMemorialLinks?: InterMemorialLink[];
 }
@@ -105,7 +106,9 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     const uniqueAuthors = new Map<string, { name: string; category: string }>();
     posts.forEach((post) => {
       if (!uniqueAuthors.has(post.authorId)) {
-        uniqueAuthors.set(post.authorId, { name: post.authorName, category: post.relationCategory });
+        // Use relationLink (specific) for categorization when available, fallback to relationCategory (generic)
+        const effectiveCategory = post.relationLink || post.relationCategory;
+        uniqueAuthors.set(post.authorId, { name: post.authorName, category: effectiveCategory });
       }
     });
     
@@ -573,7 +576,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
               <div key={node.id} className="text-center">
                 <div className="font-serif text-sm text-foreground">{node.name}</div>
                 <div className="text-xs text-muted-foreground font-sans mt-0.5">
-                  {getCleanRelationName(node.category)} du défunt
+                  {node.category}
                 </div>
                 {nodeLinks.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50">
