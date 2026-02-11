@@ -220,6 +220,9 @@ export const MemorialsProvider = ({ children }: { children: ReactNode }) => {
   const memorials = data?.memorials ?? [];
   const memorialStats = data?.stats ?? {};
 
+  // Diagnostic log — retirer après validation
+  console.log("Memorials fetched:", memorials.length, memorials.map(m => m.slug));
+
   // Compute memorial cards with real stats from DB
   const memorialCards = useMemo<MemorialCardData[]>(() => 
     memorials.map(m => {
