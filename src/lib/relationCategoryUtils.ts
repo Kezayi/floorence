@@ -2,6 +2,7 @@
 
 const familleDirecte = new Set([
   "Son Père", "Sa Mère", "Son Fils", "Sa Fille", "Son Frère", "Sa Sœur",
+  "Son Demi-frère", "Sa Demi-sœur",
   "Son Grand-père", "Sa Grand-mère", "Son Petit-fils", "Sa Petite-fille",
   "Son Arrière-grand-père", "Sa Arrière-grand-mère", "Son Arrière-petit-fils", "Sa Arrière-petite-fille",
 ]);
@@ -15,12 +16,13 @@ const familleElargie = new Set([
 const allies = new Set([
   "Son Époux", "Son Épouse", "Son Beau-père", "Sa Belle-mère",
   "Son Beau-frère", "Sa Belle-sœur", "Son Gendre", "Sa Belle-fille",
-  "Son Bel-oncle", "Sa Belle-tante",
+  "Son Bel-oncle", "Sa Belle-tante", "Son Co-époux", "Sa Co-épouse",
 ]);
 
 const socioCoeur = new Set([
-  "Son Frère de cœur", "Sa Sœur de cœur", "Son Ami(e)",
+  "Son Frère de cœur", "Sa Sœur de cœur", "Son Ami(e)", "Son Ami(e) d'enfance",
   "Son Collègue", "Son Parrain/Marraine", "Son Filleul(e)",
+  "Son Camarade de promotion", "Son Compagnon d'armes",
 ]);
 
 export type RelationCategoryName = "Famille directe" | "Famille élargie" | "Alliés" | "Socio cœur (Amis)" | "Autres";
@@ -47,8 +49,8 @@ export const getRelationSortPriority = (relation: string): number => {
 export const getCategoryColorClass = (relation: string): string => {
   const cat = getRelationCategory(relation);
   switch (cat) {
-    case "Famille directe": return "text-foreground";
-    case "Famille élargie": return "text-foreground";
+    case "Famille directe": return "text-[hsl(0,70%,50%)]";
+    case "Famille élargie": return "text-[hsl(30,80%,50%)]";
     case "Alliés": return "text-[hsl(var(--gesture-candle))]";
     case "Socio cœur (Amis)": return "text-[hsl(var(--gesture-flower))]";
     case "Autres": return "text-muted-foreground";
