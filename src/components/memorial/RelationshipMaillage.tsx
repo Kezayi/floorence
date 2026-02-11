@@ -7,6 +7,8 @@ import RelationshipGraph2D from "./RelationshipGraph2D";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
+import { formatRelationLabel } from "@/lib/formatRelationLabel";
+import { inferGender } from "@/lib/genderInference";
 
 interface RelationshipMaillageProps {
   deceasedName: string;
@@ -15,6 +17,7 @@ interface RelationshipMaillageProps {
     authorId: string;
     authorName: string;
     relationCategory: string;
+    relationLink?: string | null;
   }>;
 }
 
@@ -134,10 +137,10 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
     },
   });
   const directRelations = useMemo(() => {
-    const uniqueAuthors = new Map<string, { name: string; category: string }>();
+    const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null }>();
     posts.forEach((post) => {
       if (!uniqueAuthors.has(post.authorId)) {
-        uniqueAuthors.set(post.authorId, { name: post.authorName, category: post.relationCategory });
+        uniqueAuthors.set(post.authorId, { name: post.authorName, category: post.relationCategory, relationLink: post.relationLink || null });
       }
     });
     return Array.from(uniqueAuthors.values());
@@ -149,7 +152,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
   }, [posts]);
 
   const groupedRelations = useMemo(() => {
-    const groups: Record<string, Array<{ name: string; category: string }>> = {
+    const groups: Record<string, Array<{ name: string; category: string; relationLink: string | null }>> = {
       famille: [], allies: [], amis: [], autre: [],
     };
     directRelations.forEach((rel) => {
@@ -234,15 +237,20 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-4">
-                      {members.map((rel, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm py-1">
-                          <span className="w-1 h-1 rounded-full bg-border" />
-                          <span className="font-serif">{displayName(rel.name, isAuthenticated)}</span>
-                          <span className={`text-xs ${getRelationColorClass(rel.category)}`}>
-                            ({getCleanRelationName(rel.category)})
-                          </span>
-                        </div>
-                      ))}
+                      {members.map((rel, idx) => {
+                        const displayRelation = rel.relationLink
+                          ? formatRelationLabel(rel.relationLink, inferGender(deceasedName.split(' ')[0]))
+                          : getCleanRelationName(rel.category);
+                        return (
+                          <div key={idx} className="flex items-center gap-2 text-sm py-1">
+                            <span className="w-1 h-1 rounded-full bg-border" />
+                            <span className="font-serif">{displayName(rel.name, isAuthenticated)}</span>
+                            <span className={`text-xs ${getRelationColorClass(rel.relationLink || rel.category)}`}>
+                              ({displayRelation})
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
