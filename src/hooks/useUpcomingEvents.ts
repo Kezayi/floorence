@@ -21,8 +21,8 @@ interface UpcomingEventsData {
   gatherings: UpcomingEvent[];
 }
 
-const FUNERAL_TYPES = ["veillee", "inhumation", "VEILLEE", "INHUMATION"];
-const GATHERING_TYPES = ["commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT"];
+const FUNERAL_TYPES = ["Programme des obsèques", "veillee", "inhumation", "VEILLEE", "INHUMATION", "WAKE", "BURIAL"];
+const GATHERING_TYPES = ["Recueillement", "commemoration", "COMMEMORATION", "anniversary", "ANNIVERSARY", "recueillement", "RECUEILLEMENT", "GATHERING"];
 
 /**
  * Single query that fetches ALL upcoming events and splits them by type.

@@ -793,8 +793,8 @@ const MemorialInner = () => {
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
                 >
                 <Calendar className="w-4 h-4" />
-                <span className="hidden sm:inline">Recueillements</span>
-                <span className="sm:hidden">Calendrier</span>
+                <span className="hidden sm:inline">Événements</span>
+                <span className="sm:hidden">Événements</span>
               </TabsTrigger>
               
                 <TabsTrigger
