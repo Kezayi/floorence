@@ -8,11 +8,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+export interface RelationSelection {
+  category: string;   // Technical category: "famille_directe", "famille_elargie", "allies", "socio_coeur", "autres"
+  link: string;       // Exact label: "Son Père", "Sa Mère", etc.
+}
+
 interface RelationSelectProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (selection: RelationSelection) => void;
   variant?: "dark" | "light";
 }
+
+// Technical category keys
+const CATEGORY_KEYS: Record<string, string> = {
+  "Famille directe": "famille_directe",
+  "Famille élargie": "famille_elargie",
+  "Alliés": "allies",
+  "Socio cœur (Amis)": "socio_coeur",
+  "Autres": "autres",
+};
 
 // Catégories de relations alignées avec la matrice vectorielle (G, L, B, S)
 const relationCategories = {
@@ -77,11 +91,26 @@ const relationCategories = {
   ],
 };
 
+/** Find category key for a given relation link */
+export const getCategoryKeyForLink = (link: string): string => {
+  for (const [categoryLabel, relations] of Object.entries(relationCategories)) {
+    if (relations.includes(link)) {
+      return CATEGORY_KEYS[categoryLabel] || "autres";
+    }
+  }
+  return "autres";
+};
+
 const RelationSelect = ({ value, onChange, variant = "dark" }: RelationSelectProps) => {
   const isDark = variant === "dark";
+
+  const handleChange = (selectedLink: string) => {
+    const categoryKey = getCategoryKeyForLink(selectedLink);
+    onChange({ category: categoryKey, link: selectedLink });
+  };
   
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={handleChange}>
       <SelectTrigger className={`w-full ${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30 text-memorial-dark-foreground' : 'bg-secondary border-0 text-foreground'}`}>
         <SelectValue placeholder="Votre lien avec le défunt *" />
       </SelectTrigger>

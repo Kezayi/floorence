@@ -15,6 +15,7 @@ export interface GuestbookPostData {
   authorName: string;
   authorAvatarUrl?: string | null;
   relationCategory: string;
+  relationLink?: string | null;
   content: string;
   photos: string[];
   createdAt: string;
@@ -115,8 +116,8 @@ const GuestbookPost = ({
                 )}
               </h4>
             </AuthorTooltip>
-            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationCategory)}`}>
-              {getRelationWithDeceased(post.relationCategory)}
+            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationLink || post.relationCategory)}`}>
+              {getRelationWithDeceased(post.relationLink || post.relationCategory)}
             </span>
           </div>
         </div>
