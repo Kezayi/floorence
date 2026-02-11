@@ -36,21 +36,25 @@ const LineageGenerationRow = memo(({
     ? "bg-[#800000]/50"
     : "bg-[#800000]/80";
 
-  // Line thickness: thicker at roots (bottom), thinner at branches (top)
-  const lineHeight = treePosition === "root"
-    ? "h-[3px]"
+  // Dynamic line thickness: thicker near pivot (roots), thinner at extremes (branches)
+  const absGen = Math.abs(generation);
+  const lineThickness = treePosition === "root"
+    ? absGen <= 1 ? "h-[3px]" : absGen === 2 ? "h-[2px]" : "h-[1.5px]"
     : treePosition === "branch"
-    ? "h-[1.5px]"
+    ? absGen <= 1 ? "h-[2.5px]" : absGen === 2 ? "h-[1.5px]" : "h-[1px]"
     : hasAlliance || hasExtended ? "h-[1.5px]" : "h-[2.5px]";
 
   return (
     <div
-      className="relative py-4 animate-fade-in"
-      style={{ animationDelay: `${animDelay}ms`, animationFillMode: "both" }}
+      className="relative py-4"
+      style={{
+        opacity: 0,
+        animation: `germinate 0.8s ease-out ${animDelay}ms both`,
+      }}
     >
       {/* Horizontal connector */}
       <div
-        className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 ${lineHeight} ${lineColor}`}
+        className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 ${lineThickness} ${lineColor}`}
       />
 
       {/* Generation label */}
