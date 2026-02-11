@@ -34,7 +34,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     queryFn: async () => {
       const { data } = await supabase
         .from("memorial_relations")
-        .select("id, relation_type, memorial_id_1, memorial_id_2, status")
+        .select("id, relation_type, memorial_id_1, memorial_id_2, status, is_lineage")
         .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
         .in("status", ["accepted", "pending"]);
 
@@ -82,11 +82,13 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
           shareToken: linked.share_token || null,
           relation,
           createdBy: linked.created_by,
+          isLineageFromDb: r.is_lineage !== false, // Use DB column
           source: "memorial" as const,
         };
       }).filter(Boolean) as Array<{
         id: string; name: string; firstName: string; photo: string | null;
-        shareToken: string | null; relation: string; createdBy: string; source: "memorial";
+        shareToken: string | null; relation: string; createdBy: string; 
+        isLineageFromDb: boolean; source: "memorial";
       }>;
     },
   });
@@ -163,29 +165,46 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     return [...memNodes, ...uniqueTribNodes];
   }, [interMemorialNodes, tributeNodes]);
 
-  // Classify into generations with the 5-pillar system
-  const treeNodes = useMemo(() => {
-    return allNodes
-      .map(r => {
-        const classified = classifyRelation(r.relation);
-        if (!classified.isLineage) return null;
-        return { ...r, generation: classified.generation, linkStyle: classified.linkStyle } as TreeNode;
-      })
-      .filter(Boolean) as TreeNode[];
+  // Classify into generations — use DB is_lineage for memorial relations
+  const { lineageNodes, allianceNodes } = useMemo(() => {
+    const lineage: TreeNode[] = [];
+    const alliance: TreeNode[] = [];
+
+    allNodes.forEach(r => {
+      const classified = classifyRelation(r.relation);
+      // For memorial relations, DB is_lineage takes precedence
+      const dbLineage = "isLineageFromDb" in r ? (r as any).isLineageFromDb : true;
+      const isLineage = dbLineage && classified.isLineage;
+
+      const node: TreeNode = {
+        ...r,
+        generation: classified.generation,
+        linkStyle: isLineage ? classified.linkStyle : "alliance",
+      };
+
+      if (isLineage) {
+        lineage.push(node);
+      } else if (classified.linkStyle === "alliance" || !dbLineage) {
+        // Alliance nodes shown at generation 0 (pivot level)
+        alliance.push({ ...node, generation: 0 });
+      }
+    });
+
+    return { lineageNodes: lineage, allianceNodes: alliance };
   }, [allNodes]);
 
   // Apply view filter
   const filteredNodes = useMemo(() => {
     switch (viewFilter) {
       case "ascendance":
-        return treeNodes.filter(n => n.generation < 0);
+        return lineageNodes.filter(n => n.generation < 0);
       case "descendance":
-        return treeNodes.filter(n => n.generation > 0);
+        return lineageNodes.filter(n => n.generation > 0);
       case "complete":
       default:
-        return treeNodes;
+        return lineageNodes;
     }
-  }, [treeNodes, viewFilter]);
+  }, [lineageNodes, viewFilter]);
 
   // Group by generation
   const generations = useMemo(() => {
@@ -244,7 +263,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     );
   }
 
-  const isEmpty = treeNodes.length === 0;
+  const isEmpty = lineageNodes.length === 0 && allianceNodes.length === 0;
   const ancestorGens = generations.filter(([gen]) => gen < 0);
   const siblingAndAllianceGen = generations.filter(([gen]) => gen === 0);
   const descendantGens = generations.filter(([gen]) => gen > 0);
@@ -286,13 +305,15 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
           </p>
         </div>
       ) : (
-        <div className="relative animate-fade-in">
+        <div className="relative">
           {/* Central vertical blood line — grows from bottom (roots) to top (branches) */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 hidden md:block bg-[#800000]/80"
+            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 hidden md:block"
             style={{
               width: "3px",
+              background: "hsl(0 70% 25% / 0.8)",
               transformOrigin: "bottom",
+              transform: "scaleY(0)",
               animation: "grow-up 1.4s ease-out forwards",
             }}
           />
@@ -323,9 +344,36 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
             />
           ))}
 
-          {/* De Cujus — central pivot */}
-          <div className="relative z-10 flex justify-center py-6">
+          {/* De Cujus — central pivot (Niveau 0) */}
+          <div
+            className="relative z-10 flex justify-center py-6"
+            style={{ animation: "germinate 0.8s ease-out 0.4s both" }}
+          >
             <div className="flex flex-col items-center">
+              {/* Alliance nodes — horizontal gold connectors */}
+              {allianceNodes.length > 0 && viewFilter === "complete" && (
+                <div className="flex items-center gap-4 mb-4">
+                  {allianceNodes.map(node => (
+                    <div key={node.id} className="flex items-center gap-2">
+                      {/* Gold dashed connector */}
+                      <div
+                        className="hidden md:block h-[1.5px] w-8"
+                        style={{
+                          background: "repeating-linear-gradient(90deg, #D4AF37 0, #D4AF37 6px, transparent 6px, transparent 10px)",
+                          opacity: 0.6,
+                        }}
+                      />
+                      <LineageNodeCard
+                        node={node}
+                        isAuthenticated={isAuthenticated}
+                        isCurrentUser={false}
+                        isDeceased={true}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
                 {deceasedPhoto ? (
                   <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />

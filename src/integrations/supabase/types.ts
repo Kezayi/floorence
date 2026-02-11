@@ -175,6 +175,7 @@ export type Database = {
         Row: {
           id: string
           is_demo: boolean | null
+          is_lineage: boolean | null
           memorial_id_1: string | null
           memorial_id_2: string | null
           person_a_id: string | null
@@ -187,6 +188,7 @@ export type Database = {
         Insert: {
           id?: string
           is_demo?: boolean | null
+          is_lineage?: boolean | null
           memorial_id_1?: string | null
           memorial_id_2?: string | null
           person_a_id?: string | null
@@ -199,6 +201,7 @@ export type Database = {
         Update: {
           id?: string
           is_demo?: boolean | null
+          is_lineage?: boolean | null
           memorial_id_1?: string | null
           memorial_id_2?: string | null
           person_a_id?: string | null
