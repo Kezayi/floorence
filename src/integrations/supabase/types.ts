@@ -266,6 +266,9 @@ export type Database = {
           photos: string[] | null
           share_token: string | null
           slug: string
+          total_candles: number | null
+          total_flowers: number | null
+          total_posts: number | null
           updated_at: string
         }
         Insert: {
@@ -294,6 +297,9 @@ export type Database = {
           photos?: string[] | null
           share_token?: string | null
           slug: string
+          total_candles?: number | null
+          total_flowers?: number | null
+          total_posts?: number | null
           updated_at?: string
         }
         Update: {
@@ -322,6 +328,9 @@ export type Database = {
           photos?: string[] | null
           share_token?: string | null
           slug?: string
+          total_candles?: number | null
+          total_flowers?: number | null
+          total_posts?: number | null
           updated_at?: string
         }
         Relationships: [
