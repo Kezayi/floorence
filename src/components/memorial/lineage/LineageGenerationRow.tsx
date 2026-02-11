@@ -11,6 +11,7 @@ interface LineageGenerationRowProps {
   currentUserId?: string;
   animDelay?: number;
   treePosition?: TreePosition;
+  deceasedGender?: 'male' | 'female';
 }
 
 const LineageGenerationRow = memo(({
@@ -20,6 +21,7 @@ const LineageGenerationRow = memo(({
   currentUserId,
   animDelay = 0,
   treePosition = "trunk",
+  deceasedGender = 'male',
 }: LineageGenerationRowProps) => {
   const label = GENERATION_LABELS[generation] || "Famille";
 
@@ -73,6 +75,7 @@ const LineageGenerationRow = memo(({
             isAuthenticated={isAuthenticated}
             isCurrentUser={false}
             isDeceased={true}
+            deceasedGender={deceasedGender}
           />
         ))}
       </div>

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, X, Flame, Flower2 } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
+import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ export interface GuestbookPostData {
 interface GuestbookPostProps {
   post: GuestbookPostData;
   isOwner: boolean;
+  deceasedGender?: 'male' | 'female';
   onAddCandle: (postId: string) => void;
   onAddFlower: (postId: string) => void;
 }
@@ -45,6 +47,7 @@ const getCategoryBadgeClass = (relation: string): string => {
 const GuestbookPost = ({
   post,
   isOwner,
+  deceasedGender = 'male',
   onAddCandle,
   onAddFlower,
 }: GuestbookPostProps) => {
@@ -117,7 +120,7 @@ const GuestbookPost = ({
               </h4>
             </AuthorTooltip>
             <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationLink || post.relationCategory)}`}>
-              {getRelationWithDeceased(post.relationLink || post.relationCategory)}
+              {formatRelationLabel(post.relationLink || post.relationCategory, deceasedGender)}
             </span>
           </div>
         </div>
