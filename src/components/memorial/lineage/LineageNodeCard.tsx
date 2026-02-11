@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { displayName } from "@/lib/privacyUtils";
+import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import type { LinkStyle } from "./lineageConstants";
 
 export interface TreeNode {
@@ -21,9 +22,10 @@ interface LineageNodeCardProps {
   isAuthenticated: boolean;
   isCurrentUser: boolean;
   isDeceased?: boolean;
+  deceasedGender?: 'male' | 'female';
 }
 
-const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased = true }: LineageNodeCardProps) => {
+const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased = true, deceasedGender = 'male' }: LineageNodeCardProps) => {
   const initials = node.name.split(" ").map(n => n[0]).join("").slice(0, 2);
 
   const content = (
@@ -74,7 +76,7 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
 
       {/* Relation label */}
       <span className="text-[10px] md:text-xs text-muted-foreground font-sans text-center">
-        {node.relation}
+        {formatRelationLabel(node.relation, deceasedGender)}
       </span>
     </div>
   );
