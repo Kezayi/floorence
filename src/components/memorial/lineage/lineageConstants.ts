@@ -55,7 +55,8 @@ export type TreePillar = "nucleaire" | "ascendance" | "descendance" | "elargie" 
 export type ViewFilter = "ascendance" | "descendance" | "complete";
 
 /* ── Classification function ── */
-export const classifyRelation = (relation: string): ClassifiedRelation => {
+export const classifyRelation = (relation: string | null | undefined): ClassifiedRelation => {
+  if (!relation) return { generation: 0, isLineage: false, linkStyle: "extended", pillar: "elargie" };
   const lower = relation.toLowerCase();
 
   // Arrière-grands-parents (-3)
