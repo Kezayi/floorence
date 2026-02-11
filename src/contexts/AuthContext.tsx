@@ -18,9 +18,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle PKCE code exchange if present in URL (magic link redirect)
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      console.log('[AUTH] PKCE code detected in URL, exchanging for session...');
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          console.error('[AUTH] Code exchange failed:', error.message);
+        } else {
+          console.log('[AUTH] Code exchange successful, user:', data.session?.user?.email);
+          // Clean up URL
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      });
+    }
+
+    // Also handle hash fragment tokens (implicit flow fallback)
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      console.log('[AUTH] Implicit flow tokens detected in URL hash');
+    }
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[AUTH] State change:', event, session?.user?.email ?? 'no user');
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
