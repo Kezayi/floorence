@@ -911,6 +911,7 @@ const MemorialInner = () => {
                       authorId: post.authorId,
                       authorName: post?.authorName || "Anonyme",
                       relationCategory: post?.relationCategory || "autre",
+                      relationLink: post?.relationLink || null,
                     }))}
                   />
                 </SecureDataDisplay>
