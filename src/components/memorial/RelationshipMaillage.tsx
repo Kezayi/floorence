@@ -109,7 +109,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
   }, [posts]);
 
   const inferredRelationships = useMemo(() => {
-    const messages = posts.map((p) => ({ authorName: p.authorName, relationCategory: p.relationCategory }));
+    const messages = posts.map((p) => ({ authorName: p.authorName, relationCategory: p.relationLink || p.relationCategory }));
     return inferAllRelationships(messages);
   }, [posts]);
 
