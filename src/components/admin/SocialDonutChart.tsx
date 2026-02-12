@@ -5,11 +5,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { DashboardStats } from '@/hooks/useDashboardStats';
 
 const CATEGORIES = [
-  { key: 'catFamilleDirecte', label: 'Famille directe', color: '#FF0000', filter: 'Famille directe' },
-  { key: 'catFamilleElargie', label: 'Famille élargie', color: '#FFD700', filter: 'Famille élargie' },
-  { key: 'catAllies', label: 'Alliés', color: '#008000', filter: 'Alliés' },
-  { key: 'catSocioCoeur', label: 'Socio cœur', color: '#0000FF', filter: 'Socio cœur (Amis)' },
-  { key: 'catAutres', label: 'Autres', color: '#000000', filter: 'Autres' },
+  { key: 'catFamilleDirecte', label: 'Famille directe', color: 'hsl(0,40%,45%)', filter: 'Famille directe' },
+  { key: 'catFamilleElargie', label: 'Famille élargie', color: 'hsl(40,45%,48%)', filter: 'Famille élargie' },
+  { key: 'catAllies', label: 'Alliés', color: 'hsl(145,30%,42%)', filter: 'Alliés' },
+  { key: 'catSocioCoeur', label: 'Socio cœur', color: 'hsl(210,35%,50%)', filter: 'Socio cœur (Amis)' },
+  { key: 'catAutres', label: 'Autres', color: 'hsl(0,0%,40%)', filter: 'Autres' },
 ] as const;
 
 interface Props {

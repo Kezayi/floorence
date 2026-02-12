@@ -3,11 +3,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { getRelationCategory, type RelationCategoryName } from "@/lib/relationCategoryUtils";
 
 const CATEGORY_COLORS: Record<RelationCategoryName, string> = {
-  "Famille directe": "#FF0000",
-  "Famille élargie": "#FFD700",
-  "Alliés": "#008000",
-  "Socio cœur (Amis)": "#0000FF",
-  "Autres": "#000000",
+  "Famille directe": "hsl(0,40%,45%)",
+  "Famille élargie": "hsl(40,45%,48%)",
+  "Alliés": "hsl(145,30%,42%)",
+  "Socio cœur (Amis)": "hsl(210,35%,50%)",
+  "Autres": "hsl(0,0%,40%)",
 };
 
 const CATEGORY_ORDER: RelationCategoryName[] = [
