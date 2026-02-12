@@ -78,8 +78,8 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
 
         return {
           id: linked.id,
-          name: `${linked.first_name} ${linked.last_name}`,
-          firstName: linked.first_name,
+          name: `${linked.first_name || ''} ${linked.last_name || ''}`.trim(),
+          firstName: linked.first_name || '',
           photo: photos[safeIdx] || null,
           shareToken: linked.share_token || null,
           relation,
@@ -154,8 +154,8 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
 
   // Combine and deduplicate: memorial relations take priority over tribute nodes
   const allNodes = useMemo(() => {
-    const memNodes = interMemorialNodes || [];
-    const tribNodes = tributeNodes || [];
+    const memNodes = (interMemorialNodes || []).filter(n => !!n.name);
+    const tribNodes = (tributeNodes || []).filter(n => !!n.name);
 
     // Names from memorial relations (already linked)
     const memorialNames = new Set(memNodes.map(n => n.name.toLowerCase()));
