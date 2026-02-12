@@ -92,22 +92,22 @@ export const getRelationSortPriority = (relation: string): number => {
 export const getCategoryColorClass = (relation: string): string => {
   const cat = getRelationCategory(relation);
   switch (cat) {
-    case "Famille directe": return "text-[#FF0000]";
-    case "Famille élargie": return "text-[#FFD700]";
-    case "Alliés": return "text-[#008000]";
-    case "Socio cœur (Amis)": return "text-[#0000FF]";
-    case "Autres": return "text-[#000000]";
+    case "Famille directe": return "text-[hsl(0,40%,45%)]";
+    case "Famille élargie": return "text-[hsl(40,45%,42%)]";
+    case "Alliés": return "text-[hsl(145,30%,38%)]";
+    case "Socio cœur (Amis)": return "text-[hsl(210,35%,45%)]";
+    case "Autres": return "text-[hsl(0,0%,35%)]";
   }
 };
 
 /** Category dot/bg color */
 export const getCategoryBgColor = (catName: string): string => {
   switch (catName) {
-    case "Famille directe": return "#FF0000";
-    case "Famille élargie": return "#FFD700";
-    case "Alliés": return "#008000";
-    case "Socio cœur (Amis)": return "#0000FF";
-    case "Autres": return "#000000";
-    default: return "#000000";
+    case "Famille directe": return "hsl(0,40%,50%)";
+    case "Famille élargie": return "hsl(40,45%,48%)";
+    case "Alliés": return "hsl(145,30%,42%)";
+    case "Socio cœur (Amis)": return "hsl(210,35%,50%)";
+    case "Autres": return "hsl(0,0%,40%)";
+    default: return "hsl(0,0%,40%)";
   }
 };

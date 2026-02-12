@@ -3,11 +3,11 @@ import { getRelationCategory, type RelationCategoryName } from '@/lib/relationCa
 import { getRelationWithDeceased } from '@/lib/relationshipInference';
 
 const categoryStyles: Record<RelationCategoryName, string> = {
-  'Famille directe': 'bg-[hsl(0,70%,95%)] text-[hsl(0,70%,50%)] border-[hsl(0,70%,80%)]',
-  'Famille élargie': 'bg-[hsl(45,90%,92%)] text-[hsl(45,90%,35%)] border-[hsl(45,90%,70%)]',
-  'Alliés': 'bg-[hsl(145,60%,92%)] text-[hsl(145,60%,30%)] border-[hsl(145,60%,70%)]',
-  'Socio cœur (Amis)': 'bg-[hsl(210,70%,92%)] text-[hsl(210,70%,40%)] border-[hsl(210,70%,70%)]',
-  'Autres': 'bg-[hsl(0,0%,92%)] text-[hsl(0,0%,15%)] border-[hsl(0,0%,70%)]',
+  'Famille directe': 'bg-[hsl(0,25%,95%)] text-[hsl(0,40%,45%)] border-[hsl(0,25%,82%)]',
+  'Famille élargie': 'bg-[hsl(40,30%,93%)] text-[hsl(40,45%,38%)] border-[hsl(40,30%,75%)]',
+  'Alliés': 'bg-[hsl(145,20%,93%)] text-[hsl(145,30%,35%)] border-[hsl(145,20%,75%)]',
+  'Socio cœur (Amis)': 'bg-[hsl(210,25%,93%)] text-[hsl(210,35%,42%)] border-[hsl(210,25%,78%)]',
+  'Autres': 'bg-[hsl(0,0%,93%)] text-[hsl(0,0%,35%)] border-[hsl(0,0%,78%)]',
 };
 
 interface RelationCategoryBadgeProps {
