@@ -436,6 +436,36 @@ export type Database = {
         }
         Relationships: []
       }
+      social_search_history: {
+        Row: {
+          answer: string | null
+          created_at: string
+          id: string
+          model: string | null
+          question: string
+          tokens_context: number | null
+          user_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          question: string
+          tokens_context?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          question?: string
+          tokens_context?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       suggested_links: {
         Row: {
           created_at: string | null
