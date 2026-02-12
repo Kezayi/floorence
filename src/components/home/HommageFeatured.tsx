@@ -97,7 +97,7 @@ const HommageFeatured = () => {
   if (!selected) {
     const fallbackIndex = currentHourSeed % FALLBACK_QUOTES.length;
     return (
-      <section className="px-4 py-4 md:py-6">
+      <section className="px-4 py-4 md:py-6 bg-accent/50">
         <div className="container mx-auto max-w-2xl text-center">
           <p className="font-serif text-lg md:text-xl text-muted-foreground italic leading-relaxed">
             « {FALLBACK_QUOTES[fallbackIndex]} »
@@ -122,7 +122,7 @@ const HommageFeatured = () => {
       : selected.content;
 
   return (
-    <section className="px-4 py-4 md:py-6 animate-fade-in-slow">
+    <section className="px-4 py-4 md:py-6 bg-accent/50 animate-fade-in-slow">
       <div className="container mx-auto max-w-2xl text-center">
         {/* Section label */}
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-sans mb-3">
