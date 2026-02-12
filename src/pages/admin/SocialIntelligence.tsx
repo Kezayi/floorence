@@ -149,20 +149,79 @@ function filterMentioned(people: MemorialPerson[], text: string): MemorialPerson
   });
 }
 
+/** Check if there are ambiguous matches (multiple people sharing a first name) */
+function findAmbiguities(people: MemorialPerson[], text: string): Map<string, MemorialPerson[]> {
+  if (!text) return new Map();
+  const lower = text.toLowerCase();
+  const mentioned = people.filter((p) => {
+    const full = `${p.first_name} ${p.last_name}`.toLowerCase();
+    const last = p.last_name.toLowerCase();
+    return lower.includes(full) || lower.includes(last);
+  });
+
+  // Group by first name to detect ambiguities
+  const byFirst = new Map<string, MemorialPerson[]>();
+  for (const p of mentioned) {
+    const key = p.first_name.toLowerCase();
+    byFirst.set(key, [...(byFirst.get(key) || []), p]);
+  }
+  // Only keep groups with 2+ people
+  const ambiguous = new Map<string, MemorialPerson[]>();
+  for (const [k, v] of byFirst) {
+    if (v.length > 1) ambiguous.set(k, v);
+  }
+  return ambiguous;
+}
+
+function DisambiguationStrip({
+  ambiguities,
+  onConfirm,
+}: {
+  ambiguities: Map<string, MemorialPerson[]>;
+  onConfirm: () => void;
+}) {
+  if (!ambiguities.size) return null;
+  return (
+    <div className="mb-6 rounded-lg border border-primary/15 bg-card p-5 shadow-sm">
+      <p className="text-[10px] uppercase tracking-[0.15em] text-primary/60 font-medium mb-4">
+        Précision requise
+      </p>
+      {Array.from(ambiguities.entries()).map(([firstName, persons]) => (
+        <div key={firstName} className="mb-4 last:mb-0">
+          <p className="text-xs text-muted-foreground mb-3">
+            Plusieurs <span className="font-semibold text-foreground capitalize">{firstName}</span> identifiés :
+          </p>
+          <div className="flex gap-5 overflow-x-auto pb-2 scrollbar-none">
+            {persons.map((p) => (
+              <PersonCard key={p.id} person={p} />
+            ))}
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={onConfirm}
+        className="mt-4 text-[11px] font-medium text-primary/70 hover:text-primary transition-colors underline underline-offset-2"
+      >
+        Confirmer et poursuivre l'analyse →
+      </button>
+    </div>
+  );
+}
+
 function MemorialStrip({ people, answerText }: { people: MemorialPerson[]; answerText?: string }) {
-  const visible = answerText ? filterMentioned(people, answerText) : people;
+  const visible = answerText ? filterMentioned(people, answerText) : [];
   if (!visible.length) return null;
   return (
     <div className="mb-6">
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium mb-3">
-        {answerText ? `${visible.length} personne${visible.length > 1 ? "s" : ""} mentionnée${visible.length > 1 ? "s" : ""}` : "Personnes concernées"}
+      <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium mb-3">
+        {visible.length} personne{visible.length > 1 ? "s" : ""} mentionnée{visible.length > 1 ? "s" : ""}
       </p>
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
         {visible.map((p) => (
           <PersonCard key={p.id} person={p} />
         ))}
       </div>
-      <div className="mt-3 border-b border-border/40" />
+      <div className="mt-3 border-b border-border/30" />
     </div>
   );
 }
@@ -174,24 +233,25 @@ function StyledAnswer({ content, isStreaming }: { content: string; isStreaming: 
     <div className="relative">
       <article
         className="
-          prose prose-neutral dark:prose-invert max-w-none
-          prose-headings:font-serif prose-headings:tracking-tight prose-headings:text-foreground
-          prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-h2:border-b prose-h2:border-border/30 prose-h2:pb-2
-          prose-h3:text-base prose-h3:mt-6 prose-h3:mb-2
-          prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/85 prose-p:mb-4
-          prose-li:text-sm prose-li:leading-relaxed prose-li:text-foreground/85 prose-li:mb-1.5
-          prose-ul:my-3 prose-ol:my-3
-          prose-strong:text-foreground prose-strong:font-semibold
-          prose-em:text-muted-foreground
-          prose-blockquote:border-l-2 prose-blockquote:border-primary/30 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground
-          prose-code:text-xs prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-          prose-hr:border-border/30 prose-hr:my-6
+          max-w-none text-sm leading-[1.85] text-foreground/85 font-sans
+          [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:tracking-tight
+          [&_h2]:text-[15px] [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:pb-2 [&_h2]:border-b [&_h2]:border-border/25
+          [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-foreground [&_h3]:mt-6 [&_h3]:mb-2
+          [&_p]:mb-5 [&_p]:leading-[1.85]
+          [&_ul]:my-4 [&_ul]:pl-5 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:marker:text-muted-foreground/40
+          [&_ol]:my-4 [&_ol]:pl-5 [&_ol]:space-y-2 [&_ol]:list-decimal [&_ol]:marker:text-muted-foreground/40
+          [&_li]:leading-[1.75] [&_li]:pl-1
+          [&_strong]:font-semibold [&_strong]:text-foreground
+          [&_em]:text-muted-foreground [&_em]:not-italic [&_em]:text-[13px]
+          [&_blockquote]:border-l-2 [&_blockquote]:border-primary/20 [&_blockquote]:pl-4 [&_blockquote]:my-5 [&_blockquote]:italic [&_blockquote]:text-muted-foreground
+          [&_hr]:border-border/20 [&_hr]:my-8
+          [&_code]:text-xs [&_code]:bg-muted/60 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
         "
       >
         <ReactMarkdown>{content}</ReactMarkdown>
       </article>
       {isStreaming && (
-        <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm ml-0.5 -mb-0.5" />
+        <span className="inline-block w-1.5 h-5 bg-primary/50 animate-pulse rounded-full ml-0.5 -mb-1" />
       )}
     </div>
   );
@@ -209,6 +269,7 @@ const SocialIntelligence = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [memorials, setMemorials] = useState<MemorialPerson[]>([]);
+  const [disambiguated, setDisambiguated] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Fetch memorial people on mount
@@ -243,6 +304,7 @@ const SocialIntelligence = () => {
     setIsLoading(true);
     setAnswer("");
     setError(null);
+    setDisambiguated(false);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -400,17 +462,28 @@ const SocialIntelligence = () => {
               </div>
             )}
 
-            {(answer || isLoading) && (
-              <div className="space-y-0">
-                <MemorialStrip people={memorials} answerText={answer} />
-                <StyledAnswer content={answer} isStreaming={isLoading} />
-              </div>
-            )}
+            {(answer || isLoading) && (() => {
+              const ambiguities = findAmbiguities(memorials, answer);
+              const hasAmbiguity = ambiguities.size > 0 && !disambiguated;
+              return (
+                <div className="space-y-0">
+                  {hasAmbiguity ? (
+                    <DisambiguationStrip
+                      ambiguities={ambiguities}
+                      onConfirm={() => setDisambiguated(true)}
+                    />
+                  ) : (
+                    <>
+                      <MemorialStrip people={memorials} answerText={answer} />
+                      <StyledAnswer content={answer} isStreaming={isLoading} />
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {!answer && !isLoading && !error && (
               <div className="space-y-6">
-                {/* Show memorial strip on idle too */}
-                <MemorialStrip people={memorials} />
 
                 <div className="space-y-2">
                   <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-medium mb-3">
