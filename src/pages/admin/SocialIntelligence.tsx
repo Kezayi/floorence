@@ -138,15 +138,27 @@ function PersonCard({ person }: { person: MemorialPerson }) {
   );
 }
 
-function MemorialStrip({ people }: { people: MemorialPerson[] }) {
-  if (!people.length) return null;
+/** Filter memorials to only those mentioned by name in the text */
+function filterMentioned(people: MemorialPerson[], text: string): MemorialPerson[] {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  return people.filter((p) => {
+    const full = `${p.first_name} ${p.last_name}`.toLowerCase();
+    const last = p.last_name.toLowerCase();
+    return lower.includes(full) || lower.includes(last);
+  });
+}
+
+function MemorialStrip({ people, answerText }: { people: MemorialPerson[]; answerText?: string }) {
+  const visible = answerText ? filterMentioned(people, answerText) : people;
+  if (!visible.length) return null;
   return (
     <div className="mb-6">
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium mb-3">
-        Personnes concernées
+        {answerText ? `${visible.length} personne${visible.length > 1 ? "s" : ""} mentionnée${visible.length > 1 ? "s" : ""}` : "Personnes concernées"}
       </p>
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
-        {people.map((p) => (
+        {visible.map((p) => (
           <PersonCard key={p.id} person={p} />
         ))}
       </div>
@@ -350,7 +362,7 @@ const SocialIntelligence = () => {
               <p className="text-[10px] text-muted-foreground/50 mt-2">{timeAgo(selectedEntry.created_at)}</p>
             </div>
 
-            <MemorialStrip people={memorials} />
+            <MemorialStrip people={memorials} answerText={selectedEntry.answer || undefined} />
 
             {selectedEntry.answer ? (
               <StyledAnswer content={selectedEntry.answer} isStreaming={false} />
@@ -390,7 +402,7 @@ const SocialIntelligence = () => {
 
             {(answer || isLoading) && (
               <div className="space-y-0">
-                <MemorialStrip people={memorials} />
+                <MemorialStrip people={memorials} answerText={answer} />
                 <StyledAnswer content={answer} isStreaming={isLoading} />
               </div>
             )}
