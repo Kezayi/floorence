@@ -13,52 +13,36 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
  
  // Valid relation categories (French labels used by frontend for "Maillage" feature)
  const VALID_RELATION_CATEGORIES = [
-   // Famille
-   "Son Père",
-   "Sa Mère",
-   "Son Fils",
-   "Sa Fille",
-   "Son Frère",
-   "Sa Sœur",
-   "Son Grand-père",
-   "Sa Grand-mère",
-   "Son Petit-fils",
-   "Sa Petite-fille",
-   "Son Oncle",
-   "Sa Tante",
-   "Son Neveu",
-   "Sa Nièce",
-   "Son Cousin",
-   "Sa Cousine",
+   // Famille directe
+   "Son Père", "Sa Mère", "Son Fils", "Sa Fille",
+   "Son Grand-père", "Sa Grand-mère", "Son Petit-fils", "Sa Petite-fille",
+   "Son Arrière-grand-père", "Sa Arrière-grand-mère", "Son Arrière-petit-fils", "Sa Arrière-petite-fille",
+   "Son Frère", "Sa Sœur",
+   // Famille élargie
+   "Son Oncle", "Sa Tante", "Son Neveu", "Sa Nièce", "Son Cousin", "Sa Cousine",
+   "Son Grand-oncle", "Sa Grande-tante", "Son Petit-neveu", "Sa Petite-nièce",
+   "Son Petit-cousin", "Sa Petite-cousine",
    // Alliés
-   "Son Époux",
-   "Son Épouse",
-   "Son Beau-père",
-   "Sa Belle-mère",
-   "Son Beau-frère",
-   "Sa Belle-sœur",
-   "Son Gendre",
-   "Sa Belle-fille",
-   // Proches
-   "Son Ami(e)",
-   "Son Collègue",
-   "Son Voisin(e)",
-   "Son Professeur",
-   "Son Élève",
-   "Son Mentor",
-   "Son Filleul(e)",
-   "Son Parrain/Marraine",
+   "Son Époux", "Son Épouse", "Son Beau-père", "Sa Belle-mère",
+   "Son Beau-fils", "Sa Belle-fille", "Son Beau-frère", "Sa Belle-sœur",
+   "Son Bel-oncle", "Sa Belle-tante",
+   // Socio cœur
+   "Son Frère d'une autre mère", "Sa Sœur d'une autre mère",
+   "Son Ami", "Son Collègue", "Son Co-équipier", "Sa Co-équipière",
+   "Son Parrain", "Sa Marraine", "Son Filleul", "Sa Filleule",
    // Autres
-   "Une connaissance",
-   "Un admirateur",
-   "Un anonyme",
+   "Son Client", "Sa Cliente", "Son Fournisseur", "Son Prestataire",
+   "Son Associé(e)", "Son Élève", "Son Étudiant(e)", "Son Disciple",
+   "Son Camarade de classe", "Son Voisin", "Sa Voisine",
+   "Son Copropriétaire", "Son Locataire", "Son Bailleur",
    // Legacy categories (for backward compatibility)
-   "family",
-   "friend",
-   "colleague",
-   "neighbor",
-   "acquaintance",
-   "other"
+   "Son Demi-frère", "Sa Demi-sœur", "Son Gendre", "Son Co-époux", "Sa Co-épouse",
+   "Son Frère de cœur", "Sa Sœur de cœur", "Son Ami(e)", "Son Ami(e) d'enfance",
+   "Son Parrain/Marraine", "Son Filleul(e)", "Son Camarade de promotion", "Son Compagnon d'armes",
+   "Son Voisin(e)", "Son Professeur", "Son Mentor", "Son Employeur",
+   "Son Pasteur/Imam", "Son Chef coutumier", "Une connaissance", "Un admirateur", "Un anonyme",
+   "Sa Grand-tante",
+   "family", "friend", "colleague", "neighbor", "acquaintance", "other"
  ] as const
  
  // Input validation schema - BETA: No payment reference needed
