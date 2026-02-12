@@ -37,15 +37,12 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
 
   const navItems = [
     { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-    { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération' },
     { to: `${ADMIN_PREFIX}/memoriaux`, icon: Flower2, label: 'Mémoriaux' },
+    { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération' },
     { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques' },
     { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/utilisateurs`, icon: Users, label: 'Utilisateurs', adminOnly: true },
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/historique`, icon: History, label: 'Historique', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/parametres`, icon: Settings, label: 'Paramètres', adminOnly: true },
   ];
 
   return (
@@ -101,6 +98,54 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
               ⌘K
             </kbd>
           </button>
+        )}
+
+        {/* Remaining admin-only nav items */}
+        {isAdmin && (
+          <>
+            <NavLink
+              to={`${ADMIN_PREFIX}/utilisateurs`}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">Utilisateurs</span>
+            </NavLink>
+            <NavLink
+              to={`${ADMIN_PREFIX}/parametres`}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-sm font-medium">Paramètres</span>
+            </NavLink>
+            <NavLink
+              to={`${ADMIN_PREFIX}/historique`}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <History className="w-5 h-5" />
+              <span className="text-sm font-medium">Historiques</span>
+            </NavLink>
+          </>
         )}
       </nav>
 
