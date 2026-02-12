@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import RelationshipGraph2D from "./RelationshipGraph2D";
+import MemorialSocialDonut from "./MemorialSocialDonut";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import { inferGender } from "@/lib/genderInference";
+import { getRelationCategory, getCategoryBgColor, type RelationCategoryName } from "@/lib/relationCategoryUtils";
 
 interface RelationshipMaillageProps {
   deceasedName: string;
@@ -21,54 +23,14 @@ interface RelationshipMaillageProps {
   }>;
 }
 
-// Palette Floorence — cohérente avec le graphe
-const categoryStyles: Record<string, { dot: string; label: string }> = {
-  famille: { dot: "bg-foreground", label: "Famille" },
-  allies: { dot: "bg-ai-gold", label: "Alliés" },
-  amis: { dot: "bg-gesture-flower", label: "Amis & Connaissances" },
-  autre: { dot: "bg-muted-foreground", label: "Autres" },
-};
-
-const getCategoryType = (category: string): string => {
-  const lowerCategory = category.toLowerCase();
-  if (
-    lowerCategory.includes("fils") || lowerCategory.includes("fille") ||
-    lowerCategory.includes("père") || lowerCategory.includes("mère") ||
-    lowerCategory.includes("frère") || lowerCategory.includes("sœur") ||
-    lowerCategory.includes("soeur") || lowerCategory.includes("grand") ||
-    lowerCategory.includes("petit") || lowerCategory.includes("oncle") ||
-    lowerCategory.includes("tante") || lowerCategory.includes("cousin") ||
-    lowerCategory.includes("neveu") || lowerCategory.includes("nièce")
-  ) return "famille";
-  if (
-    lowerCategory.includes("époux") || lowerCategory.includes("épouse") ||
-    lowerCategory.includes("mari") || lowerCategory.includes("femme") ||
-    lowerCategory.includes("beau") || lowerCategory.includes("belle") ||
-    lowerCategory.includes("gendre") || lowerCategory.includes("bru")
-  ) return "allies";
-  if (
-    lowerCategory.includes("ami") || lowerCategory.includes("connaissance") ||
-    lowerCategory.includes("collègue") || lowerCategory.includes("voisin") ||
-    lowerCategory.includes("camarade") || lowerCategory.includes("élève")
-  ) return "amis";
-  return "autre";
-};
-
-// Couleur du label selon la nature du lien
-const getRelationColorClass = (relation: string): string => {
-  if (relation.includes("Époux") || relation.includes("Épouse") || 
-      relation.includes("Belle-") || relation.includes("Beau-") ||
-      relation.includes("Gendre") || relation.includes("Bru")) {
-    return "text-gesture-candle";
-  }
-  if (relation.includes("Mère") || relation.includes("Fille") || 
-      relation.includes("Sœur") || relation.includes("Tante") ||
-      relation.includes("Nièce") || relation.includes("Cousine") ||
-      relation.includes("Grand-mère") || relation.includes("Petite-")) {
-    return "text-gesture-flower";
-  }
-  return "text-foreground";
-};
+// 5 catégories ordonnées avec couleurs exactes
+const ORDERED_CATEGORIES: { key: RelationCategoryName; label: string; number: string }[] = [
+  { key: "Famille directe", label: "LA FAMILLE DIRECTE", number: "1" },
+  { key: "Famille élargie", label: "FAMILLE ÉLARGIE", number: "2" },
+  { key: "Alliés", label: "LES ALLIÉS", number: "3" },
+  { key: "Socio cœur (Amis)", label: "SOCIO CŒUR", number: "4" },
+  { key: "Autres", label: "AUTRES", number: "5" },
+];
 
 const confidenceBadges = {
   high: { label: "Lien direct", className: "bg-foreground/5 text-foreground border-foreground/15" },
@@ -152,11 +114,12 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
   }, [posts]);
 
   const groupedRelations = useMemo(() => {
-    const groups: Record<string, Array<{ name: string; category: string; relationLink: string | null }>> = {
-      famille: [], allies: [], amis: [], autre: [],
+    const groups: Record<RelationCategoryName, Array<{ name: string; category: string; relationLink: string | null }>> = {
+      "Famille directe": [], "Famille élargie": [], "Alliés": [], "Socio cœur (Amis)": [], "Autres": [],
     };
     directRelations.forEach((rel) => {
-      groups[getCategoryType(rel.category)].push(rel);
+      const cat = getRelationCategory(rel.relationLink || rel.category);
+      groups[cat].push(rel);
     });
     return groups;
   }, [directRelations]);
@@ -190,6 +153,9 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
         </div>
       ) : (
         <>
+          {/* Donut Chart */}
+          <MemorialSocialDonut posts={posts} />
+
           {/* Graphe 2D */}
           <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
             <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
@@ -223,17 +189,20 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
             </div>
             
             <div className="space-y-5">
-              {(["famille", "allies", "amis", "autre"] as const).map((catKey) => {
-                const members = groupedRelations[catKey];
+              {ORDERED_CATEGORIES.map((cat) => {
+                const members = groupedRelations[cat.key];
                 if (members.length === 0) return null;
-                const style = categoryStyles[catKey];
+                const color = getCategoryBgColor(cat.key);
                 
                 return (
-                  <div key={catKey}>
+                  <div key={cat.key}>
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: color, boxShadow: cat.key === "Famille élargie" ? "0 0 0 1px rgba(0,0,0,0.15)" : undefined }}
+                      />
                       <span className="text-sm font-sans font-medium tracking-wide">
-                        {style.label} ({members.length})
+                        {cat.number}. {cat.label} ({members.length})
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-4">
@@ -243,11 +212,13 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                           : getCleanRelationName(rel.category);
                         return (
                           <div key={idx} className="flex items-center gap-2 text-sm py-1">
-                            <span className="w-1 h-1 rounded-full bg-border" />
-                            <span className="font-serif">{displayName(rel.name, isAuthenticated)}</span>
-                            <span className={`text-xs ${getRelationColorClass(rel.relationLink || rel.category)}`}>
-                              ({displayRelation})
+                            <span
+                              className="inline-block text-xs font-sans px-2 py-0.5 rounded-sm border"
+                              style={{ borderColor: color, color: color }}
+                            >
+                              {displayRelation}
                             </span>
+                            <span className="font-serif text-foreground">{displayName(rel.name, isAuthenticated)}</span>
                           </div>
                         );
                       })}

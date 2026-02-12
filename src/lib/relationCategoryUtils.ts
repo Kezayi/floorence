@@ -71,10 +71,22 @@ export const getRelationSortPriority = (relation: string): number => {
 export const getCategoryColorClass = (relation: string): string => {
   const cat = getRelationCategory(relation);
   switch (cat) {
-    case "Famille directe": return "text-[hsl(0,70%,50%)]";
-    case "Famille élargie": return "text-[hsl(45,90%,45%)]";
-    case "Alliés": return "text-[hsl(145,60%,40%)]";
-    case "Socio cœur (Amis)": return "text-[hsl(210,70%,50%)]";
-    case "Autres": return "text-[hsl(0,0%,15%)]";
+    case "Famille directe": return "text-[#FF0000]";
+    case "Famille élargie": return "text-[#FFD700]";
+    case "Alliés": return "text-[#008000]";
+    case "Socio cœur (Amis)": return "text-[#0000FF]";
+    case "Autres": return "text-[#000000]";
+  }
+};
+
+/** Category dot/bg color */
+export const getCategoryBgColor = (catName: string): string => {
+  switch (catName) {
+    case "Famille directe": return "#FF0000";
+    case "Famille élargie": return "#FFD700";
+    case "Alliés": return "#008000";
+    case "Socio cœur (Amis)": return "#0000FF";
+    case "Autres": return "#000000";
+    default: return "#000000";
   }
 };
