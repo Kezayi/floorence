@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,10 +61,15 @@ const SocialIntelligence = () => {
     return result;
   }, [sorted, filters.debouncedSearch, filters.socialGroup]);
 
-  // Reset page when filters change
-  useMemo(() => {
+  // Reset page when filters change — useEffect (not useMemo) for side effects
+  const filterKey = `${filters.debouncedSearch}-${filters.socialGroup}`;
+  useState(() => { /* track prev */ });
+  // Using a proper effect pattern:
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setCurrentPage(1);
-  }, [filters.debouncedSearch, filters.socialGroup]);
+  }
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(

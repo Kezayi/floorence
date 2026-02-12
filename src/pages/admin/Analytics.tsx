@@ -263,13 +263,13 @@ const Analytics = () => {
                 <Bar
                   dataKey="cierges"
                   name="Cierges"
-                  fill="hsl(40, 90%, 55%)"
+                  fill="hsl(40, 45%, 48%)"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="fleurs"
                   name="Fleurs"
-                  fill="hsl(330, 70%, 65%)"
+                  fill="hsl(340, 30%, 55%)"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

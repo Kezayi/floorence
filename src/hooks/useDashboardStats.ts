@@ -32,10 +32,10 @@ export const useDashboardStats = () => {
     refetchOnMount: 'always' as const,
     queryFn: async () => {
       // Use .from() with type assertion since view may not be in generated types yet
-      const { data, error } = await (supabase
-        .from('v_dashboard_stats' as any)
+      const { data, error } = await supabase
+        .from('v_dashboard_stats')
         .select('*')
-        .single() as any);
+        .single();
 
       if (error) {
         console.error('Dashboard stats error:', error);
