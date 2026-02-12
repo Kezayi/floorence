@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.social-preview]
 verify_jwt = false
+
+[functions.social-search]
+verify_jwt = false
