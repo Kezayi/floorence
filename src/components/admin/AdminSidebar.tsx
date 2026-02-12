@@ -83,21 +83,22 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
             </NavLink>
           ))}
 
-        {/* Intelligence Sociale - ouvre la palette ⌘K */}
+        {/* Intelligence Sociale - page dédiée */}
         {isAdmin && (
-          <button
-            onClick={onOpenSearch}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors w-full',
-              'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
+          <NavLink
+            to={`${ADMIN_PREFIX}/intelligence-sociale`}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )
+            }
           >
             <Brain className="w-5 h-5" />
-            <span className="text-sm font-medium flex-1 text-left">Intelligence Sociale</span>
-            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
-              ⌘K
-            </kbd>
-          </button>
+            <span className="text-sm font-medium">Intelligence Sociale</span>
+          </NavLink>
         )}
 
         {/* Remaining admin-only nav items */}
