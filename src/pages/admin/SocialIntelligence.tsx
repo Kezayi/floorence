@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
-import { Search, Sparkles, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Search, Loader2, History, Clock, ChevronLeft, X, Brain, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateAge } from "@/lib/dateUtils";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
 
@@ -10,6 +11,17 @@ interface HistoryEntry {
   question: string;
   answer: string | null;
   created_at: string;
+}
+
+interface MemorialPerson {
+  id: string;
+  first_name: string;
+  last_name: string;
+  photo_url: string | null;
+  birth_date: string | null;
+  death_date: string | null;
+  is_demo: boolean | null;
+  total_posts: number | null;
 }
 
 async function streamQuestion(
@@ -85,6 +97,96 @@ const SUGGESTIONS = [
   "Résume le cercle social du défunt le plus actif",
 ];
 
+/* ── Memorial portrait strip ────────────────────────────────────── */
+
+function PersonCard({ person }: { person: MemorialPerson }) {
+  const age =
+    person.birth_date && person.death_date
+      ? calculateAge(person.birth_date, person.death_date)
+      : null;
+
+  return (
+    <div className="flex flex-col items-center gap-1.5 min-w-[72px] max-w-[80px]">
+      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-muted border border-border/60 shadow-sm">
+        {person.photo_url ? (
+          <img
+            src={person.photo_url}
+            alt={`${person.first_name} ${person.last_name}`}
+            className="w-full h-full object-cover grayscale-[30%]"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+            <User className="w-5 h-5" />
+          </div>
+        )}
+        {person.is_demo && (
+          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-accent border border-background" title="Démo" />
+        )}
+      </div>
+      <div className="text-center leading-tight">
+        <p className="text-[11px] font-medium text-foreground truncate w-full">
+          {person.first_name}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate w-full">
+          {person.last_name}
+        </p>
+        {age !== null && (
+          <p className="text-[10px] text-muted-foreground/70">{age} ans</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MemorialStrip({ people }: { people: MemorialPerson[] }) {
+  if (!people.length) return null;
+  return (
+    <div className="mb-6">
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium mb-3">
+        Personnes concernées
+      </p>
+      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
+        {people.map((p) => (
+          <PersonCard key={p.id} person={p} />
+        ))}
+      </div>
+      <div className="mt-3 border-b border-border/40" />
+    </div>
+  );
+}
+
+/* ── Styled markdown prose ──────────────────────────────────────── */
+
+function StyledAnswer({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+  return (
+    <div className="relative">
+      <article
+        className="
+          prose prose-neutral dark:prose-invert max-w-none
+          prose-headings:font-serif prose-headings:tracking-tight prose-headings:text-foreground
+          prose-h2:text-lg prose-h2:mt-8 prose-h2:mb-3 prose-h2:border-b prose-h2:border-border/30 prose-h2:pb-2
+          prose-h3:text-base prose-h3:mt-6 prose-h3:mb-2
+          prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/85 prose-p:mb-4
+          prose-li:text-sm prose-li:leading-relaxed prose-li:text-foreground/85 prose-li:mb-1.5
+          prose-ul:my-3 prose-ol:my-3
+          prose-strong:text-foreground prose-strong:font-semibold
+          prose-em:text-muted-foreground
+          prose-blockquote:border-l-2 prose-blockquote:border-primary/30 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground
+          prose-code:text-xs prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+          prose-hr:border-border/30 prose-hr:my-6
+        "
+      >
+        <ReactMarkdown>{content}</ReactMarkdown>
+      </article>
+      {isStreaming && (
+        <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse rounded-sm ml-0.5 -mb-0.5" />
+      )}
+    </div>
+  );
+}
+
+/* ── Main page ──────────────────────────────────────────────────── */
+
 const SocialIntelligence = () => {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
@@ -94,7 +196,22 @@ const SocialIntelligence = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [memorials, setMemorials] = useState<MemorialPerson[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Fetch memorial people on mount
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("memorials")
+        .select("id, first_name, last_name, photo_url, birth_date, death_date, is_demo, total_posts")
+        .eq("is_active", true)
+        .eq("is_published", true)
+        .order("total_posts", { ascending: false, nullsFirst: false })
+        .limit(30);
+      if (data) setMemorials(data as MemorialPerson[]);
+    })();
+  }, []);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -136,40 +253,40 @@ const SocialIntelligence = () => {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <Brain className="w-8 h-8 text-primary" />
+          <h1 className="text-2xl font-serif font-bold text-foreground flex items-center gap-3">
+            <Brain className="w-7 h-7 text-primary" />
             Intelligence Sociale
           </h1>
-          <p className="text-muted-foreground mt-1 font-sans">
-            Moteur de recherche RAG sur le maillage social
+          <p className="text-xs text-muted-foreground mt-1 tracking-wide">
+            Moteur de recherche RAG · Maillage social
           </p>
         </div>
         {!showHistory && !selectedEntry && (
           <button
             onClick={openHistory}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border/60"
           >
-            <History className="w-4 h-4" />
+            <History className="w-3.5 h-3.5" />
             Historique
           </button>
         )}
         {(showHistory || selectedEntry) && (
           <button
             onClick={() => { setShowHistory(false); setSelectedEntry(null); }}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
             Retour
           </button>
         )}
       </div>
 
-      {/* Search input (hidden in history/detail views) */}
+      {/* Search input */}
       {!showHistory && !selectedEntry && (
-        <div className="flex items-center border border-border rounded-lg px-4 bg-card mb-6">
-          <Search className="mr-3 h-5 w-5 shrink-0 text-muted-foreground" />
+        <div className="flex items-center border border-border/60 rounded-lg px-4 bg-card mb-8 shadow-sm">
+          <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             placeholder="Posez une question sur le maillage social…"
             value={query}
@@ -180,12 +297,12 @@ const SocialIntelligence = () => {
                 submitQuestion(query);
               }
             }}
-            className="flex h-12 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+            className="flex h-11 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground/60"
             autoFocus
           />
           {query && (
             <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -196,28 +313,28 @@ const SocialIntelligence = () => {
         {/* ── History list ── */}
         {showHistory && !selectedEntry && (
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            <h2 className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-widest mb-4">
               20 dernières recherches
             </h2>
             {historyLoading && (
               <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="text-sm">Chargement…</span>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs">Chargement…</span>
               </div>
             )}
             {!historyLoading && history.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-12">Aucune recherche enregistrée</p>
+              <p className="text-xs text-muted-foreground text-center py-12">Aucune recherche enregistrée</p>
             )}
             {history.map((entry) => (
               <button
                 key={entry.id}
                 onClick={() => setSelectedEntry(entry)}
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-accent transition-colors border border-border/50 flex items-start gap-3"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-accent/50 transition-colors border border-border/30 flex items-start gap-3"
               >
-                <Clock className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                <Clock className="w-3.5 h-3.5 mt-0.5 text-muted-foreground/60 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{entry.question}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(entry.created_at)}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">{timeAgo(entry.created_at)}</p>
                 </div>
               </button>
             ))}
@@ -226,18 +343,19 @@ const SocialIntelligence = () => {
 
         {/* ── Selected history entry ── */}
         {selectedEntry && (
-          <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Question posée</p>
-              <p className="text-sm font-medium">{selectedEntry.question}</p>
-              <p className="text-xs text-muted-foreground mt-1">{timeAgo(selectedEntry.created_at)}</p>
+          <div className="space-y-6">
+            <div className="bg-muted/30 rounded-lg p-5 border border-border/20">
+              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest mb-2">Question posée</p>
+              <p className="text-sm font-serif font-medium leading-relaxed">{selectedEntry.question}</p>
+              <p className="text-[10px] text-muted-foreground/50 mt-2">{timeAgo(selectedEntry.created_at)}</p>
             </div>
+
+            <MemorialStrip people={memorials} />
+
             {selectedEntry.answer ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>{selectedEntry.answer}</ReactMarkdown>
-              </div>
+              <StyledAnswer content={selectedEntry.answer} isStreaming={false} />
             ) : (
-              <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
+              <p className="text-xs text-muted-foreground italic">Réponse non enregistrée</p>
             )}
             <button
               onClick={() => {
@@ -247,7 +365,7 @@ const SocialIntelligence = () => {
                 setQuery(q);
                 submitQuestion(q);
               }}
-              className="text-xs text-primary hover:underline"
+              className="text-[11px] text-primary/80 hover:text-primary hover:underline transition-colors"
             >
               ↻ Reposer cette question
             </button>
@@ -258,44 +376,47 @@ const SocialIntelligence = () => {
         {!showHistory && !selectedEntry && (
           <>
             {error && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive mb-4">
+              <div className="rounded-lg bg-destructive/5 border border-destructive/15 p-4 text-xs text-destructive mb-6">
                 {error}
               </div>
             )}
 
             {isLoading && !answer && (
-              <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground py-16">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="text-sm">Analyse du maillage social en cours…</span>
+                <span className="text-xs tracking-wide">Analyse du maillage social en cours…</span>
               </div>
             )}
 
-            {answer && (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>{answer}</ReactMarkdown>
-                {isLoading && (
-                  <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
-                )}
+            {(answer || isLoading) && (
+              <div className="space-y-0">
+                <MemorialStrip people={memorials} />
+                <StyledAnswer content={answer} isStreaming={isLoading} />
               </div>
             )}
 
             {!answer && !isLoading && !error && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-                  Suggestions de questions
-                </p>
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => {
-                      setQuery(s);
-                      submitQuestion(s);
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-accent hover:text-accent-foreground transition-colors border border-border/50"
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div className="space-y-6">
+                {/* Show memorial strip on idle too */}
+                <MemorialStrip people={memorials} />
+
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-medium mb-3">
+                    Suggestions de questions
+                  </p>
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setQuery(s);
+                        submitQuestion(s);
+                      }}
+                      className="w-full text-left px-4 py-3.5 rounded-lg text-sm hover:bg-accent/50 transition-colors border border-border/30 text-foreground/80"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </>
