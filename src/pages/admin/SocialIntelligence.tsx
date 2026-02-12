@@ -1,306 +1,307 @@
-import { useMemo, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Brain, Users, GitBranch, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
-import { TableSkeleton } from "@/components/admin/AdminSkeletons";
-import AdminSearchHeader, { useAdminFilters } from "@/components/admin/AdminSearchHeader";
-import { useSocialInferences, type SocialInference } from "@/hooks/useSocialInferences";
+import { useState, useCallback, useRef } from "react";
+import { Search, Sparkles, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
 
-const ITEMS_PER_PAGE = 20;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
 
-/** Category badge style mapping */
-const getCategoryStyle = (cat: string): string => {
-  const upper = cat.toUpperCase();
-  if (upper.includes("FAMILLE DIRECTE")) return "bg-foreground/10 text-foreground border-foreground/20";
-  if (upper.includes("FAMILLE ELARGIE")) return "bg-muted text-muted-foreground border-muted-foreground/20";
-  if (upper.includes("ALLIES")) return "bg-[hsl(var(--gesture-candle)/0.15)] text-[hsl(var(--gesture-candle))] border-[hsl(var(--gesture-candle)/0.3)]";
-  if (upper.includes("SOCIO")) return "bg-[hsl(var(--gesture-flower)/0.15)] text-[hsl(var(--gesture-flower))] border-[hsl(var(--gesture-flower)/0.3)]";
-  return "bg-secondary text-secondary-foreground border-border";
-};
+interface HistoryEntry {
+  id: string;
+  question: string;
+  answer: string | null;
+  created_at: string;
+}
+
+async function streamQuestion(
+  question: string,
+  onDelta: (text: string) => void,
+  signal: AbortSignal
+) {
+  const resp = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ question }),
+    signal,
+  });
+
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => null);
+    throw new Error(errData?.error || `Erreur ${resp.status}`);
+  }
+  if (!resp.body) throw new Error("Pas de réponse du serveur");
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let idx: number;
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content;
+        if (content) {
+          fullText += content;
+          onDelta(fullText);
+        }
+      } catch {
+        buffer = line + "\n" + buffer;
+        break;
+      }
+    }
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "à l'instant";
+  if (mins < 60) return `il y a ${mins}min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `il y a ${days}j`;
+}
+
+const SUGGESTIONS = [
+  "Qui sont les personnes les plus impliquées émotionnellement ?",
+  "Qui présenter à la famille directe du défunt ?",
+  "Quels sont les relais de confiance dans le maillage ?",
+  "Résume le cercle social du défunt le plus actif",
+];
 
 const SocialIntelligence = () => {
-  const { filters, updateFilter } = useAdminFilters();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const { data: users, isLoading } = useSocialInferences();
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("social_search_history")
+      .select("id, question, answer, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setHistory((data as HistoryEntry[]) || []);
+    setHistoryLoading(false);
+  }, []);
 
-  // Sort by total memorials descending
-  const sorted = useMemo(() => {
-    if (!users) return [];
-    return [...users].sort((a, b) => b.totalMemorials - a.totalMemorials);
-  }, [users]);
+  const submitQuestion = useCallback(async (q: string) => {
+    if (q.trim().length < 3) return;
+    setShowHistory(false);
+    setSelectedEntry(null);
+    setIsLoading(true);
+    setAnswer("");
+    setError(null);
 
-  // Filter using AdminSearchHeader filters
-  const filtered = useMemo(() => {
-    let result = sorted;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    // Debounced text search — null-safe
-    if (filters.debouncedSearch) {
-      const q = filters.debouncedSearch.toLowerCase();
-      result = result.filter(
-        (u) =>
-          (u.authorName ?? "").toLowerCase().includes(q) ||
-          (u.detailLiens ?? []).some(
-            (d) =>
-              (d?.lien ?? "").toLowerCase().includes(q) ||
-              (d?.defunt ?? "").toLowerCase().includes(q) ||
-              (d?.categorie ?? "").toLowerCase().includes(q)
-          )
-      );
+    try {
+      await streamQuestion(q, setAnswer, controller.signal);
+    } catch (e: any) {
+      if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
+    } finally {
+      setIsLoading(false);
     }
+  }, []);
 
-    // Social group filter — null-safe
-    if (filters.socialGroup !== "all") {
-      result = result.filter((u) =>
-        (u.detailLiens ?? []).some((d) => d?.categorie === filters.socialGroup)
-      );
-    }
-
-    return result;
-  }, [sorted, filters.debouncedSearch, filters.socialGroup]);
-
-  // Reset page when filters change — useEffect (not useMemo) for side effects
-  const filterKey = `${filters.debouncedSearch}-${filters.socialGroup}`;
-  useState(() => { /* track prev */ });
-  // Using a proper effect pattern:
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (filterKey !== prevFilterKey) {
-    setPrevFilterKey(filterKey);
-    setCurrentPage(1);
-  }
-
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  // Stats
-  const multiMemorialUsers = useMemo(
-    () => sorted.filter((u) => u.totalMemorials > 1).length,
-    [sorted]
-  );
-
-  const uniqueCategories = useMemo(
-    () => new Set(sorted.flatMap((u) => u.detailLiens.map((d) => d.categorie))).size,
-    [sorted]
-  );
-
-  if (isLoading) return <TableSkeleton />;
+  const openHistory = useCallback(() => {
+    setShowHistory(true);
+    setSelectedEntry(null);
+    loadHistory();
+  }, [loadHistory]);
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-        <Brain className="w-8 h-8 text-primary" />
-        Intelligence Sociale
-      </h1>
-      <p className="text-muted-foreground mb-8 font-sans">
-        Analyse automatisée du maillage entre les contributeurs et les mémoriaux
-      </p>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Contributeurs uniques
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{sorted.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <GitBranch className="w-4 h-4" />
-              Multi-mémoriaux
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{multiMemorialUsers}</div>
-            <p className="text-xs text-muted-foreground">Actifs sur 2+ espaces</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Brain className="w-4 h-4" />
-              Catégories détectées
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{uniqueCategories}</div>
-            <p className="text-xs text-muted-foreground">Catégories actives</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search & Filters */}
-      <AdminSearchHeader
-        placeholder="Rechercher un contributeur, un lien, un défunt…"
-        showSocialGroup
-        filters={filters}
-        onChange={(f) => {
-          Object.entries(f).forEach(([k, v]) => {
-            if (filters[k as keyof typeof filters] !== v) {
-              updateFilter(k as keyof typeof filters, v);
-            }
-          });
-        }}
-      />
-
-      {/* User List */}
-      <div className="space-y-3">
-        {paginated.map((user) => (
-          <UserCard
-            key={user.userId}
-            user={user}
-            expanded={expandedUser === user.userId}
-            onToggle={() =>
-              setExpandedUser(expandedUser === user.userId ? null : user.userId)
-            }
-          />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6">
-          <span className="text-xs text-muted-foreground font-sans">
-            {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-            {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} sur{" "}
-            {filtered.length}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="h-8 px-3"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-sans px-2">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="h-8 px-3"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+            <Brain className="w-8 h-8 text-primary" />
+            Intelligence Sociale
+          </h1>
+          <p className="text-muted-foreground mt-1 font-sans">
+            Moteur de recherche RAG sur le maillage social
+          </p>
         </div>
-      )}
-    </div>
-  );
-};
-
-/** Individual user card — extracted for clarity */
-const UserCard = ({
-  user,
-  expanded,
-  onToggle,
-}: {
-  user: SocialInference;
-  expanded: boolean;
-  onToggle: () => void;
-}) => {
-  const rolesSummary = useMemo(() => {
-    const categories = [...new Set((user.detailLiens ?? []).map((d) => d?.categorie ?? "—"))];
-    return categories.join(", ") || "—";
-  }, [user.detailLiens]);
-
-  return (
-    <Card className={`transition-all ${expanded ? "ring-1 ring-primary/30" : ""}`}>
-      <div
-        className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-        onClick={onToggle}
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="font-serif font-medium text-primary">
-                {user.authorName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-serif font-medium text-foreground truncate">
-                {user.authorName}
-              </h3>
-              <p className="text-xs text-muted-foreground font-sans truncate">
-                {rolesSummary}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Badge variant="outline" className="font-sans">
-              {user.totalMemorials} mémorial
-              {user.totalMemorials > 1 ? "x" : ""}
-            </Badge>
-            {user.totalMemorials > 1 && (
-              <Badge className="bg-primary/10 text-primary border-primary/20 font-sans text-[10px]">
-                Multi
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {expanded && (
-          <div className="mt-4 pt-4 border-t border-border space-y-2">
-            <h4 className="text-xs font-sans font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              Parcours complet
-            </h4>
-            {user.detailLiens.map((dl, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between gap-3 p-2 bg-muted/30 rounded-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs text-foreground font-sans font-medium">
-                    {dl.lien}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-sans truncate">
-                    de {dl.defunt}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/60 font-mono">
-                    ({dl.slug})
-                  </span>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] shrink-0 ${getCategoryStyle(dl.categorie)}`}
-                >
-                  {dl.categorie}
-                </Badge>
-              </div>
-            ))}
-
-            {user.connexionsSuggerees.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Link2 className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-sans font-medium text-primary">
-                    Connexions suggérées
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground font-sans">
-                  {user.connexionsSuggerees.join(", ")}
-                </p>
-              </div>
-            )}
-          </div>
+        {!showHistory && !selectedEntry && (
+          <button
+            onClick={openHistory}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border"
+          >
+            <History className="w-4 h-4" />
+            Historique
+          </button>
+        )}
+        {(showHistory || selectedEntry) && (
+          <button
+            onClick={() => { setShowHistory(false); setSelectedEntry(null); }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Retour
+          </button>
         )}
       </div>
-    </Card>
+
+      {/* Search input (hidden in history/detail views) */}
+      {!showHistory && !selectedEntry && (
+        <div className="flex items-center border border-border rounded-lg px-4 bg-card mb-6">
+          <Search className="mr-3 h-5 w-5 shrink-0 text-muted-foreground" />
+          <input
+            placeholder="Posez une question sur le maillage social…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitQuestion(query);
+              }
+            }}
+            className="flex h-12 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+            autoFocus
+          />
+          {query && (
+            <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Content area */}
+      <div className="min-h-[40vh]">
+        {/* ── History list ── */}
+        {showHistory && !selectedEntry && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+              20 dernières recherches
+            </h2>
+            {historyLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Chargement…</span>
+              </div>
+            )}
+            {!historyLoading && history.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-12">Aucune recherche enregistrée</p>
+            )}
+            {history.map((entry) => (
+              <button
+                key={entry.id}
+                onClick={() => setSelectedEntry(entry)}
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-accent transition-colors border border-border/50 flex items-start gap-3"
+              >
+                <Clock className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{entry.question}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(entry.created_at)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Selected history entry ── */}
+        {selectedEntry && (
+          <div className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Question posée</p>
+              <p className="text-sm font-medium">{selectedEntry.question}</p>
+              <p className="text-xs text-muted-foreground mt-1">{timeAgo(selectedEntry.created_at)}</p>
+            </div>
+            {selectedEntry.answer ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown>{selectedEntry.answer}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
+            )}
+            <button
+              onClick={() => {
+                const q = selectedEntry.question;
+                setSelectedEntry(null);
+                setShowHistory(false);
+                setQuery(q);
+                submitQuestion(q);
+              }}
+              className="text-xs text-primary hover:underline"
+            >
+              ↻ Reposer cette question
+            </button>
+          </div>
+        )}
+
+        {/* ── Main search view ── */}
+        {!showHistory && !selectedEntry && (
+          <>
+            {error && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive mb-4">
+                {error}
+              </div>
+            )}
+
+            {isLoading && !answer && (
+              <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Analyse du maillage social en cours…</span>
+              </div>
+            )}
+
+            {answer && (
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown>{answer}</ReactMarkdown>
+                {isLoading && (
+                  <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
+                )}
+              </div>
+            )}
+
+            {!answer && !isLoading && !error && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+                  Suggestions de questions
+                </p>
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setQuery(s);
+                      submitQuestion(s);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-accent hover:text-accent-foreground transition-colors border border-border/50"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 
