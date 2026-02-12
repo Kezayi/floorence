@@ -213,8 +213,8 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                         return (
                           <div key={idx} className="flex items-center gap-2 text-sm py-1">
                             <span
-                              className="inline-block text-xs font-sans px-2 py-0.5 rounded-sm border"
-                              style={{ borderColor: color, color: color }}
+                              className="inline-block text-xs font-sans px-2 py-0.5 rounded-sm"
+                              style={{ color: color }}
                             >
                               {displayRelation}
                             </span>
