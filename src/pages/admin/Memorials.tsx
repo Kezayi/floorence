@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeSearchInput } from '@/lib/sanitizeSearch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -101,7 +102,8 @@ const Memorials = () => {
         .select('*', { count: 'exact', head: true });
 
       if (searchQuery) {
-        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
+        const safe = sanitizeSearchInput(searchQuery);
+        query = query.or(`first_name.ilike.%${safe}%,last_name.ilike.%${safe}%`);
       }
       if (filters.status === 'demo') query = query.eq('is_demo', true);
       if (filters.status === 'real') query = query.or('is_demo.eq.false,is_demo.is.null');
@@ -135,7 +137,8 @@ const Memorials = () => {
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
-        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
+        const safe = sanitizeSearchInput(searchQuery);
+        query = query.or(`first_name.ilike.%${safe}%,last_name.ilike.%${safe}%`);
       }
       if (filters.status === 'demo') query = query.eq('is_demo', true);
       if (filters.status === 'real') query = query.or('is_demo.eq.false,is_demo.is.null');

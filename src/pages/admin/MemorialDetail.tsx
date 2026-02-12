@@ -4,6 +4,7 @@ import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeSearchInput } from '@/lib/sanitizeSearch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -173,11 +174,12 @@ const MemorialDetail = () => {
     queryKey: ['admin-memorial-link-search', debouncedLinkSearch],
     queryFn: async () => {
       if (!debouncedLinkSearch || debouncedLinkSearch.length < 2) return [];
+      const safe = sanitizeSearchInput(debouncedLinkSearch);
       const { data, error } = await supabase
         .from('memorials')
         .select('id, first_name, last_name, death_date, birth_date')
         .neq('id', id!)
-        .or(`first_name.ilike.%${debouncedLinkSearch}%,last_name.ilike.%${debouncedLinkSearch}%`)
+        .or(`first_name.ilike.%${safe}%,last_name.ilike.%${safe}%`)
         .limit(8);
       if (error) throw error;
       return data;

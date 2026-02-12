@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle, Shield, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeSearchInput } from "@/lib/sanitizeSearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { analyzeKinship, formatDegree, type KinshipAnalysis, type AmbiguousLink } from "@/lib/kinshipCalculator";
 import {
@@ -843,18 +844,19 @@ const AmbiguityAlert = ({
 
 /** Search for living people (guestbook authors + memorial creators) */
 async function searchLivingPeople(query: string): Promise<LivingOption[]> {
+  const safe = sanitizeSearchInput(query);
   const [{ data: posts }, { data: profiles }] = await Promise.all([
     supabase
       .from("guestbook_posts")
       .select("user_id, author_name")
-      .ilike("author_name", `%${query}%`)
+      .ilike("author_name", `%${safe}%`)
       .not("user_id", "is", null)
       .eq("is_hidden", false)
       .limit(30),
     supabase
       .from("profiles")
       .select("user_id, display_name, avatar_url")
-      .ilike("display_name", `%${query}%`)
+      .ilike("display_name", `%${safe}%`)
       .limit(20),
   ]);
 
