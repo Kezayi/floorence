@@ -91,16 +91,16 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 pt-20 md:pt-24">
+      <main className="flex-1 pt-16 md:pt-20">
 
         {/* Paroles d'Éternité — Featured Tribute */}
         <HommageFeatured />
 
         {/* Memorial Grid */}
-        <section className="px-4 py-6 md:px-8 md:py-10">
+        <section className="px-4 py-4 md:px-8 md:py-6">
           <div className="container mx-auto">
             {/* Header with title and controls */}
-            <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col gap-3 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
