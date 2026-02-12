@@ -396,8 +396,8 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
             </div>
           </div>
 
-          {/* Ancestors at BOTTOM (roots) — sorted closest first, deepest at very bottom */}
-          {ancestorGens.map(([gen, nodes], i) => (
+          {/* Ancestors at BOTTOM (roots) — closest to cujus first, deepest at very bottom */}
+          {[...ancestorGens].reverse().map(([gen, nodes], i) => (
             <LineageGenerationRow
               key={gen}
               generation={gen}

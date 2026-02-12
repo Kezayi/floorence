@@ -97,6 +97,7 @@ const relationCategories = {
     "Sa Belle-sœur",
     "Son Gendre",
     "Sa Belle-fille",
+    "Son Beau-fils",
     "Son Bel-oncle",
     "Sa Belle-tante",
     "Son Co-époux",
