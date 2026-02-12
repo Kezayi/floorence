@@ -38,15 +38,15 @@ export const useTabPrefetch = (memorialId: string) => {
             queryFn: async () => {
               const { data } = await supabase
                 .from("memorial_relations")
-                .select("id, relation_type, memorial_id_1, memorial_id_2")
+                .select("id, relation_type, memorial_id_1, memorial_id_2, status, is_lineage")
                 .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
-                .eq("status", "accepted");
+                .in("status", ["accepted", "pending"]);
               return data;
             },
             staleTime: 2 * 60_000,
           });
           queryClient.prefetchQuery({
-            queryKey: ["lineage-tree-tributes", memorialId],
+            queryKey: ["lineage-tree-tributes-raw", memorialId],
             queryFn: async () => {
               const { data } = await supabase
                 .rpc("get_public_guestbook_posts", { p_memorial_id: memorialId });

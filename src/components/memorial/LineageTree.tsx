@@ -95,62 +95,50 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     },
   });
 
-  // 2. Fetch guestbook tributes with family relations (Le Semeur)
-  const { data: tributeNodes, isLoading: loadingTributes } = useQuery({
-    queryKey: ["lineage-tree-tributes", memorialId],
+  // 2. Fetch raw guestbook tributes
+  const { data: rawTributes, isLoading: loadingTributes } = useQuery({
+    queryKey: ["lineage-tree-tributes-raw", memorialId],
     enabled: isValidUUID,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data } = await supabase
         .rpc("get_public_guestbook_posts", { p_memorial_id: memorialId });
-
-      if (!data || data.length === 0) return [];
-
-      // Deduplicate by author (keep the one with the most specific relation)
-      const authorMap = new Map<string, typeof data[number]>();
-      for (const post of data) {
-        const key = post.user_id || post.author_name;
-        if (!authorMap.has(key)) {
-          authorMap.set(key, post);
-        }
-      }
-
-      // Filter: only include posts whose relation_link classifies as lineage
-      const lineagePosts = Array.from(authorMap.values())
-        .filter(post => {
-          // Use relation_link ("Sa Mère") not relation_category ("famille_directe")
-          const classified = classifyRelation(post.relation_link || post.relation_category);
-          return classified.isLineage;
-        });
-
-      // Fetch avatars for tribute authors with user accounts
-      const userIds = [...new Set(lineagePosts.map(p => p.user_id).filter(Boolean))] as string[];
-      let avatarLookup = new Map<string, string | null>();
-
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles_public")
-          .select("user_id, avatar_url")
-          .in("user_id", userIds);
-
-        (profiles || []).forEach((p: any) => {
-          avatarLookup.set(p.user_id, p.avatar_url);
-        });
-      }
-
-      return lineagePosts.map(post => ({
-          id: `tribute-${post.user_id || post.id}`,
-          name: post.author_name,
-          firstName: post.author_name.split(" ")[0],
-          photo: post.user_id ? avatarLookup.get(post.user_id) || null : null,
-          shareToken: null as string | null,
-          relation: post.relation_link || post.relation_category,
-          createdBy: post.user_id || "",
-          source: "tribute" as const,
-        }));
+      return data || [];
     },
   });
+
+  // 3. Process raw tributes into tree nodes (separate from fetch to avoid prefetch cache mismatch)
+  const tributeNodes = useMemo(() => {
+    if (!rawTributes || rawTributes.length === 0) return [];
+
+    // Deduplicate by author (keep the one with the most specific relation)
+    const authorMap = new Map<string, typeof rawTributes[number]>();
+    for (const post of rawTributes) {
+      const key = post.user_id || post.author_name;
+      if (!authorMap.has(key)) {
+        authorMap.set(key, post);
+      }
+    }
+
+    // Filter: only include posts whose relation_link classifies as lineage
+    const lineagePosts = Array.from(authorMap.values())
+      .filter(post => {
+        const classified = classifyRelation(post.relation_link || post.relation_category);
+        return classified.isLineage;
+      });
+
+    return lineagePosts.map(post => ({
+      id: `tribute-${post.user_id || post.id}`,
+      name: post.author_name,
+      firstName: post.author_name.split(" ")[0],
+      photo: null as string | null,
+      shareToken: null as string | null,
+      relation: post.relation_link || post.relation_category,
+      createdBy: post.user_id || "",
+      source: "tribute" as const,
+    }));
+  }, [rawTributes]);
 
   // Combine and deduplicate: memorial relations take priority over tribute nodes
   const allNodes = useMemo(() => {
