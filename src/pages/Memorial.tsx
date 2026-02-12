@@ -301,7 +301,7 @@ const MemorialInner = () => {
 
         const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
           id: post.id,
-          authorId: post.user_id || 'anonymous',
+          authorId: post.user_id || `anon-${post.id}`,
           authorName: post.author_name || 'Anonyme',
           authorAvatarUrl: post.user_id ? avatarMap.get(post.user_id) || null : null,
           relationCategory: post.relation_category || 'autre',
