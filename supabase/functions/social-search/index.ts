@@ -28,9 +28,19 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Extract user from auth header if present
+    let userId: string | null = null;
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      try {
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id || null;
+      } catch { /* anonymous request */ }
+    }
+
     // ── Gather social context ──────────────────────────────────────────
 
-    // 1. All memorials (name + dates)
     const { data: memorials } = await supabase
       .from("memorials")
       .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers")
@@ -38,14 +48,12 @@ serve(async (req) => {
       .eq("is_published", true)
       .limit(200);
 
-    // 2. All guestbook posts (author, relation, gestures)
     const { data: posts } = await supabase
       .from("guestbook_posts")
       .select("id, memorial_id, author_name, relation_category, relation_group, candle_count, flower_count, content, user_id, is_demo")
       .eq("is_hidden", false)
       .limit(500);
 
-    // 3. All accepted memorial relations (lineage links)
     const { data: relations } = await supabase
       .from("memorial_relations")
       .select("memorial_id_1, memorial_id_2, relation_type, status")
@@ -60,21 +68,18 @@ serve(async (req) => {
 
     const contextLines: string[] = [];
 
-    // Memorial summaries
     for (const m of memorials || []) {
       contextLines.push(
         `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs ${m.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
-    // Relation links between memorials
     for (const r of relations || []) {
       const n1 = memorialMap.get(r.memorial_id_1) || "?";
       const n2 = memorialMap.get(r.memorial_id_2) || "?";
       contextLines.push(`LIEN: ${n1} ↔ ${n2} (${r.relation_type})`);
     }
 
-    // Guestbook posts (author → memorial with relation)
     for (const p of posts || []) {
       const mName = memorialMap.get(p.memorial_id) || "?";
       contextLines.push(
@@ -143,7 +148,57 @@ ${contextLines.join("\n")}`;
       );
     }
 
-    return new Response(aiResponse.body, {
+    // ── Tee the stream: one for client, one for capturing answer ───────
+
+    const [clientStream, captureStream] = aiResponse.body!.tee();
+
+    // Background task: capture full answer and save to DB
+    const savePromise = (async () => {
+      try {
+        const reader = captureStream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullAnswer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let idx: number;
+          while ((idx = buffer.indexOf("\n")) !== -1) {
+            let line = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 1);
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) fullAnswer += content;
+            } catch { /* partial chunk */ }
+          }
+        }
+
+        // Save to history
+        await supabase.from("social_search_history").insert({
+          user_id: userId,
+          question,
+          answer: fullAnswer || null,
+          model: "google/gemini-3-flash-preview",
+          tokens_context: contextLines.length,
+        });
+      } catch (e) {
+        console.error("Failed to save search history:", e);
+      }
+    })();
+
+    // Don't await savePromise — let it run in background
+    // Use waitUntil-like pattern via EdgeRuntime if available, otherwise fire-and-forget
+    savePromise.catch(() => {});
+
+    return new Response(clientStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
