@@ -648,6 +648,13 @@ export type Database = {
           total_flowers: number
         }[]
       }
+      get_memorial_social_stats: {
+        Args: { target_memorial_id: string }
+        Returns: {
+          category: string
+          count: number
+        }[]
+      }
       get_public_guestbook_posts: {
         Args: { p_memorial_id?: string }
         Returns: {
