@@ -311,12 +311,10 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         <div className="relative">
           {/* Central vertical blood line — grows from bottom (roots) to top (branches) */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 hidden md:block"
+            className="absolute left-1/2 top-0 bottom-0 w-[3px] hidden md:block"
             style={{
-              width: "3px",
               background: "hsl(0 70% 25% / 0.8)",
               transformOrigin: "bottom",
-              transform: "scaleY(0)",
               animation: "grow-up 1.4s ease-out forwards",
             }}
           />

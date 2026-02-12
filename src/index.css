@@ -331,6 +331,12 @@
     100% { transform: translateX(-50%) scaleY(1); opacity: 1; }
   }
 
+  @keyframes germinate {
+    0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+    60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
   /* Skeleton shimmer — faster perceived loading */
   .skeleton-shimmer {
     background: linear-gradient(
