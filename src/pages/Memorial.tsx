@@ -920,14 +920,12 @@ const MemorialInner = () => {
 
             <TabsContent value="lineage" className="mt-0">
               <div className="max-w-3xl">
-                <SecureDataDisplay blurPreview>
-                  <LineageTree
-                    memorialId={memorial.id}
-                    deceasedName={safeName}
-                    deceasedPhoto={bestPhoto}
-                    isOwner={isOwner}
-                  />
-                </SecureDataDisplay>
+                <LineageTree
+                  memorialId={memorial.id}
+                  deceasedName={safeName}
+                  deceasedPhoto={bestPhoto}
+                  isOwner={isOwner}
+                />
               </div>
             </TabsContent>
 
