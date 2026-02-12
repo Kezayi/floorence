@@ -219,7 +219,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
           <div className="bg-muted/30 border border-border/60 p-6 rounded-sm">
             <div className="flex items-center gap-2 mb-5">
               <Users className="w-4 h-4 text-foreground/60" />
-              <h4 className="font-serif text-lg">Relations directes avec le défunt</h4>
+              <h4 className="font-serif text-lg">Relations du défunt</h4>
             </div>
             
             <div className="space-y-5">
