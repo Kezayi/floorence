@@ -2,6 +2,8 @@ import { useMemo, useState, useRef, useCallback } from "react";
 import { getCleanRelationName, inferAllRelationships } from "@/lib/relationshipInference";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatRelationLabel } from "@/lib/formatRelationLabel";
+import { inferGender } from "@/lib/genderInference";
 
 interface InterMemorialLink {
   name: string;
@@ -23,6 +25,7 @@ interface GraphNode {
   id: string;
   name: string;
   category: string;
+  relationLabel: string;
   x: number;
   y: number;
   categoryType: string;
@@ -94,6 +97,7 @@ const ZOOM_STEP = 0.25;
 const GOLD_COLOR = "#D4AF37";
 
 const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: RelationshipGraph2DProps) => {
+  const deceasedGender = useMemo(() => inferGender(deceasedName.split(' ')[0]), [deceasedName]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredLink, setHoveredLink] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -103,19 +107,18 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   const containerRef = useRef<HTMLDivElement>(null);
   
   const nodes = useMemo(() => {
-    const uniqueAuthors = new Map<string, { name: string; category: string }>();
+    const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null }>();
     posts.forEach((post) => {
       if (!uniqueAuthors.has(post.authorId)) {
-        // Use relationLink (specific) for categorization when available, fallback to relationCategory (generic)
         const effectiveCategory = post.relationLink || post.relationCategory;
-        uniqueAuthors.set(post.authorId, { name: post.authorName, category: effectiveCategory });
+        uniqueAuthors.set(post.authorId, { name: post.authorName, category: effectiveCategory, relationLink: post.relationLink || null });
       }
     });
     
     const authorsList = Array.from(uniqueAuthors.entries());
     const graphNodes: GraphNode[] = [];
     
-    const byCategory: Record<string, Array<{ id: string; name: string; category: string }>> = {
+    const byCategory: Record<string, Array<{ id: string; name: string; category: string; relationLink: string | null }>> = {
       famille_directe: [], famille_elargie: [], allies: [], socio_coeur: [], autre: [],
     };
     
@@ -137,8 +140,12 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
       items.forEach((item, idx) => {
         const startAngle = ringIndex * (Math.PI / 6);
         const angle = startAngle + (idx / items.length) * Math.PI * 2 - Math.PI / 2;
+        const label = item.relationLink
+          ? formatRelationLabel(item.relationLink, deceasedGender)
+          : getCleanRelationName(item.category);
         graphNodes.push({
           ...item,
+          relationLabel: label,
           x: Math.cos(angle) * radius,
           y: Math.sin(angle) * radius,
           categoryType: catType,
@@ -147,7 +154,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     });
     
     return graphNodes;
-  }, [posts]);
+  }, [posts, deceasedGender]);
 
   const viewBoxParams = useMemo(() => {
     if (nodes.length === 0) return { minX: 0, minY: 0, width: 400, height: 400 };
@@ -559,6 +566,21 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
                 >
                   {node.name.split(" ")[0]}
                 </text>
+                {/* Relation label */}
+                <text
+                  x={labelX} y={labelY + labelFontSize + 2}
+                  textAnchor="middle"
+                  className="font-sans pointer-events-none"
+                  style={{
+                    fontSize: '7px',
+                    fontWeight: 400,
+                    fill: style.fill,
+                    letterSpacing: '0.03em',
+                  }}
+                  filter="url(#textGlow)"
+                >
+                  {node.relationLabel}
+                </text>
               </g>
             );
           })}
@@ -575,8 +597,8 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
             return (
               <div key={node.id} className="text-center">
                 <div className="font-serif text-sm text-foreground">{node.name}</div>
-                <div className="text-xs text-muted-foreground font-sans mt-0.5">
-                  {node.category}
+                <div className="text-xs font-sans mt-0.5" style={{ color: categoryStyles[node.categoryType]?.fill }}>
+                  {node.relationLabel}
                 </div>
                 {nodeLinks.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50">
