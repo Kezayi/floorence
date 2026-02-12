@@ -36,7 +36,7 @@ export const EXTENDED_RELATIONS = [
 ];
 export const ALLIANCE_RELATIONS = [
   "beau-père", "belle-mère", "beau-frère", "belle-sœur", "belle-soeur",
-  "gendre", "belle-fille", "bel-oncle", "belle-tante",
+  "gendre", "belle-fille", "beau-fils", "bel-oncle", "belle-tante",
 ];
 
 /* ── Link style types ── */

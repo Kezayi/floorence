@@ -16,7 +16,7 @@ const familleElargie = new Set([
 const allies = new Set([
   "Son Époux", "Son Épouse", "Son Beau-père", "Sa Belle-mère",
   "Son Beau-frère", "Sa Belle-sœur", "Son Gendre", "Sa Belle-fille",
-  "Son Bel-oncle", "Sa Belle-tante", "Son Co-époux", "Sa Co-épouse",
+  "Son Beau-fils", "Son Bel-oncle", "Sa Belle-tante", "Son Co-époux", "Sa Co-épouse",
 ]);
 
 const socioCoeur = new Set([
