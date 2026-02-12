@@ -97,7 +97,7 @@ const HommageFeatured = () => {
   if (!selected) {
     const fallbackIndex = currentHourSeed % FALLBACK_QUOTES.length;
     return (
-      <section className="px-4 py-8 md:py-12">
+      <section className="px-4 py-4 md:py-6">
         <div className="container mx-auto max-w-2xl text-center">
           <p className="font-serif text-lg md:text-xl text-muted-foreground italic leading-relaxed">
             « {FALLBACK_QUOTES[fallbackIndex]} »
@@ -122,18 +122,18 @@ const HommageFeatured = () => {
       : selected.content;
 
   return (
-    <section className="px-4 py-8 md:py-12 animate-fade-in-slow">
+    <section className="px-4 py-4 md:py-6 animate-fade-in-slow">
       <div className="container mx-auto max-w-2xl text-center">
         {/* Section label */}
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-sans mb-6">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-sans mb-3">
           Paroles d'Éternité
         </p>
 
         {/* Quote icon */}
-        <Quote className="w-5 h-5 text-muted-foreground/40 mx-auto mb-4" />
+        <Quote className="w-5 h-5 text-muted-foreground/40 mx-auto mb-2" />
 
         {/* Tribute text */}
-        <blockquote className="font-serif text-lg md:text-xl text-foreground leading-relaxed mb-6">
+        <blockquote className="font-serif text-lg md:text-xl text-foreground leading-relaxed mb-3">
           « {displayContent} »
         </blockquote>
 
