@@ -359,8 +359,10 @@ const SocialIntelligence = () => {
 
       {/* Search input */}
       {!showHistory && !selectedEntry && (
-        <div className="flex items-center border border-border/60 rounded-lg px-4 bg-card mb-8 shadow-sm">
-          <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex items-center border border-[hsl(0_60%_25%/0.25)] rounded-lg px-4 bg-card mb-8 shadow-sm">
+          <div className="mr-3 w-7 h-7 rounded-full bg-admin-burgundy flex items-center justify-center shrink-0">
+            <Search className="h-3.5 w-3.5 text-white" />
+          </div>
           <input
             placeholder="Posez une question sur le maillage social…"
             value={query}
