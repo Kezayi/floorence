@@ -86,8 +86,15 @@ const SUGGESTIONS = [
   "Résume le cercle social du défunt le plus actif",
 ];
 
-const SocialSearchPalette = () => {
-  const [open, setOpen] = useState(false);
+interface SocialSearchPaletteProps {
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+}
+
+const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearchPaletteProps = {}) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen ?? internalOpen;
+  const setOpen = onExternalOpenChange ?? setInternalOpen;
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -165,19 +172,7 @@ const SocialSearchPalette = () => {
   }, [loadHistory]);
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-muted-foreground text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-      >
-        <Sparkles className="w-4 h-4" />
-        <span className="hidden md:inline">Intelligence Sociale</span>
-        <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono">
-          ⌘K
-        </kbd>
-      </button>
-
-      <CommandDialog open={open} onOpenChange={handleOpenChange}>
+    <CommandDialog open={open} onOpenChange={handleOpenChange}>
         <div className="flex flex-col max-h-[80vh]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -338,7 +333,6 @@ const SocialSearchPalette = () => {
           </div>
         </div>
       </CommandDialog>
-    </>
   );
 };
 
