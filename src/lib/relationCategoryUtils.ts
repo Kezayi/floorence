@@ -5,24 +5,34 @@ const familleDirecte = new Set([
   "Son Grand-père", "Sa Grand-mère", "Son Petit-fils", "Sa Petite-fille",
   "Son Arrière-grand-père", "Sa Arrière-grand-mère", "Son Arrière-petit-fils", "Sa Arrière-petite-fille",
   "Son Frère", "Sa Sœur",
-  // Legacy
   "Son Demi-frère", "Sa Demi-sœur",
+  // Without possessives (DB format)
+  "Père", "Mère", "Fils", "Fille",
+  "Grand-père", "Grand-mère", "Petit-fils", "Petite-fille",
+  "Arrière-grand-père", "Arrière-grand-mère", "Arrière-petit-fils", "Arrière-petite-fille",
+  "Frère", "Sœur", "Demi-frère", "Demi-sœur",
 ]);
 
 const familleElargie = new Set([
   "Son Oncle", "Sa Tante", "Son Neveu", "Sa Nièce", "Son Cousin", "Sa Cousine",
   "Son Grand-oncle", "Sa Grande-tante", "Son Petit-neveu", "Sa Petite-nièce",
   "Son Petit-cousin", "Sa Petite-cousine",
-  // Legacy
   "Sa Grand-tante",
+  // Without possessives (DB format)
+  "Oncle", "Tante", "Neveu", "Nièce", "Cousin", "Cousine",
+  "Grand-oncle", "Grande-tante", "Grand-tante", "Petit-neveu", "Petite-nièce",
+  "Petit-cousin", "Petite-cousine",
 ]);
 
 const allies = new Set([
   "Son Époux", "Son Épouse", "Son Beau-père", "Sa Belle-mère",
   "Son Beau-fils", "Sa Belle-fille", "Son Beau-frère", "Sa Belle-sœur",
   "Son Bel-oncle", "Sa Belle-tante",
-  // Legacy
   "Son Gendre", "Son Co-époux", "Sa Co-épouse",
+  // Without possessives (DB format)
+  "Époux", "Épouse", "Beau-père", "Belle-mère",
+  "Beau-fils", "Belle-fille", "Beau-frère", "Belle-sœur",
+  "Bel-oncle", "Belle-tante", "Gendre", "Co-époux", "Co-épouse",
 ]);
 
 const socioCoeur = new Set([
@@ -30,10 +40,15 @@ const socioCoeur = new Set([
   "Son Ami", "Son Collègue",
   "Son Co-équipier", "Sa Co-équipière",
   "Son Parrain", "Sa Marraine", "Son Filleul", "Sa Filleule",
-  // Legacy
   "Son Frère de cœur", "Sa Sœur de cœur", "Son Ami(e)", "Son Ami(e) d'enfance",
   "Son Parrain/Marraine", "Son Filleul(e)",
   "Son Camarade de promotion", "Son Compagnon d'armes",
+  // Without possessives (DB format)
+  "Frère d'une autre mère", "Sœur d'une autre mère",
+  "Ami", "Collègue", "Co-équipier", "Co-équipière",
+  "Parrain", "Marraine", "Filleul", "Filleule",
+  "Frère de cœur", "Sœur de cœur", "Ami(e)", "Ami(e) d'enfance",
+  "Parrain/Marraine", "Filleul(e)", "Camarade de promotion", "Compagnon d'armes",
 ]);
 
 const autres = new Set([
@@ -41,10 +56,16 @@ const autres = new Set([
   "Son Associé(e)", "Son Élève", "Son Étudiant(e)", "Son Disciple",
   "Son Camarade de classe", "Son Voisin", "Sa Voisine",
   "Son Copropriétaire", "Son Locataire", "Son Bailleur",
-  // Legacy
   "Son Voisin(e)", "Son Professeur", "Son Mentor",
   "Son Employeur", "Son Pasteur/Imam", "Son Chef coutumier",
   "Une connaissance", "Un admirateur", "Un anonyme",
+  // Without possessives (DB format)
+  "Client", "Cliente", "Fournisseur", "Prestataire",
+  "Associé(e)", "Élève", "Étudiant(e)", "Disciple",
+  "Camarade de classe", "Voisin", "Voisine",
+  "Copropriétaire", "Locataire", "Bailleur",
+  "Voisin(e)", "Professeur", "Mentor", "Employeur",
+  "Pasteur/Imam", "Chef coutumier",
 ]);
 
 export type RelationCategoryName = "Famille directe" | "Famille élargie" | "Alliés" | "Socio cœur (Amis)" | "Autres";
