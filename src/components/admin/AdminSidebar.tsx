@@ -20,7 +20,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 
-const AdminSidebar = () => {
+interface AdminSidebarProps {
+  onOpenSearch?: () => void;
+}
+
+const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
   const { isAdmin } = useAdminRole();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -38,7 +42,6 @@ const AdminSidebar = () => {
     { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques' },
     { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
     { to: `${ADMIN_PREFIX}/utilisateurs`, icon: Users, label: 'Utilisateurs', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'Intelligence Sociale', adminOnly: true },
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
     { to: `${ADMIN_PREFIX}/historique`, icon: History, label: 'Historique', adminOnly: true },
@@ -82,6 +85,23 @@ const AdminSidebar = () => {
               )}
             </NavLink>
           ))}
+
+        {/* Intelligence Sociale - ouvre la palette ⌘K */}
+        {isAdmin && (
+          <button
+            onClick={onOpenSearch}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors w-full',
+              'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            <Brain className="w-5 h-5" />
+            <span className="text-sm font-medium flex-1 text-left">Intelligence Sociale</span>
+            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
+        )}
       </nav>
 
       {/* Section Mon Compte + Déconnexion - Fond rouge foncé */}
