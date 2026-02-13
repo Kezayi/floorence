@@ -68,24 +68,25 @@ const InferredLinkSuggestions = ({ memorialId, memorialName }: InferredLinkSugge
     // Get posts for the current memorial
     const currentMemorialPosts = allPosts.filter((p) => p.memorial_id === memorialId);
 
-    // Group all posts by user_id
-    const userPosts = new Map<string, Array<{ memorialId: string; relation: string; authorName: string }>>();
+    // Group all posts by author_name (user_id no longer exposed by public API)
+    const authorPosts = new Map<string, Array<{ memorialId: string; relation: string; authorName: string }>>();
     allPosts.forEach((post) => {
-      if (!post.user_id) return;
-      if (!userPosts.has(post.user_id)) userPosts.set(post.user_id, []);
-      userPosts.get(post.user_id)!.push({
+      if (!post.author_name) return;
+      const key = post.author_name.trim().toLowerCase();
+      if (!authorPosts.has(key)) authorPosts.set(key, []);
+      authorPosts.get(key)!.push({
         memorialId: post.memorial_id,
         relation: post.relation_category,
         authorName: post.author_name,
       });
     });
 
-    // For each user who posted on the current memorial AND other memorials
+    // For each author who posted on the current memorial AND other memorials
     const seenSuggestions = new Set<string>();
 
     currentMemorialPosts.forEach((post) => {
-      if (!post.user_id) return;
-      const userAllPosts = userPosts.get(post.user_id);
+      if (!post.author_name) return;
+      const userAllPosts = authorPosts.get(post.author_name.trim().toLowerCase());
       if (!userAllPosts || userAllPosts.length < 2) return;
 
       const vectorA = getRelationVector(post.relation_category);
