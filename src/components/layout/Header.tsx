@@ -88,7 +88,14 @@ const Header = () => {
             {/* Logo + Tagline */}
             <Link 
               to="/" 
-              className="flex flex-col items-start group flex-shrink-0"
+              onClick={(e) => {
+                if (location.pathname === "/") {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+              className="flex flex-col items-start group flex-shrink-0 cursor-pointer transition-transform hover:scale-105"
+              aria-label="Retour en haut de page"
             >
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary flex items-center justify-center">
