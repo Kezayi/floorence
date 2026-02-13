@@ -108,7 +108,9 @@ const Footer = () => {
             <span className="font-serif text-lg">Floorence</span>
           </div>
           <p className="text-sm text-memorial-dark-muted">
-            © {new Date().getFullYear()} Floorence By MNA. Tous droits réservés.
+            © {new Date().getFullYear()} Floorence By{" "}
+            <a href="https://www.linkedin.com/in/michelngwaayi/" target="_blank" rel="noopener noreferrer" className="underline hover:text-memorial-dark-foreground transition-colors">MNA</a>
+            . Tous droits réservés.
           </p>
         </div>
       </div>
