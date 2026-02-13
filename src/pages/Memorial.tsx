@@ -913,6 +913,7 @@ const MemorialInner = () => {
                     posts={guestbookPosts.map(post => ({
                       authorId: post.authorId,
                       authorName: post?.authorName || "Anonyme",
+                      authorAvatarUrl: post?.authorAvatarUrl || null,
                       relationCategory: post?.relationCategory || "autre",
                       relationLink: post?.relationLink || null,
                     }))}

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Brain, CheckCircle2, XCircle, Clock, TrendingUp, BarChart3, Loader2, AlertTriangle, ScrollText, Mail, Send, Zap, Sparkles } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -411,11 +412,16 @@ const AuditSuggestions = () => {
                       ) : (
                         <div className="w-5 h-5 shrink-0" />
                       )}
-                      <div className="w-8 h-8 rounded-full bg-[hsl(45,90%,50%)]/10 flex items-center justify-center shrink-0">
-                        <Brain className="w-4 h-4 text-[hsl(45,90%,50%)]" />
-                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap text-sm">
+                          <Avatar className="w-6 h-6 shrink-0">
+                            {link.sourcePhotoUrl ? (
+                              <AvatarImage src={link.sourcePhotoUrl} alt={link.sourceName} className="object-cover grayscale-[30%]" />
+                            ) : null}
+                            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
+                              {link.sourceName.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                           <Link
                             to={`/memorial/${link.sourceSlug}`}
                             className="font-medium text-foreground hover:text-primary truncate"
@@ -425,6 +431,14 @@ const AuditSuggestions = () => {
                           <span className="text-[hsl(45,90%,50%)] font-semibold text-xs">
                             {link.suggestedRelation}
                           </span>
+                          <Avatar className="w-6 h-6 shrink-0">
+                            {link.targetPhotoUrl ? (
+                              <AvatarImage src={link.targetPhotoUrl} alt={link.targetName} className="object-cover grayscale-[30%]" />
+                            ) : null}
+                            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
+                              {link.targetName.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                           <Link
                             to={`/memorial/${link.targetSlug}`}
                             className="font-medium text-foreground hover:text-primary truncate"
