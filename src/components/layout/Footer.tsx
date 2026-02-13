@@ -71,9 +71,22 @@ const Footer = () => {
                   Notre mission
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-sans text-sm font-medium mb-4 text-memorial-dark-foreground">
+              Aide & Support
+            </h4>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/faq" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
+                  Foire aux Questions
+                </Link>
+              </li>
               <li>
                 <Link to="/confidentialite" className="text-sm text-memorial-dark-muted hover:text-memorial-dark-foreground transition-colors">
-                  Confidentialité
+                  Protection des données
                 </Link>
               </li>
               <li>
