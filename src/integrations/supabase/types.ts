@@ -116,6 +116,13 @@ export type Database = {
             foreignKeyName: "guestbook_posts_memorial_fk"
             columns: ["memorial_id"]
             isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
             referencedRelation: "memorials"
             referencedColumns: ["id"]
           },
@@ -162,6 +169,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "memorial_events_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
           {
             foreignKeyName: "memorial_events_memorial_id_fkey"
             columns: ["memorial_id"]
@@ -216,8 +230,22 @@ export type Database = {
             foreignKeyName: "memorial_relations_memorial_id_1_fkey"
             columns: ["memorial_id_1"]
             isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
             referencedRelation: "memorials"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
           },
           {
             foreignKeyName: "memorial_relations_memorial_id_2_fkey"
@@ -343,6 +371,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
           {
             foreignKeyName: "memorials_merged_into_fkey"
             columns: ["merged_into"]
@@ -508,8 +543,22 @@ export type Database = {
             foreignKeyName: "suggested_links_source_memorial_id_fkey"
             columns: ["source_memorial_id"]
             isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "suggested_links_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
             referencedRelation: "memorials"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggested_links_target_memorial_id_fkey"
+            columns: ["target_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
           },
           {
             foreignKeyName: "suggested_links_target_memorial_id_fkey"
@@ -570,6 +619,16 @@ export type Database = {
       }
     }
     Views: {
+      backoffice_humanity_index: {
+        Row: {
+          density_score: number | null
+          gesture_score: number | null
+          humanity_index: number | null
+          inference_bonus: number | null
+          memorial_id: string | null
+        }
+        Relationships: []
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null
@@ -643,8 +702,22 @@ export type Database = {
             foreignKeyName: "memorial_relations_memorial_id_1_fkey"
             columns: ["memorial_id_1"]
             isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
             referencedRelation: "memorials"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
           },
           {
             foreignKeyName: "memorial_relations_memorial_id_2_fkey"

@@ -47,6 +47,34 @@ import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
 import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
 
+/**
+ * Heatmap dot: bleu froid → rouge ardent selon le score d'humanité.
+ * Strictement Back-Office — jamais exposé côté Front-Office.
+ */
+const HumanityHeatDot = ({ score }: { score: number }) => {
+  const normalized = Math.min(1, score / 100);
+  const hue = Math.round(220 - normalized * 220);
+  const saturation = 70 + normalized * 20;
+  const lightness = 55 - normalized * 10;
+  const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  const glowSize = 2 + normalized * 8;
+
+  return (
+    <div className="flex items-center gap-2" title={`Indice d'Humanité : ${score}`}>
+      <div
+        className="w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-500"
+        style={{
+          backgroundColor: color,
+          boxShadow: `0 0 ${glowSize}px ${color}`,
+        }}
+      />
+      <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+        {score}
+      </span>
+    </div>
+  );
+};
+
 interface Memorial {
   id: string;
   slug: string;
@@ -63,6 +91,7 @@ interface Memorial {
   created_at: string;
   created_by: string;
   creator_relation: string | null;
+  humanity_index?: number;
 }
 
 interface Profile {
@@ -198,6 +227,32 @@ const Memorials = () => {
     enabled: !!memorials && memorials.length > 0,
   });
 
+  // Fetch humanity index for displayed memorials
+  const { data: humanityData } = useQuery({
+    queryKey: ['admin-humanity-index', memorials?.map(m => m.id)],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      if (!memorials || memorials.length === 0) return {};
+      const { data, error } = await supabase
+        .from('backoffice_humanity_index' as any)
+        .select('memorial_id, humanity_index')
+        .in('memorial_id', memorials.map(m => m.id));
+      if (error) {
+        console.error('Humanity index error:', error);
+        return {};
+      }
+      const map: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        map[row.memorial_id] = Number(row.humanity_index) || 0;
+      });
+      return map;
+    },
+    enabled: !!memorials && memorials.length > 0,
+  });
+
+  const getHumanityIndex = (memorialId: string) => humanityData?.[memorialId] ?? 0;
+
   const getStats = (memorialId: string) => gestureStats?.[memorialId] || { postCount: 0, candles: 0, flowers: 0 };
 
   const getCreatorName = (createdBy: string) => {
@@ -205,7 +260,12 @@ const Memorials = () => {
     return profile?.display_name || 'Inconnu';
   };
 
-  const { sortConfig, handleSort, sortedData } = useSortableTable(memorials, 'created_at', 'desc');
+  const memorialsWithIndex = useMemo(() => {
+    if (!memorials) return [];
+    return memorials.map(m => ({ ...m, humanity_index: getHumanityIndex(m.id) }));
+  }, [memorials, humanityData]);
+
+  const { sortConfig, handleSort, sortedData } = useSortableTable(memorialsWithIndex, 'created_at', 'desc');
 
   // Fetch all memorials for merge target selection (without pagination)
   const { data: allMemorials } = useQuery({
@@ -546,6 +606,12 @@ const Memorials = () => {
                 />
                 <TableCell className="font-medium text-muted-foreground">Hommages</TableCell>
                 <SortableTableHeader
+                  label="Humanité"
+                  sortKey="humanity_index"
+                  currentSort={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
                   label="Date de création"
                   sortKey="created_at"
                   currentSort={sortConfig}
@@ -622,6 +688,9 @@ const Memorials = () => {
                         </span>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <HumanityHeatDot score={memorial.humanity_index ?? 0} />
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                       {format(new Date(memorial.created_at), 'dd MMM yyyy', { locale: fr })}
                     </TableCell>
@@ -695,7 +764,7 @@ const Memorials = () => {
               })}
               {(!sortedData || sortedData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Aucun mémorial trouvé.
                   </TableCell>
                 </TableRow>
