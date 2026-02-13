@@ -18,23 +18,27 @@ interface AuditLogDetails {
   [key: string]: Json | undefined;
 }
 
+/**
+ * Log an audit action via the secure edge function (service_role bypass).
+ * This ensures audit_logs are immutable from the client side.
+ */
 export async function logAuditAction(
   actionType: AuditActionType,
-  performedBy: string,
-  performedByEmail: string | null,
+  _performedBy: string,
+  _performedByEmail: string | null,
   details: AuditLogDetails,
   targetUserId?: string | null,
   targetUserEmail?: string | null
 ): Promise<void> {
   try {
-    const { error } = await supabase.from('audit_logs').insert([{
-      action_type: actionType,
-      performed_by: performedBy,
-      performed_by_email: performedByEmail,
-      details: details as Json,
-      target_user_id: targetUserId || null,
-      target_user_email: targetUserEmail || null,
-    }]);
+    const { error } = await supabase.functions.invoke('log-audit', {
+      body: {
+        action_type: actionType,
+        details,
+        target_user_id: targetUserId || null,
+        target_user_email: targetUserEmail || null,
+      },
+    });
 
     if (error) {
       console.error('Failed to log audit action:', error);

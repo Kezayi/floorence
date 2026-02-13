@@ -650,6 +650,54 @@ export type Database = {
         }
         Relationships: []
       }
+      public_guestbook: {
+        Row: {
+          author_name: string | null
+          author_photo_url: string | null
+          content: string | null
+          created_at: string | null
+          id: string | null
+          memorial_id: string | null
+          relation_category: string | null
+          relation_link: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          author_photo_url?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          memorial_id?: string | null
+          relation_category?: string | null
+          relation_link?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          author_photo_url?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          memorial_id?: string | null
+          relation_category?: string | null
+          relation_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_admin_success_metrics: {
         Row: {
           active_families_engaged: number | null
@@ -775,7 +823,6 @@ export type Database = {
           relation_category: string
           relation_link: string
           updated_at: string
-          user_id: string
         }[]
       }
       has_role: {

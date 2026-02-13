@@ -10,9 +10,10 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-// In-memory rate limiter (persists within function isolate lifetime)
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 60_000; // 60 seconds between requests per email
+// In-memory rate limiter: 3 attempts per 15-minute window
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW_MS = 15 * 60_000; // 15 minutes
+const RATE_LIMIT_MAX = 3;
 
 interface SendMagicLinkRequest {
   email: string;
@@ -117,28 +118,35 @@ const handler = async (req: Request): Promise<Response> => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Rate limiting: check if this email was recently requested
-    const lastRequest = rateLimitMap.get(normalizedEmail);
+    // Rate limiting: sliding window of 3 attempts per 15 minutes
     const now = Date.now();
-    if (lastRequest && now - lastRequest < RATE_LIMIT_MS) {
-      const remainingSeconds = Math.ceil((RATE_LIMIT_MS - (now - lastRequest)) / 1000);
-      console.log(`[RATE LIMIT] Email ${normalizedEmail} rate-limited, ${remainingSeconds}s remaining`);
+    const attempts = rateLimitMap.get(normalizedEmail) || [];
+    // Remove expired attempts
+    const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    
+    if (recentAttempts.length >= RATE_LIMIT_MAX) {
+      const oldestAttempt = recentAttempts[0];
+      const remainingMs = RATE_LIMIT_WINDOW_MS - (now - oldestAttempt);
+      const remainingMinutes = Math.ceil(remainingMs / 60_000);
+      console.log(`[RATE LIMIT] Email ${normalizedEmail} rate-limited, ${remainingMinutes}min remaining`);
       return new Response(
         JSON.stringify({ 
-          error: `Veuillez patienter ${remainingSeconds} secondes avant de demander un nouveau lien.` 
+          error: `Trop de tentatives. Veuillez patienter ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.` 
         }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Record this request for rate limiting
-    rateLimitMap.set(normalizedEmail, now);
+    // Record this attempt
+    recentAttempts.push(now);
+    rateLimitMap.set(normalizedEmail, recentAttempts);
 
-    // Clean up old entries to prevent memory leaks (keep last 1000)
+    // Clean up old entries to prevent memory leaks (keep last 500 emails)
     if (rateLimitMap.size > 1000) {
       const entries = [...rateLimitMap.entries()];
-      entries.sort((a, b) => a[1] - b[1]);
-      for (let i = 0; i < entries.length - 500; i++) {
+      // Sort by most recent attempt
+      entries.sort((a, b) => Math.max(...b[1]) - Math.max(...a[1]));
+      for (let i = 500; i < entries.length; i++) {
         rateLimitMap.delete(entries[i][0]);
       }
     }

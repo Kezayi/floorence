@@ -242,7 +242,7 @@ const CommunityGraph = () => {
     // Group posts by user
     const userPosts = new Map<string, Array<{ memorialId: string; category: string; name: string }>>();
     filteredPosts.forEach((post) => {
-      const uid = post.user_id || `anon-${post.author_name}`;
+      const uid = `anon-${post.author_name}`;
       if (!userPosts.has(uid)) userPosts.set(uid, []);
       userPosts.get(uid)!.push({
         memorialId: post.memorial_id,
@@ -292,7 +292,7 @@ const CommunityGraph = () => {
     filteredPosts.forEach((post) => {
       const mid = post.memorial_id;
       const cat = post.relation_category;
-      const uid = post.user_id || `anon-${post.author_name}`;
+      const uid = `anon-${post.author_name}`;
       if (!memorialGroups.has(mid)) memorialGroups.set(mid, new Map());
       const catMap = memorialGroups.get(mid)!;
       if (!catMap.has(cat)) catMap.set(cat, []);

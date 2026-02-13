@@ -116,10 +116,10 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
   const tributeNodes = useMemo(() => {
     if (!rawTributes || rawTributes.length === 0) return { lineagePosts: [] as typeof rawTributes, userIds: [] as string[] };
 
-    // Deduplicate by author (keep the one with the most specific relation)
+    // Deduplicate by author name (user_id no longer exposed by public API)
     const authorMap = new Map<string, typeof rawTributes[number]>();
     for (const post of rawTributes) {
-      const key = post.user_id || post.author_name;
+      const key = post.author_name;
       if (!authorMap.has(key)) {
         authorMap.set(key, post);
       }
@@ -132,44 +132,22 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         return classified.isLineage;
       });
 
-    // Fetch avatar URLs for tribute authors
-    const userIds = lineagePosts.map(p => p.user_id).filter(Boolean) as string[];
-
-    return { lineagePosts, userIds };
+    return { lineagePosts };
   }, [rawTributes]);
-
-  // Fetch avatars for tribute authors
-  const tributeUserIds = tributeNodes?.userIds || [];
-  const { data: tributeAvatarMap } = useQuery({
-    queryKey: ["lineage-tribute-avatars", tributeUserIds],
-    enabled: tributeUserIds.length > 0,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles_public")
-        .select("user_id, avatar_url")
-        .in("user_id", tributeUserIds);
-      const map = new Map<string, string | null>();
-      (data || []).forEach((p: any) => map.set(p.user_id, p.avatar_url));
-      return map;
-    },
-  });
 
   const tributeNodesFinal = useMemo(() => {
     const posts = tributeNodes?.lineagePosts || [];
     return posts.map(post => ({
-      id: `tribute-${post.user_id || post.id}`,
+      id: `tribute-${post.id}`,
       name: post.author_name,
       firstName: post.author_name.split(" ")[0],
-      photo: post.user_id
-        ? (tributeAvatarMap?.get(post.user_id) || null)
-        : getDemoAvatarUrl(post.author_name),
+      photo: getDemoAvatarUrl(post.author_name),
       shareToken: null as string | null,
       relation: post.relation_link || post.relation_category,
-      createdBy: post.user_id || "",
+      createdBy: "",
       source: "tribute" as const,
     }));
-  }, [tributeNodes, tributeAvatarMap]);
+  }, [tributeNodes]);
 
   // Combine and deduplicate: memorial relations take priority over tribute nodes
   const allNodes = useMemo(() => {
