@@ -349,21 +349,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
             />
           ))}
 
-          {/* Siblings & same-generation (generation 0) */}
-          {siblingAndAllianceGen.map(([gen, nodes]) => (
-            <LineageGenerationRow
-              key={gen}
-              generation={gen}
-              nodes={nodes}
-              isAuthenticated={isAuthenticated}
-              currentUserId={user?.id}
-              animDelay={600}
-              treePosition="trunk"
-              deceasedGender={deceasedGender}
-            />
-          ))}
-
-          {/* De Cujus — central pivot (Niveau 0) */}
+          {/* De Cujus — central pivot (Niveau 0) + Fratrie & Cousins */}
           <div
             className="relative z-10 flex justify-center py-6"
             style={{ animation: "germinate 0.8s ease-out 0.4s both" }}
@@ -374,7 +360,6 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                 <div className="flex items-center gap-4 mb-4">
                   {allianceNodes.map(node => (
                     <div key={node.id} className="flex items-center gap-2">
-                      {/* Gold dashed connector */}
                       <div
                         className="hidden md:block h-[1.5px] w-8"
                         style={{
@@ -394,21 +379,44 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                 </div>
               )}
 
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
-                {deceasedPhoto ? (
-                  <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-serif text-2xl text-muted-foreground">
-                      {deceasedName.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                    </span>
+              {/* Cujus + Siblings/Cousins row */}
+              <div className="flex items-center gap-6 md:gap-8 flex-wrap justify-center">
+                {/* Siblings/Cousins at gen 0 (left side) */}
+                {siblingAndAllianceGen.flatMap(([, nodes]) => nodes).map(node => (
+                  <div key={node.id} className="flex items-center gap-2">
+                    <LineageNodeCard
+                      node={node}
+                      isAuthenticated={isAuthenticated}
+                      isCurrentUser={false}
+                      isDeceased={true}
+                      deceasedGender={deceasedGender}
+                    />
+                    <div
+                      className="hidden md:block h-[1.5px] w-6"
+                      style={{ background: "hsl(0 70% 25% / 0.5)" }}
+                    />
                   </div>
-                )}
+                ))}
+
+                {/* Central Cujus */}
+                <div className="flex flex-col items-center">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
+                    {deceasedPhoto ? (
+                      <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-serif text-2xl text-muted-foreground">
+                          {deceasedName.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="mt-2 font-serif text-sm font-medium text-foreground text-center">
+                    {deceasedName}
+                  </span>
+                  <span className="text-xs text-primary font-sans italic">De Cujus</span>
+                </div>
               </div>
-              <span className="mt-2 font-serif text-sm font-medium text-foreground text-center">
-                {deceasedName}
-              </span>
-              <span className="text-xs text-primary font-sans italic">De Cujus</span>
             </div>
           </div>
 
