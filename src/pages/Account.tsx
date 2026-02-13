@@ -166,6 +166,11 @@ const Account = () => {
   }, [user]);
 
   const handleCompleteProfile = async () => {
+    if (!profile?.avatar_url) {
+      toast.error("Veuillez ajouter une photo de profil");
+      return;
+    }
+
     const nameError = validateDisplayName(displayName);
     if (nameError) {
       toast.error(nameError);
@@ -620,11 +625,32 @@ const Account = () => {
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Complétez votre profil</DialogTitle>
             <DialogDescription>
-              Pour interagir sur Floorence, veuillez compléter vos informations personnelles.
+              Pour interagir sur Floorence, veuillez compléter vos informations personnelles et ajouter une photo de profil.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Avatar Upload in dialog */}
+            {user && (
+              <div>
+                <label className="block text-sm font-sans text-muted-foreground mb-2">
+                  Photo de profil *
+                </label>
+                <AvatarUpload
+                  userId={user.id}
+                  currentAvatarUrl={profile?.avatar_url || null}
+                  displayName={displayName || profile?.display_name || null}
+                  onAvatarUpdated={() => {
+                    // Profile will auto-refresh
+                  }}
+                />
+                {!profile?.avatar_url && (
+                  <p className="text-xs text-destructive mt-1 font-sans">
+                    Une photo de profil est requise pour valider votre inscription.
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-sans text-muted-foreground mb-1">
                 Nom complet *
@@ -654,7 +680,7 @@ const Account = () => {
           <DialogFooter>
             <Button
               onClick={handleCompleteProfile}
-              disabled={isSaving || !displayName.trim()}
+              disabled={isSaving || !displayName.trim() || !profile?.avatar_url}
               className="w-full sm:w-auto"
             >
               {isSaving ? (
