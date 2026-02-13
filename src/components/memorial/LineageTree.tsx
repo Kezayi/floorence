@@ -7,6 +7,7 @@ import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import { inferGender } from "@/lib/genderInference";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
 import LineageNodeCard, { type TreeNode } from "./lineage/LineageNodeCard";
@@ -110,7 +111,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
 
   // 3. Process raw tributes into tree nodes (separate from fetch to avoid prefetch cache mismatch)
   const tributeNodes = useMemo(() => {
-    if (!rawTributes || rawTributes.length === 0) return [];
+    if (!rawTributes || rawTributes.length === 0) return { lineagePosts: [] as typeof rawTributes, userIds: [] as string[] };
 
     // Deduplicate by author (keep the one with the most specific relation)
     const authorMap = new Map<string, typeof rawTributes[number]>();
@@ -128,22 +129,49 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         return classified.isLineage;
       });
 
-    return lineagePosts.map(post => ({
+    // Fetch avatar URLs for tribute authors
+    const userIds = lineagePosts.map(p => p.user_id).filter(Boolean) as string[];
+
+    return { lineagePosts, userIds };
+  }, [rawTributes]);
+
+  // Fetch avatars for tribute authors
+  const tributeUserIds = tributeNodes?.userIds || [];
+  const { data: tributeAvatarMap } = useQuery({
+    queryKey: ["lineage-tribute-avatars", tributeUserIds],
+    enabled: tributeUserIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles_public")
+        .select("user_id, avatar_url")
+        .in("user_id", tributeUserIds);
+      const map = new Map<string, string | null>();
+      (data || []).forEach((p: any) => map.set(p.user_id, p.avatar_url));
+      return map;
+    },
+  });
+
+  const tributeNodesFinal = useMemo(() => {
+    const posts = tributeNodes?.lineagePosts || [];
+    return posts.map(post => ({
       id: `tribute-${post.user_id || post.id}`,
       name: post.author_name,
       firstName: post.author_name.split(" ")[0],
-      photo: null as string | null,
+      photo: post.user_id
+        ? (tributeAvatarMap?.get(post.user_id) || null)
+        : getDemoAvatarUrl(post.author_name),
       shareToken: null as string | null,
       relation: post.relation_link || post.relation_category,
       createdBy: post.user_id || "",
       source: "tribute" as const,
     }));
-  }, [rawTributes]);
+  }, [tributeNodes, tributeAvatarMap]);
 
   // Combine and deduplicate: memorial relations take priority over tribute nodes
   const allNodes = useMemo(() => {
     const memNodes = (interMemorialNodes || []).filter(n => !!n.name);
-    const tribNodes = (tributeNodes || []).filter(n => !!n.name);
+    const tribNodes = (tributeNodesFinal || []).filter(n => !!n.name);
 
     // Names from memorial relations (already linked)
     const memorialNames = new Set(memNodes.map(n => n.name.toLowerCase()));
@@ -154,7 +182,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     );
 
     return [...memNodes, ...uniqueTribNodes];
-  }, [interMemorialNodes, tributeNodes]);
+  }, [interMemorialNodes, tributeNodesFinal]);
 
   // Classify into generations — use DB is_lineage for memorial relations
   const { lineageNodes, allianceNodes } = useMemo(() => {

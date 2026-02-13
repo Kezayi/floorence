@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -17,6 +19,7 @@ interface RelationshipMaillageProps {
   posts: Array<{
     authorId: string;
     authorName: string;
+    authorAvatarUrl?: string | null;
     relationCategory: string;
     relationLink?: string | null;
   }>;
@@ -98,10 +101,15 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
     },
   });
   const directRelations = useMemo(() => {
-    const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null }>();
+    const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null; avatarUrl: string | null }>();
     posts.forEach((post) => {
       if (!uniqueAuthors.has(post.authorId)) {
-        uniqueAuthors.set(post.authorId, { name: post.authorName, category: post.relationCategory, relationLink: post.relationLink || null });
+        uniqueAuthors.set(post.authorId, {
+          name: post.authorName,
+          category: post.relationCategory,
+          relationLink: post.relationLink || null,
+          avatarUrl: post.authorAvatarUrl || null,
+        });
       }
     });
     return Array.from(uniqueAuthors.values());
@@ -113,7 +121,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
   }, [posts]);
 
   const groupedRelations = useMemo(() => {
-    const groups: Record<RelationCategoryName, Array<{ name: string; category: string; relationLink: string | null }>> = {
+    const groups: Record<RelationCategoryName, Array<{ name: string; category: string; relationLink: string | null; avatarUrl: string | null }>> = {
       "Famille directe": [], "Famille élargie": [], "Alliés": [], "Socio cœur (Amis)": [], "Autres": [],
     };
     directRelations.forEach((rel) => {
@@ -208,6 +216,18 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                           : getCleanRelationName(rel.category);
                         return (
                           <div key={idx} className="flex items-center gap-2 text-sm py-1">
+                            <Avatar className="w-6 h-6 shrink-0">
+                              {(rel.avatarUrl || rel.name) ? (
+                                <AvatarImage
+                                  src={rel.avatarUrl || getDemoAvatarUrl(rel.name)}
+                                  alt={rel.name}
+                                  className="object-cover grayscale-[30%]"
+                                />
+                              ) : null}
+                              <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
+                                {rel.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                             <span
                               className="inline-block text-xs font-sans px-2 py-0.5 rounded-sm"
                               style={{ color: color }}
@@ -366,7 +386,12 @@ const PersonGroupCard = ({ person, isAuthenticated }: { person: GroupedPerson; i
   return (
     <div className="p-4 bg-card/80 rounded-sm border border-border/40">
       <div className="flex items-center gap-2 mb-3">
-        <Users className="w-3.5 h-3.5 text-foreground/50" />
+        <Avatar className="w-6 h-6 shrink-0">
+          <AvatarImage src={getDemoAvatarUrl(person.name)} alt={person.name} className="object-cover grayscale-[30%]" />
+          <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
+            {person.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
         <span className="font-serif text-foreground font-medium">{displayName(person.name, isAuthenticated)}</span>
         <span className="text-xs text-muted-foreground font-sans">— {person.relationWithDeceased}</span>
       </div>

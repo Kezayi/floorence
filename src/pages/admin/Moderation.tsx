@@ -38,6 +38,7 @@ import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
 import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
+import { getDemoAvatarUrl } from '@/lib/demoAvatars';
 
 interface GuestbookPost {
   id: string;
@@ -511,8 +512,12 @@ const Moderation = () => {
                         const initials = post.author_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
                         return (
                           <Avatar className="w-7 h-7 shrink-0">
-                            {authorProfile?.avatar_url ? (
-                              <AvatarImage src={authorProfile.avatar_url} alt={post.author_name} className="object-cover grayscale-[30%]" />
+                            {(authorProfile?.avatar_url || (!post.user_id && post.author_name)) ? (
+                              <AvatarImage
+                                src={authorProfile?.avatar_url || getDemoAvatarUrl(post.author_name)}
+                                alt={post.author_name}
+                                className="object-cover grayscale-[30%]"
+                              />
                             ) : null}
                             <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-sans">{initials}</AvatarFallback>
                           </Avatar>

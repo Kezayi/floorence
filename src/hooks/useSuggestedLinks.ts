@@ -24,6 +24,8 @@ export interface SuggestedLink {
   targetSlug: string;
   sourceShareToken: string | null;
   targetShareToken: string | null;
+  sourcePhotoUrl: string | null;
+  targetPhotoUrl: string | null;
 }
 
 /**
@@ -44,14 +46,20 @@ export const useUserSuggestedLinks = () => {
       // Get memorials owned by user
       const { data: myMemorials } = await supabase
         .from("memorials")
-        .select("id, first_name, last_name, slug, share_token")
+        .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index")
         .or(`created_by.eq.${user.id},heir_user_id.eq.${user.id}`);
 
       if (!myMemorials || myMemorials.length === 0) return [];
 
       const myIds = myMemorials.map((m) => m.id);
       const memorialMap = new Map(
-        myMemorials.map((m) => [m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token }])
+        myMemorials.map((m: any) => {
+          const photos = (m.photos && m.photos.length > 0)
+            ? m.photos.filter((p: string) => p && !p.startsWith("data:"))
+            : (m.photo_url ? [m.photo_url] : []);
+          const safeIdx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
+          return [m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token, photoUrl: photos[safeIdx] || null }];
+        })
       );
 
       // Get pending suggestions where source or target is one of my memorials
@@ -79,17 +87,21 @@ export const useUserSuggestedLinks = () => {
       if (missingIds.length > 0) {
         const { data: otherMemorials } = await supabase
           .from("memorials")
-          .select("id, first_name, last_name, slug, share_token")
+          .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index")
           .in("id", missingIds);
 
-        (otherMemorials || []).forEach((m) => {
-          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token });
+        (otherMemorials || []).forEach((m: any) => {
+          const photos = (m.photos && m.photos.length > 0)
+            ? m.photos.filter((p: string) => p && !p.startsWith("data:"))
+            : (m.photo_url ? [m.photo_url] : []);
+          const safeIdx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
+          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token, photoUrl: photos[safeIdx] || null });
         });
       }
 
       return links.map((l): SuggestedLink => {
-        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
-        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
+        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null, photoUrl: null };
+        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null, photoUrl: null };
         return {
           id: l.id,
           sourceMemorialId: l.source_memorial_id || "",
@@ -106,6 +118,8 @@ export const useUserSuggestedLinks = () => {
           targetSlug: target.slug,
           sourceShareToken: source.shareToken,
           targetShareToken: target.shareToken,
+          sourcePhotoUrl: source.photoUrl,
+          targetPhotoUrl: target.photoUrl,
         };
       });
     },
@@ -264,21 +278,25 @@ export const useAdminSuggestedLinks = () => {
         if (l.target_memorial_id) allIds.add(l.target_memorial_id);
       });
 
-      const memorialMap = new Map<string, { name: string; slug: string; shareToken: string | null }>();
+      const memorialMap = new Map<string, { name: string; slug: string; shareToken: string | null; photoUrl: string | null }>();
       if (allIds.size > 0) {
         const { data: memorials } = await supabase
           .from("memorials")
-          .select("id, first_name, last_name, slug, share_token")
+          .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index")
           .in("id", Array.from(allIds));
 
-        (memorials || []).forEach((m) => {
-          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token });
+        (memorials || []).forEach((m: any) => {
+          const photos = (m.photos && m.photos.length > 0)
+            ? m.photos.filter((p: string) => p && !p.startsWith("data:"))
+            : (m.photo_url ? [m.photo_url] : []);
+          const safeIdx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
+          memorialMap.set(m.id, { name: `${m.first_name} ${m.last_name}`, slug: m.slug, shareToken: m.share_token, photoUrl: photos[safeIdx] || null });
         });
       }
 
       const enriched: SuggestedLink[] = allLinks.map((l) => {
-        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
-        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null };
+        const source = memorialMap.get(l.source_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null, photoUrl: null };
+        const target = memorialMap.get(l.target_memorial_id || "") || { name: "Inconnu", slug: "", shareToken: null, photoUrl: null };
         return {
           id: l.id,
           sourceMemorialId: l.source_memorial_id || "",
@@ -295,6 +313,8 @@ export const useAdminSuggestedLinks = () => {
           targetSlug: target.slug,
           sourceShareToken: source.shareToken,
           targetShareToken: target.shareToken,
+          sourcePhotoUrl: source.photoUrl,
+          targetPhotoUrl: target.photoUrl,
         };
       });
 
