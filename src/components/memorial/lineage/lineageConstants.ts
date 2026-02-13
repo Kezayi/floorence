@@ -179,17 +179,17 @@ export const classifyRelation = (relation: string | null | undefined): Classifie
   return { generation: 0, isLineage: false, linkStyle: "extended", pillar: "elargie" };
 };
 
-/* ── Generation labels ── */
+/* ── Generation labels — Désignation Statutaire ── */
 export const GENERATION_LABELS: Record<number, string> = {
-  [-4]: "Arrière-arrière-grands-parents, Grands-oncles & Grandes-tantes",
-  [-3]: "Arrière-grands-parents, Grands-oncles & Grandes-tantes",
-  [-2]: "Grands-parents, Grands-oncles & Grandes-tantes",
-  [-1]: "Parents, Oncles & Tantes",
+  [-4]: "Origines — Arrière-arrière-grands-parents & Grands-oncles/tantes",
+  [-3]: "Racines profondes — Arrière-grands-parents & Grands-oncles/tantes",
+  [-2]: "Racines proches — Grands-parents & Grands-oncles/tantes",
+  [-1]: "Tronc — Parents, Oncles & Tantes",
   [0]: "Fratrie & Cousins",
-  [1]: "Enfants, Neveux & Nièces",
-  [2]: "Petits-enfants, Petits-neveux & Petites-nièces",
-  [3]: "Arrière-petits-enfants, Petits-neveux & Petites-nièces",
-  [4]: "Arrière-arrière-petits-enfants",
+  [1]: "Branches — Enfants, Neveux & Nièces",
+  [2]: "Rameaux — Petits-enfants & Petits-neveux/nièces",
+  [3]: "Rameaux supérieurs — Arrière-petits-enfants & Petits-neveux/nièces",
+  [4]: "Cime — Arrière-arrière-petits-enfants & Petits-neveux/nièces",
 };
 
 /* ── Pillar labels for filtering UI ── */
