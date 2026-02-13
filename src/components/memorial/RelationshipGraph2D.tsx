@@ -95,11 +95,42 @@ const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
 
 const GOLD_COLOR = "#D4AF37";
+const ENERGY_COLOR = "#8B5CF6"; // Violet énergétique
+
+// Extraire le(s) nom(s) de famille d'un nom complet
+const extractLastNames = (fullName: string): string[] => {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 1) return parts.map(p => p.toLowerCase());
+  // Tout sauf le premier mot (prénom) constitue le(s) nom(s) de famille
+  return parts.slice(1).map(p => p.toLowerCase());
+};
+
+// Vérifie si deux personnes partagent au moins un nom de famille
+const shareLastName = (nameA: string, nameB: string): string | null => {
+  const lastNamesA = extractLastNames(nameA);
+  const lastNamesB = extractLastNames(nameB);
+  for (const lnA of lastNamesA) {
+    for (const lnB of lastNamesB) {
+      if (lnA === lnB && lnA.length > 1) return lnA.charAt(0).toUpperCase() + lnA.slice(1);
+    }
+  }
+  return null;
+};
+
+interface EnergyLink {
+  fromId: string;
+  toId: string;
+  fromName: string;
+  toName: string;
+  reason: "category" | "clan" | "both";
+  categoryLabel?: string;
+  clanName?: string;
+}
 
 const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: RelationshipGraph2DProps) => {
   const deceasedGender = useMemo(() => inferGender(deceasedName.split(' ')[0]), [deceasedName]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [hoveredLink, setHoveredLink] = useState<number | null>(null);
+  const [hoveredEnergyLink, setHoveredEnergyLink] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -184,6 +215,38 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     const map = new Map<string, { x: number; y: number }>();
     nodes.forEach(node => map.set(node.name, { x: node.x, y: node.y }));
     return map;
+  }, [nodes]);
+
+  // Compute energy links: connect living nodes by shared category or clan (last name)
+  const energyLinks = useMemo((): EnergyLink[] => {
+    const links: EnergyLink[] = [];
+    const seen = new Set<string>();
+    
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const pairKey = [a.id, b.id].sort().join("|");
+        if (seen.has(pairKey)) continue;
+        
+        const sameCategory = a.categoryType === b.categoryType;
+        const clanName = shareLastName(a.name, b.name);
+        
+        if (sameCategory || clanName) {
+          seen.add(pairKey);
+          links.push({
+            fromId: a.id,
+            toId: b.id,
+            fromName: a.name,
+            toName: b.name,
+            reason: sameCategory && clanName ? "both" : clanName ? "clan" : "category",
+            categoryLabel: sameCategory ? (categoryStyles[a.categoryType]?.label || a.categoryType) : undefined,
+            clanName: clanName || undefined,
+          });
+        }
+      }
+    }
+    return links;
   }, [nodes]);
 
   const handleZoomIn = useCallback(() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP)), []);
@@ -299,6 +362,16 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
               <stop offset="0%" stopColor="hsl(45, 90%, 55%)" />
               <stop offset="100%" stopColor="hsl(45, 70%, 42%)" />
             </linearGradient>
+            {/* Animation de flux d'énergie */}
+            <style>{`
+              @keyframes energyFlow {
+                0% { stroke-dashoffset: 0; }
+                100% { stroke-dashoffset: -24; }
+              }
+              .energy-line {
+                animation: energyFlow 3s linear infinite;
+              }
+            `}</style>
           </defs>
           
           {/* Cercles concentriques élégants */}
@@ -317,74 +390,73 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
           {/* Halo central subtil */}
           <circle cx={0} cy={0} r={65} fill="url(#centerGlow)" />
           
-          {/* Liens inférés entre vivants */}
-          <g className="inferred-links">
-            {inferredLinks.map((link, idx) => {
-              const fromPos = nodePositionsByName.get(link.fromAuthor);
-              const toPos = nodePositionsByName.get(link.toAuthor);
-              if (!fromPos || !toPos) return null;
+          {/* Liaisons d'énergie entre vivants (catégorie / clan) */}
+          <g className="energy-links" style={{ pointerEvents: 'auto' }}>
+            {energyLinks.map((link, idx) => {
+              const fromNode = nodes.find(n => n.id === link.fromId);
+              const toNode = nodes.find(n => n.id === link.toId);
+              if (!fromNode || !toNode) return null;
               
-              const isHovered = hoveredLink === idx;
-              const baseOpacity = link.confidence === 'high' ? 0.7 : link.confidence === 'medium' ? 0.55 : 0.4;
-              const opacity = isHovered ? 1 : baseOpacity;
-              const strokeColor = getInferredLinkColor(link.inferredLink);
-              const strokeWidth = isHovered ? 2.5 : (link.confidence === 'high' ? 1.8 : 1.3);
+              const isHovered = hoveredEnergyLink === idx;
               
-              // Courbe de Bézier au lieu de ligne droite pour plus d'élégance
-              const midX = (fromPos.x + toPos.x) / 2;
-              const midY = (fromPos.y + toPos.y) / 2;
-              // Déplacer le point de contrôle vers le centre pour une courbe subtile
-              const ctrlX = midX * 0.85;
-              const ctrlY = midY * 0.85;
+              // Courbe de Bézier — point de contrôle tiré vers le centre
+              const midX = (fromNode.x + toNode.x) / 2;
+              const midY = (fromNode.y + toNode.y) / 2;
+              const ctrlX = midX * 0.7;
+              const ctrlY = midY * 0.7;
+              
+              // Tooltip text
+              let tooltipText = `Lien de mémoire partagé au sein de la ${link.categoryLabel || "communauté"}`;
+              if (link.clanName) {
+                tooltipText = link.reason === "both"
+                  ? `${tooltipText} · Clan ${link.clanName}`
+                  : `Lien du clan ${link.clanName}`;
+              }
               
               return (
-                <g 
-                  key={`inferred-${idx}`}
+                <g
+                  key={`energy-${idx}`}
                   className="cursor-pointer"
-                  onMouseEnter={() => setHoveredLink(idx)}
-                  onMouseLeave={() => setHoveredLink(null)}
+                  onMouseEnter={() => setHoveredEnergyLink(idx)}
+                  onMouseLeave={() => setHoveredEnergyLink(null)}
                 >
+                  {/* Ligne invisible épaisse pour le hover */}
                   <path
-                    d={`M ${fromPos.x} ${fromPos.y} Q ${ctrlX} ${ctrlY} ${toPos.x} ${toPos.y}`}
+                    d={`M ${fromNode.x} ${fromNode.y} Q ${ctrlX} ${ctrlY} ${toNode.x} ${toNode.y}`}
                     fill="none"
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray="4 3"
-                    opacity={opacity}
-                    className="transition-all duration-500"
+                    stroke="transparent"
+                    strokeWidth={12}
+                  />
+                  {/* Ligne énergétique violet pointillée animée */}
+                  <path
+                    d={`M ${fromNode.x} ${fromNode.y} Q ${ctrlX} ${ctrlY} ${toNode.x} ${toNode.y}`}
+                    fill="none"
+                    stroke={ENERGY_COLOR}
+                    strokeWidth={isHovered ? 2.5 : 1.5}
+                    strokeDasharray="6 6"
+                    opacity={isHovered ? 0.6 : 0.25}
+                    className="energy-line transition-opacity duration-300"
                   />
                   
-                  {/* Point de connexion au milieu de la courbe */}
-                  <circle
-                    cx={ctrlX + (midX - ctrlX) * 0.5}
-                    cy={ctrlY + (midY - ctrlY) * 0.5}
-                    r={isHovered ? 4.5 : 3}
-                    fill={strokeColor}
-                    opacity={opacity}
-                    className="transition-all duration-300"
-                  />
-                  
-                  {/* Label au survol */}
+                  {/* Tooltip au survol */}
                   {isHovered && (
                     <g>
                       <rect
-                        x={midX - 55} y={midY - 26}
-                        width="110" height="18"
-                        rx="2"
+                        x={midX - 75} y={midY - 28}
+                        width="150" height="20"
+                        rx="3"
                         fill="hsl(0, 0%, 98%)"
-                        stroke={strokeColor}
+                        stroke={ENERGY_COLOR}
                         strokeWidth="0.5"
                         opacity="0.95"
                       />
                       <text
-                        x={midX} y={midY - 14}
+                        x={midX} y={midY - 15}
                         textAnchor="middle"
-                        className="font-serif pointer-events-none"
-                        style={{ fontSize: '8px', fontWeight: 400, fill: 'hsl(0, 0%, 15%)' }}
+                        className="font-sans pointer-events-none"
+                        style={{ fontSize: '7px', fontWeight: 400, fill: ENERGY_COLOR }}
                       >
-                        {link.inferredLink.length > 25 
-                          ? link.inferredLink.substring(0, 22) + "…" 
-                          : link.inferredLink}
+                        {tooltipText.length > 45 ? tooltipText.substring(0, 42) + "…" : tooltipText}
                       </text>
                     </g>
                   )}
@@ -588,11 +660,11 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
       </div>
       
       {/* Tooltip au survol d'un nœud */}
-      {hoveredNode && !hoveredLink && (
+      {hoveredNode && hoveredEnergyLink === null && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card border border-border shadow-md rounded-sm px-4 py-3 animate-fade-in max-w-[85%] z-20">
           {nodes.filter(n => n.id === hoveredNode).map(node => {
-            const nodeLinks = inferredLinks.filter(
-              l => l.fromAuthor === node.name || l.toAuthor === node.name
+            const nodeEnergyLinks = energyLinks.filter(
+              l => l.fromId === node.id || l.toId === node.id
             );
             return (
               <div key={node.id} className="text-center">
@@ -600,19 +672,23 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
                 <div className="text-xs font-sans mt-0.5" style={{ color: categoryStyles[node.categoryType]?.fill }}>
                   {node.relationLabel}
                 </div>
-                {nodeLinks.length > 0 && (
+                {nodeEnergyLinks.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50">
                     <div className="text-[10px] text-muted-foreground mb-1 font-sans uppercase tracking-wider">
-                      Liens entre proches
+                      Liens d'énergie
                     </div>
-                    {nodeLinks.slice(0, 3).map((link, i) => (
-                      <div key={i} className="text-[11px] text-foreground/80 font-serif">
-                        {link.inferredLink}
-                      </div>
-                    ))}
-                    {nodeLinks.length > 3 && (
+                    {nodeEnergyLinks.slice(0, 3).map((link, i) => {
+                      const otherName = link.fromId === node.id ? link.toName : link.fromName;
+                      const label = link.clanName ? `Clan ${link.clanName}` : link.categoryLabel || "";
+                      return (
+                        <div key={i} className="text-[11px] font-serif" style={{ color: ENERGY_COLOR }}>
+                          {otherName.split(" ")[0]} · {label}
+                        </div>
+                      );
+                    })}
+                    {nodeEnergyLinks.length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
-                        +{nodeLinks.length - 3} autres…
+                        +{nodeEnergyLinks.length - 3} autres…
                       </div>
                     )}
                   </div>
@@ -639,16 +715,13 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
         )}
       </div>
       
-      {/* Légende des liens inférés */}
-      {inferredLinks.length > 0 && (
+      {/* Légende des liens énergétiques */}
+      {energyLinks.length > 0 && (
         <div className="flex flex-wrap justify-center gap-3 mt-2 text-[10px] font-sans text-muted-foreground/70 px-2">
-          <span className="italic">Liens entre proches :</span>
-          {Object.entries(categoryStyles).map(([key, style]) => (
-            <div key={`leg-inf-${key}`} className="flex items-center gap-1">
-              <div className="w-5 h-0 border-t-[1.5px] border-dashed" style={{ borderColor: style.fill }} />
-              <span>{style.label}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-1">
+            <div className="w-5 h-0 border-t-[1.5px] border-dashed" style={{ borderColor: ENERGY_COLOR, opacity: 0.5 }} />
+            <span style={{ color: ENERGY_COLOR }}>Flux d'énergie entre proches</span>
+          </div>
         </div>
       )}
 
