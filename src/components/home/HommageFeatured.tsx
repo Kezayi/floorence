@@ -124,10 +124,7 @@ const HommageFeatured = () => {
   return (
     <section className="px-4 py-4 md:py-6 bg-accent/50 animate-fade-in-slow">
       <div className="container mx-auto max-w-2xl text-center">
-        {/* Section label */}
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-sans mb-3">
-          Paroles d'Éternité
-        </p>
+        {/* Quote icon replaces section label */}
 
         {/* Quote icon */}
         <Quote className="w-5 h-5 text-muted-foreground/40 mx-auto mb-2" />

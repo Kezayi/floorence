@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import RelationshipGraph2D from "./RelationshipGraph2D";
-import MemorialSocialDonut from "./MemorialSocialDonut";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
@@ -153,9 +152,6 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
         </div>
       ) : (
         <>
-          {/* Donut Chart */}
-          <MemorialSocialDonut posts={posts} />
-
           {/* Graphe 2D */}
           <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
             <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />

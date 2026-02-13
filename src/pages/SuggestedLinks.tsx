@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -139,6 +140,56 @@ const SuggestionItem = ({
     </CardContent>
   </Card>
 );
+const SUGGESTIONS_PER_PAGE = 10;
+
+const PaginatedSuggestions = ({ suggestions, validateSuggestion, rejectSuggestion, isProcessing }: {
+  suggestions: SuggestedLink[];
+  validateSuggestion: (s: SuggestedLink) => void;
+  rejectSuggestion: (id: string) => void;
+  isProcessing: boolean;
+}) => {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(suggestions.length / SUGGESTIONS_PER_PAGE);
+  const paginated = useMemo(() => {
+    const start = (page - 1) * SUGGESTIONS_PER_PAGE;
+    return suggestions.slice(start, start + SUGGESTIONS_PER_PAGE);
+  }, [suggestions, page]);
+
+  return (
+    <div className="space-y-5">
+      {paginated.map((suggestion) => (
+        <SuggestionItem
+          key={suggestion.id}
+          suggestion={suggestion}
+          onValidate={() => validateSuggestion(suggestion)}
+          onReject={() => rejectSuggestion(suggestion.id)}
+          isProcessing={isProcessing}
+        />
+      ))}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 pt-4 border-t border-border">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            ← Précédent
+          </button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            Suivant →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SuggestedLinks = () => {
   const { user } = useAuth();
@@ -207,17 +258,12 @@ const SuggestedLinks = () => {
                 <p className="text-sm text-muted-foreground">Analyse du maillage en cours…</p>
               </div>
             ) : suggestions.length > 0 ? (
-              <div className="space-y-5">
-                {suggestions.map((suggestion) => (
-                  <SuggestionItem
-                    key={suggestion.id}
-                    suggestion={suggestion}
-                    onValidate={() => validateSuggestion(suggestion)}
-                    onReject={() => rejectSuggestion(suggestion.id)}
-                    isProcessing={isValidating || isRejecting}
-                  />
-                ))}
-              </div>
+              <PaginatedSuggestions
+                suggestions={suggestions}
+                validateSuggestion={validateSuggestion}
+                rejectSuggestion={rejectSuggestion}
+                isProcessing={isValidating || isRejecting}
+              />
             ) : (
               <Card className="border-border/50">
                 <CardContent className="flex flex-col items-center justify-center py-16 text-center">

@@ -59,7 +59,9 @@ const AuditSuggestions = () => {
   const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [isMagicValidating, setIsMagicValidating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
+  const [suggestionsPage, setSuggestionsPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const pendingLinks = useMemo(() => links.filter((l) => l.status === "pending"), [links]);
 
   const toggleSelect = (id: string) => {
@@ -379,7 +381,12 @@ const AuditSuggestions = () => {
         <CardContent>
           {links.length > 0 ? (
             <div className="space-y-3">
-              {links.map((link) => {
+              {(() => {
+                const totalSugPages = Math.ceil(links.length / ITEMS_PER_PAGE);
+                const paginatedLinks = links.slice((suggestionsPage - 1) * ITEMS_PER_PAGE, suggestionsPage * ITEMS_PER_PAGE);
+                return (
+                  <>
+                    {paginatedLinks.map((link) => {
                 const config = statusConfig[link.status] || statusConfig.pending;
                 const StatusIcon = config.icon;
                 const isPending = link.status === "pending";
@@ -460,6 +467,24 @@ const AuditSuggestions = () => {
                   </div>
                 );
               })}
+                    {totalSugPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+                        <span className="text-xs text-muted-foreground">
+                          Page {suggestionsPage} / {totalSugPages} ({links.length} suggestions)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setSuggestionsPage(p => Math.max(1, p - 1))} disabled={suggestionsPage === 1} className="h-7 px-2">
+                            Précédent
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setSuggestionsPage(p => Math.min(totalSugPages, p + 1))} disabled={suggestionsPage === totalSugPages} className="h-7 px-2">
+                            Suivant
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
@@ -483,31 +508,54 @@ const AuditSuggestions = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {auditLogs.map((log) => {
-                const details = log.details as Record<string, any> | null;
+              {(() => {
+                const totalAuditPages = Math.ceil(auditLogs.length / ITEMS_PER_PAGE);
+                const paginatedAudit = auditLogs.slice((auditPage - 1) * ITEMS_PER_PAGE, auditPage * ITEMS_PER_PAGE);
                 return (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-sans">
-                        <strong>{log.performed_by_email || "Utilisateur"}</strong> a validé le lien{" "}
-                        <strong>{details?.source_memorial}</strong>{" "}
-                        <span className="text-[hsl(45,90%,50%)] font-semibold">
-                          {details?.relation_type}
-                        </span>{" "}
-                        <strong>{details?.target_memorial}</strong>
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {format(new Date(log.created_at), "d MMM yyyy à HH:mm", { locale: fr })}
-                        {" — "}Suggestion IA validée
-                      </p>
-                    </div>
-                  </div>
+                  <>
+                    {paginatedAudit.map((log) => {
+                      const details = log.details as Record<string, any> | null;
+                      return (
+                        <div
+                          key={log.id}
+                          className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-sans">
+                              <strong>{log.performed_by_email || "Utilisateur"}</strong> a validé le lien{" "}
+                              <strong>{details?.source_memorial}</strong>{" "}
+                              <span className="text-[hsl(45,90%,50%)] font-semibold">
+                                {details?.relation_type}
+                              </span>{" "}
+                              <strong>{details?.target_memorial}</strong>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {format(new Date(log.created_at), "d MMM yyyy à HH:mm", { locale: fr })}
+                              {" — "}Suggestion IA validée
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {totalAuditPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+                        <span className="text-xs text-muted-foreground">
+                          Page {auditPage} / {totalAuditPages} ({auditLogs.length} entrées)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditPage === 1} className="h-7 px-2">
+                            Précédent
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setAuditPage(p => Math.min(totalAuditPages, p + 1))} disabled={auditPage === totalAuditPages} className="h-7 px-2">
+                            Suivant
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </CardContent>
         </Card>
