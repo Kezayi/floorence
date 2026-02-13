@@ -47,7 +47,18 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
 
   return (
     <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
-      <div className="p-6 flex flex-col items-center">
+      <div
+        className="p-6 flex flex-col items-center cursor-pointer transition-transform hover:scale-105"
+        onClick={() => {
+          if (window.location.pathname.startsWith(ADMIN_PREFIX)) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } else {
+            navigate(ADMIN_PREFIX);
+          }
+        }}
+        role="link"
+        aria-label="Retour en haut de page"
+      >
         {/* Logo Bordeaux - Plus gros, au-dessus du nom */}
         <div className="w-20 h-20 rounded-full bg-admin-burgundy flex items-center justify-center mb-4 shadow-lg">
           <span className="font-serif text-3xl text-white font-medium">F</span>
