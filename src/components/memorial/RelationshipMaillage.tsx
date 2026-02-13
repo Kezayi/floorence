@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Users, Link2, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +43,7 @@ const confidenceBadges = {
 const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipMaillageProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
+  const [fullscreenGraph, setFullscreenGraph] = useState(false);
 
   // Fetch inter-memorial links (Pont des Ancêtres)
   const isValidUUID = memorialId ? /^[0-9a-f]{8}-/.test(memorialId) : false;
@@ -162,8 +163,42 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
         <>
           {/* Graphe 2D */}
           <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 hover:bg-background border border-border/60"
+              onClick={() => setFullscreenGraph(true)}
+              aria-label="Mode immersion plein écran"
+              title="Mode immersion"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
             <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
           </div>
+
+          {/* Fullscreen Graph Dialog */}
+          {fullscreenGraph && (
+            <div className="fixed inset-0 z-50 bg-background flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-foreground/70" />
+                  <h3 className="font-serif text-lg">Maillage de {deceasedName}</h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setFullscreenGraph(false)}
+                  aria-label="Fermer le mode immersion"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex-1 p-4">
+                <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+              </div>
+            </div>
+          )}
 
           {/* Pont des Ancêtres */}
           {interMemorialLinks && interMemorialLinks.length > 0 && (

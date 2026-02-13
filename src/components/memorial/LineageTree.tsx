@@ -328,9 +328,9 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         </div>
       ) : (
         <div className="relative">
-          {/* Central vertical blood line — grows from bottom (roots) to top (branches) */}
+          {/* Central vertical blood line — visible on all screens */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 w-[3px] hidden md:block"
+            className="absolute left-1/2 top-0 bottom-0 w-[2px] md:w-[3px]"
             style={{
               background: "hsl(0 70% 25% / 0.8)",
               transformOrigin: "bottom",
@@ -363,9 +363,9 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                 <div className="flex items-center gap-4 mb-4">
                   {allianceNodes.map(node => (
                     <div key={node.id} className="flex items-center gap-2">
-                      <div
-                        className="hidden md:block h-[1.5px] w-8"
-                        style={{
+                    <div
+                      className="h-[1.5px] w-4 md:w-8"
+                      style={{
                           background: "repeating-linear-gradient(90deg, #D4AF37 0, #D4AF37 6px, transparent 6px, transparent 10px)",
                           opacity: 0.6,
                         }}
@@ -395,7 +395,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                       deceasedGender={deceasedGender}
                     />
                     <div
-                      className="hidden md:block h-[1.5px] w-6"
+                      className="h-[1.5px] w-3 md:w-6"
                       style={{ background: "hsl(0 70% 25% / 0.5)" }}
                     />
                   </div>

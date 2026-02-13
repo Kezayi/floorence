@@ -57,9 +57,9 @@ const LineageGenerationRow = memo(({
         animation: `germinate 0.8s ease-out ${animDelay}ms both`,
       }}
     >
-      {/* Horizontal connector */}
+      {/* Horizontal connector — visible on all screens */}
       <div
-        className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 ${lineThickness} ${lineColor}`}
+        className={`absolute top-1/2 left-[10%] right-[10%] md:left-1/4 md:right-1/4 ${lineThickness} ${lineColor}`}
         style={{ opacity: lineOpacity }}
       />
 
