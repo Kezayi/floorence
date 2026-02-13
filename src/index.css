@@ -325,16 +325,40 @@
   }
 
 
-  /* Arbre de lignage — germination ascendante (racines → cimes) */
+  /* Arbre de lignage — germination ascendante (racines → cimes)
+     GPU-accelerated via will-change + translateZ(0) for universal perf */
   @keyframes grow-up {
-    0% { transform: translateX(-50%) scaleY(0); opacity: 0; }
-    100% { transform: translateX(-50%) scaleY(1); opacity: 1; }
+    0% { transform: translateX(-50%) scaleY(0) translateZ(0); opacity: 0; }
+    100% { transform: translateX(-50%) scaleY(1) translateZ(0); opacity: 1; }
   }
 
   @keyframes germinate {
-    0% { opacity: 0; transform: translateY(12px) scale(0.95); }
-    60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    0% { opacity: 0; transform: translateY(12px) scale(0.95) translateZ(0); }
+    60% { opacity: 1; transform: translateY(-2px) scale(1.01) translateZ(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
+  }
+
+  /* GPU-accelerated energy flow for SVG inference links */
+  .gpu-accelerated {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  /* Lineage tree — promote layers for GPU compositing */
+  .lineage-gpu-layer {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    contain: layout style paint;
+  }
+
+  /* SVG optimized rendering for mobile scroll perf */
+  .svg-perf-scroll {
+    shape-rendering: optimizeSpeed;
+  }
+  .svg-perf-idle {
+    shape-rendering: geometricPrecision;
   }
 
   /* Skeleton shimmer — faster perceived loading */

@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useRef } from "react";
+import { useInView } from "react-intersection-observer";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { displayName } from "@/lib/privacyUtils";
@@ -28,9 +29,16 @@ interface LineageNodeCardProps {
 const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased = true, deceasedGender = 'male' }: LineageNodeCardProps) => {
   const initials = node.name.split(" ").map(n => n[0]).join("").slice(0, 2);
 
+  // Lazy loading: only render photo when card enters viewport (saves RAM on entry-level phones)
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: "200px 0px", // Start loading 200px before visible
+  });
+
   const content = (
     <div
-      className={`flex flex-col items-center group transition-all duration-300 relative ${
+      ref={inViewRef}
+      className={`flex flex-col items-center group transition-all duration-300 relative gpu-accelerated ${
         isCurrentUser ? "ring-2 ring-ai-gold/50 rounded-lg p-2 bg-ai-gold/5 shadow-[0_0_16px_hsl(var(--ai-gold)/0.25)]" : ""
       }`}
     >
@@ -46,12 +54,13 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
             : "border-border bg-muted"
         } ${isDeceased ? "grayscale hover:grayscale-0" : ""}`}
       >
-        {node.photo ? (
+        {inView && node.photo ? (
           <img
             src={node.photo}
             alt={displayName(node.name, isAuthenticated)}
             className="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
             width={80}
             height={80}
           />

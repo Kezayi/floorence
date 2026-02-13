@@ -178,7 +178,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
 
           {/* Fullscreen Graph Dialog */}
           {fullscreenGraph && (
-            <div className="fixed inset-0 z-50 bg-background flex flex-col">
+            <div className="fixed inset-0 z-50 bg-background flex flex-col gpu-accelerated" style={{ contain: 'layout style paint' }}>
               <div className="flex items-center justify-between p-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <GitBranch className="w-5 h-5 text-foreground/70" />

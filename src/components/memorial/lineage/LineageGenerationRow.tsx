@@ -51,10 +51,11 @@ const LineageGenerationRow = memo(({
 
   return (
     <div
-      className="relative py-4"
+      className="relative py-4 lineage-gpu-layer"
       style={{
         opacity: 0,
         animation: `germinate 0.8s ease-out ${animDelay}ms both`,
+        contain: 'layout style paint',
       }}
     >
       {/* Horizontal connector — visible on all screens */}
