@@ -1,6 +1,9 @@
 /**
  * Deterministic demo avatar assignment for guestbook authors without a user account.
  * Uses existing demo portrait images from public/demo-portraits/.
+ * 
+ * IMPORTANT: Uses a global registry to guarantee no two different names
+ * receive the same portrait within the application lifecycle.
  */
 
 const DEMO_PORTRAITS = [
@@ -18,8 +21,9 @@ const DEMO_PORTRAITS = [
 
 /** Female first names used in demo data */
 const FEMALE_FIRST_NAMES = new Set([
-  "amina", "bernadette", "edwige", "grâce", "grace", "marquise",
-  "nadège", "nadege", "paulette", "prisca", "sandrine", "solange",
+  "amina", "bernadette", "charlotte", "edwige", "félicité", "felicite",
+  "grâce", "grace", "marie-claire", "marquise", "nadège", "nadege",
+  "odile", "paulette", "prisca", "rose", "sandrine", "solange",
   "tatiana", "thérèse", "therese",
 ]);
 
@@ -36,13 +40,65 @@ function hashName(name: string): number {
 }
 
 /**
- * Returns a deterministic demo avatar URL for a given author name.
+ * Global registry: maps normalized name → portrait URL.
+ * Ensures uniqueness: once a portrait is assigned, it won't be given to another name.
+ */
+const nameToPortrait = new Map<string, string>();
+const usedPortraits = new Set<string>();
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Returns a deterministic, globally unique demo avatar URL for a given author name.
  * Gender is inferred from first name to pick appropriate portraits.
+ * Once all gender-appropriate portraits are exhausted, falls back to any remaining portrait.
  */
 export function getDemoAvatarUrl(authorName: string): string {
-  const firstName = authorName.split(" ")[0]?.toLowerCase() || "";
+  const key = normalizeName(authorName);
+
+  // Already assigned? Return the same portrait.
+  const existing = nameToPortrait.get(key);
+  if (existing) return existing;
+
+  const firstName = key.split(" ")[0] || "";
   const isFemale = FEMALE_FIRST_NAMES.has(firstName);
-  const pool = isFemale ? FEMALE_INDICES : MALE_INDICES;
-  const index = pool[hashName(authorName) % pool.length];
-  return DEMO_PORTRAITS[index];
+  const preferredPool = (isFemale ? FEMALE_INDICES : MALE_INDICES).map(i => DEMO_PORTRAITS[i]);
+
+  // Try preferred gender pool first, then fallback to all portraits
+  const pools = [preferredPool, DEMO_PORTRAITS];
+
+  for (const pool of pools) {
+    // Try hash-based pick first for determinism
+    const hashIdx = hashName(key) % pool.length;
+    if (!usedPortraits.has(pool[hashIdx])) {
+      const url = pool[hashIdx];
+      nameToPortrait.set(key, url);
+      usedPortraits.add(url);
+      return url;
+    }
+    // Hash collided → find any available in this pool
+    for (const url of pool) {
+      if (!usedPortraits.has(url)) {
+        nameToPortrait.set(key, url);
+        usedPortraits.add(url);
+        return url;
+      }
+    }
+  }
+
+  // All 10 portraits exhausted — fallback to hash-based (allows reuse)
+  const fallbackIdx = hashName(key) % DEMO_PORTRAITS.length;
+  const fallback = DEMO_PORTRAITS[fallbackIdx];
+  nameToPortrait.set(key, fallback);
+  return fallback;
+}
+
+/**
+ * Pre-register a memorial's photo_url so it won't be assigned to demo authors.
+ * Call this for deceased persons who already have a real photo.
+ */
+export function reservePortrait(photoUrl: string | null | undefined): void {
+  if (photoUrl) usedPortraits.add(photoUrl);
 }
