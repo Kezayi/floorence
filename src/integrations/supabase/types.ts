@@ -50,6 +50,7 @@ export type Database = {
       guestbook_posts: {
         Row: {
           author_name: string
+          author_photo_url: string | null
           candle_count: number
           content: string
           created_at: string
@@ -71,6 +72,7 @@ export type Database = {
         }
         Insert: {
           author_name: string
+          author_photo_url?: string | null
           candle_count?: number
           content: string
           created_at?: string
@@ -92,6 +94,7 @@ export type Database = {
         }
         Update: {
           author_name?: string
+          author_photo_url?: string | null
           candle_count?: number
           content?: string
           created_at?: string
