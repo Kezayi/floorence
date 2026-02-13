@@ -336,14 +336,14 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
           />
 
           {/* Descendants at TOP (branches / leaves) — sorted highest gen first */}
-          {[...descendantGens].reverse().map(([gen, nodes], i) => (
+          {[...descendantGens].reverse().map(([gen, nodes], i, arr) => (
             <LineageGenerationRow
               key={gen}
               generation={gen}
               nodes={nodes}
               isAuthenticated={isAuthenticated}
               currentUserId={user?.id}
-              animDelay={800 + i * 200}
+              animDelay={600 + (arr.length - 1 - i) * 180}
               treePosition="branch"
               deceasedGender={deceasedGender}
             />
@@ -428,7 +428,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
               nodes={nodes}
               isAuthenticated={isAuthenticated}
               currentUserId={user?.id}
-              animDelay={i * 200}
+              animDelay={200 + i * 180}
               treePosition="root"
               deceasedGender={deceasedGender}
             />

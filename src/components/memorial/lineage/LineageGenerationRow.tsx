@@ -38,13 +38,16 @@ const LineageGenerationRow = memo(({
     ? "bg-[#800000]/50"
     : "bg-[#800000]/80";
 
-  // Dynamic line thickness: thicker near pivot (roots), thinner at extremes (branches)
+  // Dynamic line thickness: thicker near trunk (roots), thinner toward extremes (cime/origines)
   const absGen = Math.abs(generation);
   const lineThickness = treePosition === "root"
-    ? absGen <= 1 ? "h-[3px]" : absGen === 2 ? "h-[2px]" : "h-[1.5px]"
+    ? absGen <= 1 ? "h-[3.5px]" : absGen === 2 ? "h-[2.5px]" : absGen === 3 ? "h-[2px]" : "h-[1.5px]"
     : treePosition === "branch"
-    ? absGen <= 1 ? "h-[2.5px]" : absGen === 2 ? "h-[1.5px]" : "h-[1px]"
+    ? absGen <= 1 ? "h-[2.5px]" : absGen === 2 ? "h-[2px]" : absGen === 3 ? "h-[1.5px]" : "h-[1px]"
     : hasAlliance || hasExtended ? "h-[1.5px]" : "h-[2.5px]";
+
+  // Opacity gradient: strongest near trunk, fading toward extremes
+  const lineOpacity = absGen <= 1 ? 1 : absGen === 2 ? 0.85 : absGen === 3 ? 0.65 : 0.45;
 
   return (
     <div
@@ -57,6 +60,7 @@ const LineageGenerationRow = memo(({
       {/* Horizontal connector */}
       <div
         className={`hidden md:block absolute top-1/2 left-1/4 right-1/4 ${lineThickness} ${lineColor}`}
+        style={{ opacity: lineOpacity }}
       />
 
       {/* Generation label */}
