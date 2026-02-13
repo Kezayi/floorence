@@ -82,6 +82,8 @@ const getCategoryColor = (category: string): string => {
 /** Classify a relation_category string into a filter group */
 const classifyCategory = (category: string): string => {
   const lower = category.toLowerCase();
+  if (lower.includes("famille_directe") || lower === "famille directe") return "Famille directe";
+  if (lower.includes("famille_elargie") || lower.includes("famille élargie") || lower === "famille elargie") return "Famille élargie";
   if (lower.includes("famille")) return "Famille directe";
   if (lower.includes("allié") || lower.includes("allies")) return "Alliés";
   if (lower.includes("socio") || lower.includes("ami") || lower.includes("coeur")) return "Socio cœur";
@@ -90,6 +92,7 @@ const classifyCategory = (category: string): string => {
 
 const ALL_CATEGORIES = [
   "Famille directe",
+  "Famille élargie",
   "Alliés",
   "Socio cœur",
   "Autres",
