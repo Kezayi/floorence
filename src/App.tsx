@@ -14,6 +14,9 @@ import RequireAdmin from "./components/admin/RequireAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
 import { ADMIN_PREFIX } from "./lib/adminRoutes";
 
+// Lazy load: FAQ
+const FAQ = lazy(() => import("./pages/FAQ"));
+
 // Eager load: Homepage (critical path)
 import Index from "./pages/Index";
 
@@ -94,6 +97,7 @@ const App = () => (
                   <Route path="/confidentialite" element={<Confidentialite />} />
                   <Route path="/a-propos" element={<Vision />} />
                   <Route path="/mission" element={<Mission />} />
+                  <Route path="/faq" element={<FAQ />} />
                   <Route path="/communaute" element={<CommunityGraph />} />
                   <Route path="/liens-suggeres" element={
                     <RequireAuth>
