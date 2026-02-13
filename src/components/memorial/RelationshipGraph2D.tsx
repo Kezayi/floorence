@@ -323,9 +323,10 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
         {Math.round(zoom * 100)}%
       </div>
 
-      {/* Canvas SVG */}
+      {/* Canvas SVG — GPU-accelerated for smooth pan/zoom on entry-level devices */}
       <div 
-        className="w-full aspect-square max-w-[600px] mx-auto cursor-grab active:cursor-grabbing touch-none"
+        className="w-full aspect-square max-w-[600px] mx-auto cursor-grab active:cursor-grabbing touch-none gpu-accelerated"
+        style={{ contain: 'layout style paint' }}
         onMouseDown={(e) => handlePanStart(e.clientX, e.clientY)}
         onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
         onMouseUp={handlePanEnd}
@@ -362,7 +363,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
               <stop offset="0%" stopColor="hsl(45, 90%, 55%)" />
               <stop offset="100%" stopColor="hsl(45, 70%, 42%)" />
             </linearGradient>
-            {/* Animation de flux d'énergie */}
+            {/* Animation de flux d'énergie — GPU-accelerated via will-change */}
             <style>{`
               @keyframes energyFlow {
                 0% { stroke-dashoffset: 0; }
@@ -370,6 +371,8 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
               }
               .energy-line {
                 animation: energyFlow 3s linear infinite;
+                will-change: stroke-dashoffset;
+                transform: translateZ(0);
               }
             `}</style>
           </defs>

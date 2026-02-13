@@ -327,14 +327,15 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
           </p>
         </div>
       ) : (
-        <div className="relative">
-          {/* Central vertical blood line — visible on all screens */}
+        <div className="relative gpu-accelerated">
+          {/* Central vertical blood line — GPU-accelerated on all screens */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 w-[2px] md:w-[3px]"
+            className="absolute left-1/2 top-0 bottom-0 w-[2px] md:w-[3px] lineage-gpu-layer"
             style={{
               background: "hsl(0 70% 25% / 0.8)",
               transformOrigin: "bottom",
               animation: "grow-up 1.4s ease-out forwards",
+              contain: 'strict',
             }}
           />
 
