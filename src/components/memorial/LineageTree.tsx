@@ -7,7 +7,7 @@ import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import { inferGender } from "@/lib/genderInference";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDemoAvatarUrl } from "@/lib/demoAvatars";
+import { getDemoAvatarUrl, reservePortrait } from "@/lib/demoAvatars";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
 import LineageNodeCard, { type TreeNode } from "./lineage/LineageNodeCard";
@@ -27,6 +27,9 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
   const isAuthenticated = !!user;
   const isValidUUID = /^[0-9a-f]{8}-/.test(memorialId);
   const [viewFilter, setViewFilter] = useState<ViewFilter>("complete");
+
+  // Reserve the Cujus photo to guarantee avatar uniqueness (Règle d'Or)
+  reservePortrait(deceasedPhoto);
 
   // 1. Fetch inter-memorial relations (Pont des Ancêtres)
   const { data: interMemorialNodes, isLoading: loadingRelations } = useQuery({
@@ -398,23 +401,33 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                   </div>
                 ))}
 
-                {/* Central Cujus */}
-                <div className="flex flex-col items-center">
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#800000] bg-muted overflow-hidden grayscale hover:grayscale-0 transition-all duration-600 shadow-lg">
-                    {deceasedPhoto ? (
-                      <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="font-serif text-2xl text-muted-foreground">
-                          {deceasedName.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                        </span>
+                {/* Central Cujus — Sacralisé */}
+                <div className="flex flex-col items-center relative">
+                  {/* Double liseré or + bordeaux */}
+                  <div
+                    className="w-22 h-22 md:w-28 md:h-28 rounded-full p-[3px] bg-gradient-to-br from-[#D4AF37] via-[#FFD700] to-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.45)]"
+                    style={{ animation: "pulse 3s ease-in-out infinite" }}
+                  >
+                    <div className="w-full h-full rounded-full p-[2.5px] bg-[#800000]">
+                      <div className="w-full h-full rounded-full overflow-hidden bg-muted grayscale hover:grayscale-0 transition-all duration-600">
+                        {deceasedPhoto ? (
+                          <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="font-serif text-2xl text-muted-foreground">
+                              {deceasedName.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                   <span className="mt-2 font-serif text-sm font-medium text-foreground text-center">
                     {deceasedName}
                   </span>
-                  <span className="text-xs text-primary font-sans italic">De Cujus</span>
+                  <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full bg-[#800000]/90 text-[#FFD700] text-[10px] font-sans font-semibold tracking-wider uppercase shadow-sm">
+                    LE CUJUS
+                  </span>
                 </div>
               </div>
             </div>
