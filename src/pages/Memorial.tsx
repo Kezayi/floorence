@@ -285,28 +285,11 @@ const MemorialInner = () => {
         console.error('Error fetching guestbook posts:', error);
         setGuestbookPosts([]);
       } else {
-        // Fetch avatar URLs for all authors via profiles_public
-        const userIds = [...new Set((data || []).map((p: any) => p.user_id).filter(Boolean))];
-        let avatarMap = new Map<string, string | null>();
-
-        if (userIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles_public')
-            .select('user_id, avatar_url')
-            .in('user_id', userIds);
-
-          (profiles || []).forEach((p: any) => {
-            avatarMap.set(p.user_id, p.avatar_url);
-          });
-        }
-
         const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
           id: post.id,
-          authorId: post.user_id || `anon-${post.id}`,
+          authorId: `anon-${post.id}`,
           authorName: post.author_name || 'Anonyme',
-          authorAvatarUrl: post.user_id
-            ? avatarMap.get(post.user_id) || null
-            : (post.author_name ? getDemoAvatarUrl(post.author_name) : null),
+          authorAvatarUrl: post.author_name ? getDemoAvatarUrl(post.author_name) : null,
           relationCategory: post.relation_category || 'autre',
           relationLink: post.relation_link || null,
           content: post.content || '',
@@ -353,7 +336,7 @@ const MemorialInner = () => {
               return [
                 {
                   id: newPost?.id,
-                  authorId: newPost?.user_id || 'anonymous',
+                  authorId: `anon-${newPost?.id}`,
                   authorName: newPost?.author_name || 'Anonyme',
                   relationCategory: newPost?.relation_category || 'autre',
                   relationLink: newPost?.relation_link || null,
