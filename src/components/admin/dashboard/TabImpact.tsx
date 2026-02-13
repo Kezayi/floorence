@@ -60,10 +60,7 @@ const TabImpact = ({ stats }: Props) => {
         </Card>
 
         {/* Humanity Gauge */}
-        <HumanityGauge
-          interMemorialLinks={stats.interMemorialLinks}
-          totalMemorials={stats.totalMemorials}
-        />
+        <HumanityGauge stats={stats} />
 
         {/* Live Activity Feed */}
         <LiveActivityFeed />
