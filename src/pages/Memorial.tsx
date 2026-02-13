@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useParams, Link, Navigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -303,7 +304,9 @@ const MemorialInner = () => {
           id: post.id,
           authorId: post.user_id || `anon-${post.id}`,
           authorName: post.author_name || 'Anonyme',
-          authorAvatarUrl: post.user_id ? avatarMap.get(post.user_id) || null : null,
+          authorAvatarUrl: post.user_id
+            ? avatarMap.get(post.user_id) || null
+            : (post.author_name ? getDemoAvatarUrl(post.author_name) : null),
           relationCategory: post.relation_category || 'autre',
           relationLink: post.relation_link || null,
           content: post.content || '',
