@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import AdminPagination from '@/components/admin/AdminPagination';
 
 interface AuditLog {
   id: string;
@@ -47,6 +48,8 @@ const actionConfig: Record<string, { label: string; icon: React.ReactNode; varia
 
 const AuditLogs = () => {
   const { filters, updateFilter } = useAdminFilters();
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['audit-logs'],
@@ -94,6 +97,16 @@ const AuditLogs = () => {
       return true;
     });
   }, [logs, filters.actionType, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset page when filters change
+  useMemo(() => { setCurrentPage(1); }, [filters.actionType, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
 
   const getActionDisplay = (actionType: string) => {
     return actionConfig[actionType] || { 
@@ -197,7 +210,7 @@ const AuditLogs = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.map((log) => {
+                {paginatedLogs.map((log) => {
                   const actionDisplay = getActionDisplay(log.action_type);
                   const details = formatDetails(log.action_type, log.details);
                   
@@ -246,6 +259,21 @@ const AuditLogs = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <AdminPagination
+          page={currentPage}
+          pageSize={ITEMS_PER_PAGE}
+          totalCount={filteredLogs.length}
+          totalPages={totalPages}
+          hasNextPage={currentPage < totalPages}
+          hasPreviousPage={currentPage > 1}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={() => {}}
+          pageSizeOptions={[10, 20, 50]}
+        />
+      )}
     </div>
   );
 };

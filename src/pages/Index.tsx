@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 10;
 
 const Index = () => {
   const navigate = useNavigate();

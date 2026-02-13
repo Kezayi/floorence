@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import RelationshipGraphSearch from "@/components/search/RelationshipGraphSearch";
 import { useDebounce } from "@/hooks/useDebounce";
+import MemorialPagination from "@/components/home/MemorialPagination";
 
 // ============================================================================
 // TYPES
@@ -600,11 +601,14 @@ const SearchResultSkeleton = () => (
   </div>
 );
 
+const SEARCH_ITEMS_PER_PAGE = 10;
+
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get("q") || "";
   const [searchInput, setSearchInput] = useState(query);
+  const [resultsPage, setResultsPage] = useState(1);
   const { memorials, loading: memorialsLoading } = useMemorialsWithGuestbook();
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -666,6 +670,18 @@ const SearchPage = () => {
   // Comptage
   const totalGroups = displayResults.filter(r => r.type === "family_group").length;
   const totalProfiles = displayResults.filter(r => r.type === "multi_memorial").length;
+
+  // Pagination des résultats
+  const totalResultPages = Math.ceil(displayResults.length / SEARCH_ITEMS_PER_PAGE);
+  const paginatedResults = useMemo(() => {
+    const start = (resultsPage - 1) * SEARCH_ITEMS_PER_PAGE;
+    return displayResults.slice(start, start + SEARCH_ITEMS_PER_PAGE);
+  }, [displayResults, resultsPage]);
+
+  // Reset page when query changes
+  useEffect(() => {
+    setResultsPage(1);
+  }, [query]);
 
   // Message d'aide pour les requêtes trop courtes
   const isTooShort = searchInput.trim().length > 0 && searchInput.trim().length < 2;
@@ -782,27 +798,37 @@ const SearchPage = () => {
 
           {/* Résultats groupés — avec opacité réduite pendant la transition */}
           {query && !memorialsLoading && displayResults.length > 0 && (
-            <div className={`space-y-6 transition-opacity duration-200 ${isSearching ? 'opacity-60' : 'opacity-100'}`}>
-              {displayResults.map((result, index) => {
-                if (result.type === "family_group") {
-                  return (
-                    <FamilyGroupCard 
-                      key={`family-${result.data.memorialId}`} 
-                      group={result.data}
-                      isLoggedIn={!!user}
-                    />
-                  );
-                } else {
-                  return (
-                    <MultiMemorialCard 
-                      key={`multi-${result.data.normalizedName}`} 
-                      profile={result.data}
-                      isLoggedIn={!!user}
-                    />
-                  );
-                }
-              })}
-            </div>
+            <>
+              <div className={`space-y-6 transition-opacity duration-200 ${isSearching ? 'opacity-60' : 'opacity-100'}`}>
+                {paginatedResults.map((result, index) => {
+                  if (result.type === "family_group") {
+                    return (
+                      <FamilyGroupCard 
+                        key={`family-${result.data.memorialId}`} 
+                        group={result.data}
+                        isLoggedIn={!!user}
+                      />
+                    );
+                  } else {
+                    return (
+                      <MultiMemorialCard 
+                        key={`multi-${result.data.normalizedName}`} 
+                        profile={result.data}
+                        isLoggedIn={!!user}
+                      />
+                    );
+                  }
+                })}
+              </div>
+
+              {totalResultPages > 1 && (
+                <MemorialPagination
+                  currentPage={resultsPage}
+                  totalPages={totalResultPages}
+                  onPageChange={setResultsPage}
+                />
+              )}
+            </>
           )}
         </div>
       </main>
