@@ -66,9 +66,16 @@ const GOLD_COLOR = "#D4AF37";
 /** Classify a category string to a palette key */
 const toPaletteKey = (category: string): string => {
   const lower = category.toLowerCase();
-  if (lower.includes("père") || lower.includes("mère") || lower.includes("fils") || lower.includes("fille") || lower.includes("frère") || lower.includes("sœur") || lower.includes("soeur") || lower.includes("famille directe")) return "famille_directe";
-  if (lower.includes("grand") || lower.includes("oncle") || lower.includes("tante") || lower.includes("cousin") || lower.includes("neveu") || lower.includes("nièce") || lower.includes("famille élargie") || lower.includes("famille elargie")) return "famille_elargie";
-  if (lower.includes("époux") || lower.includes("épouse") || lower.includes("beau") || lower.includes("belle") || lower.includes("gendre") || lower.includes("bru") || lower.includes("allié") || lower.includes("allies")) return "allies";
+  // Check DB-format keys first (exact matches)
+  if (lower === "famille_directe" || lower === "famille directe") return "famille_directe";
+  if (lower === "famille_elargie" || lower === "famille elargie" || lower === "famille élargie") return "famille_elargie";
+  if (lower === "allies" || lower === "alliés") return "allies";
+  if (lower === "socio_coeur" || lower === "socio coeur" || lower === "socio cœur") return "socio_coeur";
+  if (lower === "autres" || lower === "autre") return "autre";
+  // Fallback: keyword matching on relation labels
+  if (lower.includes("oncle") || lower.includes("tante") || lower.includes("cousin") || lower.includes("neveu") || lower.includes("nièce") || lower.includes("élargie") || lower.includes("elargie")) return "famille_elargie";
+  if (lower.includes("père") || lower.includes("mère") || lower.includes("fils") || lower.includes("fille") || lower.includes("frère") || lower.includes("sœur") || lower.includes("soeur") || lower.includes("grand")) return "famille_directe";
+  if (lower.includes("époux") || lower.includes("épouse") || lower.includes("beau") || lower.includes("belle") || lower.includes("gendre") || lower.includes("bru") || lower.includes("allié")) return "allies";
   if (lower.includes("ami") || lower.includes("collègue") || lower.includes("voisin") || lower.includes("camarade") || lower.includes("socio") || lower.includes("coeur")) return "socio_coeur";
   if (lower.includes("famille")) return "famille_directe";
   return "autre";
