@@ -109,10 +109,13 @@ const CommunityGraph = () => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
   const nodesRef = useRef<GraphNode[]>([]);
   const edgesRef = useRef<GraphEdge[]>([]);
+  const dashOffsetRef = useRef(0);
   const [zoom, setZoom] = useState(1);
+  const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ALL_CATEGORIES));
@@ -130,6 +133,25 @@ const CommunityGraph = () => {
       return next;
     });
   };
+
+  // Responsive canvas sizing — reacts to orientation changes
+  useEffect(() => {
+    const updateSize = () => {
+      const el = containerRef.current;
+      if (el) {
+        const w = el.clientWidth;
+        const h = Math.min(w * 0.75, window.innerHeight * 0.7);
+        setCanvasSize({ w: Math.round(w), h: Math.round(h) });
+      }
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    window.addEventListener("orientationchange", () => setTimeout(updateSize, 150));
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      window.removeEventListener("orientationchange", updateSize);
+    };
+  }, []);
 
   useSEO({
     title: "Graphe de la Communauté — Floorence",
@@ -201,8 +223,8 @@ const CommunityGraph = () => {
     const edges: GraphEdge[] = [];
     const nodeMap = new Map<string, GraphNode>();
 
-    const centerX = 400;
-    const centerY = 300;
+    const centerX = canvasSize.w / 2;
+    const centerY = canvasSize.h / 2;
 
     // Collect memorial IDs that have posts
     const activeMemorialIds = new Set(filteredPosts.map((p) => p.memorial_id));
@@ -387,9 +409,9 @@ const CommunityGraph = () => {
     }
 
     return { nodes, edges };
-  }, [memorials, filteredPosts, memorialRelations, socialInferences]);
+  }, [memorials, filteredPosts, memorialRelations, socialInferences, canvasSize]);
 
-  // Force simulation
+  // Force simulation with organic jitter for living nodes
   const simulate = useCallback(() => {
     const nodes = nodesRef.current;
     const edges = edgesRef.current;
@@ -400,8 +422,8 @@ const CommunityGraph = () => {
     const springLength = 120;
     const springStrength = 0.02;
     const damping = 0.85;
-    const centerX = 400;
-    const centerY = 300;
+    const cX = canvasSize.w / 2;
+    const cY = canvasSize.h / 2;
 
     // Repulsion
     for (let i = 0; i < nodes.length; i++) {
@@ -419,7 +441,7 @@ const CommunityGraph = () => {
       }
     }
 
-    // Spring attraction (edges) — memorial-relation edges get stronger spring
+    // Spring attraction
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     edges.forEach((edge) => {
       const s = nodeMap.get(edge.source);
@@ -440,31 +462,40 @@ const CommunityGraph = () => {
       t.vy -= fy;
     });
 
-    // Stronger center gravity for deceased nodes (attract to center)
+    // Stronger center gravity for deceased nodes
     nodes.forEach((n) => {
       if (n.type === "deceased") {
-        n.vx += (centerX - n.x) * 0.008;
-        n.vy += (centerY - n.y) * 0.008;
+        n.vx += (cX - n.x) * 0.008;
+        n.vy += (cY - n.y) * 0.008;
       }
     });
 
     // Center gravity
     nodes.forEach((n) => {
-      n.vx += (centerX - n.x) * 0.001;
-      n.vy += (centerY - n.y) * 0.001;
+      n.vx += (cX - n.x) * 0.001;
+      n.vy += (cY - n.y) * 0.001;
     });
 
-    // Update positions
+    // Update positions + organic jitter for living nodes
+    const now = performance.now() * 0.001;
     nodes.forEach((n) => {
       n.vx *= damping;
       n.vy *= damping;
       n.x += n.vx;
       n.y += n.vy;
+      // Brownian breathing for living nodes only
+      if (n.type === "contributor") {
+        const jitterAmp = 0.3;
+        const freq = 0.5 + (n.id.charCodeAt(5) % 10) * 0.05;
+        const phase = (n.id.charCodeAt(6) || 0) * 0.7;
+        n.x += Math.sin(now * freq + phase) * jitterAmp;
+        n.y += Math.cos(now * freq * 0.8 + phase + 1.3) * jitterAmp;
+      }
       // Bounds
-      n.x = Math.max(30, Math.min(770, n.x));
-      n.y = Math.max(30, Math.min(570, n.y));
+      n.x = Math.max(30, Math.min(canvasSize.w - 30, n.x));
+      n.y = Math.max(30, Math.min(canvasSize.h - 30, n.y));
     });
-  }, []);
+  }, [canvasSize]);
 
   // Draw
   const draw = useCallback(() => {
@@ -477,9 +508,14 @@ const CommunityGraph = () => {
     const edges = edgesRef.current;
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const dpr = window.devicePixelRatio || 1;
+    const W = canvasSize.w;
+    const H = canvasSize.h;
 
     ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, 0, 0);
-    ctx.clearRect(0, 0, 800 / zoom, 600 / zoom);
+    ctx.clearRect(0, 0, W / zoom, H / zoom);
+
+    // Advance energy flow offset
+    dashOffsetRef.current -= 0.4;
 
     // Draw edges
     edges.forEach((edge) => {
@@ -501,21 +537,23 @@ const CommunityGraph = () => {
         ctx.shadowColor = GOLD_COLOR;
         ctx.shadowBlur = 6;
       } else if (edge.type === "living-shared") {
-        // Fine dotted line — colorée par catégorie
+        // Flowing energy line — colorée par catégorie
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-        ctx.setLineDash([3, 4]);
-        ctx.strokeStyle = getCategoryColor(edge.category);
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = dashOffsetRef.current;
+        ctx.strokeStyle = "#8B5CF6";
         ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.65;
+        ctx.globalAlpha = 0.35;
       } else if (edge.type === "inferred") {
-        // Lien inféré — coloré par catégorie (pointillé)
+        // Lien inféré — flowing energy violet
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-        ctx.setLineDash([4, 3]);
-        ctx.strokeStyle = getCategoryColor(edge.category);
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = dashOffsetRef.current;
+        ctx.strokeStyle = "#8B5CF6";
         ctx.lineWidth = 1.2;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.25;
       } else {
         // Lien direct (Défunt → Vivant) — trait plein coloré
         ctx.moveTo(s.x, s.y);
@@ -530,6 +568,7 @@ const CommunityGraph = () => {
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
 
       // Label on memorial-relation edges (Pont des Ancêtres)
       if (edge.type === "memorial-relation") {
@@ -718,9 +757,9 @@ const CommunityGraph = () => {
         }
       }
     }
-  }, [zoom, hoveredNode, hoveredEdge]);
+  }, [zoom, hoveredNode, hoveredEdge, canvasSize]);
 
-  // Animation loop
+  // Animation loop — continuous for organic breathing + energy flow
   useEffect(() => {
     if (graphData.nodes.length === 0) return;
 
@@ -728,19 +767,35 @@ const CommunityGraph = () => {
     edgesRef.current = [...graphData.edges];
 
     let iterations = 0;
-    const maxIterations = 200;
+    const maxForceIterations = 200;
 
     const canvas = canvasRef.current;
     if (canvas) {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = 800 * dpr;
-      canvas.height = 600 * dpr;
+      canvas.width = canvasSize.w * dpr;
+      canvas.height = canvasSize.h * dpr;
     }
 
     const tick = () => {
-      if (iterations < maxIterations) {
+      // Full force simulation for first 200 ticks, then only jitter + energy flow
+      if (iterations < maxForceIterations) {
         simulate();
         iterations++;
+      } else {
+        // Lightweight: only jitter living nodes + advance dash offset
+        const now = performance.now() * 0.001;
+        nodesRef.current.forEach((n) => {
+          if (n.type === "contributor") {
+            const jitterAmp = 0.15;
+            const freq = 0.5 + (n.id.charCodeAt(5) % 10) * 0.05;
+            const phase = (n.id.charCodeAt(6) || 0) * 0.7;
+            n.x += Math.sin(now * freq + phase) * jitterAmp;
+            n.y += Math.cos(now * freq * 0.8 + phase + 1.3) * jitterAmp;
+            n.x = Math.max(30, Math.min(canvasSize.w - 30, n.x));
+            n.y = Math.max(30, Math.min(canvasSize.h - 30, n.y));
+          }
+        });
+        dashOffsetRef.current -= 0.4;
       }
       draw();
       animFrameRef.current = requestAnimationFrame(tick);
@@ -751,7 +806,7 @@ const CommunityGraph = () => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [graphData, simulate, draw]);
+  }, [graphData, simulate, draw, canvasSize]);
 
   // Realtime sync — auto-update when memorial_relations change
   const queryClient = useQueryClient();
@@ -785,8 +840,8 @@ const CommunityGraph = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const scaleX = 800 / rect.width;
-      const scaleY = 600 / rect.height;
+      const scaleX = canvasSize.w / rect.width;
+      const scaleY = canvasSize.h / rect.height;
       const mx = (e.clientX - rect.left) * scaleX / zoom;
       const my = (e.clientY - rect.top) * scaleY / zoom;
 
@@ -821,7 +876,7 @@ const CommunityGraph = () => {
         setHoveredEdge(null);
       }
     },
-    [zoom]
+    [zoom, canvasSize]
   );
 
   const nodeCount = graphData.nodes.length;
@@ -931,12 +986,12 @@ const CommunityGraph = () => {
                 </Button>
               </div>
 
-              {/* Canvas Graph */}
-              <div className="relative bg-card border border-border rounded-sm overflow-hidden">
+              {/* Canvas Graph — Full viewport responsive */}
+              <div ref={containerRef} className="relative bg-card border border-border rounded-sm overflow-hidden w-full">
                 <canvas
                   ref={canvasRef}
                   className="w-full"
-                  style={{ maxHeight: "600px", aspectRatio: "4/3", cursor: (hoveredNode || hoveredEdge) ? "pointer" : "default" }}
+                  style={{ height: `${canvasSize.h}px`, cursor: (hoveredNode || hoveredEdge) ? "pointer" : "default" }}
                   onMouseMove={handleMouseMove}
                   onMouseLeave={() => { setHoveredNode(null); setHoveredEdge(null); }}
                 />
