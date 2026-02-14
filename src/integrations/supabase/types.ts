@@ -297,6 +297,9 @@ export type Database = {
           legacy_slug: string | null
           merged_into: string | null
           network_size: number | null
+          notification_end_day: number | null
+          notification_frequency: string | null
+          notification_start_day: number | null
           photo_url: string | null
           photos: string[] | null
           share_token: string | null
@@ -330,6 +333,9 @@ export type Database = {
           legacy_slug?: string | null
           merged_into?: string | null
           network_size?: number | null
+          notification_end_day?: number | null
+          notification_frequency?: string | null
+          notification_start_day?: number | null
           photo_url?: string | null
           photos?: string[] | null
           share_token?: string | null
@@ -363,6 +369,9 @@ export type Database = {
           legacy_slug?: string | null
           merged_into?: string | null
           network_size?: number | null
+          notification_end_day?: number | null
+          notification_frequency?: string | null
+          notification_start_day?: number | null
           photo_url?: string | null
           photos?: string[] | null
           share_token?: string | null

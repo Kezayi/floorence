@@ -5,8 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { Loader2, Save, ExternalLink, Info } from 'lucide-react';
+import { Loader2, Save, ExternalLink, Info, Bell } from 'lucide-react';
+
+const FREQUENCY_OPTIONS = [
+  { value: 'weekly_saturday', label: 'Hebdomadaire (samedi)', desc: 'Digest envoyé chaque samedi à 09h' },
+  { value: 'monthly_window', label: 'Fenêtre mensuelle', desc: 'Digest envoyé pendant la période définie' },
+  { value: 'immediate', label: 'Immédiat', desc: 'Notification envoyée dès qu\'un événement survient' },
+  { value: 'none', label: 'Aucune notification', desc: 'Désactiver toutes les notifications par défaut' },
+] as const;
 
 const Settings = () => {
   const { data: settings, isLoading } = useSystemSettings();
@@ -16,10 +24,18 @@ const Settings = () => {
   const [contributionUrl, setContributionUrl] = useState('');
   const [contributionEnabled, setContributionEnabled] = useState(false);
 
+  // Notification settings
+  const [notifFrequency, setNotifFrequency] = useState<string>('weekly_saturday');
+  const [notifStartDay, setNotifStartDay] = useState(25);
+  const [notifEndDay, setNotifEndDay] = useState(5);
+
   useEffect(() => {
     if (settings) {
       setContributionUrl(settings.contribution_link_template.url);
       setContributionEnabled(settings.contribution_link_template.enabled);
+      setNotifFrequency(settings.notification_frequency.frequency);
+      setNotifStartDay(settings.notification_window.start_day);
+      setNotifEndDay(settings.notification_window.end_day);
     }
   }, [settings]);
 
@@ -30,6 +46,22 @@ const Settings = () => {
         value: { url: contributionUrl, enabled: contributionEnabled },
       });
       toast.success('Lien de contribution mis à jour');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      await updateSetting.mutateAsync({
+        key: 'notification_frequency',
+        value: { frequency: notifFrequency },
+      });
+      await updateSetting.mutateAsync({
+        key: 'notification_window',
+        value: { start_day: notifStartDay, end_day: notifEndDay },
+      });
+      toast.success('Paramètres de notification mis à jour');
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
     }
@@ -71,6 +103,83 @@ const Settings = () => {
                 Les tarifs seront activés après la phase de bêta.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Configuration globale des notifications
+            </CardTitle>
+            <CardDescription>
+              Ces paramètres s'appliquent par défaut à tous les nouveaux mémoriaux.
+              Les créateurs peuvent personnaliser ces réglages pour leur propre espace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fréquence par défaut</Label>
+              <RadioGroup value={notifFrequency} onValueChange={setNotifFrequency}>
+                {FREQUENCY_OPTIONS.map((opt) => (
+                  <div key={opt.value} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value={opt.value} id={`freq-${opt.value}`} className="mt-0.5" />
+                    <div className="flex-1">
+                      <Label htmlFor={`freq-${opt.value}`} className="font-medium cursor-pointer">
+                        {opt.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            {notifFrequency === 'monthly_window' && (
+              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-border">
+                <Label className="text-sm font-medium">Fenêtre mensuelle (période d'envoi)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Les notifications seront envoyées uniquement entre le jour de début et le jour de fin de chaque mois.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="start-day" className="text-xs text-muted-foreground">Du jour</Label>
+                    <Input
+                      id="start-day"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={notifStartDay}
+                      onChange={(e) => setNotifStartDay(parseInt(e.target.value) || 25)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="end-day" className="text-xs text-muted-foreground">Au jour</Label>
+                    <Input
+                      id="end-day"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={notifEndDay}
+                      onChange={(e) => setNotifEndDay(parseInt(e.target.value) || 5)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  Ex : du 25 au 05 = période de la paie, idéale pour les rappels de contributions
+                </p>
+              </div>
+            )}
+
+            <Button onClick={handleSaveNotifications} disabled={updateSetting.isPending}>
+              {updateSetting.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Enregistrer les notifications
+            </Button>
           </CardContent>
         </Card>
 

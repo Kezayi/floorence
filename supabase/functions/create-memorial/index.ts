@@ -40,6 +40,9 @@ const CreateMemorialSchema = z.object({
   enableContributions: z.boolean().optional(),
   photoUrl: z.string().url().optional(),
   photos: z.array(z.string().url()).max(3).optional(),
+  notificationFrequency: z.enum(['immediate', 'weekly_saturday', 'monthly_window', 'none']).optional(),
+  notificationStartDay: z.number().int().min(1).max(31).optional(),
+  notificationEndDay: z.number().int().min(1).max(31).optional(),
 })
 
 // Generate secure slug using initials + random ID format
@@ -187,6 +190,9 @@ serve(async (req) => {
         created_by: user.id,
         is_active: true,
         is_published: true,
+        notification_frequency: data.notificationFrequency || null,
+        notification_start_day: data.notificationStartDay ?? null,
+        notification_end_day: data.notificationEndDay ?? null,
       })
       .select()
       .single()
