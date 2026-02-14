@@ -20,6 +20,8 @@ const settingLabels: Record<string, string> = {
   memorial_price_past: "Prix création (obsèques passées)",
   contribution_link_template: "Lien de contribution externe",
   donation_enabled: "Donations activées",
+  notification_frequency: "Fréquence des notifications",
+  notification_window: "Fenêtre mensuelle des notifications",
 };
 
 const handler = async (req: Request): Promise<Response> => {

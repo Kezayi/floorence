@@ -15,6 +15,15 @@ export interface ContributionLinkSetting {
   enabled: boolean;
 }
 
+export interface NotificationFrequencySetting {
+  frequency: 'immediate' | 'weekly_saturday' | 'monthly_window' | 'none';
+}
+
+export interface NotificationWindowSetting {
+  start_day: number;
+  end_day: number;
+}
+
 export interface SystemSettings {
   candle_price: PriceSetting;
   flower_price: PriceSetting;
@@ -22,6 +31,8 @@ export interface SystemSettings {
   memorial_price_future: PriceSetting;
   memorial_price_past: PriceSetting;
   contribution_link_template: ContributionLinkSetting;
+  notification_frequency: NotificationFrequencySetting;
+  notification_window: NotificationWindowSetting;
 }
 
 export const useSystemSettings = () => {
@@ -41,6 +52,8 @@ export const useSystemSettings = () => {
         memorial_price_future: { amount: 15000, currency: 'XOF' },
         memorial_price_past: { amount: 10000, currency: 'XOF' },
         contribution_link_template: { url: '', enabled: false },
+        notification_frequency: { frequency: 'weekly_saturday' },
+        notification_window: { start_day: 25, end_day: 5 },
       };
 
       data?.forEach((row) => {
@@ -56,6 +69,10 @@ export const useSystemSettings = () => {
           settings.memorial_price_past = row.value as unknown as PriceSetting;
         } else if (row.key === 'contribution_link_template') {
           settings.contribution_link_template = row.value as unknown as ContributionLinkSetting;
+        } else if (row.key === 'notification_frequency') {
+          settings.notification_frequency = row.value as unknown as NotificationFrequencySetting;
+        } else if (row.key === 'notification_window') {
+          settings.notification_window = row.value as unknown as NotificationWindowSetting;
         }
       });
 

@@ -2,13 +2,17 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, X, AlertCircle, ShieldAlert, Loader2, CheckCircle, Bell, BellOff } from "lucide-react";
 import RelationSelect, { type RelationSelection } from "@/components/memorial/RelationSelect";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { checkForbiddenName } from "@/lib/forbiddenNames";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -17,6 +21,7 @@ const CreateMemorial = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdminOrMod, loading: roleLoading } = useAdminRole();
+  const { data: systemSettings } = useSystemSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [memorialType, setMemorialType] = useState<MemorialType>(null);
@@ -34,6 +39,9 @@ const CreateMemorial = () => {
     heirEmail: "",
     enableContributions: false,
     photos: [] as string[], // Storage URLs (not base64)
+    notificationFrequency: null as string | null, // null = use admin default
+    notificationStartDay: null as number | null,
+    notificationEndDay: null as number | null,
   });
 
   const steps = [
@@ -159,6 +167,9 @@ const CreateMemorial = () => {
           enableContributions: formData.enableContributions,
           photoUrl: formData.photos[0] || undefined,
           photos: formData.photos,
+          notificationFrequency: formData.notificationFrequency || undefined,
+          notificationStartDay: formData.notificationStartDay ?? undefined,
+          notificationEndDay: formData.notificationEndDay ?? undefined,
         }
       });
 
@@ -767,6 +778,108 @@ const CreateMemorial = () => {
                        Durant la phase bêta, la création d'espaces mémoriels est entièrement gratuite. 
                        Profitez-en pour honorer la mémoire de vos proches.
                      </p>
+                  </div>
+
+                  {/* Notification Preferences */}
+                  <div className="border border-border p-6 mb-8">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Bell className="w-5 h-5 text-primary" />
+                      <div>
+                        <h4 className="font-sans text-sm font-medium">Paramètres de la Mémoire</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Contrôlez la fréquence des rappels pour cet espace
+                        </p>
+                      </div>
+                    </div>
+
+                    <RadioGroup
+                      value={formData.notificationFrequency || 'default'}
+                      onValueChange={(val) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          notificationFrequency: val === 'default' ? null : val,
+                        }))
+                      }
+                      className="space-y-2"
+                    >
+                      <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <RadioGroupItem value="default" id="notif-default" className="mt-0.5" />
+                        <div>
+                          <Label htmlFor="notif-default" className="font-sans text-sm font-medium cursor-pointer">
+                            Par défaut ({systemSettings?.notification_frequency.frequency === 'weekly_saturday' ? 'Hebdo samedi' : systemSettings?.notification_frequency.frequency === 'monthly_window' ? 'Fenêtre mensuelle' : systemSettings?.notification_frequency.frequency === 'none' ? 'Aucune' : 'Immédiat'})
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Les réglages de la PME iNTERFACE s'appliquent</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <RadioGroupItem value="weekly_saturday" id="notif-weekly" className="mt-0.5" />
+                        <div>
+                          <Label htmlFor="notif-weekly" className="font-sans text-sm font-medium cursor-pointer">
+                            Hebdomadaire (samedi)
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Digest chaque samedi matin</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <RadioGroupItem value="monthly_window" id="notif-monthly" className="mt-0.5" />
+                        <div>
+                          <Label htmlFor="notif-monthly" className="font-sans text-sm font-medium cursor-pointer">
+                            Fenêtre mensuelle
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Rappels pendant la période de paie</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <RadioGroupItem value="none" id="notif-none" className="mt-0.5" />
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <Label htmlFor="notif-none" className="font-sans text-sm font-medium cursor-pointer flex items-center gap-1.5">
+                              <BellOff className="w-3.5 h-3.5" />
+                              Silence total
+                            </Label>
+                            <p className="text-xs text-muted-foreground">Aucune notification — sanctuaire de recueillement volontaire</p>
+                          </div>
+                        </div>
+                      </div>
+                    </RadioGroup>
+
+                    {formData.notificationFrequency === 'monthly_window' && (
+                      <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border space-y-2">
+                        <p className="text-xs font-sans text-muted-foreground font-medium">Période d'envoi mensuelle</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Du jour</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={31}
+                              value={formData.notificationStartDay ?? 25}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  notificationStartDay: parseInt(e.target.value) || 25,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Au jour</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={31}
+                              value={formData.notificationEndDay ?? 5}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  notificationEndDay: parseInt(e.target.value) || 5,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Heir email reminder */}
