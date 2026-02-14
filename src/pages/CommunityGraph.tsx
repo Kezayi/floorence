@@ -104,7 +104,10 @@ const classifyCategory = (category: string): string => {
   return "Autres";
 };
 
+const FILTER_DEFUNTS = "Défunts";
+
 const ALL_CATEGORIES = [
+  FILTER_DEFUNTS,
   "Famille directe",
   "Famille élargie",
   "Alliés",
@@ -127,11 +130,13 @@ const CommunityGraph = () => {
   const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ALL_CATEGORIES));
 
+  const isDefuntsOnly = activeFilters.size === 1 && activeFilters.has(FILTER_DEFUNTS);
+  const livingFilters = new Set([...activeFilters].filter(f => f !== FILTER_DEFUNTS));
+
   const toggleFilter = (cat: string) => {
     setActiveFilters((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) {
-        // Don't allow deselecting all
         if (next.size <= 1) return prev;
         next.delete(cat);
       } else {
@@ -216,15 +221,18 @@ const CommunityGraph = () => {
 
   // Filter posts based on active category filters
   const filteredPosts = useMemo(() => {
-    if (!allPosts) return [];
+    if (!allPosts || isDefuntsOnly) return [];
+    if (livingFilters.size === 0) return [];
     return allPosts.filter((post) =>
-      activeFilters.has(classifyCategory(post.relation_category))
+      livingFilters.has(classifyCategory(post.relation_category))
     );
-  }, [allPosts, activeFilters]);
+  }, [allPosts, livingFilters, isDefuntsOnly]);
 
   // Build graph data
   const graphData = useMemo(() => {
-    if (!memorials || filteredPosts.length === 0) return { nodes: [], edges: [] };
+    if (!memorials) return { nodes: [], edges: [] };
+    // In défunts-only mode, show all memorials even without posts
+    if (!isDefuntsOnly && filteredPosts.length === 0) return { nodes: [], edges: [] };
 
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
@@ -234,7 +242,12 @@ const CommunityGraph = () => {
     const centerY = canvasSize.h / 2;
 
     // Collect memorial IDs that have posts
-    const activeMemorialIds = new Set(filteredPosts.map((p) => p.memorial_id));
+    // In défunts-only mode, show ALL memorials; otherwise only those with posts or relations
+    const activeMemorialIds = new Set(
+      isDefuntsOnly
+        ? memorials.map(m => m.id)
+        : filteredPosts.map((p) => p.memorial_id)
+    );
 
     // Also include memorials linked via memorial_relations
     (memorialRelations || []).forEach((rel) => {
@@ -284,6 +297,8 @@ const CommunityGraph = () => {
       }
     });
 
+    // Skip contributor nodes and living links in défunts-only mode
+    if (!isDefuntsOnly) {
     // Group posts by user
     const userPosts = new Map<string, Array<{ memorialId: string; category: string; name: string }>>();
     filteredPosts.forEach((post) => {
@@ -424,9 +439,10 @@ const CommunityGraph = () => {
         }
       }
     }
+    } // end if (!isDefuntsOnly)
 
     return { nodes, edges };
-  }, [memorials, filteredPosts, memorialRelations, socialInferences, canvasSize]);
+  }, [memorials, filteredPosts, memorialRelations, socialInferences, canvasSize, isDefuntsOnly]);
 
   // Force simulation with organic jitter for living nodes
   const simulate = useCallback(() => {
@@ -1002,7 +1018,7 @@ const CommunityGraph = () => {
                 <span className="text-xs text-muted-foreground font-sans mr-1">Filtrer :</span>
                 {ALL_CATEGORIES.map((cat) => {
                   const isActive = activeFilters.has(cat);
-                  const colorDot = getCategoryColor(cat);
+                  const colorDot = cat === FILTER_DEFUNTS ? "#1F2937" : getCategoryColor(cat);
                   return (
                     <Badge
                       key={cat}
