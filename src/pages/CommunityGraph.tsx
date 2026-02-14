@@ -23,6 +23,13 @@ interface GraphNode {
   vx: number;
   vy: number;
   radius: number;
+  /** 0–1 depth layer for 3D parallax (0 = background, 1 = foreground) */
+  depth: number;
+  /** Fixed position for deceased anchoring */
+  fx?: number;
+  fy?: number;
+  /** Unique random seed for Brownian drift */
+  driftSeed: number;
 }
 
 interface GraphEdge {
@@ -240,16 +247,22 @@ const CommunityGraph = () => {
     activeMemorials.forEach((m, i) => {
       const angle = (2 * Math.PI * i) / Math.max(activeMemorials.length, 1);
       const radius = 120;
+      const posX = centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 20;
+      const posY = centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 20;
       const node: GraphNode = {
         id: `memorial-${m.id}`,
         label: `${m.first_name} ${m.last_name}`,
         type: "deceased",
         memorialId: m.id,
-        x: centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 20,
-        y: centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 20,
+        x: posX,
+        y: posY,
         vx: 0,
         vy: 0,
         radius: 18,
+        depth: 0.5,
+        fx: posX,
+        fy: posY,
+        driftSeed: 0,
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -288,6 +301,8 @@ const CommunityGraph = () => {
     userPosts.forEach((posts, uid) => {
       const angle = (2 * Math.PI * contIdx) / Math.max(userPosts.size, 1);
       const radius = 250 + (Math.random() - 0.5) * 60;
+      const depthVal = 0.3 + Math.random() * 0.7; // 0.3–1.0 for 3D parallax
+      const seed = Math.random() * 1000;
       const node: GraphNode = {
         id: `user-${uid}`,
         label: posts[0].name,
@@ -297,7 +312,9 @@ const CommunityGraph = () => {
         y: centerY + Math.sin(angle) * radius,
         vx: 0,
         vy: 0,
-        radius: 12,
+        radius: 10 + depthVal * 5, // 10–15 based on depth
+        depth: depthVal,
+        driftSeed: seed,
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -424,6 +441,7 @@ const CommunityGraph = () => {
     const damping = 0.85;
     const cX = canvasSize.w / 2;
     const cY = canvasSize.h / 2;
+    const collisionPadding = 4;
 
     // Repulsion
     for (let i = 0; i < nodes.length; i++) {
@@ -434,10 +452,25 @@ const CommunityGraph = () => {
         const force = repulsion / (dist * dist);
         const fx = (dx / dist) * force * alpha;
         const fy = (dy / dist) * force * alpha;
-        nodes[i].vx -= fx;
-        nodes[i].vy -= fy;
-        nodes[j].vx += fx;
-        nodes[j].vy += fy;
+        if (nodes[i].fx === undefined) { nodes[i].vx -= fx; nodes[i].vy -= fy; }
+        if (nodes[j].fx === undefined) { nodes[j].vx += fx; nodes[j].vy += fy; }
+      }
+    }
+
+    // forceCollide — prevent overlap with depth-aware radii
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[j].x - nodes[i].x;
+        const dy = nodes[j].y - nodes[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const minDist = nodes[i].radius + nodes[j].radius + collisionPadding;
+        if (dist < minDist) {
+          const overlap = (minDist - dist) / dist * 0.5;
+          const ox = dx * overlap;
+          const oy = dy * overlap;
+          if (nodes[i].fx === undefined) { nodes[i].x -= ox; nodes[i].y -= oy; }
+          if (nodes[j].fx === undefined) { nodes[j].x += ox; nodes[j].y += oy; }
+        }
       }
     }
 
@@ -456,41 +489,42 @@ const CommunityGraph = () => {
       const force = displacement * str * alpha;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
-      s.vx += fx;
-      s.vy += fy;
-      t.vx -= fx;
-      t.vy -= fy;
+      if (s.fx === undefined) { s.vx += fx; s.vy += fy; }
+      if (t.fx === undefined) { t.vx -= fx; t.vy -= fy; }
     });
 
     // Stronger center gravity for deceased nodes
     nodes.forEach((n) => {
       if (n.type === "deceased") {
-        n.vx += (cX - n.x) * 0.008;
-        n.vy += (cY - n.y) * 0.008;
+        // Deceased are anchored — skip velocity
+      } else {
+        n.vx += (cX - n.x) * 0.001;
+        n.vy += (cY - n.y) * 0.001;
       }
     });
 
-    // Center gravity
-    nodes.forEach((n) => {
-      n.vx += (cX - n.x) * 0.001;
-      n.vy += (cY - n.y) * 0.001;
-    });
-
-    // Update positions + organic jitter for living nodes
+    // Update positions — Brownian drift for living, anchored for deceased
     const now = performance.now() * 0.001;
     nodes.forEach((n) => {
+      if (n.fx !== undefined && n.fy !== undefined) {
+        // Deceased: anchored, immovable
+        n.x = n.fx;
+        n.y = n.fy;
+        n.vx = 0;
+        n.vy = 0;
+        return;
+      }
+      // Living: apply velocity + individual Brownian drift
       n.vx *= damping;
       n.vy *= damping;
       n.x += n.vx;
       n.y += n.vy;
-      // Brownian breathing for living nodes only
-      if (n.type === "contributor") {
-        const jitterAmp = 0.3;
-        const freq = 0.5 + (n.id.charCodeAt(5) % 10) * 0.05;
-        const phase = (n.id.charCodeAt(6) || 0) * 0.7;
-        n.x += Math.sin(now * freq + phase) * jitterAmp;
-        n.y += Math.cos(now * freq * 0.8 + phase + 1.3) * jitterAmp;
-      }
+      // Individual Brownian motion — unique freq/phase per node from driftSeed
+      const freq = 0.3 + (n.driftSeed % 7) * 0.08;
+      const phase = n.driftSeed * 0.37;
+      const driftAmp = 0.2 + n.depth * 0.3; // deeper nodes drift more (parallax)
+      n.x += Math.sin(now * freq + phase) * driftAmp;
+      n.y += Math.cos(now * freq * 0.7 + phase + 2.1) * driftAmp;
       // Bounds
       n.x = Math.max(30, Math.min(canvasSize.w - 30, n.x));
       n.y = Math.max(30, Math.min(canvasSize.h - 30, n.y));
@@ -592,37 +626,44 @@ const CommunityGraph = () => {
       }
     });
 
-    // Draw nodes
-    nodes.forEach((node) => {
+    // Draw nodes — sorted by depth for 3D parallax (background first)
+    const sortedNodes = [...nodes].sort((a, b) => a.depth - b.depth);
+    sortedNodes.forEach((node) => {
+      // 3D parallax: scale radius and opacity by depth
+      const depthScale = node.type === "deceased" ? 1.0 : (0.7 + node.depth * 0.3);
+      const drawRadius = node.radius * depthScale;
+      const depthAlpha = node.type === "deceased" ? 1.0 : (0.5 + node.depth * 0.5);
+
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+      ctx.arc(node.x, node.y, drawRadius, 0, Math.PI * 2);
 
       if (node.type === "deceased") {
         ctx.fillStyle = "#1F2937";
         ctx.fill();
         // Halo
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + 4, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, drawRadius + 4, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(31,41,55,0.2)";
         ctx.lineWidth = 2;
         ctx.stroke();
       } else {
         const color = getCategoryColor(node.category || "");
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.85;
+        ctx.globalAlpha = depthAlpha;
         ctx.fill();
         ctx.globalAlpha = 1;
       }
 
       // Label
       ctx.fillStyle = node.type === "deceased" ? "#1F2937" : "#374151";
+      const fontSize = node.type === "deceased" ? 11 : Math.round(8 + node.depth * 3);
       ctx.font = node.type === "deceased" 
-        ? "bold 11px 'Cormorant Garamond', serif" 
-        : "10px 'Inter', sans-serif";
+        ? `bold ${fontSize}px 'Cormorant Garamond', serif` 
+        : `${fontSize}px 'Inter', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       
-      const labelY = node.y + node.radius + 4;
+      const labelY = node.y + drawRadius + 4;
       const rawLabel = isAuthenticated ? node.label : maskName(node.label);
       const shortLabel = rawLabel.length > 14
         ? rawLabel.substring(0, 14) + "…"
@@ -631,9 +672,10 @@ const CommunityGraph = () => {
 
       // Initial inside circle
       ctx.fillStyle = "#FFFFFF";
+      const initFontSize = node.type === "deceased" ? 13 : Math.round(8 + node.depth * 4);
       ctx.font = node.type === "deceased"
-        ? "bold 13px 'Cormorant Garamond', serif"
-        : "10px 'Inter', sans-serif";
+        ? `bold ${initFontSize}px 'Cormorant Garamond', serif`
+        : `${initFontSize}px 'Inter', sans-serif`;
       ctx.textBaseline = "middle";
       ctx.fillText(
         node.label.charAt(0).toUpperCase(),
@@ -777,24 +819,43 @@ const CommunityGraph = () => {
     }
 
     const tick = () => {
-      // Full force simulation for first 200 ticks, then only jitter + energy flow
+      // Full force simulation for first 200 ticks (layout), then alphaTarget(0.3) low-energy mode
       if (iterations < maxForceIterations) {
         simulate();
         iterations++;
       } else {
-        // Lightweight: only jitter living nodes + advance dash offset
+        // Low-energy mode: individual Brownian drift + collision + energy flow
         const now = performance.now() * 0.001;
-        nodesRef.current.forEach((n) => {
-          if (n.type === "contributor") {
-            const jitterAmp = 0.15;
-            const freq = 0.5 + (n.id.charCodeAt(5) % 10) * 0.05;
-            const phase = (n.id.charCodeAt(6) || 0) * 0.7;
-            n.x += Math.sin(now * freq + phase) * jitterAmp;
-            n.y += Math.cos(now * freq * 0.8 + phase + 1.3) * jitterAmp;
-            n.x = Math.max(30, Math.min(canvasSize.w - 30, n.x));
-            n.y = Math.max(30, Math.min(canvasSize.h - 30, n.y));
-          }
+        const nodes = nodesRef.current;
+        const collisionPad = 4;
+        
+        // Brownian drift per living node
+        nodes.forEach((n) => {
+          if (n.fx !== undefined) return; // deceased anchored
+          const freq = 0.3 + (n.driftSeed % 7) * 0.08;
+          const phase = n.driftSeed * 0.37;
+          const driftAmp = 0.15 + n.depth * 0.2;
+          n.x += Math.sin(now * freq + phase) * driftAmp;
+          n.y += Math.cos(now * freq * 0.7 + phase + 2.1) * driftAmp;
+          n.x = Math.max(30, Math.min(canvasSize.w - 30, n.x));
+          n.y = Math.max(30, Math.min(canvasSize.h - 30, n.y));
         });
+        
+        // Lightweight collision pass
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[j].x - nodes[i].x;
+            const dy = nodes[j].y - nodes[i].y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const minDist = nodes[i].radius + nodes[j].radius + collisionPad;
+            if (dist < minDist) {
+              const overlap = (minDist - dist) / dist * 0.3;
+              if (nodes[i].fx === undefined) { nodes[i].x -= dx * overlap; nodes[i].y -= dy * overlap; }
+              if (nodes[j].fx === undefined) { nodes[j].x += dx * overlap; nodes[j].y += dy * overlap; }
+            }
+          }
+        }
+        
         dashOffsetRef.current -= 0.4;
       }
       draw();
@@ -991,7 +1052,7 @@ const CommunityGraph = () => {
                 <canvas
                   ref={canvasRef}
                   className="w-full"
-                  style={{ height: `${canvasSize.h}px`, cursor: (hoveredNode || hoveredEdge) ? "pointer" : "default" }}
+                  style={{ height: `${canvasSize.h}px`, cursor: (hoveredNode || hoveredEdge) ? "pointer" : "default", willChange: "transform" }}
                   onMouseMove={handleMouseMove}
                   onMouseLeave={() => { setHoveredNode(null); setHoveredEdge(null); }}
                 />
