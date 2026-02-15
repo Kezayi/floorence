@@ -281,7 +281,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Send grouped emails
-    const origin = "https://floorence.lovable.app";
+    const origin = "https://floorence.org";
     let sentCount = 0;
     const notifiedIds: string[] = [];
 

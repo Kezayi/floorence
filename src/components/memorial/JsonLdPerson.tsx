@@ -33,7 +33,7 @@ const JsonLdPerson = ({ name, birthDate, deathDate, description, image, url }: J
     isPartOf: {
       "@type": "WebSite",
       name: "Floorence",
-      url: "https://floorence.lovable.app",
+      url: "https://floorence.org",
     },
   };
 
