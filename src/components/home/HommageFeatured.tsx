@@ -28,7 +28,7 @@ const HommageFeatured = () => {
   useEffect(() => {
     const fetchTributes = async () => {
       // Use RPC to bypass RLS restrictions on guestbook_posts for anon users
-      const { data: posts } = await supabase.rpc("get_public_guestbook_posts");
+      const { data: posts } = await supabase.rpc("get_public_guestbook_posts", { p_limit: 50 });
 
       if (!posts || posts.length === 0) {
         setLoaded(true);
