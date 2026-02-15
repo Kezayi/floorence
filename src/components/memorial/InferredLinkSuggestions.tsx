@@ -36,7 +36,7 @@ const InferredLinkSuggestions = ({ memorialId, memorialName }: InferredLinkSugge
     queryKey: ["inferred-links-posts", memorialId],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_public_guestbook_posts");
+      const { data } = await supabase.rpc("get_public_guestbook_posts", { p_limit: 200 });
       return data || [];
     },
   });
