@@ -818,43 +818,22 @@ export type Database = {
           count: number
         }[]
       }
-      get_public_guestbook_posts:
-        | {
-            Args: { p_memorial_id?: string }
-            Returns: {
-              author_name: string
-              candle_count: number
-              content: string
-              created_at: string
-              flower_count: number
-              id: string
-              memorial_id: string
-              photos: string[]
-              relation_category: string
-              relation_link: string
-              updated_at: string
-            }[]
-          }
-        | {
-            Args: {
-              p_limit?: number
-              p_memorial_id?: string
-              p_offset?: number
-            }
-            Returns: {
-              author_name: string
-              candle_count: number
-              content: string
-              created_at: string
-              flower_count: number
-              id: string
-              memorial_id: string
-              photos: string[]
-              relation_category: string
-              relation_link: string
-              updated_at: string
-            }[]
-          }
+      get_public_guestbook_posts: {
+        Args: { p_limit?: number; p_memorial_id?: string; p_offset?: number }
+        Returns: {
+          author_name: string
+          candle_count: number
+          content: string
+          created_at: string
+          flower_count: number
+          id: string
+          memorial_id: string
+          photos: string[]
+          relation_category: string
+          relation_link: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
