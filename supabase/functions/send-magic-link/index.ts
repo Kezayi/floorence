@@ -151,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const origin = req.headers.get("origin") || "https://floorence.lovable.app";
+    const origin = req.headers.get("origin") || "https://floorence.org";
     const finalRedirect = redirectTo || `${origin}/compte`;
 
     const supabaseAdmin = createClient(

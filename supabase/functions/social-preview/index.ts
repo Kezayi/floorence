@@ -8,8 +8,8 @@ const corsHeaders = {
 // Regex to detect social media crawlers
 const CRAWLER_REGEX = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Pinterest|Discordbot|Googlebot|bingbot/i;
 
-const DEFAULT_IMAGE = 'https://floorence.lovable.app/icons/icon-512x512.png';
-const APP_BASE_URL = 'https://floorence.lovable.app';
+const DEFAULT_IMAGE = 'https://floorence.org/icons/icon-512x512.png';
+const APP_BASE_URL = 'https://floorence.org';
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
