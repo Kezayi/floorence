@@ -850,6 +850,8 @@ export type Database = {
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       transitive_rule: { Args: { r_px: string; r_py: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
