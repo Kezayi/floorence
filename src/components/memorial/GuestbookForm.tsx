@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus } from "lucide-react";
+import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock } from "lucide-react";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
  import { Button } from "@/components/ui/button";
 import {
@@ -25,22 +25,25 @@ interface GuestbookFormProps {
     candleCount: number;
     flowerCount: number;
   }) => void | Promise<void>;
+  /** If the user already posted on this memorial, lock their relation */
+  lockedRelation?: { link: string; category: string };
 }
 
 const MAX_PHOTOS = 3;
 
-const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
+const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormProps) => {
   const { user } = useAuth();
   const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { isAdminOrMod } = useAdminRole();
   const [messageContent, setMessageContent] = useState("");
-  const [selectedRelation, setSelectedRelation] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedRelation, setSelectedRelation] = useState(lockedRelation?.link || "");
+  const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "");
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
   const [flowerCount, setFlowerCount] = useState(0);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Block non-authenticated users - must sign in to post
@@ -118,9 +121,26 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!selectedRelation) {
+      newErrors.relation = "Veuillez sélectionner votre lien de parenté avec le défunt";
+    }
+    
+    if (!messageContent.trim()) {
+      newErrors.content = "Veuillez rédiger votre message d'hommage";
+    } else if (messageContent.trim().length < 10) {
+      newErrors.content = "Votre message doit contenir au moins 10 caractères";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageContent.trim() || !selectedRelation) return;
+    if (!validateForm()) return;
 
     // Show confirmation dialog
     setShowConfirmDialog(true);
@@ -142,11 +162,10 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
 
       // Reset form only on success
       setMessageContent("");
-      setSelectedRelation("");
-      setSelectedCategory("");
       setPhotos([]);
       setCandleCount(0);
       setFlowerCount(0);
+      setErrors({});
       setShowConfirmDialog(false);
     } catch (error) {
       console.error('Submit error:', error);
@@ -156,27 +175,62 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
     }
   };
 
-  const canSubmit = messageContent.trim() && selectedRelation;
+  const isRelationLocked = !!lockedRelation?.link;
 
   return (
     <>
       <form onSubmit={handleSubmitClick} className="mb-12">
         <div className="space-y-4">
-          <RelationSelect
-            value={selectedRelation}
-            onChange={(sel: RelationSelection) => {
-              setSelectedRelation(sel.link);
-              setSelectedCategory(sel.category);
-            }}
-          />
+          {/* Relation select — locked after first post */}
+          <div>
+            {isRelationLocked ? (
+              <div className="flex items-center gap-2 p-4 bg-memorial-dark border border-memorial-dark-muted/30 rounded-sm">
+                <Lock className="w-4 h-4 text-memorial-dark-muted flex-shrink-0" />
+                <span className="text-memorial-dark-foreground font-serif text-sm">
+                  {lockedRelation.link}
+                </span>
+                <span className="text-memorial-dark-muted text-xs font-sans ml-auto">
+                  Lien verrouillé
+                </span>
+              </div>
+            ) : (
+              <>
+                <RelationSelect
+                  value={selectedRelation}
+                  onChange={(sel: RelationSelection) => {
+                    setSelectedRelation(sel.link);
+                    setSelectedCategory(sel.category);
+                    setErrors((prev) => { const { relation, ...rest } = prev; return rest; });
+                  }}
+                />
+                {errors.relation && (
+                  <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.relation}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
-          <textarea
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            placeholder="Votre message..."
-            rows={4}
-            className="w-full p-4 bg-memorial-dark border border-memorial-dark-muted/30 text-memorial-dark-foreground placeholder:text-memorial-dark-muted font-serif resize-none focus:outline-none focus:ring-1 focus:ring-memorial-dark-foreground/30"
-          />
+          <div>
+            <textarea
+              value={messageContent}
+              onChange={(e) => {
+                setMessageContent(e.target.value);
+                if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
+              }}
+              placeholder="Votre message..."
+              rows={4}
+              className={`w-full p-4 bg-memorial-dark border ${errors.content ? 'border-red-500' : 'border-memorial-dark-muted/30'} text-memorial-dark-foreground placeholder:text-memorial-dark-muted font-serif resize-none focus:outline-none focus:ring-1 focus:ring-memorial-dark-foreground/30`}
+            />
+            {errors.content && (
+              <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.content}
+              </p>
+            )}
+          </div>
 
           {/* Photo upload section */}
           <div className="space-y-3">
@@ -290,7 +344,6 @@ const GuestbookForm = ({ memorialId, onSubmit }: GuestbookFormProps) => {
 
           <button
             type="submit"
-            disabled={!canSubmit}
             className="btn-memorial bg-memorial-dark-foreground text-memorial-dark hover:bg-memorial-dark-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Publier mon hommage
