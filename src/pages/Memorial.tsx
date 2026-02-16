@@ -254,6 +254,9 @@ const MemorialInner = () => {
   // State for guestbook posts from database
   const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostData[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  
+  // State for locked relation (user's first post relation on this memorial)
+  const [userLockedRelation, setUserLockedRelation] = useState<{ link: string; category: string } | undefined>(undefined);
 
   // Fetch guestbook posts from Supabase
   const fetchGuestbookPosts = useCallback(async () => {
@@ -312,6 +315,31 @@ const MemorialInner = () => {
   useEffect(() => {
     fetchGuestbookPosts();
   }, [fetchGuestbookPosts]);
+
+  // Fetch user's locked relation (first post on this memorial)
+  useEffect(() => {
+    if (!user?.id || !memorialData?.id || !isValidUUID(memorialData.id)) {
+      setUserLockedRelation(undefined);
+      return;
+    }
+    const fetchLockedRelation = async () => {
+      const { data } = await supabase
+        .from('guestbook_posts')
+        .select('relation_category, relation_link')
+        .eq('memorial_id', memorialData.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data?.relation_link) {
+        setUserLockedRelation({ link: data.relation_link, category: data.relation_category });
+      } else {
+        setUserLockedRelation(undefined);
+      }
+    };
+    fetchLockedRelation();
+  }, [user?.id, memorialData?.id]);
  
    // Realtime subscription for new posts
    useEffect(() => {
@@ -928,27 +956,24 @@ const MemorialInner = () => {
           );
         })()}
 
-        {/* Guestbook - Dark Zone */}
-        <section className="dark-zone section-padding">
+        {/* Hommages Section */}
+        {guestbookPosts.length > 0 && (
+        <section className="section-padding bg-muted/30">
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-2">
-                <Book className="w-6 h-6 text-memorial-dark-foreground" />
-                <h2 className="text-memorial-dark-foreground">Livre d'or</h2>
+                <Heart className="w-6 h-6 text-primary" />
+                <h2>Hommages</h2>
               </div>
-              <p className="font-serif text-memorial-dark-muted mb-1">
-                Partagez un souvenir ou un message de soutien à la famille
+              <p className="font-serif text-muted-foreground mb-1">
+                Les témoignages de ceux qui ont connu {safeName}
               </p>
-              <p className="text-xs text-memorial-dark-muted/70 mb-8 font-sans">
-                {guestbookPosts.length} message{guestbookPosts.length > 1 ? "s" : ""}
+              <p className="text-xs text-muted-foreground/70 mb-8 font-sans">
+                {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
-              <div ref={guestbookFormRef}>
-                <GuestbookForm memorialId={memorialData?.id || ""} onSubmit={handleSubmitPost} />
-              </div>
-
-              <div className="divide-y divide-memorial-dark-muted/20 mt-8">
-              {visiblePosts.map((post) => (
+              <div className="divide-y divide-border">
+                {visiblePosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
                     post={post}
@@ -964,12 +989,36 @@ const MemorialInner = () => {
               {hasMorePosts && (
                 <div ref={loadMoreRef} className="py-6 flex justify-center">
                   <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" />
-                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" style={{ animationDelay: "0.2s" }} />
-                    <div className="w-2 h-2 rounded-full bg-memorial-dark-muted/40 skeleton-shimmer" style={{ animationDelay: "0.4s" }} />
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" />
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" style={{ animationDelay: "0.2s" }} />
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" style={{ animationDelay: "0.4s" }} />
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* Livre d'Or - Dark Zone (form only) */}
+        <section className="dark-zone section-padding">
+          <div className="container mx-auto">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3 mb-2">
+                <Book className="w-6 h-6 text-memorial-dark-foreground" />
+                <h2 className="text-memorial-dark-foreground">Livre d'or</h2>
+              </div>
+              <p className="font-serif text-memorial-dark-muted mb-8">
+                Partagez un souvenir ou un message de soutien à la famille
+              </p>
+
+              <div ref={guestbookFormRef}>
+                <GuestbookForm
+                  memorialId={memorialData?.id || ""}
+                  onSubmit={handleSubmitPost}
+                  lockedRelation={userLockedRelation}
+                />
+              </div>
             </div>
           </div>
         </section>
