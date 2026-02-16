@@ -13,6 +13,8 @@ import { checkForbiddenName } from "@/lib/forbiddenNames";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DateMaskedInput } from "@/components/ui/DateMaskedInput";
+import { formatDateFrench } from "@/lib/dateUtils";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -80,12 +82,14 @@ const CreateMemorial = () => {
       if (formData.birthDate && formData.deathDate) {
         const birth = new Date(formData.birthDate);
         const death = new Date(formData.deathDate);
-        if (death < birth) {
-          newErrors.deathDate = "La date de décès doit être après la naissance";
+        if (death <= birth) {
+          newErrors.deathDate = "La date de décès doit être strictement postérieure à la date de naissance";
         }
       }
 
-      if (!formData.funeralDate) {
+      // Funeral date required only if death date is in the past or today
+      const deathIsInFuture = formData.deathDate && new Date(formData.deathDate) > new Date();
+      if (!deathIsInFuture && !formData.funeralDate) {
         newErrors.funeralDate = "La date des obsèques est obligatoire";
       }
 
@@ -431,18 +435,12 @@ const CreateMemorial = () => {
                         <label className="block text-sm font-sans text-muted-foreground mb-2">
                           Date de naissance *
                         </label>
-                        <input
-                          type="date"
+                        <DateMaskedInput
                           value={formData.birthDate}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              birthDate: e.target.value,
-                            }))
+                          onChange={(val) =>
+                            setFormData((prev) => ({ ...prev, birthDate: val }))
                           }
-                          className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
-                            errors.birthDate ? "ring-1 ring-destructive" : ""
-                          }`}
+                          hasError={!!errors.birthDate}
                         />
                         <ErrorMessage message={errors.birthDate} />
                       </div>
@@ -450,24 +448,19 @@ const CreateMemorial = () => {
                         <label className="block text-sm font-sans text-muted-foreground mb-2">
                           Date de décès *
                         </label>
-                        <input
-                          type="date"
+                        <DateMaskedInput
                           value={formData.deathDate}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              deathDate: e.target.value,
-                            }))
+                          onChange={(val) =>
+                            setFormData((prev) => ({ ...prev, deathDate: val }))
                           }
-                          className={`w-full p-4 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring ${
-                            errors.deathDate ? "ring-1 ring-destructive" : ""
-                          }`}
+                          hasError={!!errors.deathDate}
                         />
                         <ErrorMessage message={errors.deathDate} />
                       </div>
                     </div>
 
-                    {/* Funeral date and location */}
+                    {/* Funeral date and location — hidden if death date is in the future */}
+                    {!(formData.deathDate && new Date(formData.deathDate) > new Date()) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
                       <div>
                         <label className="block text-sm font-sans text-muted-foreground mb-2">
@@ -509,6 +502,7 @@ const CreateMemorial = () => {
                         />
                       </div>
                     </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-sans text-muted-foreground mb-2">
@@ -732,7 +726,7 @@ const CreateMemorial = () => {
                       <div className="flex-1">
                         <h3 className="mb-2">{formData.name || "Nom du défunt"}</h3>
                         <p className="font-sans text-sm text-muted-foreground mb-2">
-                          {formData.birthDate} — {formData.deathDate}
+                          {formatDateFrench(formData.birthDate)} — {formatDateFrench(formData.deathDate)}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           <span className="inline-block px-2 py-1 bg-primary text-primary-foreground text-xs font-sans">
