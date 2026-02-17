@@ -53,6 +53,11 @@
     --memorial-dark-foreground: 0 0% 92%;
     --memorial-dark-muted: 0 0% 35%;
 
+    /* Zone Hommages - Brun terre solennel */
+    --hommages-bg: 25 30% 12%;
+    --hommages-foreground: 30 15% 90%;
+    --hommages-muted: 25 15% 50%;
+
     /* Gestes symboliques */
     --candle-glow: 45 80% 55%;
     --flower-soft: 340 30% 75%;
