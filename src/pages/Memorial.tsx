@@ -290,7 +290,7 @@ const MemorialInner = () => {
       } else {
         const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
           id: post.id,
-          authorId: `anon-${post.id}`,
+          authorId: post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`,
           authorName: post.author_name || 'Anonyme',
           authorAvatarUrl: post.author_name ? getDemoAvatarUrl(post.author_name) : null,
           relationCategory: post.relation_category || 'autre',
@@ -364,7 +364,7 @@ const MemorialInner = () => {
               return [
                 {
                   id: newPost?.id,
-                  authorId: `anon-${newPost?.id}`,
+                  authorId: newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`,
                   authorName: newPost?.author_name || 'Anonyme',
                   relationCategory: newPost?.relation_category || 'autre',
                   relationLink: newPost?.relation_link || null,
@@ -956,19 +956,19 @@ const MemorialInner = () => {
           );
         })()}
 
-        {/* Hommages Section */}
+        {/* Hommages Section — Fond brun solennel "Silence & Dignité" */}
         {guestbookPosts.length > 0 && (
-        <section className="section-padding bg-muted/30">
+        <section className="section-padding" style={{ backgroundColor: 'hsl(var(--hommages-bg))', color: 'hsl(var(--hommages-foreground))' }}>
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-2">
-                <Heart className="w-6 h-6 text-primary" />
-                <h2>Hommages</h2>
+                <Heart className="w-6 h-6" style={{ color: 'hsl(var(--hommages-foreground))' }} />
+                <h2 style={{ color: 'hsl(var(--hommages-foreground))' }}>Hommages</h2>
               </div>
-              <p className="font-serif text-muted-foreground mb-1">
+              <p className="font-serif mb-1" style={{ color: 'hsl(var(--hommages-muted))' }}>
                 Les témoignages de ceux qui ont connu {safeName}
               </p>
-              <p className="text-xs text-muted-foreground/70 mb-8 font-sans">
+              <p className="text-xs mb-8 font-sans" style={{ color: 'hsl(var(--hommages-muted) / 0.7)' }}>
                 {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
