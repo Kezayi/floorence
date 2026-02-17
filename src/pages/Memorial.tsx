@@ -288,19 +288,30 @@ const MemorialInner = () => {
         console.error('Error fetching guestbook posts:', error);
         setGuestbookPosts([]);
       } else {
-        const posts: GuestbookPostData[] = (data || []).map((post: any) => ({
-          id: post.id,
-          authorId: post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`,
-          authorName: post.author_name || 'Anonyme',
-          authorAvatarUrl: post.author_name ? getDemoAvatarUrl(post.author_name) : null,
-          relationCategory: post.relation_category || 'autre',
-          relationLink: post.relation_link || null,
-          content: post.content || '',
-          photos: post.photos || [],
-          createdAt: post.created_at,
-          candleCount: post.candle_count ?? 0,
-          flowerCount: post.flower_count ?? 0,
-        }));
+        const isDemo = memorialData?.isDemo === true;
+        const posts: GuestbookPostData[] = (data || []).map((post: any) => {
+          // For real memorials (12th+), use the actual author_photo_url from profiles
+          // For demo memorials (first 11), use deterministic demo avatars
+          const avatarUrl = isDemo
+            ? (post.author_name ? getDemoAvatarUrl(post.author_name) : null)
+            : (post.author_photo_url || null);
+
+          return {
+            id: post.id,
+            authorId: post.user_id
+              ? `author-${post.user_id}`
+              : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`),
+            authorName: post.author_name || 'Anonyme',
+            authorAvatarUrl: avatarUrl,
+            relationCategory: post.relation_category || 'autre',
+            relationLink: post.relation_link || null,
+            content: post.content || '',
+            photos: post.photos || [],
+            createdAt: post.created_at,
+            candleCount: post.candle_count ?? 0,
+            flowerCount: post.flower_count ?? 0,
+          };
+        });
         setGuestbookPosts(posts);
       }
     } catch (err) {
@@ -361,11 +372,17 @@ const MemorialInner = () => {
            setGuestbookPosts((prev) => {
              if (prev.some((p) => p.id === newPost?.id)) return prev;
              
+              const isDemo = memorialData?.isDemo === true;
               return [
                 {
                   id: newPost?.id,
-                  authorId: newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`,
+                  authorId: newPost?.user_id
+                    ? `author-${newPost.user_id}`
+                    : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
                   authorName: newPost?.author_name || 'Anonyme',
+                  authorAvatarUrl: isDemo
+                    ? (newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null)
+                    : (newPost?.author_photo_url || null),
                   relationCategory: newPost?.relation_category || 'autre',
                   relationLink: newPost?.relation_link || null,
                   content: newPost?.content || '',
@@ -1000,15 +1017,15 @@ const MemorialInner = () => {
         </section>
         )}
 
-        {/* Livre d'Or - Dark Zone (form only) */}
-        <section className="dark-zone section-padding">
+        {/* Livre d'Or - Ghostwhite Zone (form only) */}
+        <section className="section-padding" style={{ backgroundColor: 'hsl(var(--livreor-bg))', color: 'hsl(var(--livreor-foreground))' }}>
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-2">
-                <Book className="w-6 h-6 text-memorial-dark-foreground" />
-                <h2 className="text-memorial-dark-foreground">Livre d'or</h2>
+                <Book className="w-6 h-6" style={{ color: 'hsl(var(--livreor-foreground))' }} />
+                <h2 style={{ color: 'hsl(var(--livreor-foreground))' }}>Livre d'or</h2>
               </div>
-              <p className="font-serif text-memorial-dark-muted mb-8">
+              <p className="font-serif mb-8" style={{ color: 'hsl(var(--livreor-muted))' }}>
                 Partagez un souvenir ou un message de soutien à la famille
               </p>
 
