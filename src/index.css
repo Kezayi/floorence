@@ -58,6 +58,11 @@
     --hommages-foreground: 30 15% 90%;
     --hommages-muted: 25 15% 50%;
 
+    /* Zone Livre d'Or - Ghostwhite */
+    --livreor-bg: 240 6% 97%;
+    --livreor-foreground: 0 0% 15%;
+    --livreor-muted: 0 0% 45%;
+
     /* Gestes symboliques */
     --candle-glow: 45 80% 55%;
     --flower-soft: 340 30% 75%;

@@ -822,6 +822,7 @@ export type Database = {
         Args: { p_limit?: number; p_memorial_id?: string; p_offset?: number }
         Returns: {
           author_name: string
+          author_photo_url: string
           candle_count: number
           content: string
           created_at: string
@@ -832,6 +833,7 @@ export type Database = {
           relation_category: string
           relation_link: string
           updated_at: string
+          user_id: string
         }[]
       }
       has_role: {
