@@ -89,7 +89,7 @@ const GuestbookPost = ({
   const hasFlowerFervor = post.flowerCount > 5;
 
   return (
-    <article className="py-6 border-b border-memorial-dark-muted/20 last:border-0 animate-fade-in">
+    <article className="py-6 border-b border-livreor-muted/30 last:border-0 animate-fade-in">
       {/* Author info with avatar */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-start gap-3">
@@ -101,25 +101,25 @@ const GuestbookPost = ({
           />
           <div>
             <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
-              <h4 className="font-serif text-lg text-memorial-dark-foreground cursor-pointer hover:underline decoration-memorial-dark-muted/40 underline-offset-4 transition-all">
+              <h4 className="font-serif text-lg text-livreor-foreground cursor-pointer hover:underline decoration-livreor-muted/40 underline-offset-4 transition-all">
                 {displayName(post.authorName, isAuthenticated)}
                 {isDeletedUser && (
-                  <span className="text-memorial-dark-muted ml-1">*</span>
+                  <span className="text-livreor-muted ml-1">*</span>
                 )}
               </h4>
             </AuthorTooltip>
-            <span className="block mt-0.5 text-[11px] font-sans italic text-muted-foreground">
+            <span className="block mt-0.5 text-[11px] font-sans italic text-livreor-muted">
               {formatRelationLabel(post.relationLink || post.relationCategory, deceasedGender)}
             </span>
           </div>
         </div>
-        <time className="text-xs text-memorial-dark-muted font-sans">
+        <time className="text-xs text-livreor-muted font-sans">
           {formattedDate}
         </time>
       </div>
 
       {/* Message content */}
-      <p className="font-serif text-base leading-relaxed text-memorial-dark-foreground/90 italic mb-4">
+      <p className="font-serif text-base leading-relaxed text-livreor-foreground italic mb-4">
         &ldquo;{post.content}&rdquo;
       </p>
 
@@ -130,7 +130,7 @@ const GuestbookPost = ({
             <button
               key={index}
               onClick={() => openLightbox(index)}
-              className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-memorial-dark-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-memorial-dark-foreground/30 transition-all"
+              className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-livreor-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-livreor-foreground/30 transition-all"
             >
               <img
                 src={photo}
@@ -155,7 +155,7 @@ const GuestbookPost = ({
         {isOwner && post.candleCount < 10 ? (
           <button
             onClick={handleCandleClick}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-candle))] cursor-pointer ${hasCandleFervor ? 'fervor-glow-candle' : ''}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-livreor-muted/20 hover:bg-livreor-muted/30 text-[hsl(var(--gesture-candle))] cursor-pointer ${hasCandleFervor ? 'fervor-glow-candle' : ''}`}
             style={{
               transform: candlePulse ? "scale(1.15)" : "scale(1)",
               transition: "transform 0.2s ease-out, background-color 0.2s",
@@ -170,8 +170,8 @@ const GuestbookPost = ({
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm ${
               post.candleCount > 0
-                ? `bg-memorial-dark-muted/15 text-[hsl(var(--gesture-candle))] ${hasCandleFervor ? 'fervor-glow-candle' : ''}`
-                : "bg-memorial-dark-muted/10 text-memorial-dark-muted/60"
+                ? `bg-livreor-muted/15 text-[hsl(var(--gesture-candle))] ${hasCandleFervor ? 'fervor-glow-candle' : ''}`
+                : "bg-livreor-muted/10 text-livreor-muted/60"
             }`}
           >
             <Flame size={14} />
@@ -185,7 +185,7 @@ const GuestbookPost = ({
         {isOwner && post.flowerCount < 10 ? (
           <button
             onClick={handleFlowerClick}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-memorial-dark-muted/20 hover:bg-memorial-dark-muted/30 text-[hsl(var(--gesture-flower))] cursor-pointer ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-livreor-muted/20 hover:bg-livreor-muted/30 text-[hsl(var(--gesture-flower))] cursor-pointer ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`}
             style={{
               transform: flowerPulse ? "scale(1.15)" : "scale(1)",
               transition: "transform 0.2s ease-out, background-color 0.2s",
@@ -200,8 +200,8 @@ const GuestbookPost = ({
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm ${
               post.flowerCount > 0
-                ? `bg-memorial-dark-muted/15 text-[hsl(var(--gesture-flower))] ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`
-                : "bg-memorial-dark-muted/10 text-memorial-dark-muted/60"
+                ? `bg-livreor-muted/15 text-[hsl(var(--gesture-flower))] ${hasFlowerFervor ? 'fervor-glow-flower' : ''}`
+                : "bg-livreor-muted/10 text-livreor-muted/60"
             }`}
           >
             <Flower2 size={14} />
