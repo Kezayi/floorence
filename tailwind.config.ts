@@ -92,6 +92,16 @@ export default {
         },
         "gesture-candle": "hsl(var(--gesture-candle))",
         "gesture-flower": "hsl(var(--gesture-flower))",
+        livreor: {
+          DEFAULT: "hsl(var(--livreor-bg))",
+          foreground: "hsl(var(--livreor-foreground))",
+          muted: "hsl(var(--livreor-muted))",
+        },
+        hommages: {
+          DEFAULT: "hsl(var(--hommages-bg))",
+          foreground: "hsl(var(--hommages-foreground))",
+          muted: "hsl(var(--hommages-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
