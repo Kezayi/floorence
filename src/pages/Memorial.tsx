@@ -84,8 +84,8 @@ const MemorialInner = () => {
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const { data: settings } = useSystemSettings();
-  const POSTS_PER_PAGE = 10;
-  const [visiblePostCount, setVisiblePostCount] = useState(POSTS_PER_PAGE);
+  const POSTS_PER_PAGE = 5;
+  const [hommagesPage, setHommagesPage] = useState(1);
 
   // ── DB Fallback State ──
   // When memorial not found in context, query DB directly to prevent false 404s
@@ -403,27 +403,17 @@ const MemorialInner = () => {
       };
    }, [memorialData?.id]);
 
-  // Reset visible count when memorial changes
+  // Reset page when memorial changes
   useEffect(() => {
-    setVisiblePostCount(POSTS_PER_PAGE);
+    setHommagesPage(1);
   }, [slug, token]);
 
-   // Infinite scroll: visible posts slice
-  const visiblePosts = useMemo(() => {
-    return guestbookPosts.slice(0, visiblePostCount);
-  }, [guestbookPosts, visiblePostCount]);
-
-  const hasMorePosts = visiblePostCount < guestbookPosts.length;
-
-  // Intersection observer for infinite scroll
-  const { ref: loadMoreRef } = useInView({
-    threshold: 0,
-    onChange: (inView) => {
-      if (inView && hasMorePosts) {
-        setVisiblePostCount((prev) => prev + POSTS_PER_PAGE);
-      }
-    },
-  });
+  // Paginated posts
+  const totalHommagesPages = Math.ceil(guestbookPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = useMemo(() => {
+    const start = (hommagesPage - 1) * POSTS_PER_PAGE;
+    return guestbookPosts.slice(start, start + POSTS_PER_PAGE);
+  }, [guestbookPosts, hommagesPage]);
 
   // Calculate totals from all posts
   const totals = useMemo(() => {
@@ -973,24 +963,24 @@ const MemorialInner = () => {
           );
         })()}
 
-        {/* Hommages Section — Fond brun solennel "Silence & Dignité" */}
+        {/* Hommages Section — Fond Ghostwhite */}
         {guestbookPosts.length > 0 && (
-        <section className="section-padding" style={{ backgroundColor: 'hsl(var(--hommages-bg))', color: 'hsl(var(--hommages-foreground))' }}>
+        <section className="section-padding bg-livreor">
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-2">
-                <Heart className="w-6 h-6" style={{ color: 'hsl(var(--hommages-foreground))' }} />
-                <h2 style={{ color: 'hsl(var(--hommages-foreground))' }}>Hommages</h2>
+                <Heart className="w-6 h-6 text-livreor-foreground" />
+                <h2 className="text-livreor-foreground">Hommages</h2>
               </div>
-              <p className="font-serif mb-1" style={{ color: 'hsl(var(--hommages-muted))' }}>
+              <p className="font-serif mb-1 text-livreor-muted">
                 Les témoignages de ceux qui ont connu {safeName}
               </p>
-              <p className="text-xs mb-8 font-sans" style={{ color: 'hsl(var(--hommages-muted) / 0.7)' }}>
+              <p className="text-xs mb-8 font-sans text-livreor-muted/70">
                 {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
               <div className="divide-y divide-border">
-                {visiblePosts.map((post) => (
+                {paginatedPosts.map((post) => (
                   <GuestbookPost
                     key={post.id}
                     post={post}
@@ -1002,14 +992,26 @@ const MemorialInner = () => {
                 ))}
               </div>
 
-              {/* Infinite scroll sentinel */}
-              {hasMorePosts && (
-                <div ref={loadMoreRef} className="py-6 flex justify-center">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" />
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" style={{ animationDelay: "0.2s" }} />
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 skeleton-shimmer" style={{ animationDelay: "0.4s" }} />
-                  </div>
+              {/* Pagination Hommages — 5 par page */}
+              {totalHommagesPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-border">
+                  <button
+                    onClick={() => setHommagesPage(p => Math.max(1, p - 1))}
+                    disabled={hommagesPage === 1}
+                    className="px-4 py-2 text-sm font-sans rounded-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-livreor-foreground hover:bg-livreor-foreground/10"
+                  >
+                    ← Précédent
+                  </button>
+                  <span className="text-sm font-sans text-livreor-muted">
+                    {hommagesPage} / {totalHommagesPages}
+                  </span>
+                  <button
+                    onClick={() => setHommagesPage(p => Math.min(totalHommagesPages, p + 1))}
+                    disabled={hommagesPage === totalHommagesPages}
+                    className="px-4 py-2 text-sm font-sans rounded-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-livreor-foreground hover:bg-livreor-foreground/10"
+                  >
+                    Suivant →
+                  </button>
                 </div>
               )}
             </div>
@@ -1018,14 +1020,14 @@ const MemorialInner = () => {
         )}
 
         {/* Livre d'Or - Ghostwhite Zone (form only) */}
-        <section className="section-padding" style={{ backgroundColor: 'hsl(var(--livreor-bg))', color: 'hsl(var(--livreor-foreground))' }}>
+        <section className="section-padding bg-livreor">
           <div className="container mx-auto">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-2">
-                <Book className="w-6 h-6" style={{ color: 'hsl(var(--livreor-foreground))' }} />
-                <h2 style={{ color: 'hsl(var(--livreor-foreground))' }}>Livre d'or</h2>
+                <Book className="w-6 h-6 text-livreor-foreground" />
+                <h2 className="text-livreor-foreground">Livre d'or</h2>
               </div>
-              <p className="font-serif mb-8" style={{ color: 'hsl(var(--livreor-muted))' }}>
+              <p className="font-serif mb-8 text-livreor-muted">
                 Partagez un souvenir ou un message de soutien à la famille
               </p>
 
