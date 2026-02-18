@@ -1,14 +1,7 @@
-import { Badge } from '@/components/ui/badge';
 import { getRelationCategory, type RelationCategoryName } from '@/lib/relationCategoryUtils';
 import { getRelationWithDeceased } from '@/lib/relationshipInference';
 
-const categoryStyles: Record<RelationCategoryName, string> = {
-  'Famille directe': 'bg-[hsl(0,25%,95%)] text-[hsl(0,40%,45%)] border-[hsl(0,25%,82%)]',
-  'Famille élargie': 'bg-[hsl(40,30%,93%)] text-[hsl(40,45%,38%)] border-[hsl(40,30%,75%)]',
-  'Alliés': 'bg-[hsl(145,20%,93%)] text-[hsl(145,30%,35%)] border-[hsl(145,20%,75%)]',
-  'Socio cœur (Amis)': 'bg-[hsl(210,25%,93%)] text-[hsl(210,35%,42%)] border-[hsl(210,25%,78%)]',
-  'Autres': 'bg-[hsl(0,0%,93%)] text-[hsl(0,0%,35%)] border-[hsl(0,0%,78%)]',
-};
+/* Relation display: minimalist italic style, no badge background */
 
 interface RelationCategoryBadgeProps {
   relation: string;
@@ -20,12 +13,12 @@ const RelationCategoryBadge = ({ relation, showCategory = false }: RelationCateg
   const displayLabel = getRelationWithDeceased(relation);
 
   return (
-    <div className="flex flex-col gap-1">
-      <Badge variant="outline" className={categoryStyles[category]}>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] font-sans italic text-muted-foreground">
         {displayLabel}
-      </Badge>
+      </span>
       {showCategory && (
-        <span className="text-[10px] text-muted-foreground leading-tight">{category}</span>
+        <span className="text-[10px] text-muted-foreground/70 leading-tight">{category}</span>
       )}
     </div>
   );
