@@ -2,7 +2,6 @@ import { useState, memo } from "react";
 import { ChevronLeft, ChevronRight, X, Flame, Flower2 } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
-import { getRelationCategory } from "@/lib/relationCategoryUtils";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
@@ -32,17 +31,7 @@ interface GuestbookPostProps {
   onAddFlower: (postId: string) => void;
 }
 
-/** Category badge color mapping */
-const getCategoryBadgeClass = (relation: string): string => {
-  const cat = getRelationCategory(relation);
-  switch (cat) {
-    case "Famille directe": return "bg-foreground/10 text-memorial-dark-foreground";
-    case "Famille élargie": return "bg-foreground/10 text-memorial-dark-foreground";
-    case "Alliés": return "bg-[hsl(var(--gesture-candle)/0.15)] text-[hsl(var(--gesture-candle))]";
-    case "Socio cœur (Amis)": return "bg-[hsl(var(--gesture-flower)/0.15)] text-[hsl(var(--gesture-flower))]";
-    case "Autres": return "bg-memorial-dark-muted/20 text-memorial-dark-muted";
-  }
-};
+/* Relation label: no background, italic muted text */
 
 const GuestbookPost = ({
   post,
@@ -119,7 +108,7 @@ const GuestbookPost = ({
                 )}
               </h4>
             </AuthorTooltip>
-            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-sans rounded-sm ${getCategoryBadgeClass(post.relationLink || post.relationCategory)}`}>
+            <span className="block mt-0.5 text-[11px] font-sans italic text-muted-foreground">
               {formatRelationLabel(post.relationLink || post.relationCategory, deceasedGender)}
             </span>
           </div>
