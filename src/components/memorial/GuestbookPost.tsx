@@ -89,7 +89,7 @@ const GuestbookPost = ({
   const hasFlowerFervor = post.flowerCount > 5;
 
   return (
-    <article className="py-6 border-b border-livreor-muted/30 last:border-0 animate-fade-in">
+    <article className="py-6 animate-fade-in">
       {/* Author info with avatar */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-start gap-3">
