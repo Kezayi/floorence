@@ -113,11 +113,17 @@ export const getCleanRelationName = (relation: string): string => {
   return relation.replace(/^(Son |Sa |Une |Un )/i, "");
 };
 
-export const getRelationWithDeceased = (relation: string): string => {
+export const getRelationWithDeceased = (relation: string, deceasedGender?: 'male' | 'female'): string => {
   const data = resolveRelationVector(relation);
-  if (data) return data.withDeceased;
-  const clean = getCleanRelationName(relation);
-  return `${clean} du défunt`;
+  const raw = data ? data.withDeceased : `${getCleanRelationName(relation)} du défunt`;
+
+  // If no gender specified, return as-is (defaults to masculine in French)
+  if (!deceasedGender || deceasedGender === 'male') return raw;
+
+  // Female deceased: replace "du défunt" → "de la Défunte", "de la défunte" stays
+  return raw
+    .replace(/du défunt/gi, 'de la Défunte')
+    .replace(/de la défunte/gi, 'de la Défunte');
 };
 
 export const getRelationVector = (relation: string): RelationVector | null => {

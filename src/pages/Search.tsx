@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
 import { getCleanRelationName, getRelationWithDeceased, inferUserToPersonRelation, inferRelationship, UserRelationResult } from "@/lib/relationshipInference";
+import { inferGender } from "@/lib/genderInference";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { ChevronRight, ArrowLeft, Search, Loader2 } from "lucide-react";
@@ -897,7 +898,7 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                       {member.displayName}
                     </span>
                     <span className={`text-sm font-sans ${getRelationColorClass(member.relation)}`}>
-                      {getRelationWithDeceased(member.relation)}
+                      {getRelationWithDeceased(member.relation, inferGender(group.deceasedName.split(" ")[0]))}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground font-sans">
@@ -1010,7 +1011,7 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
                 </p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-sans">
                   <span className={getRelationColorClass(activity.relation)}>
-                    {getRelationWithDeceased(activity.relation)}
+                    {getRelationWithDeceased(activity.relation, inferGender(activity.memorialName.split(" ")[0]))}
                   </span>
                   {activity.isCreator && <span className="text-primary">• Créateur</span>}
                   {activity.guestbookCount > 0 && <span>• {activity.guestbookCount} hommage{activity.guestbookCount > 1 ? "s" : ""}</span>}

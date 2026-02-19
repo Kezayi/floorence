@@ -6,11 +6,12 @@ import { getRelationWithDeceased } from '@/lib/relationshipInference';
 interface RelationCategoryBadgeProps {
   relation: string;
   showCategory?: boolean;
+  deceasedGender?: 'male' | 'female';
 }
 
-const RelationCategoryBadge = ({ relation, showCategory = false }: RelationCategoryBadgeProps) => {
+const RelationCategoryBadge = ({ relation, showCategory = false, deceasedGender }: RelationCategoryBadgeProps) => {
   const category = getRelationCategory(relation);
-  const displayLabel = getRelationWithDeceased(relation);
+  const displayLabel = getRelationWithDeceased(relation, deceasedGender);
 
   return (
     <div className="flex flex-col gap-0.5">

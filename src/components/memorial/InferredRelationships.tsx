@@ -4,6 +4,7 @@ import { Users, Link2 } from "lucide-react";
 
 interface InferredRelationshipsProps {
   messages: Array<{ authorName: string; relationCategory: string }>;
+  deceasedGender?: 'male' | 'female';
 }
 
 const confidenceColors = {
@@ -18,7 +19,7 @@ const confidenceLabels = {
   low: "Lien indirect",
 };
 
-const InferredRelationships = ({ messages }: InferredRelationshipsProps) => {
+const InferredRelationships = ({ messages, deceasedGender }: InferredRelationshipsProps) => {
   const relationships = useMemo(() => {
     return inferAllRelationships(messages);
   }, [messages]);
@@ -41,19 +42,19 @@ const InferredRelationships = ({ messages }: InferredRelationshipsProps) => {
         </h4>
       </div>
       <p className="text-sm text-memorial-dark-muted mb-4 font-sans">
-        Relations déduites à partir des liens avec le défunt
+        Relations déduites à partir des liens avec {deceasedGender === 'female' ? 'la défunte' : 'le défunt'}
       </p>
       
       <div className="space-y-3">
         {significantRelationships.map((rel, index) => (
-          <RelationshipCard key={index} relationship={rel} />
+          <RelationshipCard key={index} relationship={rel} deceasedGender={deceasedGender} />
         ))}
       </div>
     </div>
   );
 };
 
-const RelationshipCard = ({ relationship }: { relationship: InferredRelationship }) => {
+const RelationshipCard = ({ relationship, deceasedGender }: { relationship: InferredRelationship; deceasedGender?: 'male' | 'female' }) => {
   return (
     <div className="flex items-center gap-3 p-3 bg-memorial-dark/50 rounded-sm">
       <div className="flex-1 min-w-0">
@@ -62,7 +63,7 @@ const RelationshipCard = ({ relationship }: { relationship: InferredRelationship
             {relationship.fromAuthor}
           </span>
           <span className="text-xs text-memorial-dark-muted font-sans">
-            ({getRelationWithDeceased(relationship.fromRelation)})
+            ({getRelationWithDeceased(relationship.fromRelation, deceasedGender)})
           </span>
         </div>
       </div>
@@ -78,7 +79,7 @@ const RelationshipCard = ({ relationship }: { relationship: InferredRelationship
       <div className="flex-1 min-w-0 text-right">
         <div className="flex items-center justify-end gap-2 flex-wrap">
           <span className="text-xs text-memorial-dark-muted font-sans">
-            ({getRelationWithDeceased(relationship.toRelation)})
+            ({getRelationWithDeceased(relationship.toRelation, deceasedGender)})
           </span>
           <span className="font-serif text-memorial-dark-foreground truncate">
             {relationship.toAuthor}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
+import { inferGender } from "@/lib/genderInference";
 import { validateDisplayName } from "@/lib/forbiddenNames";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -502,7 +503,7 @@ const Account = () => {
                                   </p>
                                 </div>
                                 <span className="px-2 py-1 bg-muted text-xs font-sans shrink-0">
-                                  {getRelationWithDeceased(post.relation_category)}
+                                  {getRelationWithDeceased(post.relation_category, post.memorial ? inferGender(post.memorial.first_name) : undefined)}
                                 </span>
                               </div>
                               <p className="text-xs text-muted-foreground font-sans mt-2">

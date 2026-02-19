@@ -282,7 +282,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
 
           {/* Liens inférés */}
           {inferredRelationships.length > 0 && (
-            <InferredRelationshipsSection relationships={inferredRelationships} isAuthenticated={isAuthenticated} />
+            <InferredRelationshipsSection relationships={inferredRelationships} isAuthenticated={isAuthenticated} deceasedGender={inferGender(deceasedName.split(" ")[0] || "")} />
           )}
 
           {inferredRelationships.length === 0 && directRelations.length > 1 && (
@@ -312,21 +312,19 @@ interface GroupedPerson {
   bestConfidence: "high" | "medium" | "low";
 }
 
-const groupByPerson = (relationships: InferredRelationship[]): GroupedPerson[] => {
+const groupByPerson = (relationships: InferredRelationship[], deceasedGender?: 'male' | 'female'): GroupedPerson[] => {
   const personMap = new Map<string, GroupedPerson>();
   const seenPairs = new Set<string>();
 
   for (const rel of relationships) {
-    // Clé de paire normalisée pour éviter les doublons bidirectionnels
     const pairKey = [rel.fromAuthor, rel.toAuthor].sort().join("|");
     if (seenPairs.has(pairKey)) continue;
     seenPairs.add(pairKey);
 
-    // Ajouter la connexion au premier individu (fromAuthor)
     if (!personMap.has(rel.fromAuthor)) {
       personMap.set(rel.fromAuthor, {
         name: rel.fromAuthor,
-        relationWithDeceased: getRelationWithDeceased(rel.fromRelation),
+        relationWithDeceased: getRelationWithDeceased(rel.fromRelation, deceasedGender),
         connections: [],
         bestConfidence: rel.confidence,
       });
@@ -334,18 +332,16 @@ const groupByPerson = (relationships: InferredRelationship[]): GroupedPerson[] =
     const fromPerson = personMap.get(rel.fromAuthor)!;
     fromPerson.connections.push({
       otherName: rel.toAuthor,
-      otherRelationWithDeceased: getRelationWithDeceased(rel.toRelation),
+      otherRelationWithDeceased: getRelationWithDeceased(rel.toRelation, deceasedGender),
       inferredLink: rel.inferredLink,
       confidence: rel.confidence,
     });
-    // Mettre à jour la meilleure confiance
     const confOrder = { high: 0, medium: 1, low: 2 };
     if (confOrder[rel.confidence] < confOrder[fromPerson.bestConfidence]) {
       fromPerson.bestConfidence = rel.confidence;
     }
   }
 
-  // Trier : plus de connexions d'abord, puis par confiance
   return Array.from(personMap.values()).sort((a, b) => {
     if (b.connections.length !== a.connections.length) return b.connections.length - a.connections.length;
     const confOrder = { high: 0, medium: 1, low: 2 };
@@ -355,8 +351,8 @@ const groupByPerson = (relationships: InferredRelationship[]): GroupedPerson[] =
 
 const PERSONS_PER_PAGE = 5;
 
-const InferredRelationshipsSection = ({ relationships, isAuthenticated }: { relationships: InferredRelationship[]; isAuthenticated: boolean }) => {
-  const grouped = useMemo(() => groupByPerson(relationships), [relationships]);
+const InferredRelationshipsSection = ({ relationships, isAuthenticated, deceasedGender }: { relationships: InferredRelationship[]; isAuthenticated: boolean; deceasedGender?: 'male' | 'female' }) => {
+  const grouped = useMemo(() => groupByPerson(relationships, deceasedGender), [relationships, deceasedGender]);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(grouped.length / PERSONS_PER_PAGE);
   const startIndex = (currentPage - 1) * PERSONS_PER_PAGE;
