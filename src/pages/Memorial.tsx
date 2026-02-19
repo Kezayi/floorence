@@ -979,16 +979,25 @@ const MemorialInner = () => {
                 {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
-              <div className="divide-y divide-border">
-                {paginatedPosts.map((post) => (
-                  <GuestbookPost
-                    key={post.id}
-                    post={post}
-                    isOwner={post.authorId === currentUserId}
-                    deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
-                    onAddCandle={handleAddCandle}
-                    onAddFlower={handleAddFlower}
-                  />
+              <div className="space-y-0">
+                {paginatedPosts.map((post, index) => (
+                  <div key={post.id}>
+                    <GuestbookPost
+                      post={post}
+                      isOwner={post.authorId === currentUserId}
+                      deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
+                      onAddCandle={handleAddCandle}
+                      onAddFlower={handleAddFlower}
+                    />
+                    {/* Arabesque separator between posts */}
+                    {index < paginatedPosts.length - 1 && (
+                      <div className="flex items-center justify-center gap-3 py-1" aria-hidden="true">
+                        <span className="h-px flex-1 bg-livreor-muted/25" />
+                        <span className="text-livreor-muted/35 text-sm font-serif select-none tracking-widest">✦ ✦ ✦</span>
+                        <span className="h-px flex-1 bg-livreor-muted/25" />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 
