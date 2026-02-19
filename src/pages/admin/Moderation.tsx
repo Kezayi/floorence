@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRelationWithDeceased } from '@/lib/relationshipInference';
+import { inferGender } from '@/lib/genderInference';
 import { getRelationCategory } from '@/lib/relationCategoryUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -530,7 +531,7 @@ const Moderation = () => {
                     {post.memorial ? `${post.memorial.first_name} ${post.memorial.last_name}` : '—'}
                   </TableCell>
                   <TableCell>
-                    <RelationCategoryBadge relation={post.relation_category} showCategory />
+                    <RelationCategoryBadge relation={post.relation_category} showCategory deceasedGender={post.memorial ? inferGender(post.memorial.first_name) : undefined} />
                   </TableCell>
                   <TableCell className="max-w-[300px]">
                     <p className="line-clamp-2 text-sm">{post.content}</p>
