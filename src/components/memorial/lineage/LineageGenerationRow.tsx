@@ -25,29 +25,13 @@ const LineageGenerationRow = memo(({
 }: LineageGenerationRowProps) => {
   const label = GENERATION_LABELS[generation] || "Famille";
 
-  // Determine connector color based on majority link style
-  const hasAlliance = nodes.some(n => n.linkStyle === "alliance");
-  const hasSibling = nodes.some(n => n.linkStyle === "sibling");
-  const hasExtended = nodes.some(n => n.linkStyle === "extended");
+  // All connectors use the unified light gray
+  const lineColor = "bg-lineage-connector";
 
-  const lineColor = hasAlliance
-    ? "bg-[#D4AF37]/60"
-    : hasExtended
-    ? "bg-muted-foreground/30"
-    : hasSibling
-    ? "bg-[#800000]/50"
-    : "bg-[#800000]/80";
-
-  // Dynamic line thickness: thicker near trunk (roots), thinner toward extremes (cime/origines)
+  // Uniform thin connector — "archive familiale" aesthetic
   const absGen = Math.abs(generation);
-  const lineThickness = treePosition === "root"
-    ? absGen <= 1 ? "h-[3.5px]" : absGen === 2 ? "h-[2.5px]" : absGen === 3 ? "h-[2px]" : "h-[1.5px]"
-    : treePosition === "branch"
-    ? absGen <= 1 ? "h-[2.5px]" : absGen === 2 ? "h-[2px]" : absGen === 3 ? "h-[1.5px]" : "h-[1px]"
-    : hasAlliance || hasExtended ? "h-[1.5px]" : "h-[2.5px]";
-
-  // Opacity gradient: strongest near trunk, fading toward extremes
-  const lineOpacity = absGen <= 1 ? 1 : absGen === 2 ? 0.85 : absGen === 3 ? 0.65 : 0.45;
+  const lineThickness = "h-[1px]";
+  const lineOpacity = absGen <= 1 ? 0.8 : absGen === 2 ? 0.6 : 0.4;
 
   return (
     <div

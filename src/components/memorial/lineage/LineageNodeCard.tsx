@@ -42,17 +42,17 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
         isCurrentUser ? "ring-2 ring-ai-gold/50 rounded-lg p-2 bg-ai-gold/5 shadow-[0_0_16px_hsl(var(--ai-gold)/0.25)]" : ""
       }`}
     >
-      {/* Portrait — grayscale for deceased, color for living */}
+      {/* Portrait — minimal, no colored backgrounds */}
       <div
-        className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden transition-all duration-600 border-2 ${
+        className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden transition-all duration-600 border ${
           isCurrentUser
-            ? "border-ai-gold bg-ai-gold/20 shadow-[0_0_12px_hsl(var(--ai-gold)/0.3)]"
+            ? "border-ai-gold shadow-[0_0_12px_hsl(var(--ai-gold)/0.3)]"
             : node.linkStyle === "alliance"
-            ? "border-[#D4AF37]/60 bg-muted"
+            ? "border-lineage-alliance"
             : node.linkStyle === "blood" || node.linkStyle === "sibling"
-            ? "border-[#800000]/60 bg-muted"
-            : "border-border bg-muted"
-        } ${isDeceased ? "grayscale hover:grayscale-0" : ""}`}
+            ? "border-lineage-direct"
+            : "border-lineage-extended"
+        } bg-transparent ${isDeceased ? "grayscale hover:grayscale-0" : ""}`}
       >
         {inView && node.photo ? (
           <img
@@ -65,26 +65,26 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
             height={80}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="font-serif text-lg text-muted-foreground">
+        <div className="w-full h-full flex items-center justify-center bg-muted/30">
+            <span className="font-serif text-lg text-lineage-direct">
               {initials}
             </span>
           </div>
         )}
       </div>
 
-      {/* Deceased indicator — subtle candle */}
+      {/* Deceased indicator — subtle candle, increased stroke for low-lum screens */}
       {isDeceased && (
-        <Flame className="absolute -top-1 -right-1 w-3.5 h-3.5 text-[hsl(var(--gesture-candle))]/60" />
+        <Flame className="absolute -top-1 -right-1 w-3.5 h-3.5 text-lineage-alliance" strokeWidth={2.5} />
       )}
 
       {/* Name */}
-      <span className="mt-2 font-serif text-xs md:text-sm text-foreground text-center max-w-[100px] truncate">
+      <span className="mt-2 font-serif text-xs md:text-sm text-lineage-direct text-center max-w-[100px] truncate">
         {displayName(node.name, isAuthenticated)}
       </span>
 
-      {/* Relation label */}
-      <span className="text-[10px] md:text-xs text-muted-foreground font-sans text-center">
+      {/* Relation label — italic, no background */}
+      <span className="text-[10px] md:text-xs text-lineage-alliance font-sans italic text-center">
         {formatRelationLabel(node.relation, deceasedGender)}
       </span>
     </div>

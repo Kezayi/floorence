@@ -88,25 +88,25 @@ export const getRelationSortPriority = (relation: string): number => {
   return 5;
 };
 
-/** Category color class for labels */
+/** Category color class for labels — unified gray palette */
 export const getCategoryColorClass = (relation: string): string => {
   const cat = getRelationCategory(relation);
   switch (cat) {
-    case "Famille directe": return "text-[hsl(0,40%,45%)]";
-    case "Famille élargie": return "text-[hsl(40,45%,42%)]";
-    case "Alliés": return "text-[hsl(145,30%,38%)]";
-    case "Socio cœur (Amis)": return "text-[hsl(210,35%,45%)]";
-    case "Autres": return "text-[hsl(0,0%,35%)]";
+    case "Famille directe": return "text-lineage-direct";
+    case "Famille élargie": return "text-lineage-extended";
+    case "Alliés": return "text-lineage-alliance";
+    case "Socio cœur (Amis)": return "text-lineage-alliance";
+    case "Autres": return "text-lineage-alliance";
   }
 };
 
-/** Category dot/bg color */
+/** Category dot/bg color — unified gray palette */
 export const getCategoryBgColor = (catName: string): string => {
   switch (catName) {
-    case "Famille directe": return "hsl(0,40%,50%)";
-    case "Famille élargie": return "hsl(40,45%,48%)";
-    case "Alliés": return "hsl(145,30%,42%)";
-    case "Socio cœur (Amis)": return "hsl(210,35%,50%)";
+    case "Famille directe": return "hsl(0,0%,20%)";
+    case "Famille élargie": return "hsl(0,0%,29%)";
+    case "Alliés": return "hsl(0,0%,40%)";
+    case "Socio cœur (Amis)": return "hsl(0,0%,40%)";
     case "Autres": return "hsl(0,0%,40%)";
     default: return "hsl(0,0%,40%)";
   }
