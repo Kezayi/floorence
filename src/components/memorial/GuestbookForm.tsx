@@ -441,7 +441,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
 
       {/* Success Dialog (post-publish receipt) */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground max-w-md">
+      <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground max-w-md animate-fade-in">
           <div className="text-center py-6 space-y-5">
             {/* Elegant check icon */}
             <div className="w-16 h-16 mx-auto rounded-full bg-[hsl(142,70%,95%)] flex items-center justify-center">
@@ -453,7 +453,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
                 Votre message a été déposé avec respect
               </h3>
               <p className="text-sm text-muted-foreground font-sans">
-                Merci d'honorer cette mémoire.
+                Merci d'honorer cette mémoire avec dignité.
               </p>
             </div>
 
