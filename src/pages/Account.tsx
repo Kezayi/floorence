@@ -6,9 +6,9 @@ import { validateDisplayName } from "@/lib/forbiddenNames";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, FileText, Heart, Calendar, Bell, Settings, LogOut, ChevronRight, Flame, Loader2, AlertCircle } from "lucide-react";
+import { User, FileText, Heart, LogOut, ChevronRight, Flame, Loader2, AlertCircle, Share2 } from "lucide-react";
 import AvatarUpload from "@/components/account/AvatarUpload";
-import { FlameIcon, ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
+import { ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,10 +29,13 @@ interface GuestbookPost {
   content: string;
   relation_category: string;
   created_at: string;
+  candle_count: number;
+  flower_count: number;
   memorial?: {
     first_name: string;
     last_name: string;
     slug: string;
+    share_token: string | null;
   };
 }
 
@@ -45,18 +48,6 @@ interface Memorial {
   is_active: boolean;
 }
 
-interface PaymentTransaction {
-  id: string;
-  amount: number;
-  payment_type: string;
-  status: string;
-  created_at: string;
-  metadata: {
-    candleCount?: number;
-    flowerCount?: number;
-    memorialName?: string;
-  } | null;
-}
 
 const Account = () => {
   const navigate = useNavigate();
@@ -74,7 +65,6 @@ const Account = () => {
   // Data states
   const [myPosts, setMyPosts] = useState<GuestbookPost[]>([]);
   const [myMemorials, setMyMemorials] = useState<Memorial[]>([]);
-  const [myTransactions, setMyTransactions] = useState<PaymentTransaction[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Redirect if not authenticated
@@ -115,10 +105,13 @@ const Account = () => {
             content,
             relation_category,
             created_at,
+            candle_count,
+            flower_count,
             memorials:memorial_id (
               first_name,
               last_name,
-              slug
+              slug,
+              share_token
             )
           `)
           .eq('user_id', user.id)
@@ -131,13 +124,6 @@ const Account = () => {
           .eq('created_by', user.id)
           .order('created_at', { ascending: false });
 
-        // Fetch user's payment transactions
-        const { data: transactions } = await supabase
-          .from('payment_transactions')
-          .select('id, amount, payment_type, status, created_at, metadata')
-          .eq('user_id', user.id)
-          .eq('status', 'completed')
-          .order('created_at', { ascending: false });
 
         // Transform posts data to match interface
         const transformedPosts: GuestbookPost[] = (posts || []).map((post: any) => ({
@@ -146,16 +132,19 @@ const Account = () => {
           content: post.content,
           relation_category: post.relation_category,
           created_at: post.created_at,
+          candle_count: post.candle_count || 0,
+          flower_count: post.flower_count || 0,
           memorial: post.memorials ? {
             first_name: post.memorials.first_name,
             last_name: post.memorials.last_name,
             slug: post.memorials.slug,
+            share_token: post.memorials.share_token,
           } : undefined,
         }));
 
         setMyPosts(transformedPosts);
         setMyMemorials(memorials || []);
-        setMyTransactions((transactions || []) as PaymentTransaction[]);
+        setMyMemorials(memorials || []);
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
@@ -219,10 +208,8 @@ const Account = () => {
     navigate('/');
   };
 
-  // Calculate contribution totals
-  const totalAmount = myTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalCandles = myTransactions.reduce((sum, t) => sum + (t.metadata?.candleCount || 0), 0);
-  const totalFlowers = myTransactions.reduce((sum, t) => sum + (t.metadata?.flowerCount || 0), 0);
+
+
 
   // Show loading state
   if (authLoading || profileLoading) {
@@ -283,9 +270,6 @@ const Account = () => {
                   <TabsTrigger value="hommages" className="flex-1 text-xs px-2">
                     Hommages
                   </TabsTrigger>
-                  <TabsTrigger value="contributions" className="flex-1 text-xs px-2">
-                    Gestes
-                  </TabsTrigger>
                 </TabsList>
 
                 <div className="grid md:grid-cols-[240px_1fr] gap-8">
@@ -324,17 +308,6 @@ const Account = () => {
                       >
                         <Heart className="w-4 h-4" />
                         Mes hommages
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("contributions")}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left font-sans text-sm transition-colors rounded-sm ${
-                          activeTab === "contributions"
-                            ? "bg-secondary text-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <Flame className="w-4 h-4" />
-                        Mes gestes
                       </button>
 
                       <div className="pt-4 mt-4 border-t border-border">
@@ -484,117 +457,114 @@ const Account = () => {
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                           </div>
                         ) : myPosts.length > 0 ? (
-                          myPosts.map((post) => (
-                            <Link
-                              key={post.id}
-                              to={`/memorial/${post.memorial?.slug || post.memorial_id}`}
-                              className="block bg-card border border-border rounded-sm p-4 hover:border-foreground/20 transition-colors"
-                            >
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <h4 className="font-serif text-lg mb-1">
-                                    {post.memorial 
-                                      ? `${post.memorial.first_name} ${post.memorial.last_name}`
-                                      : "Mémorial"
-                                    }
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground font-serif italic line-clamp-2">
-                                    "{post.content}"
-                                  </p>
+                          myPosts.map((post) => {
+                            const memorialName = post.memorial 
+                              ? `${post.memorial.first_name} ${post.memorial.last_name}`
+                              : "Mémorial";
+                            const memorialUrl = `${window.location.origin}/memorial/${post.memorial?.slug || post.memorial_id}`;
+                            const shareText = `Je viens de déposer un hommage et des pensées pieuses pour ${memorialName} sur Fl∞rence. Rejoignez-nous pour honorer sa mémoire : ${memorialUrl}`;
+
+                            const handleShareWhatsApp = (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
+                            };
+
+                            const handleShareFacebook = (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(memorialUrl)}&quote=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer,width=600,height=400");
+                            };
+
+                            const handleShareNative = async (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (navigator.share) {
+                                try {
+                                  await navigator.share({ title: `Hommage à ${memorialName}`, text: shareText, url: memorialUrl });
+                                } catch { /* user cancelled */ }
+                              } else {
+                                handleShareWhatsApp(e);
+                              }
+                            };
+
+                            return (
+                              <div
+                                key={post.id}
+                                className="bg-card border border-border rounded-sm p-4"
+                              >
+                                <Link to={`/memorial/${post.memorial?.slug || post.memorial_id}`} className="block hover:opacity-80 transition-opacity">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <h4 className="font-serif text-lg mb-1">{memorialName}</h4>
+                                      <p className="text-sm text-muted-foreground font-serif italic line-clamp-2">
+                                        &ldquo;{post.content}&rdquo;
+                                      </p>
+                                    </div>
+                                    <span className="text-xs font-sans italic text-muted-foreground shrink-0">
+                                      {getRelationWithDeceased(post.relation_category, post.memorial ? inferGender(post.memorial.first_name) : undefined)}
+                                    </span>
+                                  </div>
+                                </Link>
+
+                                {/* Gestures + Share row */}
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                                  <div className="flex items-center gap-4">
+                                    <p className="text-xs text-muted-foreground font-sans">
+                                      {new Date(post.created_at).toLocaleDateString("fr-FR")}
+                                    </p>
+                                    {post.candle_count > 0 && (
+                                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Flame className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gesture-candle))' }} />
+                                        {post.candle_count}
+                                      </span>
+                                    )}
+                                    {post.flower_count > 0 && (
+                                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <ChrysanthemumIcon size={14} />
+                                        {post.flower_count}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Share buttons */}
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={handleShareWhatsApp}
+                                      className="p-1.5 rounded-sm hover:bg-muted transition-colors"
+                                      aria-label="Partager sur WhatsApp"
+                                      title="WhatsApp"
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-muted-foreground hover:text-[#25D366] transition-colors">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={handleShareFacebook}
+                                      className="p-1.5 rounded-sm hover:bg-muted transition-colors"
+                                      aria-label="Partager sur Facebook"
+                                      title="Facebook"
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-muted-foreground hover:text-[#1877F2] transition-colors">
+                                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={handleShareNative}
+                                      className="p-1.5 rounded-sm hover:bg-muted transition-colors"
+                                      aria-label="Partager mon hommage"
+                                      title="Partager"
+                                    >
+                                      <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <span className="px-2 py-1 bg-muted text-xs font-sans shrink-0">
-                                  {getRelationWithDeceased(post.relation_category, post.memorial ? inferGender(post.memorial.first_name) : undefined)}
-                                </span>
                               </div>
-                              <p className="text-xs text-muted-foreground font-sans mt-2">
-                                {new Date(post.created_at).toLocaleDateString("fr-FR")}
-                              </p>
-                            </Link>
-                          ))
+                            );
+                          })
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore laissé d'hommage
-                          </p>
-                        )}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="contributions" className="mt-0">
-                      <div className="space-y-6">
-                        <div>
-                          <h3 className="mb-2">Mes gestes symboliques</h3>
-                          <p className="text-sm text-muted-foreground font-sans mb-6">
-                            Historique de vos cierges et fleurs déposés
-                          </p>
-                        </div>
-
-                        {/* Stats Summary */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                          <div className="bg-secondary p-4 text-center">
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                              <FlameIcon size={20} className="text-amber-500" />
-                            </div>
-                            <p className="font-serif text-2xl font-medium">{totalCandles}</p>
-                            <p className="text-xs text-muted-foreground font-sans">Cierges</p>
-                          </div>
-                          <div className="bg-secondary p-4 text-center">
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                              <ChrysanthemumIcon size={20} className="text-green-600" />
-                            </div>
-                            <p className="font-serif text-2xl font-medium">{totalFlowers}</p>
-                            <p className="text-xs text-muted-foreground font-sans">Fleurs</p>
-                          </div>
-                          <div className="bg-secondary p-4 text-center">
-                            <p className="font-serif text-2xl font-medium mb-2">
-                              {totalAmount.toLocaleString("fr-FR")}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-sans">FCFA dépensés</p>
-                          </div>
-                        </div>
-
-                        {/* Transactions List */}
-                        {loadingData ? (
-                          <div className="flex justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : myTransactions.length > 0 ? (
-                          <div className="space-y-3">
-                            {myTransactions.map((transaction) => (
-                              <div
-                                key={transaction.id}
-                                className="bg-card border border-border rounded-sm p-4"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex gap-1">
-                                      {(transaction.metadata?.candleCount || 0) > 0 && (
-                                        <FlameIcon size={18} className="text-amber-500" />
-                                      )}
-                                      {(transaction.metadata?.flowerCount || 0) > 0 && (
-                                        <ChrysanthemumIcon size={18} className="text-green-600" />
-                                      )}
-                                    </div>
-                                    <div>
-                                      <p className="font-sans text-sm">
-                                        {transaction.metadata?.candleCount ? `${transaction.metadata.candleCount} cierge(s)` : ''}
-                                        {transaction.metadata?.candleCount && transaction.metadata?.flowerCount ? ' + ' : ''}
-                                        {transaction.metadata?.flowerCount ? `${transaction.metadata.flowerCount} fleur(s)` : ''}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {new Date(transaction.created_at).toLocaleDateString("fr-FR")}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <span className="font-medium text-sm">
-                                    {transaction.amount.toLocaleString("fr-FR")} FCFA
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground font-serif py-8 text-center">
-                            Vous n'avez pas encore fait de geste symbolique
                           </p>
                         )}
                       </div>
