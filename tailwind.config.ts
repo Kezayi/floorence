@@ -92,6 +92,12 @@ export default {
         },
         "gesture-candle": "hsl(var(--gesture-candle))",
         "gesture-flower": "hsl(var(--gesture-flower))",
+        lineage: {
+          direct: "hsl(var(--lineage-direct))",
+          extended: "hsl(var(--lineage-extended))",
+          alliance: "hsl(var(--lineage-alliance))",
+          connector: "hsl(var(--lineage-connector))",
+        },
         livreor: {
           DEFAULT: "hsl(var(--livreor-bg))",
           foreground: "hsl(var(--livreor-foreground))",

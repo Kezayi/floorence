@@ -306,11 +306,11 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
         </div>
       ) : (
         <div className="relative gpu-accelerated">
-          {/* Central vertical blood line — GPU-accelerated on all screens */}
+          {/* Central vertical line — light gray, minimalist */}
           <div
-            className="absolute left-1/2 top-0 bottom-0 w-[2px] md:w-[3px] lineage-gpu-layer"
+            className="absolute left-1/2 top-0 bottom-0 w-[1px] lineage-gpu-layer"
             style={{
-              background: "hsl(0 70% 25% / 0.8)",
+              background: "hsl(var(--lineage-connector))",
               transformOrigin: "bottom",
               animation: "grow-up 1.4s ease-out forwards",
               contain: 'strict',
@@ -343,11 +343,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                   {allianceNodes.map(node => (
                     <div key={node.id} className="flex items-center gap-2">
                     <div
-                      className="h-[1.5px] w-4 md:w-8"
-                      style={{
-                          background: "repeating-linear-gradient(90deg, #D4AF37 0, #D4AF37 6px, transparent 6px, transparent 10px)",
-                          opacity: 0.6,
-                        }}
+                      className="h-[1px] w-4 md:w-8 bg-lineage-connector"
                       />
                       <LineageNodeCard
                         node={node}
@@ -373,10 +369,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                       isDeceased={true}
                       deceasedGender={deceasedGender}
                     />
-                    <div
-                      className="h-[1.5px] w-3 md:w-6"
-                      style={{ background: "hsl(0 70% 25% / 0.5)" }}
-                    />
+                    <div className="h-[1px] w-3 md:w-6 bg-lineage-connector" />
                   </div>
                 ))}
 
