@@ -65,9 +65,9 @@
 
     /* Gestes symboliques */
     --candle-glow: 45 80% 55%;
-    --flower-soft: 340 30% 75%;
+    --flower-soft: 130 25% 38%;
     --gesture-candle: 45 90% 50%;
-    --gesture-flower: 340 60% 65%;
+    --gesture-flower: 130 25% 38%;
 
     /* Accent vert pour interactions */
     --accent-green: 142 70% 45%;
