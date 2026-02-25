@@ -147,10 +147,10 @@ const RelationSelect = ({ value, onChange, variant = "dark" }: RelationSelectPro
 
   return (
     <Select value={value} onValueChange={handleChange}>
-      <SelectTrigger className={`w-full font-serif ${isDark ? 'bg-white/95 border border-livreor-muted/30 text-foreground focus:ring-1 focus:ring-primary/30 focus:border-primary/40' : 'bg-secondary border-0 text-foreground'}`}>
+      <SelectTrigger className={`w-full font-serif ${isDark ? 'bg-white border border-[hsl(0,0%,75%)] text-foreground focus:ring-1 focus:ring-primary/30 focus:border-primary/40' : 'bg-secondary border-0 text-foreground'}`}>
         <SelectValue placeholder="Qui suis-je pour le/la défunt(e) ? *" />
       </SelectTrigger>
-      <SelectContent className={`${isDark ? 'bg-white border-livreor-muted/30' : 'bg-card border-border'} max-h-80`}>
+      <SelectContent className={`${isDark ? 'bg-white border-[hsl(0,0%,85%)]' : 'bg-card border-border'} max-h-80`}>
         {Object.entries(relationCategories).map(([category, relations]) => {
           const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS["Autres"];
           return (

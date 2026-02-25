@@ -668,7 +668,7 @@ const MemorialInner = () => {
       }
 
       if (response.data?.success) {
-        toast.success("Votre hommage a été publié avec succès");
+        // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
       } else if (response.data?.rateLimited) {
         toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");

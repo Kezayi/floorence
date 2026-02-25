@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock } from "lucide-react";
+import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
- import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
- import { toast } from "sonner";
- import { useAdminRole } from "@/hooks/useAdminRole";
+import { toast } from "sonner";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 interface GuestbookFormProps {
   memorialId?: string;
@@ -25,7 +25,6 @@ interface GuestbookFormProps {
     candleCount: number;
     flowerCount: number;
   }) => void | Promise<void>;
-  /** If the user already posted on this memorial, lock their relation */
   lockedRelation?: { link: string; category: string };
 }
 
@@ -40,13 +39,15 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
   const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "");
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
   const [flowerCount, setFlowerCount] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Block non-authenticated users - must sign in to post
+  // Block non-authenticated users
   if (!user) {
     return (
       <div className="mb-12 p-6 bg-muted/40 border border-border rounded-sm text-center">
@@ -63,7 +64,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
     );
   }
 
-  // Block users with incomplete profile - must complete profile first
+  // Block incomplete profile
   if (user && !profileLoading && !isProfileComplete) {
     return (
       <div className="mb-12 p-6 bg-muted/40 border border-border rounded-sm text-center">
@@ -83,7 +84,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
     );
   }
 
-  // Block admins/moderators from posting
+  // Block admins
   if (isAdminOrMod) {
     return (
       <div className="mb-12 p-6 bg-muted/40 border border-border rounded-sm text-center">
@@ -97,10 +98,8 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     const remainingSlots = MAX_PHOTOS - photos.length;
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
-
     filesToProcess.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -110,11 +109,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
       };
       reader.readAsDataURL(file);
     });
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removePhoto = (index: number) => {
@@ -123,17 +118,14 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
     if (!selectedRelation) {
       newErrors.relation = "Veuillez sélectionner votre lien de parenté avec le défunt";
     }
-    
     if (!messageContent.trim()) {
       newErrors.content = "Veuillez rédiger votre message d'hommage";
     } else if (messageContent.trim().length < 10) {
       newErrors.content = "Votre message doit contenir au moins 10 caractères";
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -141,16 +133,16 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
   const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    // Show confirmation dialog
     setShowConfirmDialog(true);
   };
 
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
+    const submittedCandleCount = candleCount;
+    const submittedFlowerCount = flowerCount;
+    const submittedRelation = selectedRelation;
     
     try {
-      // BETA: Direct submission - no payment required
       await onSubmit({
         content: messageContent.trim(),
         relationCategory: selectedCategory,
@@ -160,13 +152,23 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
         flowerCount,
       });
 
-      // Reset form only on success
+      // Save data for success modal
+      setLastSubmittedData({
+        candleCount: submittedCandleCount,
+        flowerCount: submittedFlowerCount,
+        relation: submittedRelation,
+      });
+
+      // Reset form
       setMessageContent("");
       setPhotos([]);
       setCandleCount(0);
       setFlowerCount(0);
       setErrors({});
       setShowConfirmDialog(false);
+      
+      // Show success modal
+      setShowSuccessDialog(true);
     } catch (error) {
       console.error('Submit error:', error);
       toast.error("Une erreur est survenue lors de la publication");
@@ -176,15 +178,16 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
   };
 
   const isRelationLocked = !!lockedRelation?.link;
+  const showFlowerSuggestion = messageContent.length > 200 && flowerCount === 0;
 
   return (
     <>
       <form onSubmit={handleSubmitClick} className="mb-12">
         <div className="space-y-6">
-          {/* Relation select — locked after first post */}
+          {/* Relation select */}
           <div>
             {isRelationLocked ? (
-              <div className="flex items-center gap-2 p-4 bg-muted/40 border border-border rounded-sm">
+              <div className="flex items-center gap-2 p-4 bg-white border border-[hsl(0,0%,75%)] rounded-sm">
                 <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-foreground font-serif text-sm">
                   {lockedRelation.link}
@@ -213,6 +216,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
             )}
           </div>
 
+          {/* Textarea */}
           <div>
             <textarea
               value={messageContent}
@@ -222,7 +226,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
               }}
               placeholder="Partagez un souvenir, un mot de réconfort…"
               rows={5}
-              className={`w-full p-5 bg-white/95 border rounded-sm ${errors.content ? 'border-red-500' : 'border-livreor-muted/30'} text-foreground placeholder:text-muted-foreground font-serif resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors`}
+              className={`w-full p-5 bg-white border rounded-sm ${errors.content ? 'border-red-500' : 'border-[hsl(0,0%,75%)]'} text-foreground placeholder:text-muted-foreground font-serif resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors`}
             />
             {errors.content && (
               <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1">
@@ -232,7 +236,24 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
             )}
           </div>
 
-          {/* Photo upload section */}
+          {/* Flower suggestion for long messages */}
+          {showFlowerSuggestion && (
+            <div className="flex items-start gap-3 p-4 bg-[hsl(340,30%,97%)] border border-[hsl(340,30%,85%)] rounded-sm animate-fade-in">
+              <Sparkles className="w-4 h-4 text-[hsl(var(--gesture-flower))] mt-0.5 flex-shrink-0" />
+              <p className="text-sm font-serif text-[hsl(0,0%,35%)] italic">
+                Un témoignage si précieux mérite un bel accompagnement. Souhaitez-vous ajouter un bouquet de fleurs ?
+              </p>
+              <button
+                type="button"
+                onClick={() => setFlowerCount(1)}
+                className="flex-shrink-0 px-3 py-1 text-xs font-sans bg-[hsl(340,30%,92%)] text-[hsl(340,60%,45%)] rounded-sm hover:bg-[hsl(340,30%,88%)] transition-colors"
+              >
+                + 1 Fleur
+              </button>
+            </div>
+          )}
+
+          {/* Photo upload */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <input
@@ -250,26 +271,18 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={photos.length >= MAX_PHOTOS}
-                className="gap-2 bg-white/95 border-livreor-muted/30 text-foreground hover:bg-muted/60 focus:ring-1 focus:ring-primary/30 transition-colors"
+                className="gap-2 bg-white border-[hsl(0,0%,75%)] text-foreground hover:bg-muted/60 focus:ring-1 focus:ring-primary/30 transition-colors"
               >
                 <ImagePlus className="w-4 h-4" />
                 Ajouter des photos ({photos.length}/{MAX_PHOTOS})
               </Button>
             </div>
 
-            {/* Photo preview grid */}
             {photos.length > 0 && (
               <div className="flex gap-2 flex-wrap">
                 {photos.map((photo, index) => (
-                  <div
-                    key={index}
-                    className="relative w-20 h-20 overflow-hidden rounded-sm group"
-                  >
-                    <img
-                      src={photo}
-                      alt={`Photo ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                  <div key={index} className="relative w-20 h-20 overflow-hidden rounded-sm group">
+                    <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removePhoto(index)}
@@ -284,22 +297,24 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
             )}
           </div>
 
-          {/* Gesture selectors - Free for Beta */}
-          <div className="bg-muted/30 border border-border rounded-sm p-5">
-            <p className="text-muted-foreground text-sm mb-4 font-serif">
+          {/* Gesture selectors — Precious buttons */}
+          <div className="bg-white border border-[hsl(0,0%,88%)] rounded-sm p-6">
+            <p className="text-muted-foreground text-sm mb-5 font-serif">
               Accompagnez votre hommage d'un geste symbolique <span className="text-primary font-medium">(gratuit pendant la bêta)</span>
             </p>
-            <div className="flex flex-wrap gap-6">
-              {/* Candle selector */}
+            <div className="flex flex-wrap gap-8">
+              {/* Candle — Precious amber */}
               <div className="flex items-center gap-3">
-                <Flame className="w-5 h-5 text-[hsl(var(--gesture-candle))]" />
-                <span className="text-foreground text-sm font-medium">Cierges</span>
+                <div className="w-10 h-10 rounded-sm border border-[hsl(45,70%,70%)] bg-[hsl(45,80%,96%)] flex items-center justify-center shadow-[inset_0_1px_0_hsl(45,80%,98%),0_1px_3px_hsl(45,60%,80%)]">
+                  <Flame className="w-5 h-5 text-[hsl(var(--gesture-candle))]" />
+                </div>
+                <span className="text-foreground text-sm font-medium font-serif">Cierges</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setCandleCount(Math.max(0, candleCount - 1))}
                     disabled={candleCount === 0}
-                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-border bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Minus className="w-3.5 h-3.5 text-foreground" />
                   </button>
@@ -308,23 +323,25 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
                     type="button"
                     onClick={() => setCandleCount(candleCount + 1)}
                     disabled={candleCount >= 10}
-                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-border bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />
                   </button>
                 </div>
               </div>
 
-              {/* Flower selector */}
+              {/* Flower — Precious rose */}
               <div className="flex items-center gap-3">
-                <Flower2 className="w-5 h-5 text-[hsl(var(--gesture-flower))]" />
-                <span className="text-foreground text-sm font-medium">Fleurs</span>
+                <div className="w-10 h-10 rounded-sm border border-[hsl(340,40%,80%)] bg-[hsl(340,30%,97%)] flex items-center justify-center shadow-[inset_0_1px_0_hsl(340,30%,98%),0_1px_3px_hsl(340,30%,85%)]">
+                  <Flower2 className="w-5 h-5 text-[hsl(var(--gesture-flower))]" />
+                </div>
+                <span className="text-foreground text-sm font-medium font-serif">Fleurs</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setFlowerCount(Math.max(0, flowerCount - 1))}
                     disabled={flowerCount === 0}
-                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-border bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Minus className="w-3.5 h-3.5 text-foreground" />
                   </button>
@@ -333,7 +350,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
                     type="button"
                     onClick={() => setFlowerCount(flowerCount + 1)}
                     disabled={flowerCount >= 10}
-                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-border bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />
                   </button>
@@ -342,6 +359,7 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
             </div>
           </div>
 
+          {/* Submit button */}
           <button
             type="submit"
             className="w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -351,73 +369,127 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
         </div>
       </form>
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog (pre-publish) */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="bg-card border-border text-foreground">
+        <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Confirmer votre hommage</DialogTitle>
-             <DialogDescription className="text-muted-foreground">
-               Confirmez la publication de votre message
-             </DialogDescription>
+            <DialogDescription className="text-muted-foreground">
+              Confirmez la publication de votre message
+            </DialogDescription>
           </DialogHeader>
 
-           <div className="space-y-4 py-4">
-             <div className="flex items-center justify-center gap-3 py-4">
-               <CheckCircle className="w-8 h-8 text-[hsl(var(--accent-green))]" />
-               <div>
-                 <p className="text-foreground font-medium">Bêta gratuite</p>
-                 <p className="text-muted-foreground text-sm">Votre hommage sera publié immédiatement</p>
-               </div>
-             </div>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-center gap-3 py-4">
+              <CheckCircle className="w-8 h-8 text-[hsl(var(--accent-green))]" />
+              <div>
+                <p className="text-foreground font-medium">Bêta gratuite</p>
+                <p className="text-muted-foreground text-sm">Votre hommage sera publié immédiatement</p>
+              </div>
+            </div>
 
-             {(candleCount > 0 || flowerCount > 0) && (
-               <div className="flex justify-center gap-6 py-2">
-                 {candleCount > 0 && (
-                   <div className="flex items-center gap-2">
-                     <Flame className="w-5 h-5 text-[hsl(var(--gesture-candle))]" />
-                     <span className="text-foreground">{candleCount} cierge{candleCount > 1 ? 's' : ''}</span>
-                   </div>
-                 )}
-                 {flowerCount > 0 && (
-                   <div className="flex items-center gap-2">
-                     <Flower2 className="w-5 h-5 text-[hsl(var(--gesture-flower))]" />
-                     <span className="text-foreground">{flowerCount} fleur{flowerCount > 1 ? 's' : ''}</span>
-                   </div>
-                 )}
-               </div>
-             )}
-             
-             <div className="bg-muted/50 p-3 rounded-sm">
-               <p className="text-sm text-muted-foreground line-clamp-2">
-                 "{messageContent.trim().substring(0, 100)}{messageContent.length > 100 ? '...' : ''}"
-               </p>
-             </div>
-           </div>
+            {(candleCount > 0 || flowerCount > 0) && (
+              <div className="flex justify-center gap-6 py-2">
+                {candleCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-[hsl(var(--gesture-candle))]" />
+                    <span className="text-foreground">{candleCount} cierge{candleCount > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {flowerCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Flower2 className="w-5 h-5 text-[hsl(var(--gesture-flower))]" />
+                    <span className="text-foreground">{flowerCount} fleur{flowerCount > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="bg-[hsl(0,0%,97%)] border border-[hsl(0,0%,90%)] p-3 rounded-sm">
+              <p className="text-sm text-muted-foreground line-clamp-2 font-serif italic">
+                "{messageContent.trim().substring(0, 100)}{messageContent.length > 100 ? '...' : ''}"
+              </p>
+            </div>
+          </div>
 
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}
-               disabled={isSubmitting}
-              className="bg-card border-border text-foreground hover:bg-muted"
+              disabled={isSubmitting}
+              className="bg-white border-[hsl(0,0%,75%)] text-foreground hover:bg-muted"
             >
               Annuler
             </Button>
             <Button
               onClick={handleConfirmSubmit}
-               disabled={isSubmitting}
+              disabled={isSubmitting}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
-               {isSubmitting ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                   Publication...
+                  Publication...
                 </>
               ) : (
                 "Publier"
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog (post-publish receipt) */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground max-w-md">
+          <div className="text-center py-6 space-y-5">
+            {/* Elegant check icon */}
+            <div className="w-16 h-16 mx-auto rounded-full bg-[hsl(142,70%,95%)] flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-[hsl(var(--accent-green))]" />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-serif text-xl text-foreground">
+                Votre message a été déposé avec respect
+              </h3>
+              <p className="text-sm text-muted-foreground font-sans">
+                Merci d'honorer cette mémoire.
+              </p>
+            </div>
+
+            {/* Receipt summary */}
+            {lastSubmittedData && (lastSubmittedData.candleCount > 0 || lastSubmittedData.flowerCount > 0) && (
+              <div className="border border-[hsl(0,0%,90%)] rounded-sm p-4 mx-4 bg-[hsl(0,0%,99%)]">
+                <p className="text-xs font-sans text-muted-foreground uppercase tracking-wider mb-3">Récapitulatif</p>
+                <div className="flex justify-center gap-6">
+                  {lastSubmittedData.candleCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-[hsl(var(--gesture-candle))]" />
+                      <span className="text-sm text-foreground">{lastSubmittedData.candleCount} cierge{lastSubmittedData.candleCount > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                  {lastSubmittedData.flowerCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Flower2 className="w-4 h-4 text-[hsl(var(--gesture-flower))]" />
+                      <span className="text-sm text-foreground">{lastSubmittedData.flowerCount} fleur{lastSubmittedData.flowerCount > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-[hsl(0,0%,92%)]">
+                  <p className="text-xs text-muted-foreground font-sans">
+                    Total : <span className="font-medium text-foreground">0 FCFA</span> <span className="italic">(bêta gratuite)</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={() => setShowSuccessDialog(false)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8"
+            >
+              Fermer
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
