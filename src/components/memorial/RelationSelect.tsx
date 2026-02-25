@@ -147,10 +147,10 @@ const RelationSelect = ({ value, onChange, variant = "dark" }: RelationSelectPro
 
   return (
     <Select value={value} onValueChange={handleChange}>
-      <SelectTrigger className={`w-full ${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30 text-memorial-dark-foreground' : 'bg-secondary border-0 text-foreground'}`}>
-        <SelectValue placeholder="Votre lien avec le défunt *" />
+      <SelectTrigger className={`w-full font-serif ${isDark ? 'bg-white/95 border border-livreor-muted/30 text-foreground focus:ring-1 focus:ring-primary/30 focus:border-primary/40' : 'bg-secondary border-0 text-foreground'}`}>
+        <SelectValue placeholder="Qui suis-je pour le/la défunt(e) ? *" />
       </SelectTrigger>
-      <SelectContent className={`${isDark ? 'bg-memorial-dark border-memorial-dark-muted/30' : 'bg-card border-border'} max-h-80`}>
+      <SelectContent className={`${isDark ? 'bg-white border-livreor-muted/30' : 'bg-card border-border'} max-h-80`}>
         {Object.entries(relationCategories).map(([category, relations]) => {
           const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS["Autres"];
           return (
@@ -163,7 +163,7 @@ const RelationSelect = ({ value, onChange, variant = "dark" }: RelationSelectPro
                 <SelectItem
                   key={relation}
                   value={relation}
-                  className={`${isDark ? 'text-memorial-dark-foreground hover:bg-memorial-dark-muted/20' : 'text-foreground hover:bg-muted'} ${colors.item}`}
+                  className={`${isDark ? 'text-foreground hover:bg-muted' : 'text-foreground hover:bg-muted'} ${colors.item}`}
                 >
                   {relation}
                 </SelectItem>
