@@ -234,6 +234,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                     funeralLocation: memorial.funeralLocation,
                      photos: memorial.photos,
                      defaultPhotoIndex: memorial.defaultPhotoIndex || 0,
+                     heirEmail: (memorial as any).heirEmail || null,
                   }}
                   onSave={onMemorialUpdated}
                 />
