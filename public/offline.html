@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Floorence — Mode hors-ligne</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      background: #fafafa;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 420px;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2rem;
+      font-size: 2.5rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 400;
+      margin-bottom: 1rem;
+      letter-spacing: -0.5px;
+    }
+    p {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 0.9rem;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    button {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.8; }
+    .subtle {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🕯️</div>
+    <h1>Mode hors-ligne</h1>
+    <p>
+      Vous êtes actuellement sans connexion internet.<br>
+      Les espaces mémoriels déjà consultés restent accessibles depuis le cache de votre appareil.
+    </p>
+    <button onclick="location.reload()">Réessayer la connexion</button>
+    <p class="subtle">Floorence — Aux bons soins des vivants</p>
+  </div>
+</body>
+</html>
