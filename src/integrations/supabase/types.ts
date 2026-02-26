@@ -791,6 +791,10 @@ export type Database = {
     }
     Functions: {
       admin_force_validate_all_suggestions: { Args: never; Returns: Json }
+      confirm_payment_and_publish: {
+        Args: { p_ebilling_ref: string; p_transaction_id: string }
+        Returns: Json
+      }
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
       generate_secure_slug: {
         Args: { first_name: string; last_name: string }

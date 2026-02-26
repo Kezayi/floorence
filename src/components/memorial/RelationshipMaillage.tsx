@@ -102,10 +102,15 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
     },
   });
   const directRelations = useMemo(() => {
+    // ═══ DEDUP by UUID — one entry per unique author ═══
+    // Fallback to normalized name for anonymous authors (no UUID)
     const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null; avatarUrl: string | null }>();
     posts.forEach((post) => {
-      if (!uniqueAuthors.has(post.authorId)) {
-        uniqueAuthors.set(post.authorId, {
+      const dedupKey = post.authorId && post.authorId.length > 0
+        ? post.authorId
+        : `name::${post.authorName.trim().toLowerCase()}`;
+      if (!uniqueAuthors.has(dedupKey)) {
+        uniqueAuthors.set(dedupKey, {
           name: post.authorName,
           category: post.relationCategory,
           relationLink: post.relationLink || null,
