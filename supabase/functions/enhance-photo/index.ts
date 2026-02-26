@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,29 @@ serve(async (req) => {
   }
 
   try {
+    // ── Auth: require authenticated user ──
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Non autorisé" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Non autorisé" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { imageUrl } = await req.json();
     
     if (!imageUrl) {
@@ -25,7 +49,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Enhancing photo:", imageUrl);
+    console.log(`Enhancing photo for user ${user.email}:`, imageUrl);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -85,7 +109,6 @@ Garde l'aspect naturel, évite tout effet artificiel. Le résultat doit être so
     const data = await response.json();
     console.log("AI response received");
     
-    // Extract the enhanced image from the response
     const enhancedImageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!enhancedImageUrl) {
