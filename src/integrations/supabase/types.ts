@@ -831,8 +831,8 @@ export type Database = {
           id: string
           is_published: boolean
           last_name: string
-          main_photo_url: string
-          secure_slug: string
+          photo_url: string
+          slug: string
           total_count: number
         }[]
       }
