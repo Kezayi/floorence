@@ -822,6 +822,20 @@ export type Database = {
           count: number
         }[]
       }
+      get_paginated_memorials: {
+        Args: { p_limit?: number; p_offset?: number; p_search_query?: string }
+        Returns: {
+          birth_date: string
+          death_date: string
+          first_name: string
+          id: string
+          is_published: boolean
+          last_name: string
+          main_photo_url: string
+          secure_slug: string
+          total_count: number
+        }[]
+      }
       get_public_guestbook_posts: {
         Args: { p_limit?: number; p_memorial_id?: string; p_offset?: number }
         Returns: {
