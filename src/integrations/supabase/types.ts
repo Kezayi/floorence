@@ -858,6 +858,10 @@ export type Database = {
       normalized_to_label: { Args: { ntype: string }; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      transfer_memorial_ownership: {
+        Args: { p_memorial_id: string; p_new_owner_id: string }
+        Returns: Json
+      }
       transitive_rule: { Args: { r_px: string; r_py: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
