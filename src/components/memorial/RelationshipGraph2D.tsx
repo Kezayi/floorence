@@ -138,11 +138,27 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   const containerRef = useRef<HTMLDivElement>(null);
   
   const nodes = useMemo(() => {
+    // ═══ DEDUP by UUID — one node per unique author ═══
+    // For authors without UUID (anonymous), deduplicate by normalized name
     const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null }>();
+    
+    // Also collect names of inter-memorial linked deceased to avoid duplicating them as author nodes
+    const interMemorialNames = new Set(
+      (interMemorialLinks || []).map(l => l.name.trim().toLowerCase())
+    );
+    
     posts.forEach((post) => {
-      if (!uniqueAuthors.has(post.authorId)) {
+      // Build a stable dedup key: prefer UUID, fallback to normalized name
+      const dedupKey = post.authorId && post.authorId.length > 0
+        ? post.authorId
+        : `name::${post.authorName.trim().toLowerCase()}`;
+      
+      // Skip if this author is already an inter-memorial linked deceased node
+      if (interMemorialNames.has(post.authorName.trim().toLowerCase())) return;
+      
+      if (!uniqueAuthors.has(dedupKey)) {
         const effectiveCategory = post.relationLink || post.relationCategory;
-        uniqueAuthors.set(post.authorId, { name: post.authorName, category: effectiveCategory, relationLink: post.relationLink || null });
+        uniqueAuthors.set(dedupKey, { name: post.authorName, category: effectiveCategory, relationLink: post.relationLink || null });
       }
     });
     
@@ -185,7 +201,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     });
     
     return graphNodes;
-  }, [posts, deceasedGender]);
+  }, [posts, deceasedGender, interMemorialLinks]);
 
   const viewBoxParams = useMemo(() => {
     if (nodes.length === 0) return { minX: 0, minY: 0, width: 400, height: 400 };
