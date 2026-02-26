@@ -9,6 +9,13 @@ interface RequireAdminProps {
   requireAdmin?: boolean; // true = admin only, false = admin or mod
 }
 
+/**
+ * Admin route guard — Security by obscurity + RBAC.
+ * 
+ * CRITICAL: Non-admin users are silently redirected to the 404 page
+ * to avoid revealing the existence of the admin interface.
+ * Unauthenticated users go to /auth (they don't know what route they tried).
+ */
 const RequireAdmin = ({ children, requireAdmin = false }: RequireAdminProps) => {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isAdminOrMod, loading: roleLoading } = useAdminRole();
@@ -25,23 +32,17 @@ const RequireAdmin = ({ children, requireAdmin = false }: RequireAdminProps) => 
     );
   }
 
+  // Unauthenticated: redirect to auth without revealing admin exists
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
   const hasAccess = requireAdmin ? isAdmin : isAdminOrMod;
 
+  // SECURITY: Non-admin users see the generic 404 page — 
+  // the admin interface's existence is never disclosed.
   if (!hasAccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Accès refusé</h1>
-          <p className="text-muted-foreground">
-            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
-          </p>
-        </div>
-      </div>
-    );
+    return <Navigate to="/404-not-found" replace />;
   }
 
   return <>{children}</>;
