@@ -122,7 +122,7 @@ const MemorialInner = () => {
       try {
         let query = supabase
           .from('memorials')
-          .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo, share_token')
+          .select('id, slug, first_name, last_name, birth_date, death_date, photo_url, biography, photos, default_photo_index, created_by, creator_relation, funeral_date, funeral_location, donation_enabled, legacy_slug, is_demo, share_token, heir_email')
           .eq('is_published', true)
           .eq('is_active', true)
           .is('merged_into', null);
@@ -173,6 +173,7 @@ const MemorialInner = () => {
             defaultPhotoIndex: data.default_photo_index || 0,
             isDemo: data.is_demo || false,
             shareToken: data.share_token || null,
+            heirEmail: data.heir_email || null,
           });
         } else {
           console.warn('[Memorial] Not found in DB either. Token/slug:', token || slug);
@@ -551,6 +552,7 @@ const MemorialInner = () => {
     defaultPhotoIndex: memorialData?.defaultPhotoIndex || 0,
     shareToken: memorialData?.shareToken || null,
     isDemo: memorialData?.isDemo || false,
+    heirEmail: (memorialData as any)?.heirEmail || null,
   };
 
   const handleAddCandle = async (postId: string) => {
@@ -870,6 +872,7 @@ const MemorialInner = () => {
                             funeralLocation: memorial.funeralLocation,
                             photos: safePhotos,
                             defaultPhotoIndex: memorial.defaultPhotoIndex,
+                            heirEmail: memorial.heirEmail,
                           }}
                           onSave={handleMemorialUpdated}
                         />

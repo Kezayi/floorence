@@ -1,5 +1,5 @@
  import { useState, useEffect } from "react";
- import { Pencil, Loader2 } from "lucide-react";
+ import { Pencil, Loader2, ShieldCheck } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import {
    Dialog,
@@ -16,6 +16,7 @@
  import { supabase } from "@/integrations/supabase/client";
  import { useAuth } from "@/contexts/AuthContext";
  import PhotoUploader from "./PhotoUploader";
+ import DigitalHeirSettings from "./DigitalHeirSettings";
  import { toast } from "sonner";
  
  interface EditMemorialDialogProps {
@@ -26,6 +27,7 @@
      funeralLocation?: string | null;
      photos?: string[];
      defaultPhotoIndex?: number;
+     heirEmail?: string | null;
    };
    onSave: () => void;
  }
@@ -108,62 +110,73 @@
            </DialogDescription>
          </DialogHeader>
  
-         <Tabs defaultValue="info" className="py-4">
-           <TabsList className="grid w-full grid-cols-2">
-             <TabsTrigger value="info">Informations</TabsTrigger>
-             <TabsTrigger value="photos">Photos</TabsTrigger>
-           </TabsList>
- 
-           <TabsContent value="info" className="space-y-6 mt-4">
-             {/* Biography */}
-             <div className="space-y-2">
-               <Label htmlFor="bio">Biographie / Avis de décès</Label>
-               <Textarea
-                 id="bio"
-                 value={bio}
-                 onChange={(e) => setBio(e.target.value)}
-                 placeholder="Rédigez l'avis de décès..."
-                 className="min-h-[150px]"
-               />
-             </div>
- 
-             {/* Funeral Date */}
-             <div className="space-y-2">
-               <Label htmlFor="funeralDate">Date des obsèques</Label>
-               <Input
-                 id="funeralDate"
-                 type="datetime-local"
-                 value={funeralDate ? funeralDate.slice(0, 16) : ""}
-                 onChange={(e) => setFuneralDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
-               />
-             </div>
- 
-             {/* Funeral Location */}
-             <div className="space-y-2">
-               <Label htmlFor="funeralLocation">Lieu des obsèques</Label>
-               <Input
-                 id="funeralLocation"
-                 value={funeralLocation}
-                 onChange={(e) => setFuneralLocation(e.target.value)}
-                 placeholder="Église, cimetière, etc."
-               />
-             </div>
-           </TabsContent>
- 
-           <TabsContent value="photos" className="mt-4">
-             {user && (
-               <PhotoUploader
-                 photos={photos}
-                 defaultPhotoIndex={defaultPhotoIndex}
-                 maxPhotos={3}
-                 memorialId={memorialId}
-                 userId={user.id}
-                 onChange={handlePhotosChange}
-                 disabled={loading}
-               />
-             )}
-           </TabsContent>
-         </Tabs>
+          <Tabs defaultValue="info" className="py-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="info">Informations</TabsTrigger>
+              <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="gestion" className="gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Transmission
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="space-y-6 mt-4">
+              {/* Biography */}
+              <div className="space-y-2">
+                <Label htmlFor="bio">Biographie / Avis de décès</Label>
+                <Textarea
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Rédigez l'avis de décès..."
+                  className="min-h-[150px]"
+                />
+              </div>
+
+              {/* Funeral Date */}
+              <div className="space-y-2">
+                <Label htmlFor="funeralDate">Date des obsèques</Label>
+                <Input
+                  id="funeralDate"
+                  type="datetime-local"
+                  value={funeralDate ? funeralDate.slice(0, 16) : ""}
+                  onChange={(e) => setFuneralDate(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                />
+              </div>
+
+              {/* Funeral Location */}
+              <div className="space-y-2">
+                <Label htmlFor="funeralLocation">Lieu des obsèques</Label>
+                <Input
+                  id="funeralLocation"
+                  value={funeralLocation}
+                  onChange={(e) => setFuneralLocation(e.target.value)}
+                  placeholder="Église, cimetière, etc."
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="photos" className="mt-4">
+              {user && (
+                <PhotoUploader
+                  photos={photos}
+                  defaultPhotoIndex={defaultPhotoIndex}
+                  maxPhotos={3}
+                  memorialId={memorialId}
+                  userId={user.id}
+                  onChange={handlePhotosChange}
+                  disabled={loading}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="gestion" className="mt-4">
+              <DigitalHeirSettings
+                memorialId={memorialId}
+                currentHeirEmail={initialData.heirEmail}
+              />
+            </TabsContent>
+          </Tabs>
  
          <div className="flex justify-end gap-3">
            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
