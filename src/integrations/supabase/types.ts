@@ -639,6 +639,20 @@ export type Database = {
           inference_bonus: number | null
           memorial_id: string | null
         }
+        Insert: {
+          density_score?: never
+          gesture_score?: never
+          humanity_index?: never
+          inference_bonus?: never
+          memorial_id?: string | null
+        }
+        Update: {
+          density_score?: never
+          gesture_score?: never
+          humanity_index?: never
+          inference_bonus?: never
+          memorial_id?: string | null
+        }
         Relationships: []
       }
       profiles_public: {
