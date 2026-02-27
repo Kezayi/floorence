@@ -1,7 +1,7 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
-import MemorialPagination from "@/components/home/MemorialPagination";
+import InfinityScrollLoader from "@/components/home/InfinityScrollLoader";
 import UpcomingEvents from "@/components/home/UpcomingEvents";
 import HommageFeatured from "@/components/home/HommageFeatured";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
@@ -10,7 +10,7 @@ import { LayoutGrid, Grid3X3, List, Square, Heart } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMemorials } from "@/contexts/MemorialsContext";
+import { usePaginatedMemorials } from "@/hooks/usePaginatedMemorials";
 import {
   Tooltip,
   TooltipContent,
@@ -22,15 +22,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
 
-const ITEMS_PER_PAGE = 10;
-
 const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>("grid-4");
   const [filterType, setFilterType] = useState<FilterType>("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const { memorialCards, loading } = useMemorials();
+  const { memorials, loading, loadingMore, hasMore, totalCount, loadMore } = usePaginatedMemorials();
   const { data: eventsData, isLoading: eventsLoading } = useUpcomingEvents();
 
   // Set default view mode based on device
@@ -42,22 +39,11 @@ const Index = () => {
     }
   }, [isMobile]);
 
-  // Reset to page 1 when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterType]);
-
-  // Filter memorials based on type
-  const filteredMemorials = filterType === "all" 
-    ? memorialCards 
-    : memorialCards.filter(m => m.type === filterType);
-
-  // Paginated memorials
-  const totalPages = Math.ceil(filteredMemorials.length / ITEMS_PER_PAGE);
-  const paginatedMemorials = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredMemorials.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredMemorials, currentPage]);
+  // Client-side filter on loaded data (server returns all published)
+  const filteredMemorials = useMemo(() => {
+    if (filterType === "all") return memorials;
+    return memorials.filter(m => m.type === filterType);
+  }, [memorials, filterType]);
 
   const getGridClass = () => {
     switch (viewMode) {
@@ -106,7 +92,7 @@ const Index = () => {
                   <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
                   {!loading && (
                     <span className="text-sm text-muted-foreground font-sans">
-                      {filteredMemorials.length} espace{filteredMemorials.length > 1 ? "s" : ""}
+                      {totalCount} espace{totalCount > 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
@@ -217,13 +203,13 @@ const Index = () => {
 
             {loading ? (
               renderSkeleton()
-            ) : memorialCards.length === 0 ? (
+            ) : memorials.length === 0 ? (
               <EmptyState
                 icon={Heart}
                 title="Aucun espace mémoriel"
                 message="Soyez le premier à créer un espace mémoriel pour honorer la mémoire d'un proche disparu."
                 actionLabel="Créer le premier mémorial"
-                onAction={() => navigate("/creer-memorial")}
+                onAction={() => navigate("/creer")}
               />
             ) : filteredMemorials.length === 0 ? (
               <div className="text-center py-12">
@@ -234,7 +220,7 @@ const Index = () => {
             ) : (
               <>
                 <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
-                  {paginatedMemorials.map((memorial, index) => (
+                  {filteredMemorials.map((memorial, index) => (
                     <MemorialCard
                       key={memorial.id}
                       id={memorial.id}
@@ -255,10 +241,10 @@ const Index = () => {
                   ))}
                 </div>
                 
-                <MemorialPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
+                <InfinityScrollLoader
+                  hasMore={hasMore}
+                  loading={loadingMore}
+                  onLoadMore={loadMore}
                 />
               </>
             )}
