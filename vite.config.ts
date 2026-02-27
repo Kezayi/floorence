@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  optimizeDeps: {
+    force: true,
+    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
