@@ -5,8 +5,11 @@ import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
-import RelationshipGraph2D from "./RelationshipGraph2D";
+import { lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+
+const RelationshipGraph2D = lazy(() => import("./RelationshipGraph2D"));
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
@@ -178,7 +181,9 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
-            <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+            <Suspense fallback={<Skeleton className="w-full h-[400px] rounded-xl" />}>
+              <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+            </Suspense>
           </div>
 
           {/* Fullscreen Graph Dialog */}
@@ -200,7 +205,9 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                 </Button>
               </div>
               <div className="flex-1 p-4">
-                <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+                <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" />}>
+                  <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+                </Suspense>
               </div>
             </div>
           )}
