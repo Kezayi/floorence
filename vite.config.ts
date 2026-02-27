@@ -13,16 +13,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-  optimizeDeps: {
-    force: true,
-    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "react": path.resolve(__dirname, "./node_modules/react"),
-      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
-      "react/jsx-runtime": path.resolve(__dirname, "./node_modules/react/jsx-runtime"),
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
