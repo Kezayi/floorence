@@ -1,5 +1,6 @@
 // Floorence Service Worker — Cache-first for static assets, network-first for API
-const CACHE_NAME = 'floorence-v1';
+// v2: exclude Vite dep chunks from cache to prevent stale React copies
+const CACHE_NAME = 'floorence-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to pre-cache on install
@@ -34,15 +35,19 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and cross-origin API calls
   if (request.method !== 'GET') return;
 
-  // Supabase / API calls → network only (don't cache auth tokens or dynamic data)
+  // Supabase / API calls → network only
   if (url.hostname.includes('supabase.co') || url.hostname.includes('lovable.dev')) return;
+
+  // NEVER cache Vite dependency chunks or HMR — always go to network
+  if (url.pathname.includes('/node_modules/.vite/') || url.pathname.includes('/@vite/') || url.pathname.includes('?v=')) {
+    return;
+  }
 
   // Navigation requests → network-first, fallback to offline page
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful navigation responses
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           return response;
@@ -52,12 +57,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (JS, CSS, images, fonts) → cache-first
+  // Static assets (images, fonts, CSS) → cache-first (but NOT JS modules)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) {
+    // JS files → network-first to avoid stale module issues
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Other static assets (images, fonts, CSS) → cache-first
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        // Only cache successful responses for same-origin or font/CDN assets
         if (response.ok && (url.origin === self.location.origin || url.hostname.includes('fonts.g'))) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
