@@ -1,6 +1,6 @@
 // Floorence Service Worker — Cache-first for static assets, network-first for API
 // v2: exclude Vite dep chunks from cache to prevent stale React copies
-const CACHE_NAME = 'floorence-v2';
+const CACHE_NAME = 'floorence-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to pre-cache on install
@@ -39,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.includes('supabase.co') || url.hostname.includes('lovable.dev')) return;
 
   // NEVER cache Vite dependency chunks or HMR — always go to network
-  if (url.pathname.includes('/node_modules/.vite/') || url.pathname.includes('/@vite/') || url.pathname.includes('?v=')) {
+  if (url.pathname.includes('/node_modules/.vite/') || url.pathname.includes('/@vite/') || url.search.includes('v=')) {
     return;
   }
 
