@@ -1,6 +1,6 @@
 // Floorence Service Worker — Cache-first for static assets, network-first for API
 // v2: exclude Vite dep chunks from cache to prevent stale React copies
-const CACHE_NAME = 'floorence-v3';
+const CACHE_NAME = 'floorence-v4';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to pre-cache on install
@@ -57,20 +57,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (images, fonts, CSS) → cache-first (but NOT JS modules)
-  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) {
-    // JS files → network-first to avoid stale module issues
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok && url.origin === self.location.origin) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+  // JavaScript modules (Vite chunks + source modules) → network only to avoid stale runtime contexts
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs') || url.pathname.includes('/src/') || url.pathname.includes('/node_modules/')) {
+    event.respondWith(fetch(request));
     return;
   }
 
