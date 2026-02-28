@@ -1,4 +1,5 @@
-import { Calendar, MapPin, Clock, Heart } from "lucide-react";
+import { Calendar, MapPin, Clock } from "lucide-react";
+import { CrossIcon } from "./MemorialIcons";
 import { format, parseISO, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -65,7 +66,7 @@ const DeathNotice = ({ memorial, events = [] }: DeathNoticeProps) => {
       {/* Avis de décès principal */}
       <div className="bg-secondary p-6 md:p-8 rounded-sm">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <Heart className="w-4 h-4" />
+          <CrossIcon size={16} className="text-muted-foreground" />
           <span className="font-sans">Avis de décès</span>
         </div>
         
