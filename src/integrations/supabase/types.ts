@@ -129,6 +129,13 @@ export type Database = {
             referencedRelation: "memorials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
         ]
       }
       memorial_events: {
@@ -184,6 +191,13 @@ export type Database = {
             columns: ["memorial_id"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_events_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
             referencedColumns: ["id"]
           },
         ]
@@ -244,6 +258,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "memorial_relations_memorial_id_2_fkey"
             columns: ["memorial_id_2"]
             isOneToOne: false
@@ -255,6 +276,13 @@ export type Database = {
             columns: ["memorial_id_2"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
             referencedColumns: ["id"]
           },
           {
@@ -395,6 +423,13 @@ export type Database = {
             columns: ["merged_into"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
             referencedColumns: ["id"]
           },
         ]
@@ -566,6 +601,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "suggested_links_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "suggested_links_target_memorial_id_fkey"
             columns: ["target_memorial_id"]
             isOneToOne: false
@@ -577,6 +619,13 @@ export type Database = {
             columns: ["target_memorial_id"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggested_links_target_memorial_id_fkey"
+            columns: ["target_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
             referencedColumns: ["id"]
           },
         ]
@@ -719,6 +768,13 @@ export type Database = {
             referencedRelation: "memorials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guestbook_posts_memorial_fk"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_admin_success_metrics: {
@@ -752,6 +808,130 @@ export type Database = {
           visible_posts: number | null
         }
         Relationships: []
+      }
+      v_public_memorials: {
+        Row: {
+          biography: string | null
+          birth_date: string | null
+          created_at: string | null
+          created_by: string | null
+          creator_relation: string | null
+          death_date: string | null
+          default_photo_index: number | null
+          donation_enabled: boolean | null
+          first_name: string | null
+          funeral_date: string | null
+          funeral_location: string | null
+          id: string | null
+          is_active: boolean | null
+          is_demo: boolean | null
+          is_published: boolean | null
+          last_name: string | null
+          legacy_slug: string | null
+          merged_into: string | null
+          network_size: number | null
+          notification_end_day: number | null
+          notification_frequency: string | null
+          notification_start_day: number | null
+          photo_url: string | null
+          photos: string[] | null
+          share_token: string | null
+          slug: string | null
+          social_density_score: number | null
+          total_candles: number | null
+          total_flowers: number | null
+          total_posts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          biography?: string | null
+          birth_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creator_relation?: string | null
+          death_date?: string | null
+          default_photo_index?: number | null
+          donation_enabled?: boolean | null
+          first_name?: string | null
+          funeral_date?: string | null
+          funeral_location?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_demo?: boolean | null
+          is_published?: boolean | null
+          last_name?: string | null
+          legacy_slug?: string | null
+          merged_into?: string | null
+          network_size?: number | null
+          notification_end_day?: number | null
+          notification_frequency?: string | null
+          notification_start_day?: number | null
+          photo_url?: string | null
+          photos?: string[] | null
+          share_token?: string | null
+          slug?: string | null
+          social_density_score?: number | null
+          total_candles?: number | null
+          total_flowers?: number | null
+          total_posts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          biography?: string | null
+          birth_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creator_relation?: string | null
+          death_date?: string | null
+          default_photo_index?: number | null
+          donation_enabled?: boolean | null
+          first_name?: string | null
+          funeral_date?: string | null
+          funeral_location?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_demo?: boolean | null
+          is_published?: boolean | null
+          last_name?: string | null
+          legacy_slug?: string | null
+          merged_into?: string | null
+          network_size?: number | null
+          notification_end_day?: number | null
+          notification_frequency?: string | null
+          notification_start_day?: number | null
+          photo_url?: string | null
+          photos?: string[] | null
+          share_token?: string | null
+          slug?: string | null
+          social_density_score?: number | null
+          total_candles?: number | null
+          total_flowers?: number | null
+          total_posts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorials_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_social_inferences: {
         Row: {
@@ -787,6 +967,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "memorial_relations_memorial_id_1_fkey"
+            columns: ["memorial_id_1"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "memorial_relations_memorial_id_2_fkey"
             columns: ["memorial_id_2"]
             isOneToOne: false
@@ -798,6 +985,13 @@ export type Database = {
             columns: ["memorial_id_2"]
             isOneToOne: false
             referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_relations_memorial_id_2_fkey"
+            columns: ["memorial_id_2"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
             referencedColumns: ["id"]
           },
         ]

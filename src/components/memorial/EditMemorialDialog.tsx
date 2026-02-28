@@ -27,7 +27,7 @@
      funeralLocation?: string | null;
      photos?: string[];
      defaultPhotoIndex?: number;
-     heirEmail?: string | null;
+     memorialId?: string;
    };
    onSave: () => void;
  }
@@ -41,6 +41,7 @@
    const [funeralLocation, setFuneralLocation] = useState(initialData.funeralLocation || "");
    const [photos, setPhotos] = useState<string[]>(initialData.photos || []);
    const [defaultPhotoIndex, setDefaultPhotoIndex] = useState(initialData.defaultPhotoIndex || 0);
+   const [heirEmail, setHeirEmail] = useState<string | null>(null);
  
    // Reset state when dialog opens
    useEffect(() => {
@@ -50,8 +51,15 @@
        setFuneralLocation(initialData.funeralLocation || "");
        setPhotos(initialData.photos || []);
        setDefaultPhotoIndex(initialData.defaultPhotoIndex || 0);
+       // Fetch heir_email securely (owner-only via RLS on memorials table)
+       supabase
+         .from('memorials')
+         .select('heir_email')
+         .eq('id', memorialId)
+         .maybeSingle()
+         .then(({ data }) => setHeirEmail(data?.heir_email || null));
      }
-   }, [open, initialData]);
+   }, [open, initialData, memorialId]);
  
    const handlePhotosChange = (newPhotos: string[], newDefaultIndex: number) => {
      setPhotos(newPhotos);
@@ -173,7 +181,7 @@
             <TabsContent value="gestion" className="mt-4">
               <DigitalHeirSettings
                 memorialId={memorialId}
-                currentHeirEmail={initialData.heirEmail}
+                currentHeirEmail={heirEmail}
               />
             </TabsContent>
           </Tabs>
