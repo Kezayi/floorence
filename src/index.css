@@ -64,10 +64,10 @@
     --livreor-muted: 0 0% 45%;
 
     /* Gestes symboliques */
-    --candle-glow: 45 80% 55%;
-    --flower-soft: 130 25% 38%;
-    --gesture-candle: 45 90% 50%;
-    --gesture-flower: 130 25% 38%;
+    --candle-glow: 40 95% 52%;
+    --flower-soft: 145 72% 40%;
+    --gesture-candle: 40 95% 52%;
+    --gesture-flower: 145 72% 40%;
 
     /* Accent vert pour interactions */
     --accent-green: 142 70% 45%;
