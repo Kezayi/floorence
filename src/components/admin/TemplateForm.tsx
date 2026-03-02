@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,7 +28,7 @@ const CATEGORY_OPTIONS = [
 ];
 
 const RELATION_OPTIONS = [
-  { value: "", label: "Toutes" },
+  { value: "_none", label: "Toutes" },
   { value: "ami", label: "Ami" },
   { value: "collegue", label: "Collègue" },
   { value: "famille", label: "Famille" },
@@ -45,7 +45,7 @@ const TemplateForm = ({ templateId }: TemplateFormProps) => {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("solennel");
   const [tone, setTone] = useState("sobre");
-  const [relation, setRelation] = useState("");
+  const [relation, setRelation] = useState("_none");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
 
@@ -65,7 +65,7 @@ const TemplateForm = ({ templateId }: TemplateFormProps) => {
       setContent(data.content);
       setCategory(data.category);
       setTone(data.tone);
-      setRelation(data.relation || "");
+      setRelation(data.relation || "_none");
       setFetching(false);
     };
     load();
@@ -82,7 +82,7 @@ const TemplateForm = ({ templateId }: TemplateFormProps) => {
       content: content.trim(),
       category,
       tone,
-      relation: relation || null,
+      relation: relation === "_none" ? null : relation,
       is_active: true,
     };
 
