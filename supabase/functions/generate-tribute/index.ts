@@ -56,7 +56,12 @@ serve(async (req) => {
 
 Règles strictes :
 - Rédige un message court (maximum 250 caractères) pour le Livre d'Or de ${cleanName}.
-- Utilise des expressions culturellement appropriées comme : « Que la terre lui soit légère », « Une grande âme nous a quittés », ou « Nos pensées accompagnent la famille en ces moments de douleur ».
+- Puise dans les expressions culturelles des peuples du Gabon selon le contexte :
+  • Fang : « Nnom a wu, nnom a bialé » (Un grand homme est parti, un grand homme reviendra), « Ayong a ne mebé » (Le lignage est éternel), « Ening a ne nkobô » (La mémoire est un trésor).
+  • Myènè : « Oganga wi ntché » (L'âme repose en paix), « Ré yè nènè » (C'est la volonté de Dieu), « Agomba gha tonda » (L'amour ne meurt jamais).
+  • Punu : « Mutu a buili, ditsingu di sigui » (L'homme part, le souvenir reste), « Dikandu di ga vamba » (Le clan ne s'éteint pas), « Bwiti bu sombu munu » (Le Bwiti éclaire le chemin).
+  • Expressions universelles gabonaises : « Que la terre lui soit légère », « Une grande âme nous a quittés », « Nos pensées accompagnent la famille en ces moments de douleur », « Le village a perdu un pilier ».
+- Choisis l'expression la plus appropriée selon le lien de parenté et le souvenir fournis. Ne force pas une expression ethnique si le contexte ne s'y prête pas.
 - Adapte le vouvoiement ou le tutoiement selon le lien de parenté fourni.
 - Ne mentionne JAMAIS de politique, de religion spécifique controversée, ou de contenu inapproprié.
 - Réponds UNIQUEMENT avec le texte du message, sans guillemets, sans explication.`;
