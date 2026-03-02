@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
 import { Button } from "@/components/ui/button";
+import TemplateSelector from "./TemplateSelector";
 import {
   Dialog,
   DialogContent,
@@ -215,6 +216,12 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
               </>
             )}
           </div>
+
+          {/* Template Selector */}
+          <TemplateSelector onSelect={(text) => {
+            setMessageContent(text);
+            if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
+          }} />
 
           {/* Textarea */}
           <div>
