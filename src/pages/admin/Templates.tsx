@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, BookOpen, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Trash2, BookOpen, BarChart3, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,14 +19,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ADMIN_PREFIX } from "@/lib/adminRoutes";
 
 interface Template {
   id: string;
@@ -52,29 +56,16 @@ const CATEGORY_OPTIONS = [
   { value: "religieux", label: "Religieux" },
 ];
 
-const RELATION_OPTIONS = [
-  { value: "", label: "Toutes" },
-  { value: "ami", label: "Ami" },
-  { value: "collegue", label: "Collègue" },
-  { value: "famille", label: "Famille" },
-];
-
 const AdminTemplates = () => {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [filterTone, setFilterTone] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-
-  // New template form
-  const [newContent, setNewContent] = useState("");
-  const [newCategory, setNewCategory] = useState("solennel");
-  const [newTone, setNewTone] = useState("sobre");
-  const [newRelation, setNewRelation] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
-    // Admin RLS policy lets admins see all (including inactive)
     const { data, error } = await supabase
       .from("guestbook_templates")
       .select("*")
@@ -93,33 +84,6 @@ const AdminTemplates = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const handleCreate = async () => {
-    if (!newContent.trim()) {
-      toast.error("Le contenu est obligatoire");
-      return;
-    }
-
-    const { error } = await supabase.from("guestbook_templates").insert({
-      content: newContent.trim(),
-      category: newCategory,
-      tone: newTone,
-      relation: newRelation || null,
-      is_active: true,
-    });
-
-    if (error) {
-      toast.error("Erreur lors de la création");
-      console.error(error);
-      return;
-    }
-
-    toast.success("Modèle ajouté");
-    setNewContent("");
-    setNewRelation("");
-    setDialogOpen(false);
-    fetchTemplates();
-  };
-
   const handleToggleActive = async (id: string, current: boolean) => {
     const { error } = await supabase
       .from("guestbook_templates")
@@ -130,23 +94,26 @@ const AdminTemplates = () => {
       toast.error("Erreur de mise à jour");
       return;
     }
+    toast.success(!current ? "Modèle activé" : "Modèle désactivé");
     setTemplates((prev) =>
       prev.map((t) => (t.id === id ? { ...t, is_active: !current } : t))
     );
   };
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     const { error } = await supabase
       .from("guestbook_templates")
       .delete()
-      .eq("id", id);
+      .eq("id", deleteTarget.id);
 
     if (error) {
       toast.error("Erreur de suppression");
       return;
     }
     toast.success("Modèle supprimé");
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    setTemplates((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   const filtered = templates.filter((t) => {
@@ -169,14 +136,14 @@ const AdminTemplates = () => {
             {templates.length} modèles • Utilisez <code className="bg-muted px-1 rounded text-xs">{`{{name}}`}</code> pour insérer le nom du défunt
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+        <Button onClick={() => navigate(`${ADMIN_PREFIX}/modeles/new`)} className="gap-2">
           <Plus className="w-4 h-4" />
           Nouveau modèle
         </Button>
       </div>
 
       {/* Top 5 most used */}
-      {topUsed.some((t) => t.usage_count > 0) && (
+      {!loading && topUsed.some((t) => t.usage_count > 0) && (
         <div className="bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-medium text-foreground flex items-center gap-2 mb-3">
             <BarChart3 className="w-4 h-4" />
@@ -227,26 +194,32 @@ const AdminTemplates = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50%]">Contenu</TableHead>
+            <TableHead className="w-[45%]">Contenu</TableHead>
             <TableHead>Catégorie</TableHead>
             <TableHead>Ton</TableHead>
             <TableHead>Relation</TableHead>
             <TableHead className="text-right">Utilisations</TableHead>
             <TableHead>Statut</TableHead>
-            <TableHead className="w-[80px]">Actions</TableHead>
+            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                Chargement…
-              </TableCell>
-            </TableRow>
+            Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+              </TableRow>
+            ))
           ) : filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                Aucun modèle trouvé
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                Aucun modèle trouvé. Cliquez sur « Nouveau modèle » pour en créer un.
               </TableCell>
             </TableRow>
           ) : (
@@ -270,7 +243,7 @@ const AdminTemplates = () => {
                     onClick={() => handleToggleActive(t.id, t.is_active ?? true)}
                     className={`text-xs px-2 py-1 rounded-sm transition-colors ${
                       t.is_active
-                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
@@ -278,14 +251,25 @@ const AdminTemplates = () => {
                   </button>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(t.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`${ADMIN_PREFIX}/modeles/${t.id}`)}
+                      title="Modifier"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteTarget(t)}
+                      className="text-destructive hover:text-destructive"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -293,75 +277,23 @@ const AdminTemplates = () => {
         </TableBody>
       </Table>
 
-      {/* Create dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nouveau modèle de condoléances</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Contenu du message</Label>
-              <textarea
-                value={newContent}
-                onChange={(e) => setNewContent(e.target.value)}
-                placeholder={`Ex: {{name}} restera à jamais dans nos cœurs…`}
-                rows={4}
-                className="w-full mt-1 p-3 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Utilisez <code className="bg-muted px-1 rounded">{`{{name}}`}</code> pour le nom du défunt
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Catégorie</Label>
-                <Select value={newCategory} onValueChange={setNewCategory}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Ton</Label>
-                <Select value={newTone} onValueChange={setNewTone}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TONE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Relation</Label>
-                <Select value={newRelation} onValueChange={setNewRelation}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RELATION_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleCreate}>Créer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce modèle ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Le modèle « {deleteTarget?.content.slice(0, 60)}… » sera définitivement supprimé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
