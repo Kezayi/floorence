@@ -1,5 +1,5 @@
 import { useState, memo } from "react";
-import { ChevronLeft, ChevronRight, X, Flame, Flower2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Flame, Flower2, Heart } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
@@ -101,10 +101,16 @@ const GuestbookPost = ({
           />
           <div>
             <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
-              <h4 className="font-serif text-lg text-livreor-foreground cursor-pointer hover:underline decoration-livreor-muted/40 underline-offset-4 transition-all">
+              <h4 className="font-serif text-lg text-livreor-foreground cursor-pointer hover:underline decoration-livreor-muted/40 underline-offset-4 transition-all flex items-center gap-2">
                 {displayName(post.authorName, isAuthenticated)}
                 {isDeletedUser && (
                   <span className="text-livreor-muted ml-1">*</span>
+                )}
+                {(post.candleCount > 0 || post.flowerCount > 0) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wider rounded-full bg-[hsl(var(--gesture-candle))/0.15] text-[hsl(var(--gesture-candle))]">
+                    <Heart className="w-3 h-3" />
+                    Donateur
+                  </span>
                 )}
               </h4>
             </AuthorTooltip>
