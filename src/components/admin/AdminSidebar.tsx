@@ -6,6 +6,7 @@ import {
   Users, 
   BarChart3, 
   Flower2,
+  BookOpen,
   LogOut,
   User,
   History,
@@ -43,6 +44,7 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
     { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/modeles`, icon: BookOpen, label: 'Modèles Textes', adminOnly: true },
   ];
 
   return (

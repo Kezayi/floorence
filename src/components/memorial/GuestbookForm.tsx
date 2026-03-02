@@ -221,7 +221,9 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
           {/* Writing assistance */}
           <div className="flex flex-wrap gap-2">
-            <TemplateSelector onSelect={(text) => {
+            <TemplateSelector
+              defuntName={defuntName}
+              onSelect={(text) => {
               setMessageContent(text);
               if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
             }} />

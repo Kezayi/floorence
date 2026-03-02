@@ -145,6 +145,9 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          relation: string | null
+          tone: string
+          usage_count: number
         }
         Insert: {
           category: string
@@ -152,6 +155,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          relation?: string | null
+          tone?: string
+          usage_count?: number
         }
         Update: {
           category?: string
@@ -159,6 +165,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          relation?: string | null
+          tone?: string
+          usage_count?: number
         }
         Relationships: []
       }
@@ -1092,6 +1101,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_template_usage: {
+        Args: { p_template_id: string }
+        Returns: undefined
       }
       inverse_normalized: { Args: { ntype: string }; Returns: string }
       is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
