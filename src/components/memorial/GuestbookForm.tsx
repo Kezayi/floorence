@@ -3,6 +3,7 @@ import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, 
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
 import { Button } from "@/components/ui/button";
 import TemplateSelector from "./TemplateSelector";
+import AITributeGenerator from "./AITributeGenerator";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 
 interface GuestbookFormProps {
   memorialId?: string;
+  defuntName?: string;
   onSubmit: (data: {
     content: string;
     relationCategory: string;
@@ -31,7 +33,7 @@ interface GuestbookFormProps {
 
 const MAX_PHOTOS = 3;
 
-const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormProps) => {
+const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: GuestbookFormProps) => {
   const { user } = useAuth();
   const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { isAdminOrMod } = useAdminRole();
@@ -217,11 +219,22 @@ const GuestbookForm = ({ memorialId, onSubmit, lockedRelation }: GuestbookFormPr
             )}
           </div>
 
-          {/* Template Selector */}
-          <TemplateSelector onSelect={(text) => {
-            setMessageContent(text);
-            if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
-          }} />
+          {/* Writing assistance */}
+          <div className="flex flex-wrap gap-2">
+            <TemplateSelector onSelect={(text) => {
+              setMessageContent(text);
+              if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
+            }} />
+            {defuntName && (
+              <AITributeGenerator
+                defuntName={defuntName}
+                onGenerated={(text) => {
+                  setMessageContent(text);
+                  if (errors.content) setErrors((prev) => { const { content, ...rest } = prev; return rest; });
+                }}
+              />
+            )}
+          </div>
 
           {/* Textarea */}
           <div>

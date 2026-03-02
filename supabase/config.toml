@@ -24,5 +24,8 @@ verify_jwt = false
 [functions.social-search]
 verify_jwt = false
 
+[functions.generate-tribute]
+verify_jwt = false
+
 [functions.log-audit]
 verify_jwt = false
