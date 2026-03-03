@@ -14,6 +14,8 @@ export interface MonetizationState {
 export const useMonetization = () => {
   return useQuery({
     queryKey: ['monetization'],
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<MonetizationState> => {
       // Fetch is_monetized from global_settings
       const { data: settingData, error: settingError } = await supabase

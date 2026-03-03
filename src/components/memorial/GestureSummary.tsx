@@ -1,4 +1,4 @@
-import { Info, Flame, Flower2 } from "lucide-react";
+import { Info, Flame, Flower2, FlaskConical } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import {
   Tooltip,
@@ -26,7 +26,7 @@ const GestureSummary = ({
   onCandleClick,
   onFlowerClick,
 }: GestureSummaryProps) => {
-  const { data: monetization } = useMonetization();
+  const { data: monetization, isLoading: isLoadingSettings } = useMonetization();
   const isMonetized = monetization?.isMonetized ?? false;
   const candlePrice = monetization?.prices?.['cierge'] ?? 500;
   const flowerPrice = monetization?.prices?.['fleur'] ?? 500;
@@ -51,48 +51,66 @@ const GestureSummary = ({
         </Tooltip>
       </div>
       
-      <div className="flex items-center justify-center gap-6">
-        <button
-          onClick={onRIPClick}
-          className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <CrossIcon size={20} className="text-foreground mb-0.5" />
-          <span className="text-2xl font-serif">{totals.ripCount.toLocaleString("fr-FR")}</span>
-          <span className="text-xs font-sans">RIP</span>
-        </button>
-        <button
-          onClick={onCandleClick}
-          disabled={!userHasPosted}
-          className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          <Flame size={20} className={`text-gesture-candle mb-0.5 ${hasCandleFervor ? 'animate-flicker' : ''}`} />
-          <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-gesture-candle' : ''}`}>
-            {totals.candleCount.toLocaleString("fr-FR")}
-          </span>
-           <span className="text-xs font-sans">Cierges</span>
-           {userHasPosted && (
-             <span className="text-[10px] text-muted-foreground">
-               {isMonetized ? `${candlePrice} FCFA` : 'Offert'}
-             </span>
-           )}
-        </button>
-        <button
-          onClick={onFlowerClick}
-          disabled={!userHasPosted}
-          className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          <Flower2 size={20} className={`text-gesture-flower mb-0.5 ${hasFlowerFervor ? 'animate-flicker' : ''}`} />
-          <span className={`text-2xl font-serif ${hasFlowerFervor ? 'text-gesture-flower' : ''}`}>
-            {totals.flowerCount.toLocaleString("fr-FR")}
-          </span>
-          <span className="text-xs font-sans">Fleurs</span>
-          {userHasPosted && (
-            <span className="text-[10px] text-muted-foreground">
-              {isMonetized ? `${flowerPrice} FCFA` : 'Offert'}
-            </span>
+      {isLoadingSettings ? (
+        <div className="flex items-center justify-center py-4">
+          <span className="text-xs text-muted-foreground animate-pulse">Chargement...</span>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-center gap-6">
+            <button
+              onClick={onRIPClick}
+              className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <CrossIcon size={20} className="text-foreground mb-0.5" />
+              <span className="text-2xl font-serif">{totals.ripCount.toLocaleString("fr-FR")}</span>
+              <span className="text-xs font-sans">RIP</span>
+            </button>
+            <button
+              onClick={onCandleClick}
+              disabled={!userHasPosted}
+              className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <Flame size={20} className={`text-gesture-candle mb-0.5 ${hasCandleFervor ? 'animate-flicker' : ''}`} />
+              <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-gesture-candle' : ''}`}>
+                {totals.candleCount.toLocaleString("fr-FR")}
+              </span>
+               <span className="text-xs font-sans">Cierges</span>
+               {userHasPosted && (
+                 <span className="text-[10px] text-muted-foreground">
+                   {isMonetized ? `${candlePrice} FCFA` : 'Offert'}
+                 </span>
+               )}
+            </button>
+            <button
+              onClick={onFlowerClick}
+              disabled={!userHasPosted}
+              className={`flex flex-col items-center gap-1 transition-colors ${!userHasPosted ? 'opacity-50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <Flower2 size={20} className={`text-gesture-flower mb-0.5 ${hasFlowerFervor ? 'animate-flicker' : ''}`} />
+              <span className={`text-2xl font-serif ${hasFlowerFervor ? 'text-gesture-flower' : ''}`}>
+                {totals.flowerCount.toLocaleString("fr-FR")}
+              </span>
+              <span className="text-xs font-sans">Fleurs</span>
+              {userHasPosted && (
+                <span className="text-[10px] text-muted-foreground">
+                  {isMonetized ? `${flowerPrice} FCFA` : 'Offert'}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mode Test LAB badge */}
+          {isMonetized && (
+            <div className="flex items-center justify-center mt-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider rounded-full bg-accent/20 text-accent-foreground border border-accent/30">
+                <FlaskConical className="w-3 h-3" />
+                Mode Test LAB — DigitechAfrica
+              </span>
+            </div>
           )}
-        </button>
-      </div>
+        </>
+      )}
       
       {!userHasPosted && (
         <p className="text-xs text-muted-foreground mt-6 pt-4 border-t border-border">

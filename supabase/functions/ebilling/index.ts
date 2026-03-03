@@ -134,6 +134,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // PAID MODE: call eBilling API
+    if (!isMonetized && phone) {
+      // Safety: reject paid flow if monetization was disabled between request and processing
+      return new Response(
+        JSON.stringify({ error: "Le mode payant n'est plus actif. Veuillez réessayer." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     if (!phone) {
       return new Response(
         JSON.stringify({ error: "Le numéro de téléphone est requis en mode payant" }),
