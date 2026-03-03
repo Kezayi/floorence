@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSystemSettings, useUpdateSetting } from '@/hooks/useSystemSettings';
+import { useMonetization, useUpdateMonetization, useUpdateRitualPrice } from '@/hooks/useMonetization';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { Loader2, Save, ExternalLink, Info, Bell } from 'lucide-react';
+import { Loader2, Save, ExternalLink, Info, Bell, CreditCard, Flame, Flower2 } from 'lucide-react';
 
 const FREQUENCY_OPTIONS = [
   { value: 'weekly_saturday', label: 'Hebdomadaire (samedi)', desc: 'Digest envoyé chaque samedi à 09h' },
@@ -19,6 +20,9 @@ const FREQUENCY_OPTIONS = [
 const Settings = () => {
   const { data: settings, isLoading } = useSystemSettings();
   const updateSetting = useUpdateSetting();
+  const { data: monetization, isLoading: monetizationLoading } = useMonetization();
+  const updateMonetization = useUpdateMonetization();
+  const updateRitualPrice = useUpdateRitualPrice();
 
   // Contribution link
   const [contributionUrl, setContributionUrl] = useState('');
@@ -29,6 +33,11 @@ const Settings = () => {
   const [notifStartDay, setNotifStartDay] = useState(25);
   const [notifEndDay, setNotifEndDay] = useState(5);
 
+  // Monetization
+  const [isMonetized, setIsMonetized] = useState(false);
+  const [candlePrice, setCandlePrice] = useState(500);
+  const [flowerPrice, setFlowerPrice] = useState(500);
+
   useEffect(() => {
     if (settings) {
       setContributionUrl(settings.contribution_link_template.url);
@@ -38,6 +47,14 @@ const Settings = () => {
       setNotifEndDay(settings.notification_window.end_day);
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (monetization) {
+      setIsMonetized(monetization.isMonetized);
+      setCandlePrice(monetization.prices['cierge'] ?? 500);
+      setFlowerPrice(monetization.prices['fleur'] ?? 500);
+    }
+  }, [monetization]);
 
   const handleSaveContributionLink = async () => {
     try {
@@ -67,7 +84,22 @@ const Settings = () => {
     }
   };
 
-  if (isLoading) {
+  const handleSaveMonetization = async () => {
+    if (candlePrice < 500 || flowerPrice < 500) {
+      toast.error('Le prix minimum est de 500 FCFA');
+      return;
+    }
+    try {
+      await updateMonetization.mutateAsync({ isMonetized });
+      await updateRitualPrice.mutateAsync({ itemType: 'cierge', unitPrice: candlePrice });
+      await updateRitualPrice.mutateAsync({ itemType: 'fleur', unitPrice: flowerPrice });
+      toast.success('Paramètres de monétisation mis à jour');
+    } catch (error: any) {
+      toast.error(error?.message || 'Erreur lors de la mise à jour');
+    }
+  };
+
+  if (isLoading || monetizationLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin" />
@@ -80,29 +112,80 @@ const Settings = () => {
       <h1 className="text-3xl font-bold text-foreground mb-8">Paramètres</h1>
 
       <div className="grid gap-6 max-w-2xl">
-        {/* Beta Mode Notice */}
+        {/* Monetization Switch & Prices */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="w-5 h-5 text-primary" />
-              Mode Bêta
+              <CreditCard className="w-5 h-5 text-primary" />
+              Monétisation
             </CardTitle>
             <CardDescription>
-              Floorence est actuellement en phase de bêta-test. Toutes les fonctionnalités sont gratuites.
+              Basculez entre le mode gratuit (bêta) et le mode payant (eBilling DigitechAfrica).
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-              <p className="text-sm text-foreground">
-                <strong>✓ Création de mémoriaux :</strong> Gratuit
-              </p>
-              <p className="text-sm text-foreground mt-1">
-                <strong>✓ Hommages et gestes :</strong> Gratuit
-              </p>
-              <p className="text-sm text-muted-foreground mt-3">
-                Les tarifs seront activés après la phase de bêta.
-              </p>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{isMonetized ? 'Mode Payant' : 'Mode Gratuit'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {isMonetized
+                    ? 'Les gestes rituels sont facturés via eBilling'
+                    : 'Tous les gestes rituels sont offerts (bêta)'}
+                </p>
+              </div>
+              <Switch
+                checked={isMonetized}
+                onCheckedChange={setIsMonetized}
+              />
             </div>
+
+            <div className={`space-y-4 transition-opacity ${isMonetized ? 'opacity-100' : 'opacity-50'}`}>
+              <div className="space-y-2">
+                <Label htmlFor="candle-price" className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-gesture-candle" />
+                  Prix du cierge (FCFA)
+                </Label>
+                <Input
+                  id="candle-price"
+                  type="number"
+                  min={500}
+                  value={candlePrice}
+                  onChange={(e) => setCandlePrice(parseInt(e.target.value) || 500)}
+                />
+                {candlePrice < 500 && (
+                  <p className="text-xs text-destructive">Minimum : 500 FCFA</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="flower-price" className="flex items-center gap-2">
+                  <Flower2 className="w-4 h-4 text-gesture-flower" />
+                  Prix de la fleur (FCFA)
+                </Label>
+                <Input
+                  id="flower-price"
+                  type="number"
+                  min={500}
+                  value={flowerPrice}
+                  onChange={(e) => setFlowerPrice(parseInt(e.target.value) || 500)}
+                />
+                {flowerPrice < 500 && (
+                  <p className="text-xs text-destructive">Minimum : 500 FCFA</p>
+                )}
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSaveMonetization}
+              disabled={updateMonetization.isPending || updateRitualPrice.isPending || candlePrice < 500 || flowerPrice < 500}
+            >
+              {(updateMonetization.isPending || updateRitualPrice.isPending) ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Enregistrer la monétisation
+            </Button>
           </CardContent>
         </Card>
 

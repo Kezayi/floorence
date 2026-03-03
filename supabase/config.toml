@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.log-audit]
 verify_jwt = false
+
+[functions.ebilling]
+verify_jwt = false

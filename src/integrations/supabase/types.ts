@@ -47,6 +47,24 @@ export type Database = {
         }
         Relationships: []
       }
+      global_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value_bool: boolean | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value_bool?: boolean | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value_bool?: boolean | null
+        }
+        Relationships: []
+      }
       guestbook_posts: {
         Row: {
           author_name: string
@@ -548,6 +566,30 @@ export type Database = {
           profile_completed?: boolean
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      ritual_prices: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          unit_price?: number
+          updated_at?: string
         }
         Relationships: []
       }

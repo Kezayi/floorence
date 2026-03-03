@@ -5,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useMonetization } from "@/hooks/useMonetization";
 
 interface GestureSummaryProps {
   totals: {
@@ -25,6 +26,11 @@ const GestureSummary = ({
   onCandleClick,
   onFlowerClick,
 }: GestureSummaryProps) => {
+  const { data: monetization } = useMonetization();
+  const isMonetized = monetization?.isMonetized ?? false;
+  const candlePrice = monetization?.prices?.['cierge'] ?? 500;
+  const flowerPrice = monetization?.prices?.['fleur'] ?? 500;
+  
   const hasCandleFervor = totals.candleCount > 5;
   const hasFlowerFervor = totals.flowerCount > 5;
 
@@ -63,7 +69,12 @@ const GestureSummary = ({
           <span className={`text-2xl font-serif ${hasCandleFervor ? 'text-gesture-candle' : ''}`}>
             {totals.candleCount.toLocaleString("fr-FR")}
           </span>
-          <span className="text-xs font-sans">Cierges</span>
+           <span className="text-xs font-sans">Cierges</span>
+           {userHasPosted && (
+             <span className="text-[10px] text-muted-foreground">
+               {isMonetized ? `${candlePrice} FCFA` : 'Offert'}
+             </span>
+           )}
         </button>
         <button
           onClick={onFlowerClick}
@@ -75,6 +86,11 @@ const GestureSummary = ({
             {totals.flowerCount.toLocaleString("fr-FR")}
           </span>
           <span className="text-xs font-sans">Fleurs</span>
+          {userHasPosted && (
+            <span className="text-[10px] text-muted-foreground">
+              {isMonetized ? `${flowerPrice} FCFA` : 'Offert'}
+            </span>
+          )}
         </button>
       </div>
       
