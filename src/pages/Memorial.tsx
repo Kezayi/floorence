@@ -302,6 +302,7 @@ const MemorialInner = () => {
             authorId: post.user_id
               ? `author-${post.user_id}`
               : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`),
+            authorUserId: post.user_id || null,
             authorName: post.author_name || 'Anonyme',
             authorAvatarUrl: avatarUrl,
             relationCategory: post.relation_category || 'autre',
