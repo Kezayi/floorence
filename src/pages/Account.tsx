@@ -6,7 +6,7 @@ import { validateDisplayName } from "@/lib/forbiddenNames";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, FileText, Heart, LogOut, ChevronRight, Flame, Loader2, AlertCircle, Share2 } from "lucide-react";
+import { User, FileText, Heart, LogOut, ChevronRight, Flame, Loader2, AlertCircle, Share2, Receipt } from "lucide-react";
 import AvatarUpload from "@/components/account/AvatarUpload";
 import { ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 import { useAuth } from "@/contexts/AuthContext";
