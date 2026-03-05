@@ -152,7 +152,7 @@ const Account = () => {
 
         setMyPosts(transformedPosts);
         setMyMemorials(memorials || []);
-        setMyMemorials(memorials || []);
+        setMyTransactions(transactions || []);
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
