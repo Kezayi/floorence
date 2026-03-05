@@ -560,119 +560,57 @@ const MemorialInner = () => {
   const { data: monetization, refetch: refetchMonetization } = useMonetization();
   const isMonetized = monetization?.isMonetized ?? false;
 
-  const handleAddCandle = async (postId: string) => {
+  // Gesture modal state
+  const [gesteModal, setGesteModal] = useState<{ open: boolean; itemType: "cierge" | "fleur"; postId: string }>({
+    open: false, itemType: "cierge", postId: "",
+  });
+
+  const openGesteModal = (postId: string, itemType: "cierge" | "fleur") => {
+    setGesteModal({ open: true, itemType, postId });
+  };
+
+  const handleGesteConfirm = async (phone?: string) => {
+    const { postId, itemType } = gesteModal;
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || (post.candleCount ?? 0) >= 10) return;
+    if (!post) return;
 
-    // Refetch monetization state to ensure sync with backend
-    const { data: freshMonetization } = await refetchMonetization();
-    const currentlyMonetized = freshMonetization?.isMonetized ?? false;
+    const countKey = itemType === "cierge" ? "candleCount" : "flowerCount";
+    if ((post[countKey] ?? 0) >= 10) return;
 
-    if (currentlyMonetized) {
-      // Paid mode: route through ebilling edge function
+    const prevCount = post[countKey] ?? 0;
+
+    // Optimistic update for free mode
+    setGuestbookPosts(prev =>
+      prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount + 1 } : p)
+    );
+
+    if (isValidUUID(postId)) {
       try {
         const { data, error } = await supabase.functions.invoke('ebilling', {
           body: {
             memorial_id: memorial.id,
-            item_type: 'cierge',
+            item_type: itemType,
             quantity: 1,
             post_id: postId,
+            ...(phone ? { phone } : {}),
           },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        // Update local state on success
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, candleCount: (p.candleCount ?? 0) + 1 } : p)
-        );
-        toast.success("Cierge allumé avec succès");
+        const label = itemType === "cierge" ? "Cierge allumé" : "Fleur déposée";
+        toast.success(`${label} avec succès`);
       } catch (err: any) {
-        toast.error(err.message || "Erreur lors de l'ajout du cierge");
-      }
-    } else {
-      // Free mode: route through ebilling (which records free transaction)
-      const prevCount = post.candleCount ?? 0;
-      const newCount = prevCount + 1;
-      setGuestbookPosts(prev =>
-        prev.map(p => p.id === postId ? { ...p, candleCount: newCount } : p)
-      );
-
-      if (isValidUUID(postId)) {
-        try {
-          const { data, error } = await supabase.functions.invoke('ebilling', {
-            body: {
-              memorial_id: memorial.id,
-              item_type: 'cierge',
-              quantity: 1,
-              post_id: postId,
-            },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-        } catch {
-          setGuestbookPosts(prev =>
-            prev.map(p => p.id === postId ? { ...p, candleCount: prevCount } : p)
-          );
-          toast.error("Erreur lors de l'ajout du cierge");
-        }
+        // Rollback
+        setGuestbookPosts(prev =>
+          prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount } : p)
+        );
+        toast.error(err.message || "Erreur lors du geste");
       }
     }
   };
 
-  const handleAddFlower = async (postId: string) => {
-    const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || (post.flowerCount ?? 0) >= 10) return;
-
-    const { data: freshMonetization } = await refetchMonetization();
-    const currentlyMonetized = freshMonetization?.isMonetized ?? false;
-
-    if (currentlyMonetized) {
-      try {
-        const { data, error } = await supabase.functions.invoke('ebilling', {
-          body: {
-            memorial_id: memorial.id,
-            item_type: 'fleur',
-            quantity: 1,
-            post_id: postId,
-          },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, flowerCount: (p.flowerCount ?? 0) + 1 } : p)
-        );
-        toast.success("Fleur déposée avec succès");
-      } catch (err: any) {
-        toast.error(err.message || "Erreur lors du dépôt de fleur");
-      }
-    } else {
-      const prevCount = post.flowerCount ?? 0;
-      const newCount = prevCount + 1;
-      setGuestbookPosts(prev =>
-        prev.map(p => p.id === postId ? { ...p, flowerCount: newCount } : p)
-      );
-
-      if (isValidUUID(postId)) {
-        try {
-          const { data, error } = await supabase.functions.invoke('ebilling', {
-            body: {
-              memorial_id: memorial.id,
-              item_type: 'fleur',
-              quantity: 1,
-              post_id: postId,
-            },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-        } catch {
-          setGuestbookPosts(prev =>
-            prev.map(p => p.id === postId ? { ...p, flowerCount: prevCount } : p)
-          );
-          toast.error("Erreur lors du dépôt de fleur");
-        }
-      }
-    }
-  };
+  const handleAddCandle = (postId: string) => openGesteModal(postId, "cierge");
+  const handleAddFlower = (postId: string) => openGesteModal(postId, "fleur");
 
   const handleSubmitPost = async (data: {
     content: string;
