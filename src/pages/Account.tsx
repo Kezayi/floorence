@@ -65,6 +65,7 @@ const Account = () => {
   // Data states
   const [myPosts, setMyPosts] = useState<GuestbookPost[]>([]);
   const [myMemorials, setMyMemorials] = useState<Memorial[]>([]);
+  const [myTransactions, setMyTransactions] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Redirect if not authenticated
