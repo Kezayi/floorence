@@ -377,11 +377,12 @@ const MemorialInner = () => {
               const isDemo = memorialData?.isDemo === true;
               return [
                 {
-                  id: newPost?.id,
-                  authorId: newPost?.user_id
-                    ? `author-${newPost.user_id}`
-                    : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
-                  authorName: newPost?.author_name || 'Anonyme',
+                   id: newPost?.id,
+                   authorId: newPost?.user_id
+                     ? `author-${newPost.user_id}`
+                     : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
+                   authorUserId: newPost?.user_id || null,
+                   authorName: newPost?.author_name || 'Anonyme',
                   authorAvatarUrl: isDemo
                     ? (newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null)
                     : (newPost?.author_photo_url || null),
