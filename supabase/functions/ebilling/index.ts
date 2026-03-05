@@ -59,7 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check monetization mode
+    // Server-side truth: check monetization mode
     const { data: monetizationSetting } = await supabaseAdmin
       .from("global_settings")
       .select("value_bool")
@@ -77,11 +77,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     const unitPrice = priceData?.unit_price ?? 500;
     const totalAmount = unitPrice * quantity;
-
     const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
 
+    console.log(`[ebilling] mode=${isMonetized ? 'payant' : 'gratuit'}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
+
+    // ── FREE MODE ──
     if (!isMonetized) {
-      // FREE MODE: bypass eBilling, record as completed
       const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
         user_id: user.id,
         memorial_id,
@@ -90,21 +92,15 @@ const handler = async (req: Request): Promise<Response> => {
         payment_type: item_type,
         status: "SUCCESS",
         ebilling_reference: ebillingRef,
-        metadata: {
-          mode: "gratuit",
-          quantity,
-          unit_price: 0,
-          api_response_code: 0,
-          code_recu: 200,
-        },
+        metadata: { mode: "gratuit", quantity, unit_price: 0 },
       });
 
       if (txError) {
-        console.error("Transaction insert error:", txError);
+        console.error("[ebilling] Transaction insert error:", txError);
         throw txError;
       }
 
-      // Update the guestbook post gesture count
+      // Update guestbook post gesture count
       if (post_id) {
         const column = item_type === "cierge" ? "candle_count" : "flower_count";
         const { data: currentPost } = await supabaseAdmin
@@ -127,24 +123,26 @@ const handler = async (req: Request): Promise<Response> => {
           success: true,
           mode: "gratuit",
           reference: ebillingRef,
+          amount: 0,
+          unit_price: 0,
+          requires_phone: false,
           message: "Geste offert avec succès",
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // PAID MODE: call eBilling API
-    if (!isMonetized && phone) {
-      // Safety: reject paid flow if monetization was disabled between request and processing
-      return new Response(
-        JSON.stringify({ error: "Le mode payant n'est plus actif. Veuillez réessayer." }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
+    // ── PAID MODE ──
+    // Strictly require phone in paid mode
     if (!phone) {
       return new Response(
-        JSON.stringify({ error: "Le numéro de téléphone est requis en mode payant" }),
+        JSON.stringify({
+          error: "Le numéro de téléphone est requis en mode payant",
+          mode: "payant",
+          requires_phone: true,
+          unit_price: unitPrice,
+          amount: totalAmount,
+        }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -158,16 +156,11 @@ const handler = async (req: Request): Promise<Response> => {
       payment_type: item_type,
       status: "pending",
       ebilling_reference: ebillingRef,
-      metadata: {
-        mode: "payant",
-        quantity,
-        unit_price: unitPrice,
-        phone,
-      },
+      metadata: { mode: "payant", quantity, unit_price: unitPrice, phone },
     });
 
     if (txError) {
-      console.error("Transaction insert error:", txError);
+      console.error("[ebilling] Transaction insert error:", txError);
       throw txError;
     }
 
@@ -182,8 +175,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
 
     const ebillingPayload = {
       ppiMerchantId: EBILLING_MERCHANT_ID,
@@ -204,7 +195,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       const ebillingData = await ebillingResponse.json();
-      console.log("eBilling response:", JSON.stringify(ebillingData));
+      console.log("[ebilling] API response:", JSON.stringify(ebillingData));
 
       return new Response(
         JSON.stringify({
@@ -212,14 +203,15 @@ const handler = async (req: Request): Promise<Response> => {
           mode: "payant",
           reference: ebillingRef,
           amount: totalAmount,
+          unit_price: unitPrice,
+          requires_phone: true,
           ebilling_response: ebillingData,
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     } catch (ebillingError) {
-      console.error("eBilling API error:", ebillingError);
+      console.error("[ebilling] API error:", ebillingError);
 
-      // Mark transaction as failed
       await supabaseAdmin
         .from("payment_transactions")
         .update({ status: "FAILED" })
@@ -231,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
   } catch (error: any) {
-    console.error("Error in ebilling:", error);
+    console.error("[ebilling] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Une erreur est survenue" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

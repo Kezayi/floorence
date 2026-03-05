@@ -18,6 +18,7 @@ import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
+import GesteRituelModal from "@/components/memorial/GesteRituelModal";
 import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
 import LineageTree from "@/components/memorial/LineageTree";
 import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
@@ -85,8 +86,14 @@ const MemorialInner = () => {
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const { data: settings } = useSystemSettings();
+  const { data: monetization, refetch: refetchMonetization } = useMonetization();
+  const isMonetized = monetization?.isMonetized ?? false;
   const POSTS_PER_PAGE = 5;
   const [hommagesPage, setHommagesPage] = useState(1);
+  // Gesture modal state
+  const [gesteModal, setGesteModal] = useState<{ open: boolean; itemType: "cierge" | "fleur"; postId: string }>({
+    open: false, itemType: "cierge", postId: "",
+  });
 
   // ── DB Fallback State ──
   // When memorial not found in context, query DB directly to prevent false 404s
@@ -302,6 +309,7 @@ const MemorialInner = () => {
             authorId: post.user_id
               ? `author-${post.user_id}`
               : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`),
+            authorUserId: post.user_id || null,
             authorName: post.author_name || 'Anonyme',
             authorAvatarUrl: avatarUrl,
             relationCategory: post.relation_category || 'autre',
@@ -376,11 +384,12 @@ const MemorialInner = () => {
               const isDemo = memorialData?.isDemo === true;
               return [
                 {
-                  id: newPost?.id,
-                  authorId: newPost?.user_id
-                    ? `author-${newPost.user_id}`
-                    : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
-                  authorName: newPost?.author_name || 'Anonyme',
+                   id: newPost?.id,
+                   authorId: newPost?.user_id
+                     ? `author-${newPost.user_id}`
+                     : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
+                   authorUserId: newPost?.user_id || null,
+                   authorName: newPost?.author_name || 'Anonyme',
                   authorAvatarUrl: isDemo
                     ? (newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null)
                     : (newPost?.author_photo_url || null),
@@ -429,7 +438,7 @@ const MemorialInner = () => {
   }, [guestbookPosts]);
 
   const currentUserId = user?.id || "";
-  const userHasPosted = guestbookPosts.some((post) => post.authorId === currentUserId);
+  const userHasPosted = guestbookPosts.some((post) => post.authorUserId === currentUserId);
 
   const isOwner = user?.id === memorialData?.createdBy || false;
   const { prefetchTab } = useTabPrefetch(memorialData?.id || "");
@@ -554,122 +563,55 @@ const MemorialInner = () => {
     isDemo: memorialData?.isDemo || false,
   };
 
-  const { data: monetization, refetch: refetchMonetization } = useMonetization();
-  const isMonetized = monetization?.isMonetized ?? false;
 
-  const handleAddCandle = async (postId: string) => {
+
+
+  const openGesteModal = (postId: string, itemType: "cierge" | "fleur") => {
+    setGesteModal({ open: true, itemType, postId });
+  };
+
+  const handleGesteConfirm = async (phone?: string) => {
+    const { postId, itemType } = gesteModal;
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || (post.candleCount ?? 0) >= 10) return;
+    if (!post) return;
 
-    // Refetch monetization state to ensure sync with backend
-    const { data: freshMonetization } = await refetchMonetization();
-    const currentlyMonetized = freshMonetization?.isMonetized ?? false;
+    const countKey = itemType === "cierge" ? "candleCount" : "flowerCount";
+    if ((post[countKey] ?? 0) >= 10) return;
 
-    if (currentlyMonetized) {
-      // Paid mode: route through ebilling edge function
+    const prevCount = post[countKey] ?? 0;
+
+    // Optimistic update for free mode
+    setGuestbookPosts(prev =>
+      prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount + 1 } : p)
+    );
+
+    if (isValidUUID(postId)) {
       try {
         const { data, error } = await supabase.functions.invoke('ebilling', {
           body: {
             memorial_id: memorial.id,
-            item_type: 'cierge',
+            item_type: itemType,
             quantity: 1,
             post_id: postId,
+            ...(phone ? { phone } : {}),
           },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        // Update local state on success
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, candleCount: (p.candleCount ?? 0) + 1 } : p)
-        );
-        toast.success("Cierge allumé avec succès");
+        const label = itemType === "cierge" ? "Cierge allumé" : "Fleur déposée";
+        toast.success(`${label} avec succès`);
       } catch (err: any) {
-        toast.error(err.message || "Erreur lors de l'ajout du cierge");
-      }
-    } else {
-      // Free mode: route through ebilling (which records free transaction)
-      const prevCount = post.candleCount ?? 0;
-      const newCount = prevCount + 1;
-      setGuestbookPosts(prev =>
-        prev.map(p => p.id === postId ? { ...p, candleCount: newCount } : p)
-      );
-
-      if (isValidUUID(postId)) {
-        try {
-          const { data, error } = await supabase.functions.invoke('ebilling', {
-            body: {
-              memorial_id: memorial.id,
-              item_type: 'cierge',
-              quantity: 1,
-              post_id: postId,
-            },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-        } catch {
-          setGuestbookPosts(prev =>
-            prev.map(p => p.id === postId ? { ...p, candleCount: prevCount } : p)
-          );
-          toast.error("Erreur lors de l'ajout du cierge");
-        }
+        // Rollback
+        setGuestbookPosts(prev =>
+          prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount } : p)
+        );
+        toast.error(err.message || "Erreur lors du geste");
       }
     }
   };
 
-  const handleAddFlower = async (postId: string) => {
-    const post = guestbookPosts.find(p => p.id === postId);
-    if (!post || (post.flowerCount ?? 0) >= 10) return;
-
-    const { data: freshMonetization } = await refetchMonetization();
-    const currentlyMonetized = freshMonetization?.isMonetized ?? false;
-
-    if (currentlyMonetized) {
-      try {
-        const { data, error } = await supabase.functions.invoke('ebilling', {
-          body: {
-            memorial_id: memorial.id,
-            item_type: 'fleur',
-            quantity: 1,
-            post_id: postId,
-          },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, flowerCount: (p.flowerCount ?? 0) + 1 } : p)
-        );
-        toast.success("Fleur déposée avec succès");
-      } catch (err: any) {
-        toast.error(err.message || "Erreur lors du dépôt de fleur");
-      }
-    } else {
-      const prevCount = post.flowerCount ?? 0;
-      const newCount = prevCount + 1;
-      setGuestbookPosts(prev =>
-        prev.map(p => p.id === postId ? { ...p, flowerCount: newCount } : p)
-      );
-
-      if (isValidUUID(postId)) {
-        try {
-          const { data, error } = await supabase.functions.invoke('ebilling', {
-            body: {
-              memorial_id: memorial.id,
-              item_type: 'fleur',
-              quantity: 1,
-              post_id: postId,
-            },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-        } catch {
-          setGuestbookPosts(prev =>
-            prev.map(p => p.id === postId ? { ...p, flowerCount: prevCount } : p)
-          );
-          toast.error("Erreur lors du dépôt de fleur");
-        }
-      }
-    }
-  };
+  const handleAddCandle = (postId: string) => openGesteModal(postId, "cierge");
+  const handleAddFlower = (postId: string) => openGesteModal(postId, "fleur");
 
   const handleSubmitPost = async (data: {
     content: string;
@@ -687,7 +629,8 @@ const MemorialInner = () => {
     if (!isValidUUID(memorialData.id)) {
       const newPost: GuestbookPostData = {
         id: `m${Date.now()}`,
-        authorId: user.id,
+        authorId: `author-${user.id}`,
+        authorUserId: user.id,
         authorName: user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur",
         relationCategory: data.relationCategory,
         relationLink: data.relationLink,
@@ -1050,7 +993,7 @@ const MemorialInner = () => {
                   <div key={post.id}>
                     <GuestbookPost
                       post={post}
-                      isOwner={post.authorId === currentUserId}
+                      isOwner={post.authorUserId === currentUserId}
                       deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
                       onAddCandle={handleAddCandle}
                       onAddFlower={handleAddFlower}
@@ -1120,6 +1063,15 @@ const MemorialInner = () => {
       </main>
 
       <Footer />
+
+      {/* Gesture Ritual Modal */}
+      <GesteRituelModal
+        open={gesteModal.open}
+        onOpenChange={(open) => setGesteModal(prev => ({ ...prev, open }))}
+        itemType={gesteModal.itemType}
+        postId={gesteModal.postId}
+        onConfirm={handleGesteConfirm}
+      />
     </div>
   );
 };

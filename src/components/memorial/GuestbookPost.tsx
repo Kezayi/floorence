@@ -12,6 +12,8 @@ import AuthorAvatar from "./AuthorAvatar";
 export interface GuestbookPostData {
   id: string;
   authorId: string;
+  /** Raw user UUID for business logic (nullable for anonymous/demo) */
+  authorUserId?: string | null;
   authorName: string;
   authorAvatarUrl?: string | null;
   relationCategory: string;
