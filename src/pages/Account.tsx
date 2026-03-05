@@ -278,6 +278,9 @@ const Account = () => {
                   <TabsTrigger value="hommages" className="flex-1 text-xs px-2">
                     Hommages
                   </TabsTrigger>
+                  <TabsTrigger value="transactions" className="flex-1 text-xs px-2">
+                    Gestes
+                  </TabsTrigger>
                 </TabsList>
 
                 <div className="grid md:grid-cols-[240px_1fr] gap-8">
