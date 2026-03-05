@@ -1063,6 +1063,15 @@ const MemorialInner = () => {
       </main>
 
       <Footer />
+
+      {/* Gesture Ritual Modal */}
+      <GesteRituelModal
+        open={gesteModal.open}
+        onOpenChange={(open) => setGesteModal(prev => ({ ...prev, open }))}
+        itemType={gesteModal.itemType}
+        postId={gesteModal.postId}
+        onConfirm={handleGesteConfirm}
+      />
     </div>
   );
 };
