@@ -125,6 +125,13 @@ const Account = () => {
           .eq('created_by', user.id)
           .order('created_at', { ascending: false });
 
+        // Fetch user's payment transactions
+        const { data: transactions } = await supabase
+          .from('payment_transactions')
+          .select('id, amount, currency, payment_type, status, created_at, ebilling_reference, metadata')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
 
         // Transform posts data to match interface
         const transformedPosts: GuestbookPost[] = (posts || []).map((post: any) => ({
