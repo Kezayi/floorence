@@ -86,8 +86,14 @@ const MemorialInner = () => {
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const { data: settings } = useSystemSettings();
+  const { data: monetization, refetch: refetchMonetization } = useMonetization();
+  const isMonetized = monetization?.isMonetized ?? false;
   const POSTS_PER_PAGE = 5;
   const [hommagesPage, setHommagesPage] = useState(1);
+  // Gesture modal state
+  const [gesteModal, setGesteModal] = useState<{ open: boolean; itemType: "cierge" | "fleur"; postId: string }>({
+    open: false, itemType: "cierge", postId: "",
+  });
 
   // ── DB Fallback State ──
   // When memorial not found in context, query DB directly to prevent false 404s
