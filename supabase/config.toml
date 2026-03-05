@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.ebilling]
 verify_jwt = false
+
+[functions.ebilling-callback]
+verify_jwt = false
