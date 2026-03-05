@@ -431,7 +431,7 @@ const MemorialInner = () => {
   }, [guestbookPosts]);
 
   const currentUserId = user?.id || "";
-  const userHasPosted = guestbookPosts.some((post) => post.authorId === currentUserId);
+  const userHasPosted = guestbookPosts.some((post) => post.authorUserId === currentUserId);
 
   const isOwner = user?.id === memorialData?.createdBy || false;
   const { prefetchTab } = useTabPrefetch(memorialData?.id || "");
