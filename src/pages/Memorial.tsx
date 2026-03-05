@@ -18,6 +18,7 @@ import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
+import GesteRituelModal from "@/components/memorial/GesteRituelModal";
 import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
 import LineageTree from "@/components/memorial/LineageTree";
 import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
