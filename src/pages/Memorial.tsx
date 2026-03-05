@@ -563,13 +563,8 @@ const MemorialInner = () => {
     isDemo: memorialData?.isDemo || false,
   };
 
-  const { data: monetization, refetch: refetchMonetization } = useMonetization();
-  const isMonetized = monetization?.isMonetized ?? false;
 
-  // Gesture modal state
-  const [gesteModal, setGesteModal] = useState<{ open: boolean; itemType: "cierge" | "fleur"; postId: string }>({
-    open: false, itemType: "cierge", postId: "",
-  });
+
 
   const openGesteModal = (postId: string, itemType: "cierge" | "fleur") => {
     setGesteModal({ open: true, itemType, postId });
