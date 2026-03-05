@@ -689,7 +689,8 @@ const MemorialInner = () => {
     if (!isValidUUID(memorialData.id)) {
       const newPost: GuestbookPostData = {
         id: `m${Date.now()}`,
-        authorId: user.id,
+        authorId: `author-${user.id}`,
+        authorUserId: user.id,
         authorName: user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur",
         relationCategory: data.relationCategory,
         relationLink: data.relationLink,
