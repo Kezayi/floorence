@@ -1052,7 +1052,7 @@ const MemorialInner = () => {
                   <div key={post.id}>
                     <GuestbookPost
                       post={post}
-                      isOwner={post.authorId === currentUserId}
+                      isOwner={post.authorUserId === currentUserId}
                       deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
                       onAddCandle={handleAddCandle}
                       onAddFlower={handleAddFlower}
