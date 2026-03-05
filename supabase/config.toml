@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.ebilling-callback]
 verify_jwt = false
+
+[functions.notify-followers]
+verify_jwt = false
