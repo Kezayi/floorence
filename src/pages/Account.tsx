@@ -320,6 +320,17 @@ const Account = () => {
                         <Heart className="w-4 h-4" />
                         Mes hommages
                       </button>
+                      <button
+                        onClick={() => setActiveTab("transactions")}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left font-sans text-sm transition-colors rounded-sm ${
+                          activeTab === "transactions"
+                            ? "bg-secondary text-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Receipt className="w-4 h-4" />
+                        Mes gestes
+                      </button>
 
                       <div className="pt-4 mt-4 border-t border-border">
                         <button 
