@@ -591,6 +591,58 @@ const Account = () => {
                         )}
                       </div>
                     </TabsContent>
+
+                    <TabsContent value="transactions" className="mt-0">
+                      <div className="space-y-4">
+                        <h3 className="mb-4">Mes gestes rituels</h3>
+                        {loadingData ? (
+                          <div className="flex justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : myTransactions.length > 0 ? (
+                          myTransactions.map((tx) => {
+                            const meta = tx.metadata as Record<string, any> | null;
+                            const mode = meta?.mode || "inconnu";
+                            const isFree = tx.amount === 0;
+                            const statusLabel = tx.status === "SUCCESS" ? "Confirmé" : tx.status === "FAILED" ? "Échoué" : "En attente";
+                            const statusColor = tx.status === "SUCCESS" ? "text-emerald-600" : tx.status === "FAILED" ? "text-destructive" : "text-amber-500";
+                            const itemLabel = tx.payment_type === "cierge" ? "Cierge" : tx.payment_type === "fleur" ? "Fleur" : tx.payment_type;
+
+                            return (
+                              <div key={tx.id} className="bg-card border border-border rounded-sm p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                                      {tx.payment_type === "cierge" ? (
+                                        <Flame className="w-4 h-4" style={{ color: 'hsl(var(--gesture-candle))' }} />
+                                      ) : (
+                                        <ChrysanthemumIcon size={16} />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium font-sans">{itemLabel} × {meta?.quantity || 1}</p>
+                                      <p className="text-xs text-muted-foreground font-sans">
+                                        {new Date(tx.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-semibold font-sans">
+                                      {isFree ? "Offert" : `${tx.amount} ${tx.currency}`}
+                                    </p>
+                                    <p className={`text-xs font-sans ${statusColor}`}>{statusLabel}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-muted-foreground font-serif py-8 text-center">
+                            Vous n'avez pas encore effectué de geste rituel
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
                   </div>
                 </div>
               </Tabs>
