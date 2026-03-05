@@ -29,7 +29,7 @@ interface NotificationsContextType {
   followedMemorials: FollowedMemorial[];
   unreadCount: number;
   isFollowing: (memorialSlug: string) => boolean;
-  toggleFollow: (memorial: { slug: string; name: string; photoUrl: string }) => void;
+  toggleFollow: (memorial: { slug: string; name: string; photoUrl: string; id: string }) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
@@ -44,11 +44,9 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [followedMemorials, setFollowedMemorials] = useState<FollowedMemorial[]>([]);
   const [dismissedRequests, setDismissedRequests] = useState<Set<string>>(new Set());
 
-  // Shared query: user's own memorials (deduplicated — was fetched 3x before)
+  // Shared query: user's own memorials
   const { data: myMemorials } = useQuery({
     queryKey: ["user-my-memorials", user?.id],
     enabled: !!user,
@@ -66,7 +64,74 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
   const myIds = useMemo(() => (myMemorials || []).map((m) => m.id), [myMemorials]);
 
-  // Fetch pending link requests (uses shared myMemorials)
+  // Fetch DB follows
+  const { data: dbFollows } = useQuery({
+    queryKey: ["memorial-follows", user?.id],
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("memorial_follows")
+        .select("id, memorial_id, created_at, memorials:memorial_id (first_name, last_name, slug, photo_url)")
+        .eq("user_id", user.id);
+      return (data || []).map((f: any) => ({
+        id: f.id,
+        slug: f.memorials?.slug || "",
+        name: `${f.memorials?.first_name || ""} ${f.memorials?.last_name || ""}`.trim(),
+        photoUrl: f.memorials?.photo_url || "",
+        followedAt: f.created_at,
+        memorialId: f.memorial_id,
+      }));
+    },
+  });
+
+  const followedMemorials: FollowedMemorial[] = dbFollows || [];
+
+  // Fetch DB notifications
+  const { data: dbNotifications } = useQuery({
+    queryKey: ["user-notifications", user?.id],
+    enabled: !!user,
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("user_notifications")
+        .select("id, type, memorial_id, title, message, is_read, created_at, metadata")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return (data || []).map((n: any) => ({
+        id: n.id,
+        type: n.type as Notification["type"],
+        memorialSlug: "",
+        memorialName: n.title,
+        message: n.message,
+        createdAt: n.created_at,
+        isRead: n.is_read,
+      }));
+    },
+  });
+
+  // Realtime subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("user-notifications-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "user_notifications", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["user-notifications", user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
+
+  // Fetch pending link requests
   const { data: linkRequests } = useQuery({
     queryKey: ["pending-link-requests", user?.id],
     enabled: !!user && myIds.length > 0,
@@ -74,7 +139,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     refetchInterval: 60 * 1000,
     queryFn: async () => {
       if (!user || myIds.length === 0) return [];
-
       const { data: pending } = await supabase
         .from("memorial_relations")
         .select("id, memorial_id_1, memorial_id_2, relation_type, requested_by, status")
@@ -114,7 +178,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     },
   });
 
-  // Fetch pending suggested links count (uses shared myIds)
+  // Fetch pending suggested links count
   const { data: suggestedLinksCount = 0 } = useQuery({
     queryKey: ["pending-suggested-links-count", user?.id],
     enabled: !!user && myIds.length > 0,
@@ -122,13 +186,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     refetchInterval: 2 * 60 * 1000,
     queryFn: async () => {
       if (!user || myIds.length === 0) return 0;
-
       const { count, error } = await supabase
         .from("suggested_links")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending")
         .or(`source_memorial_id.in.(${myIds.join(",")}),target_memorial_id.in.(${myIds.join(",")})`);
-
       if (error) return 0;
       return count || 0;
     },
@@ -162,16 +224,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       }]
     : [];
 
-  const allNotifications = [...suggestedLinkNotifications, ...linkRequestNotifications, ...notifications];
-
-  // Reset state when user logs out
-  useEffect(() => {
-    if (!user) {
-      setNotifications([]);
-      setFollowedMemorials([]);
-      setDismissedRequests(new Set());
-    }
-  }, [user]);
+  const allNotifications = [
+    ...suggestedLinkNotifications,
+    ...linkRequestNotifications,
+    ...(dbNotifications || []),
+  ];
 
   const unreadCount = allNotifications.filter((n) => !n.isRead).length;
   const pendingLinkRequests = linkRequestNotifications.length;
@@ -182,42 +239,40 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   );
 
   const toggleFollow = useCallback(
-    (memorial: { slug: string; name: string; photoUrl: string }) => {
-      setFollowedMemorials((prev) => {
-        const isCurrentlyFollowing = prev.some((m) => m.slug === memorial.slug);
-        if (isCurrentlyFollowing) {
-          return prev.filter((m) => m.slug !== memorial.slug);
-        } else {
-          return [...prev, {
-            id: `f-${Date.now()}`,
-            slug: memorial.slug,
-            name: memorial.name,
-            photoUrl: memorial.photoUrl,
-            followedAt: new Date().toISOString(),
-          }];
-        }
-      });
+    async (memorial: { slug: string; name: string; photoUrl: string; id: string }) => {
+      if (!user) return;
+      const existing = followedMemorials.find((m) => m.slug === memorial.slug);
+      if (existing) {
+        await supabase.from("memorial_follows").delete().eq("user_id", user.id).eq("memorial_id", memorial.id);
+      } else {
+        await supabase.from("memorial_follows").insert({ user_id: user.id, memorial_id: memorial.id });
+      }
+      queryClient.invalidateQueries({ queryKey: ["memorial-follows", user.id] });
     },
-    []
+    [user, followedMemorials, queryClient]
   );
 
-  const markAsRead = useCallback((notificationId: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => n.id === notificationId ? { ...n, isRead: true } : n)
-    );
-  }, []);
+  const markAsRead = useCallback(async (notificationId: string) => {
+    if (notificationId.startsWith("link-") || notificationId === "suggested-links-summary") return;
+    await supabase.from("user_notifications").update({ is_read: true }).eq("id", notificationId);
+    queryClient.invalidateQueries({ queryKey: ["user-notifications"] });
+  }, [queryClient]);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const markAllAsRead = useCallback(async () => {
+    if (user) {
+      await supabase.from("user_notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+      queryClient.invalidateQueries({ queryKey: ["user-notifications"] });
+    }
     setDismissedRequests((prev) => {
       const next = new Set(prev);
       (linkRequests || []).forEach((req) => next.add(req.id));
       return next;
     });
-  }, [linkRequests]);
+  }, [user, linkRequests, queryClient]);
 
   const clearNotifications = useCallback(() => {
-    setNotifications([]);
+    // Only clears dismissed state for link requests
+    setDismissedRequests(new Set());
   }, []);
 
   const acceptLinkRequest = useCallback(async (requestId: string) => {
@@ -225,9 +280,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       .from("memorial_relations")
       .update({ status: "accepted" })
       .eq("id", requestId);
-
     if (error) throw error;
-
     setDismissedRequests((prev) => new Set(prev).add(requestId));
     queryClient.invalidateQueries({ queryKey: ["pending-link-requests"] });
     queryClient.invalidateQueries({ queryKey: ["community-graph-memorial-relations"] });
@@ -238,9 +291,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       .from("memorial_relations")
       .update({ status: "rejected" })
       .eq("id", requestId);
-
     if (error) throw error;
-
     setDismissedRequests((prev) => new Set(prev).add(requestId));
     queryClient.invalidateQueries({ queryKey: ["pending-link-requests"] });
   }, [queryClient]);

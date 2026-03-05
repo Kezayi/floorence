@@ -156,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
       payment_type: item_type,
       status: "pending",
       ebilling_reference: ebillingRef,
-      metadata: { mode: "payant", quantity, unit_price: unitPrice, phone },
+      metadata: { mode: "payant", quantity, unit_price: unitPrice, phone, post_id: post_id || null },
     });
 
     if (txError) {

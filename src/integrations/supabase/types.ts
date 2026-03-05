@@ -253,6 +253,49 @@ export type Database = {
           },
         ]
       }
+      memorial_follows: {
+        Row: {
+          created_at: string
+          id: string
+          memorial_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memorial_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memorial_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_follows_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorial_follows_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_follows_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memorial_relations: {
         Row: {
           id: string
@@ -731,6 +774,64 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          memorial_id: string | null
+          message: string
+          metadata: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          memorial_id?: string | null
+          message: string
+          metadata?: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          memorial_id?: string | null
+          message?: string
+          metadata?: Json | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "user_notifications_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_memorial_id_fkey"
+            columns: ["memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

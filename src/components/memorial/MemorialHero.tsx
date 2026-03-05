@@ -188,6 +188,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               <button
                 onClick={() => {
                   toggleFollow({
+                    id: memorial.id,
                     slug: memorial.slug,
                     name: memorial.name,
                     photoUrl: memorial.photos?.[0] || "",
