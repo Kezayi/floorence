@@ -78,8 +78,12 @@ const GesteRituelModal = ({
       }
 
       await onConfirm(currentlyMonetized ? phone.trim() : undefined);
-      onOpenChange(false);
-      setPhone("");
+
+      // In free mode, close immediately. In paid mode, keep modal open for USSD feedback.
+      if (!currentlyMonetized) {
+        onOpenChange(false);
+        setPhone("");
+      }
     } catch {
       // On error, stop waiting
       setUssdWaiting(false);
