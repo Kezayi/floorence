@@ -168,11 +168,29 @@ const handler = async (req: Request): Promise<Response> => {
     const EBILLING_API_KEY = Deno.env.get("EBILLING_API_KEY");
     const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
     const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
+    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
 
     if (!EBILLING_API_KEY || !EBILLING_MERCHANT_ID) {
       return new Response(
         JSON.stringify({ error: "Configuration eBilling manquante" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!EBILLING_BASE_URL) {
+      console.error("[ebilling] EBILLING_BASE_URL not configured");
+      return new Response(
+        JSON.stringify({ error: "Configuration serveur incomplète (BASE_URL)" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ── ENVIRONMENT GUARD: Block if monetized but not pointing to LAB ──
+    if (!EBILLING_BASE_URL.includes("lab")) {
+      console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${EBILLING_BASE_URL} does not target LAB environment`);
+      return new Response(
+        JSON.stringify({ error: "Conflit d'environnement : la monétisation est active mais l'URL cible n'est pas l'environnement LAB. Transaction bloquée par sécurité." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -193,8 +211,11 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
+    const checkoutUrl = `${EBILLING_BASE_URL}/checkout`;
+    console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
+
     try {
-      const ebillingResponse = await fetch("https://lab.billing-easy.net/api/v1/merchant/checkout", {
+      const ebillingResponse = await fetch(checkoutUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ebillingPayload),
