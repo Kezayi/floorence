@@ -80,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Already processed
-    if (tx.status === "SUCCESS") {
+    if (tx.status === "success") {
       return new Response(
         JSON.stringify({ success: true, message: "Already processed" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabaseAdmin
         .from("payment_transactions")
         .update({
-          status: "SUCCESS",
+          status: "success",
           ebilling_transaction_id: ppiTransactionId || null,
           updated_at: new Date().toISOString(),
         })
@@ -126,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabaseAdmin
         .from("payment_transactions")
         .update({
-          status: "FAILED",
+          status: "failed",
           ebilling_transaction_id: ppiTransactionId || null,
           updated_at: new Date().toISOString(),
         })
