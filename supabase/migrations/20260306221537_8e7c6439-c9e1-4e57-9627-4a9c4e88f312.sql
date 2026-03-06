@@ -1,0 +1,1 @@
+UPDATE global_settings SET value_bool = true, updated_at = now() WHERE key = 'is_monetized';
