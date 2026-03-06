@@ -23,6 +23,9 @@ const GesteRituelModal = ({
   const { data: monetization, isLoading: isLoadingSettings, refetch } = useMonetization();
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [ussdWaiting, setUssdWaiting] = useState(false);
+  const [ussdTimeout, setUssdTimeout] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const isMonetized = monetization?.isMonetized ?? false;
   const price = monetization?.prices?.[itemType] ?? 500;
@@ -31,20 +34,55 @@ const GesteRituelModal = ({
   const label = itemType === "cierge" ? "Cierge" : "Fleur";
   const colorClass = itemType === "cierge" ? "text-gesture-candle" : "text-gesture-flower";
 
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setUssdWaiting(false);
+      setUssdTimeout(false);
+      setElapsedSeconds(0);
+    }
+  }, [open]);
+
+  // USSD timeout countdown (45s)
+  useEffect(() => {
+    if (!ussdWaiting) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => {
+        if (prev >= 44) {
+          setUssdTimeout(true);
+          setUssdWaiting(false);
+          clearInterval(interval);
+          return 45;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [ussdWaiting]);
+
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
-      // Re-fetch to get latest monetization state
       const { data: fresh } = await refetch();
       const currentlyMonetized = fresh?.isMonetized ?? false;
 
       if (currentlyMonetized && !phone.trim()) {
-        return; // phone required in paid mode
+        return;
+      }
+
+      // Enter USSD waiting state for paid mode
+      if (currentlyMonetized) {
+        setUssdWaiting(true);
+        setElapsedSeconds(0);
+        setUssdTimeout(false);
       }
 
       await onConfirm(currentlyMonetized ? phone.trim() : undefined);
       onOpenChange(false);
       setPhone("");
+    } catch {
+      // On error, stop waiting
+      setUssdWaiting(false);
     } finally {
       setSubmitting(false);
     }
