@@ -80,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Already processed
-    if (tx.status === "SUCCESS") {
+    if (tx.status === "success") {
       return new Response(
         JSON.stringify({ success: true, message: "Already processed" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
