@@ -52,6 +52,16 @@ const GesteRituelModal = ({
 
   const isDisabled = submitting || validationErrors.length > 0;
 
+  // Log props when modal opens
+  useEffect(() => {
+    if (open) {
+      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price });
+      if (!postId) {
+        console.error("[GesteRituelModal] ⚠️ postId is undefined/empty at open — parent not passing ID!");
+      }
+    }
+  }, [open, postId, itemType, isMonetized, price]);
+
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
