@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Flame, Flower2, FlaskConical, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
+import { toast } from "@/hooks/use-toast";
 
 const FALLBACK_PRICE = 500;
 
