@@ -15,7 +15,9 @@ export const useMonetization = () => {
   return useQuery({
     queryKey: ['monetization'],
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: 'always',
+    refetchInterval: 5000,
     queryFn: async (): Promise<MonetizationState> => {
       // Fetch is_monetized from global_settings
       const { data: settingData, error: settingError } = await supabase
@@ -24,24 +26,42 @@ export const useMonetization = () => {
         .eq('key', 'is_monetized')
         .maybeSingle();
 
-      if (settingError) throw settingError;
+      if (settingError) {
+        console.error('[Monetization Audit] ❌ global_settings query failed:', settingError);
+        throw settingError;
+      }
+
+      if (!settingData) {
+        console.error('[Monetization Audit] ⚠️ Row "is_monetized" NOT FOUND in global_settings — check DB seed');
+      }
 
       // Fetch prices from ritual_prices
       const { data: pricesData, error: pricesError } = await supabase
         .from('ritual_prices')
         .select('item_type, unit_price');
 
-      if (pricesError) throw pricesError;
+      if (pricesError) {
+        console.error('[Monetization Audit] ❌ ritual_prices query failed:', pricesError);
+        throw pricesError;
+      }
 
       const prices: Record<string, number> = {};
       (pricesData || []).forEach((row: any) => {
         prices[row.item_type] = row.unit_price;
       });
 
-      return {
+      const result: MonetizationState = {
         isMonetized: settingData?.value_bool ?? false,
         prices,
       };
+
+      console.log('[Monetization Audit]', {
+        raw_setting: settingData,
+        raw_prices: pricesData,
+        resolved: result,
+      });
+
+      return result;
     },
   });
 };
