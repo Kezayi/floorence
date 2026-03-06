@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Flame, Flower2, FlaskConical, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
+import { toast } from "@/hooks/use-toast";
 
 const FALLBACK_PRICE = 500;
 
@@ -51,6 +52,16 @@ const GesteRituelModal = ({
 
   const isDisabled = submitting || validationErrors.length > 0;
 
+  // Log props when modal opens
+  useEffect(() => {
+    if (open) {
+      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price });
+      if (!postId) {
+        console.error("[GesteRituelModal] ⚠️ postId is undefined/empty at open — parent not passing ID!");
+      }
+    }
+  }, [open, postId, itemType, isMonetized, price]);
+
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
@@ -91,6 +102,11 @@ const GesteRituelModal = ({
 
     if (isDisabled) {
       console.warn("[GesteRituelModal] BLOCKED —", validationErrors.join(", "));
+      toast({
+        title: "Action impossible",
+        description: validationErrors.join(" • ") || "Envoi en cours…",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -239,8 +255,7 @@ const GesteRituelModal = ({
             <>
               <Button
                 onClick={handleConfirm}
-                disabled={isDisabled}
-                className="w-full"
+                className={`w-full ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
