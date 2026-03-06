@@ -255,8 +255,7 @@ const GesteRituelModal = ({
             <>
               <Button
                 onClick={handleConfirm}
-                disabled={isDisabled}
-                className="w-full"
+                className={`w-full ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
