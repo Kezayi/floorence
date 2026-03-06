@@ -126,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabaseAdmin
         .from("payment_transactions")
         .update({
-          status: "FAILED",
+          status: "failed",
           ebilling_transaction_id: ppiTransactionId || null,
           updated_at: new Date().toISOString(),
         })
