@@ -102,6 +102,11 @@ const GesteRituelModal = ({
 
     if (isDisabled) {
       console.warn("[GesteRituelModal] BLOCKED —", validationErrors.join(", "));
+      toast({
+        title: "Action impossible",
+        description: validationErrors.join(" • ") || "Envoi en cours…",
+        variant: "destructive",
+      });
       return;
     }
 
