@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Flame, Flower2, FlaskConical, Loader2 } from "lucide-react";
+import { Flame, Flower2, FlaskConical, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
 
 interface GesteRituelModalProps {
