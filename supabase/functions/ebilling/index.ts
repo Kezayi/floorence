@@ -176,6 +176,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Build callback URL with secret for webhook security
+    const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET") ?? "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const callbackUrl = `${supabaseUrl}/functions/v1/ebilling-callback?secret=${encodeURIComponent(CALLBACK_SECRET)}`;
+
     const ebillingPayload = {
       ppiMerchantId: EBILLING_MERCHANT_ID,
       ppiSecretKey: EBILLING_SECRET_KEY,
@@ -185,6 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCurrencyISO: "XOF",
       ppiMerchantReference: ebillingRef,
       ppiDescription: `${itemLabel} x${quantity} - Floorence`,
+      ppiCallbackUrl: callbackUrl,
     };
 
     try {

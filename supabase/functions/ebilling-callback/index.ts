@@ -10,14 +10,7 @@ const corsHeaders = {
 /**
  * eBilling Webhook Callback
  * Called by eBilling when a payment status changes.
- * Expected payload from eBilling:
- * {
- *   "ppiMerchantReference": "FLR-...",
- *   "ppiTransactionId": "...",
- *   "ppiPaymentStatus": "SUCCESS" | "FAILED" | "PENDING",
- *   "ppiAmount": "500",
- *   "ppiPayerPhoneNumber": "077..."
- * }
+ * SECURED by shared secret token validation.
  */
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -25,6 +18,30 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // ── SECURITY: Validate callback secret ──
+    const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET");
+    if (!CALLBACK_SECRET) {
+      console.error("[ebilling-callback] EBILLING_CALLBACK_SECRET not configured");
+      return new Response(
+        JSON.stringify({ error: "Server misconfiguration" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Check secret from header first, then query param as fallback
+    const url = new URL(req.url);
+    const headerSecret = req.headers.get("x-callback-secret");
+    const paramSecret = url.searchParams.get("secret");
+    const providedSecret = headerSecret || paramSecret;
+
+    if (!providedSecret || providedSecret !== CALLBACK_SECRET) {
+      console.warn("[ebilling-callback] Invalid or missing callback secret");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -32,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const body = await req.json();
-    console.log("[ebilling-callback] Received:", JSON.stringify(body));
+    console.log("[ebilling-callback] Received (authenticated):", JSON.stringify(body));
 
     const {
       ppiMerchantReference,
@@ -64,7 +81,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Already processed
     if (tx.status === "SUCCESS") {
-      console.log("[ebilling-callback] Already processed:", ppiMerchantReference);
       return new Response(
         JSON.stringify({ success: true, message: "Already processed" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -74,7 +90,6 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedStatus = (ppiPaymentStatus || "").toUpperCase();
 
     if (normalizedStatus === "SUCCESS") {
-      // Update transaction to SUCCESS
       await supabaseAdmin
         .from("payment_transactions")
         .update({
@@ -84,7 +99,6 @@ const handler = async (req: Request): Promise<Response> => {
         })
         .eq("id", tx.id);
 
-      // Update guestbook post gesture count
       const metadata = tx.metadata as Record<string, any> | null;
       const postId = metadata?.post_id;
       const quantity = metadata?.quantity || 1;
@@ -120,7 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log("[ebilling-callback] Payment failed:", ppiMerchantReference);
     } else {
-      console.log("[ebilling-callback] Unknown status:", normalizedStatus, "for", ppiMerchantReference);
+      console.log("[ebilling-callback] Unknown status:", normalizedStatus);
     }
 
     return new Response(
