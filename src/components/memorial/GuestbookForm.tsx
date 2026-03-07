@@ -423,21 +423,24 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       </form>
 
       {/* Confirmation Dialog (pre-publish) */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <Dialog open={showConfirmDialog} onOpenChange={(open) => {
+        setShowConfirmDialog(open);
+        if (open) console.log('[ConfirmDialog State]', { mode: isMonetized ? 'PAYANT' : 'GRATUIT' });
+      }}>
         <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Confirmer votre hommage</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Confirmez la publication de votre message
+              {isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé' : 'Confirmez la publication de votre message'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="flex items-center justify-center gap-3 py-4">
-              <CheckCircle className="w-8 h-8 text-[hsl(var(--accent-green))]" />
+              <CheckCircle className={`w-8 h-8 ${isMonetized ? 'text-foreground' : 'text-[hsl(var(--accent-green))]'}`} />
               <div>
-                <p className="text-foreground font-medium">Bêta gratuite</p>
-                <p className="text-muted-foreground text-sm">Votre hommage sera publié immédiatement</p>
+                <p className="text-foreground font-medium">{isMonetized ? 'Hommage Protégé' : 'Bêta gratuite'}</p>
+                <p className="text-muted-foreground text-sm">{isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé (500 FCFA)' : 'Votre hommage sera publié immédiatement'}</p>
               </div>
             </div>
 
