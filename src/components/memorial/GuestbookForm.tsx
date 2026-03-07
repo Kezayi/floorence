@@ -139,7 +139,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     e.preventDefault();
     console.log('[Form Validation]', { selectedRelation, messageLength: messageContent.trim().length, selectedCategory });
     if (!validateForm()) {
-      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 10 caractères)');
+      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 5 caractères)');
       // Scroll to first error
       if (!selectedRelation && relationRef.current) {
         relationRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -148,7 +148,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       }
       return;
     }
+    // Close mobile keyboard before opening confirmation modal
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setShowConfirmDialog(true);
+    console.log('[Tunnel Success]', { target: 'eBilling Modal' });
   };
 
   const handleConfirmSubmit = async () => {
