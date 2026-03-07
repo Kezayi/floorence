@@ -579,7 +579,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                 </div>
                 <div className="mt-3 pt-3 border-t border-[hsl(0,0%,92%)]">
                   <p className="text-xs text-muted-foreground font-sans">
-                    Total : <span className="font-medium text-foreground">{isMonetized ? '500 FCFA' : '0 FCFA'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
+                    Total : <span className="font-medium text-foreground">{isMonetized ? `${totalAmount} XAF` : '0 XAF'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
                   </p>
                 </div>
               </div>
