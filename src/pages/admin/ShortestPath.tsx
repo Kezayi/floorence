@@ -155,7 +155,18 @@ const ShortestPath = () => {
 
   const compute = useCallback(async () => {
     console.log('[Pont des Vivants]', { selectedA, selectedB });
-    if (!selectedA || !selectedB) return;
+    if (!selectedA && !selectedB) {
+      toast.error("Veuillez sélectionner deux personnes pour établir un lien.");
+      return;
+    }
+    if (!selectedA) {
+      toast.error("La première personne n'est pas sélectionnée.");
+      return;
+    }
+    if (!selectedB) {
+      toast.error("La deuxième personne n'est pas sélectionnée.");
+      return;
+    }
     setComputing(true);
     resetResults();
 
