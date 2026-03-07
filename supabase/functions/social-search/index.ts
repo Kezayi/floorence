@@ -288,6 +288,29 @@ ${contextLines.join("\n")}`;
 
     savePromise.catch(() => {});
 
+    // ── Prepend memorial metadata as first SSE event, then pipe AI stream ──
+    const encoder = new TextEncoder();
+    const metaEvent = `data: ${JSON.stringify({ type: "memorial_meta", memorials: memorialMeta })}\n\n`;
+
+    const combinedStream = new ReadableStream({
+      async start(controller) {
+        // Send metadata first
+        controller.enqueue(encoder.encode(metaEvent));
+
+        // Then pipe the AI stream
+        const reader = clientStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
     return new Response(clientStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
