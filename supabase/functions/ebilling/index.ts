@@ -13,6 +13,9 @@ interface EbillingRequest {
   quantity: number;
   phone?: string;
   post_id?: string;
+  deceased_name?: string;
+  candle_count?: number;
+  flower_count?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
