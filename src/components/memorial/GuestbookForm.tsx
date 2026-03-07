@@ -591,6 +591,15 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* eBilling Payment Modal (paid mode) */}
+      <GesteRituelModal
+        open={showEbillingModal}
+        onOpenChange={setShowEbillingModal}
+        itemType="cierge"
+        postId={pendingPostId}
+        onConfirm={handleEbillingConfirm}
+      />
     </>
   );
 };
