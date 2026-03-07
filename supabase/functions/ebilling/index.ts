@@ -62,20 +62,61 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     const statusUrl = `${EBILLING_BASE_URL}/status`;
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
+    const statusPayload = {
+      ppiMerchantId: EBILLING_MERCHANT_ID,
+      ppiSecretKey: EBILLING_SECRET_KEY,
+      ppiApiKey: Deno.env.get("EBILLING_API_KEY") || undefined,
+      ppiMerchantReference: reference,
+    };
+    console.log("[ebilling:check-status] Request payload (sans clés):", JSON.stringify({ ...statusPayload, ppiSecretKey: "***", ppiApiKey: "***" }));
+
     const statusResponse = await fetch(statusUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ppiMerchantId: EBILLING_MERCHANT_ID,
-        ppiSecretKey: EBILLING_SECRET_KEY,
-        ppiMerchantReference: reference,
-      }),
+      body: JSON.stringify(statusPayload),
     });
 
-    const statusData = await statusResponse.json();
-    console.log("[ebilling:check-status] API response:", JSON.stringify(statusData));
+    console.log("[ebilling:check-status] HTTP status:", statusResponse.status);
 
-    // Check if payment confirmed (adapt field name to your eBilling provider)
+    // Handle 404 from eBilling API as "not yet initiated"
+    if (statusResponse.status === 404) {
+      console.log(`[ebilling:check-status] ref=${reference} → 404, transaction non encore initiée côté opérateur`);
+      return new Response(JSON.stringify({
+        success: false,
+        status: tx.status,
+        payment_status: "NOT_INITIATED",
+        message: "Transaction non encore initiée côté opérateur. Réessayez dans quelques instants.",
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    const rawText = await statusResponse.text();
+    console.log("[ebilling:check-status] Raw API response body:", rawText);
+
+    let statusData: any;
+    try {
+      statusData = JSON.parse(rawText);
+    } catch {
+      console.error("[ebilling:check-status] Non-JSON response from API");
+      return new Response(JSON.stringify({
+        success: false,
+        status: tx.status,
+        message: `Réponse non-JSON de l'opérateur (HTTP ${statusResponse.status}): ${rawText.substring(0, 200)}`,
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    // If API returned an error object
+    if (statusData?.error || statusData?.errorMessage || statusData?.message && !statusResponse.ok) {
+      const apiErrorMsg = statusData.error || statusData.errorMessage || statusData.message || "Erreur inconnue";
+      console.error("[ebilling:check-status] API error response:", apiErrorMsg);
+      return new Response(JSON.stringify({
+        success: false,
+        status: tx.status,
+        message: `Erreur API opérateur: ${apiErrorMsg}`,
+        raw_response: statusData,
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    // Check if payment confirmed
     const paymentStatus = (statusData?.ppiPaymentStatus || statusData?.status || "").toUpperCase();
 
     if (paymentStatus === "SUCCESS" || paymentStatus === "COMPLETED" || paymentStatus === "PAID") {
@@ -119,7 +160,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     return new Response(JSON.stringify({
       success: false,
       status: tx.status,
-      message: "Impossible de vérifier le statut auprès de l'opérateur",
+      message: `Erreur de communication: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
     }), { status: 200, headers: jsonHeaders });
   }
 }

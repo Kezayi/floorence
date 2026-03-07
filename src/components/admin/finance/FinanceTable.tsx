@@ -50,7 +50,7 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
       });
 
       if (error) {
-        toast.error("Erreur lors de la vérification");
+        toast.error(`Erreur lors de la vérification: ${error.message || JSON.stringify(error)}`);
         console.error("[check-status] invoke error:", error);
         return;
       }
@@ -59,7 +59,9 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
         toast.success(data.message || "Transaction validée et hommage publié");
         queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
       } else {
-        toast.info(data?.message || "Le paiement n'est toujours pas confirmé");
+        // Show raw API response details for debugging
+        const detail = data?.raw_response ? ` (${JSON.stringify(data.raw_response).substring(0, 100)})` : '';
+        toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`);
       }
     } catch (err) {
       console.error("[check-status] error:", err);
