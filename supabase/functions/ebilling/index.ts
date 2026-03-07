@@ -50,22 +50,22 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   // Query eBilling API for real status
-  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
-  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
-  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
+  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
+  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
+  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
 
   if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
     return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
   }
 
   try {
-    const statusUrl = `${EBILLING_BASE_URL}/status`;
+    const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
     const statusPayload = {
       ppiMerchantId: EBILLING_MERCHANT_ID,
       ppiSecretKey: EBILLING_SECRET_KEY,
-      ppiApiKey: Deno.env.get("EBILLING_API_KEY") || undefined,
+      ppiApiKey: Deno.env.get("EBILLING_API_KEY")?.trim() || undefined,
       ppiMerchantReference: reference,
     };
     console.log("[ebilling:check-status] Request payload (sans clés):", JSON.stringify({ ...statusPayload, ppiSecretKey: "***", ppiApiKey: "***" }));
@@ -156,11 +156,12 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     }), { status: 200, headers: jsonHeaders });
 
   } catch (apiError) {
+    const attemptedUrl = EBILLING_BASE_URL ? new URL("/status", EBILLING_BASE_URL).toString() : "URL non configurée";
     console.error("[ebilling:check-status] API error:", apiError);
     return new Response(JSON.stringify({
       success: false,
       status: tx.status,
-      message: `Erreur de communication: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
+      message: `URL tentée: ${attemptedUrl} - Erreur: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
     }), { status: 200, headers: jsonHeaders });
   }
 }
@@ -325,10 +326,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Call eBilling API
-    const EBILLING_API_KEY = Deno.env.get("EBILLING_API_KEY");
-    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
-    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
-    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
+    const EBILLING_API_KEY = Deno.env.get("EBILLING_API_KEY")?.trim();
+    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
+    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
+    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
 
     if (!EBILLING_API_KEY || !EBILLING_MERCHANT_ID) {
       return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
@@ -365,7 +366,7 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
-    const checkoutUrl = `${EBILLING_BASE_URL}/checkout`;
+    const checkoutUrl = new URL("/checkout", EBILLING_BASE_URL).toString();
     console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
 
     try {

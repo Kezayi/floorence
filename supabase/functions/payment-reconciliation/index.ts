@@ -42,9 +42,9 @@ serve(async (req: Request) => {
 
     console.log(`[reconciliation] Found ${pending.length} transactions to check`);
 
-    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
-    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
-    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
+    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
+    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
+    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
 
     if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
       console.error("[reconciliation] Missing eBilling config");
@@ -60,7 +60,7 @@ serve(async (req: Request) => {
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
       try {
-        const statusUrl = `${EBILLING_BASE_URL}/status`;
+        const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
         const statusResponse = await fetch(statusUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
