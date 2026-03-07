@@ -480,15 +480,15 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             <Button
               onClick={handleConfirmSubmit}
               disabled={isSubmitting}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className={`text-white transition-colors duration-300 ${isMonetized ? 'bg-submit-paid hover:bg-submit-paid-hover' : 'bg-submit-free hover:bg-submit-free-hover'}`}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Publication...
+                  {isMonetized ? 'Redirection…' : 'Publication...'}
                 </>
               ) : (
-                "Publier"
+                isMonetized ? 'Procéder au paiement' : 'Publier'
               )}
             </Button>
           </DialogFooter>
