@@ -395,7 +395,7 @@ const ShortestPath = () => {
         <Button
           onClick={compute}
           disabled={!selectedA || !selectedB || computing || selectedA.userId === selectedB.userId}
-          className="gap-2"
+          className="gap-2 active:scale-95 transition-transform"
           size="lg"
         >
           <Search className="w-4 h-4" />
