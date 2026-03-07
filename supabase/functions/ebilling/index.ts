@@ -65,7 +65,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     const statusPayload = {
       ppiMerchantId: EBILLING_MERCHANT_ID,
       ppiSecretKey: EBILLING_SECRET_KEY,
-      ppiApiKey: Deno.env.get("EBILLING_API_KEY") || undefined,
+      ppiApiKey: Deno.env.get("EBILLING_API_KEY")?.trim() || undefined,
       ppiMerchantReference: reference,
     };
     console.log("[ebilling:check-status] Request payload (sans clés):", JSON.stringify({ ...statusPayload, ppiSecretKey: "***", ppiApiKey: "***" }));
