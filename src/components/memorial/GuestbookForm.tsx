@@ -38,8 +38,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { isAdminOrMod } = useAdminRole();
   const [messageContent, setMessageContent] = useState("");
-  const [selectedRelation, setSelectedRelation] = useState(lockedRelation?.link || "");
-  const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "");
+  const [selectedRelation, setSelectedRelation] = useState(lockedRelation?.link || "Ami(e) / Connaissance");
+  const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "Socio-cœur");
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -128,8 +128,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     }
     if (!messageContent.trim()) {
       newErrors.content = "Veuillez rédiger votre message d'hommage";
-    } else if (messageContent.trim().length < 10) {
-      newErrors.content = "Votre message doit contenir au moins 10 caractères";
+    } else if (messageContent.trim().length < 5) {
+      newErrors.content = "Votre message doit contenir au moins 5 caractères";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -139,7 +139,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     e.preventDefault();
     console.log('[Form Validation]', { selectedRelation, messageLength: messageContent.trim().length, selectedCategory });
     if (!validateForm()) {
-      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 10 caractères)');
+      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 5 caractères)');
       // Scroll to first error
       if (!selectedRelation && relationRef.current) {
         relationRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -148,7 +148,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       }
       return;
     }
+    // Close mobile keyboard before opening confirmation modal
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setShowConfirmDialog(true);
+    console.log('[Tunnel Success]', { target: 'eBilling Modal' });
   };
 
   const handleConfirmSubmit = async () => {
@@ -269,8 +274,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   {errors.content}
                 </p>
               ) : <span />}
-              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {messageContent.trim().length}/10 min
+              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {messageContent.trim().length}/5 min
               </span>
             </div>
           </div>
@@ -402,7 +407,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           <button
             type="submit"
             className={`w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors ${
-              (!selectedRelation || messageContent.trim().length < 10) ? 'opacity-60' : ''
+              (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-60' : ''
             }`}
           >
             Publier mon hommage
