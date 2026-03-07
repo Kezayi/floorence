@@ -51,7 +51,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showEbillingModal, setShowEbillingModal] = useState(false);
   const [pendingPostId, setPendingPostId] = useState<string>("");
-  const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string } | null>(null);
+  const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string; totalAmount: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
   const [flowerCount, setFlowerCount] = useState(0);
@@ -178,9 +178,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
     // ── FREE MODE: submit directly ──
     setIsSubmitting(true);
-    const submittedCandleCount = candleCount;
-    const submittedFlowerCount = flowerCount;
-    const submittedRelation = selectedRelation;
+    const snapshot = {
+      candleCount,
+      flowerCount,
+      relation: selectedRelation,
+      totalAmount,
+    };
     
     try {
       await onSubmit({
@@ -192,11 +195,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
-      setLastSubmittedData({
-        candleCount: submittedCandleCount,
-        flowerCount: submittedFlowerCount,
-        relation: submittedRelation,
-      });
+      setLastSubmittedData(snapshot);
 
       setMessageContent("");
       setPhotos([]);
@@ -214,9 +213,13 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   };
 
   const handleEbillingConfirm = async (phone?: string) => {
-    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount });
-    // The GesteRituelModal handles the eBilling call internally via onConfirm
-    // After payment success, submit the post
+    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount, totalAmount });
+    const snapshot = {
+      candleCount,
+      flowerCount,
+      relation: selectedRelation,
+      totalAmount,
+    };
     try {
       await onSubmit({
         content: messageContent.trim(),
@@ -227,6 +230,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
+      setLastSubmittedData(snapshot);
       setMessageContent("");
       setPhotos([]);
       setCandleCount(0);
@@ -234,11 +238,6 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       setErrors({});
       setShowEbillingModal(false);
       setShowSuccessDialog(true);
-      setLastSubmittedData({
-        candleCount,
-        flowerCount,
-        relation: selectedRelation,
-      });
     } catch (error) {
       console.error('[eBilling Post Submit] error:', error);
       toast.error("Erreur lors de la publication après paiement");
@@ -542,7 +541,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       </Dialog>
 
       {/* Success Dialog (post-publish receipt) */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        setShowSuccessDialog(open);
+        if (open && lastSubmittedData) {
+          console.log('[Success Summary Audit]', lastSubmittedData);
+        }
+      }}>
       <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground max-w-md animate-fade-in">
           <div className="text-center py-6 space-y-5">
             {/* Elegant check icon */}
@@ -579,7 +583,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                 </div>
                 <div className="mt-3 pt-3 border-t border-[hsl(0,0%,92%)]">
                   <p className="text-xs text-muted-foreground font-sans">
-                    Total : <span className="font-medium text-foreground">{isMonetized ? `${totalAmount} XAF` : '0 XAF'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
+                    Total : <span className="font-medium text-foreground">{lastSubmittedData.totalAmount > 0 ? `${lastSubmittedData.totalAmount} XAF` : '0 XAF'}</span> {lastSubmittedData.totalAmount === 0 && <span className="italic">(bêta gratuite)</span>}
                   </p>
                 </div>
               </div>
