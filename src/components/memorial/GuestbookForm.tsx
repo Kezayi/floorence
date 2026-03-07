@@ -602,6 +602,11 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         itemType="cierge"
         postId={pendingPostId}
         onConfirm={handleEbillingConfirm}
+        candleCount={candleCount}
+        flowerCount={flowerCount}
+        totalAmount={totalAmount}
+        priceCierge={priceCierge}
+        priceFleur={priceFleur}
       />
     </>
   );
