@@ -95,6 +95,10 @@ const handler = async (req: Request): Promise<Response> => {
         payment_type: item_type,
         status: "SUCCESS",
         ebilling_reference: ebillingRef,
+        payer_phone: phone || null,
+        deceased_name_snapshot: deceased_name || null,
+        candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
+        flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
         metadata: { mode: "gratuit", quantity, unit_price: 0 },
       });
 
