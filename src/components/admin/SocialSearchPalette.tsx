@@ -405,13 +405,13 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       >
                         ↻ Réessayer
                       </button>
-                      {(error === "AUTH_REQUIRED" || error.includes("403") || error.includes("401")) && (
+                      {(error === "AUTH_REQUIRED" || error.toLowerCase().includes("expired") || error.includes("403") || error.includes("401") || error.toLowerCase().includes("jwt") || error.toLowerCase().includes("autoris")) && (
                         <button
                           onClick={async () => {
                             await supabase.auth.signOut();
                             window.location.href = "/auth";
                           }}
-                          className="text-xs font-medium text-primary underline hover:no-underline"
+                          className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-1 rounded-md hover:bg-primary/90 transition-colors"
                         >
                           🔄 Réinitialiser la Session
                         </button>
