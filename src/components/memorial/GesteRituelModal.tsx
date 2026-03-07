@@ -174,7 +174,7 @@ const GesteRituelModal = ({
             {isLoadingSettings
               ? "Chargement des paramètres..."
               : isMonetized
-                ? `Ce geste est facturé ${price} FCFA via paiement mobile.`
+                ? `Montant total : ${displayTotal} XAF via paiement mobile.`
                 : "Ce geste est offert gratuitement."}
           </DialogDescription>
         </DialogHeader>
