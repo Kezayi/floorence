@@ -213,9 +213,13 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   };
 
   const handleEbillingConfirm = async (phone?: string) => {
-    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount });
-    // The GesteRituelModal handles the eBilling call internally via onConfirm
-    // After payment success, submit the post
+    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount, totalAmount });
+    const snapshot = {
+      candleCount,
+      flowerCount,
+      relation: selectedRelation,
+      totalAmount,
+    };
     try {
       await onSubmit({
         content: messageContent.trim(),
@@ -226,6 +230,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
+      setLastSubmittedData(snapshot);
       setMessageContent("");
       setPhotos([]);
       setCandleCount(0);
@@ -233,11 +238,6 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       setErrors({});
       setShowEbillingModal(false);
       setShowSuccessDialog(true);
-      setLastSubmittedData({
-        candleCount,
-        flowerCount,
-        relation: selectedRelation,
-      });
     } catch (error) {
       console.error('[eBilling Post Submit] error:', error);
       toast.error("Erreur lors de la publication après paiement");
