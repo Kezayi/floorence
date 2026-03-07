@@ -33,7 +33,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   // Look up the transaction
   const { data: tx, error: txErr } = await supabaseAdmin
     .from("payment_transactions")
-    .select("id, status, ebilling_reference, memorial_id, metadata")
+    .select("id, status, ebilling_reference, memorial_id, metadata, last_api_response")
     .eq("ebilling_reference", reference)
     .single();
 
