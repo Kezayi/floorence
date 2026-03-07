@@ -71,7 +71,27 @@ serve(async (req: Request) => {
           }),
         });
 
-        const statusData = await statusResponse.json();
+        const rawText = await statusResponse.text();
+        console.log(`[reconciliation] ref=${ref} raw response:`, rawText);
+
+        let statusData: any;
+        try {
+          statusData = JSON.parse(rawText);
+        } catch {
+          console.error(`[reconciliation] ref=${ref} non-JSON response`);
+          // Save raw response for diagnostics
+          await supabaseAdmin.from("payment_transactions")
+            .update({ last_api_response: { raw: rawText.substring(0, 500) }, last_sync_at: new Date().toISOString() })
+            .eq("ebilling_reference", ref);
+          results.push({ ref, result: "non_json_response" });
+          continue;
+        }
+
+        // Save API response to DB for diagnostics
+        await supabaseAdmin.from("payment_transactions")
+          .update({ last_api_response: statusData, last_sync_at: new Date().toISOString() })
+          .eq("ebilling_reference", ref);
+
         const paymentStatus = (
           statusData?.ppiPaymentStatus ||
           statusData?.status ||

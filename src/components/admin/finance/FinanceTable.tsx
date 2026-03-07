@@ -59,9 +59,10 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
         toast.success(data.message || "Transaction validée et hommage publié");
         queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
       } else {
-        // Show raw API response details for debugging
-        const detail = data?.raw_response ? ` (${JSON.stringify(data.raw_response).substring(0, 100)})` : '';
-        toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`);
+        // Show operator API response for debugging
+        const apiResponse = data?.last_api_response || data?.raw_response;
+        const detail = apiResponse ? `\nErreur Opérateur : ${JSON.stringify(apiResponse).substring(0, 200)}` : '';
+        toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`, { duration: 10000 });
       }
     } catch (err) {
       console.error("[check-status] error:", err);

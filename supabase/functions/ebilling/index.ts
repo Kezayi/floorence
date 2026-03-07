@@ -159,6 +159,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
       status: tx.status,
       payment_status: paymentStatus,
       message: "Le paiement n'est toujours pas confirmé",
+      last_api_response: statusData,
     }), { status: 200, headers: jsonHeaders });
 
   } catch (apiError) {
