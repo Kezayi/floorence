@@ -14,6 +14,7 @@ import {
   Brain,
   Sparkles,
   Route,
+  Banknote,
 } from 'lucide-react';
 import { useAdminSuggestedLinks } from '@/hooks/useSuggestedLinks';
 import { useAdminRole } from '@/hooks/useAdminRole';
