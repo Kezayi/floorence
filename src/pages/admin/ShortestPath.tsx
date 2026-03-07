@@ -409,7 +409,6 @@ const ShortestPath = () => {
           onClick={compute}
           disabled={computing}
           className={`gap-2 active:scale-95 transition-transform ${!selectedA || !selectedB ? "opacity-60" : ""}`}
-          className="gap-2 active:scale-95 transition-transform"
           size="lg"
         >
           {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
