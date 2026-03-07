@@ -322,6 +322,13 @@ ${contextLines.join("\n")}`;
             controller.enqueue(value);
           }
         } finally {
+          // Wait briefly for usage data to be captured, then send usage event
+          await savePromise.catch(() => {});
+          if (usageData) {
+            const usageEvent = `data: ${JSON.stringify({ type: "usage", usage: usageData })}\n\n`;
+            controller.enqueue(encoder.encode(usageEvent));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
       },
