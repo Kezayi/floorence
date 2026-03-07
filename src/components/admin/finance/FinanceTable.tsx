@@ -59,10 +59,17 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
         toast.success(data.message || "Transaction validée et hommage publié");
         queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
       } else {
-        // Show operator API response for debugging
-        const apiResponse = data?.last_api_response || data?.raw_response;
-        const detail = apiResponse ? `\nErreur Opérateur : ${JSON.stringify(apiResponse).substring(0, 200)}` : '';
-        toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`, { duration: 10000 });
+        // Specific message for NOT_INITIATED status
+        if (data?.payment_status === "NOT_INITIATED") {
+          toast.info(
+            "Le client n'a pas encore validé l'étape de paiement chez l'opérateur. Attendez que le client finalise sur son téléphone.",
+            { duration: 12000 }
+          );
+        } else {
+          const apiResponse = data?.last_api_response || data?.raw_response;
+          const detail = apiResponse ? `\nErreur Opérateur : ${JSON.stringify(apiResponse).substring(0, 200)}` : '';
+          toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`, { duration: 10000 });
+        }
       }
     } catch (err) {
       console.error("[check-status] error:", err);
