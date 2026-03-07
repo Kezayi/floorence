@@ -108,6 +108,12 @@ export default {
           foreground: "hsl(var(--hommages-foreground))",
           muted: "hsl(var(--hommages-muted))",
         },
+        submit: {
+          free: "hsl(var(--submit-free))",
+          "free-hover": "hsl(var(--submit-free-hover))",
+          paid: "hsl(var(--submit-paid))",
+          "paid-hover": "hsl(var(--submit-paid-hover))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

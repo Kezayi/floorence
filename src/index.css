@@ -73,6 +73,12 @@
     --accent-green: 142 70% 45%;
     --accent-green-foreground: 0 0% 100%;
 
+    /* Bouton de soumission — Mode gratuit / payant */
+    --submit-free: 160 84% 39%;
+    --submit-free-hover: 160 84% 32%;
+    --submit-paid: 240 5% 12%;
+    --submit-paid-hover: 240 4% 26%;
+
     /* AI Intelligence — Or doré pour suggestions */
     --ai-gold: 45 90% 50%;
     --ai-gold-foreground: 45 70% 35%;
