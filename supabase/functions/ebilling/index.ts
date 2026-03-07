@@ -13,6 +13,9 @@ interface EbillingRequest {
   quantity: number;
   phone?: string;
   post_id?: string;
+  deceased_name?: string;
+  candle_count?: number;
+  flower_count?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -50,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const body: EbillingRequest = await req.json();
-    const { memorial_id, item_type, quantity, phone, post_id } = body;
+    const { memorial_id, item_type, quantity, phone, post_id, deceased_name, candle_count, flower_count } = body;
 
     if (!memorial_id || !item_type || !quantity || quantity < 1) {
       return new Response(
@@ -92,6 +95,10 @@ const handler = async (req: Request): Promise<Response> => {
         payment_type: item_type,
         status: "SUCCESS",
         ebilling_reference: ebillingRef,
+        payer_phone: phone || null,
+        deceased_name_snapshot: deceased_name || null,
+        candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
+        flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
         metadata: { mode: "gratuit", quantity, unit_price: 0 },
       });
 
@@ -156,6 +163,10 @@ const handler = async (req: Request): Promise<Response> => {
       payment_type: item_type,
       status: "pending",
       ebilling_reference: ebillingRef,
+      payer_phone: phone,
+      deceased_name_snapshot: deceased_name || null,
+      candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
+      flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
       metadata: { mode: "payant", quantity, unit_price: unitPrice, phone, post_id: post_id || null },
     });
 
