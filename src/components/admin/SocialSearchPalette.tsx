@@ -407,6 +407,15 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
                       )}
                     </div>
+
+                    {/* Token usage badge */}
+                    {usage && !isLoading && (
+                      <div className="flex justify-end mt-3 pt-2 border-t border-border/30">
+                        <span className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                          Consommation : {((usage.total_tokens || ((usage.prompt_tokens || 0) + (usage.completion_tokens || 0))) / 1000).toFixed(1)}k tokens
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
