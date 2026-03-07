@@ -178,9 +178,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
     // ── FREE MODE: submit directly ──
     setIsSubmitting(true);
-    const submittedCandleCount = candleCount;
-    const submittedFlowerCount = flowerCount;
-    const submittedRelation = selectedRelation;
+    const snapshot = {
+      candleCount,
+      flowerCount,
+      relation: selectedRelation,
+      totalAmount,
+    };
     
     try {
       await onSubmit({
@@ -192,11 +195,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
-      setLastSubmittedData({
-        candleCount: submittedCandleCount,
-        flowerCount: submittedFlowerCount,
-        relation: submittedRelation,
-      });
+      setLastSubmittedData(snapshot);
 
       setMessageContent("");
       setPhotos([]);
