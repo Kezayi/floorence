@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle, Shield, Zap } from "lucide-react";
+import { Route, Search, Users, ArrowRight, Crown, TreePine, User, AlertTriangle, CheckCircle2, XCircle, Shield, Zap, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeSearchInput } from "@/lib/sanitizeSearch";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -153,7 +155,18 @@ const ShortestPath = () => {
 
   const compute = useCallback(async () => {
     console.log('[Pont des Vivants]', { selectedA, selectedB });
-    if (!selectedA || !selectedB) return;
+    if (!selectedA && !selectedB) {
+      toast.error("Veuillez sélectionner deux personnes pour établir un lien.");
+      return;
+    }
+    if (!selectedA) {
+      toast.error("La première personne n'est pas sélectionnée.");
+      return;
+    }
+    if (!selectedB) {
+      toast.error("La deuxième personne n'est pas sélectionnée.");
+      return;
+    }
     setComputing(true);
     resetResults();
 
@@ -394,12 +407,12 @@ const ShortestPath = () => {
       <div className="flex justify-center mb-8">
         <Button
           onClick={compute}
-          disabled={!selectedA || !selectedB || computing || selectedA.userId === selectedB.userId}
-          className="gap-2 active:scale-95 transition-transform"
+          disabled={computing}
+          className={`gap-2 active:scale-95 transition-transform ${!selectedA || !selectedB ? "opacity-60" : ""}`}
           size="lg"
         >
-          <Search className="w-4 h-4" />
-          {computing ? "Recherche en cours…" : "Trouver le lien"}
+          {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {computing ? "Analyse de la lignée…" : "Trouver le lien"}
         </Button>
       </div>
 
@@ -501,13 +514,18 @@ const LivingSearchField = ({
               onClick={() => onSelect(o)}
               className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors text-sm"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden shrink-0 flex items-center justify-center">
-                {o.avatar ? (
-                  <img src={o.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-4 h-4 text-primary" />
+              <Avatar className="w-8 h-8 shrink-0">
+                {o.avatar && (
+                  <AvatarImage
+                    src={o.avatar}
+                    alt={o.name}
+                    className="object-cover animate-in fade-in duration-500"
+                  />
                 )}
-              </div>
+                <AvatarFallback className="bg-muted text-muted-foreground text-xs font-serif">
+                  {o.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="font-serif truncate">{o.name}</span>
             </button>
           ))}
