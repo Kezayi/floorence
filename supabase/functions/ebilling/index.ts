@@ -156,11 +156,12 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     }), { status: 200, headers: jsonHeaders });
 
   } catch (apiError) {
+    const attemptedUrl = EBILLING_BASE_URL ? new URL("/status", EBILLING_BASE_URL).toString() : "URL non configurée";
     console.error("[ebilling:check-status] API error:", apiError);
     return new Response(JSON.stringify({
       success: false,
       status: tx.status,
-      message: `Erreur de communication: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
+      message: `URL tentée: ${attemptedUrl} - Erreur: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
     }), { status: 200, headers: jsonHeaders });
   }
 }
