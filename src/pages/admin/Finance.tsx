@@ -63,7 +63,13 @@ const Finance = () => {
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'incidents') {
+      const todayStart = startOfDay(new Date());
+      result = result.filter(t =>
+        (t.status === 'timeout' || t.status === 'failed') &&
+        t.date_libreville && new Date(t.date_libreville) >= todayStart
+      );
+    } else if (statusFilter !== 'all') {
       result = result.filter(t => t.status === statusFilter);
     }
 
