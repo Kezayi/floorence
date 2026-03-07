@@ -16,6 +16,7 @@ import TransitiveDiscoveryWidget from "@/components/memorial/TransitiveDiscovery
 import DemoGuide from "@/components/memorial/DemoGuide";
 import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
+import PendingPaymentBanner from "@/components/memorial/PendingPaymentBanner";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GesteRituelModal from "@/components/memorial/GesteRituelModal";
