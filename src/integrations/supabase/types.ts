@@ -569,6 +569,7 @@ export type Database = {
           ebilling_transaction_id: string | null
           flower_count: number | null
           id: string
+          last_api_response: Json | null
           last_sync_at: string | null
           memorial_id: string | null
           metadata: Json | null
@@ -588,6 +589,7 @@ export type Database = {
           ebilling_transaction_id?: string | null
           flower_count?: number | null
           id?: string
+          last_api_response?: Json | null
           last_sync_at?: string | null
           memorial_id?: string | null
           metadata?: Json | null
@@ -607,6 +609,7 @@ export type Database = {
           ebilling_transaction_id?: string | null
           flower_count?: number | null
           id?: string
+          last_api_response?: Json | null
           last_sync_at?: string | null
           memorial_id?: string | null
           metadata?: Json | null
@@ -929,6 +932,7 @@ export type Database = {
           deceased_name_snapshot: string | null
           ebilling_reference: string | null
           id: string | null
+          last_api_response: Json | null
           last_sync_at: string | null
           memorial_id: string | null
           payer_phone: string | null
@@ -941,6 +945,7 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          last_api_response?: Json | null
           last_sync_at?: string | null
           memorial_id?: string | null
           payer_phone?: string | null
@@ -953,6 +958,7 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          last_api_response?: Json | null
           last_sync_at?: string | null
           memorial_id?: string | null
           payer_phone?: string | null
