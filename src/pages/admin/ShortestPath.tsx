@@ -515,13 +515,18 @@ const LivingSearchField = ({
               onClick={() => onSelect(o)}
               className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors text-sm"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden shrink-0 flex items-center justify-center">
-                {o.avatar ? (
-                  <img src={o.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-4 h-4 text-primary" />
+              <Avatar className="w-8 h-8 shrink-0">
+                {o.avatar && (
+                  <AvatarImage
+                    src={o.avatar}
+                    alt={o.name}
+                    className="object-cover animate-in fade-in duration-500"
+                  />
                 )}
-              </div>
+                <AvatarFallback className="bg-muted text-muted-foreground text-xs font-serif">
+                  {o.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="font-serif truncate">{o.name}</span>
             </button>
           ))}
