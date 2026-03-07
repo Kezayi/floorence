@@ -72,7 +72,7 @@ const GesteRituelModal = ({
   // Log props when modal opens
   useEffect(() => {
     if (open) {
-      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price });
+      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price, candleCount, flowerCount, displayTotal, hasBasket });
       if (!postId) {
         console.error("[GesteRituelModal] ⚠️ postId is undefined/empty at open — parent not passing ID!");
       }
