@@ -245,12 +245,13 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setAnswer("");
     setError(null);
     setMemorialMeta({});
+    setUsage(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setMemorialMeta, controller.signal);
+      await streamQuestion(q, setAnswer, setMemorialMeta, setUsage, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
