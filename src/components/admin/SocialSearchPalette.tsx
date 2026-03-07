@@ -36,7 +36,7 @@ async function streamQuestion(
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
-  console.log('[RAG Auth Check]', !!session);
+  console.log(`[RAG Reconstruction] Session active: ${!!session}`);
 
   if (!session?.access_token) {
     throw new Error("Session expirée. Veuillez vous reconnecter.");
@@ -384,8 +384,14 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
             {!showHistory && !selectedEntry && (
               <>
                 {error && (
-                  <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-                    {error}
+                  <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive space-y-2">
+                    <p>{error}</p>
+                    <button
+                      onClick={() => { setError(null); submitQuestion(query); }}
+                      className="text-xs font-medium underline hover:no-underline"
+                    >
+                      ↻ Réessayer
+                    </button>
                   </div>
                 )}
 

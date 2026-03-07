@@ -18,11 +18,9 @@ const PAGE_SIZE = 20;
 interface Transaction {
   id: string | null;
   date_libreville: string | null;
-  deceased_name: string | null;
+  deceased_name_snapshot: string | null;
   payer_phone: string | null;
   amount: number | null;
-  candle_count: number | null;
-  flower_count: number | null;
   status: string | null;
   ebilling_reference: string | null;
 }
@@ -81,18 +79,15 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
               <TableBody>
                 {paginated.map(tx => {
                   const st = statusConfig[tx.status || 'pending'] || statusConfig.pending;
-                  const items: string[] = [];
-                  if (tx.candle_count) items.push(`${tx.candle_count} cierge${tx.candle_count > 1 ? 's' : ''}`);
-                  if (tx.flower_count) items.push(`${tx.flower_count} fleur${tx.flower_count > 1 ? 's' : ''}`);
                   return (
                     <TableRow key={tx.id}>
                       <TableCell className="whitespace-nowrap text-sm">
                         {tx.date_libreville ? format(new Date(tx.date_libreville), 'dd/MM/yyyy HH:mm', { locale: fr }) : '—'}
                       </TableCell>
-                      <TableCell className="font-medium">{tx.deceased_name || 'Non renseigné'}</TableCell>
+                      <TableCell className="font-medium">{tx.deceased_name_snapshot || 'Non renseigné'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || 'Non renseigné'}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
-                      <TableCell className="text-sm">{items.length > 0 ? items.join(' + ') : '—'}</TableCell>
+                      <TableCell className="text-sm">—</TableCell>
                       <TableCell>
                         <Badge variant={st.variant}>{st.label}</Badge>
                       </TableCell>

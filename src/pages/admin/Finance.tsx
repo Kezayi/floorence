@@ -55,7 +55,7 @@ const Finance = () => {
     if (debouncedSearch) {
       const q = sanitizeSearchInput(debouncedSearch).toLowerCase();
       result = result.filter(t =>
-        (t.deceased_name ?? '').toLowerCase().includes(q) ||
+        (t.deceased_name_snapshot ?? '').toLowerCase().includes(q) ||
         (t.payer_phone ?? '').toLowerCase().includes(q) ||
         (t.ebilling_reference ?? '').toLowerCase().includes(q)
       );
@@ -112,11 +112,9 @@ const Finance = () => {
     if (filtered.length === 0) { toast.info('Aucune donnée à exporter'); return; }
     exportToCSV(filtered, [
       { key: 'date_libreville', label: 'Date (WAT)' },
-      { key: 'deceased_name', label: 'Défunt' },
+      { key: 'deceased_name_snapshot', label: 'Défunt' },
       { key: 'payer_phone', label: 'Téléphone' },
       { key: 'amount', label: 'Montant (XAF)' },
-      { key: 'candle_count', label: 'Cierges' },
-      { key: 'flower_count', label: 'Fleurs' },
       { key: 'status', label: 'Statut' },
       { key: 'ebilling_reference', label: 'Réf. eBilling' },
     ], 'transactions-floorence');
