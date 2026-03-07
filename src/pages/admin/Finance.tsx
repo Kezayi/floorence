@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Download, FileText } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, isToday, isThisWeek, isThisMonth } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isToday, isThisWeek, isThisMonth, subHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { exportToCSV } from '@/lib/csvExport';
