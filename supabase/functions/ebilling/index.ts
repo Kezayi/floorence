@@ -104,15 +104,21 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
       }), { status: 200, headers: jsonHeaders });
     }
 
+    // Save raw API response to DB for diagnostics
+    await supabaseAdmin
+      .from("payment_transactions")
+      .update({ last_api_response: statusData, last_sync_at: new Date().toISOString() })
+      .eq("ebilling_reference", reference);
+
     // If API returned an error object
-    if (statusData?.error || statusData?.errorMessage || statusData?.message && !statusResponse.ok) {
+    if (statusData?.error || statusData?.errorMessage || (statusData?.message && !statusResponse.ok)) {
       const apiErrorMsg = statusData.error || statusData.errorMessage || statusData.message || "Erreur inconnue";
       console.error("[ebilling:check-status] API error response:", apiErrorMsg);
       return new Response(JSON.stringify({
         success: false,
         status: tx.status,
-        message: `Erreur API opérateur: ${apiErrorMsg}`,
-        raw_response: statusData,
+        message: `Erreur Opérateur : ${apiErrorMsg}`,
+        last_api_response: statusData,
       }), { status: 200, headers: jsonHeaders });
     }
 
