@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import GesteRituelModal from "./GesteRituelModal";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
@@ -213,13 +214,36 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   };
 
   const handleEbillingConfirm = async (phone?: string) => {
-    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount, totalAmount });
+    console.log('[eBilling Confirm]', { phone, memorialId, defuntName, candleCount, flowerCount, totalAmount });
     const snapshot = {
       candleCount,
       flowerCount,
       relation: selectedRelation,
       totalAmount,
     };
+
+    // Insert pending transaction BEFORE submitting the post
+    if (memorialId && user) {
+      const txPayload = {
+        user_id: user.id,
+        memorial_id: memorialId,
+        amount: totalAmount,
+        currency: 'XOF',
+        payment_type: 'basket',
+        status: 'pending',
+        payer_phone: phone || null,
+        deceased_name_snapshot: defuntName || null,
+        candle_count: candleCount,
+        flower_count: flowerCount,
+        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      };
+      console.log('[Transaction Insert]', txPayload);
+      const { error: txErr } = await supabase.from('payment_transactions').insert(txPayload);
+      if (txErr) {
+        console.error('[Transaction Insert] error:', txErr);
+      }
+    }
+
     try {
       await onSubmit({
         content: messageContent.trim(),
