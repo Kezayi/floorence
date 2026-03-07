@@ -541,7 +541,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       </Dialog>
 
       {/* Success Dialog (post-publish receipt) */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        setShowSuccessDialog(open);
+        if (open && lastSubmittedData) {
+          console.log('[Success Summary Audit]', lastSubmittedData);
+        }
+      }}>
       <DialogContent className="bg-white border-[hsl(0,0%,85%)] text-foreground max-w-md animate-fade-in">
           <div className="text-center py-6 space-y-5">
             {/* Elegant check icon */}
@@ -578,7 +583,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                 </div>
                 <div className="mt-3 pt-3 border-t border-[hsl(0,0%,92%)]">
                   <p className="text-xs text-muted-foreground font-sans">
-                    Total : <span className="font-medium text-foreground">{isMonetized ? `${totalAmount} XAF` : '0 XAF'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
+                    Total : <span className="font-medium text-foreground">{lastSubmittedData.totalAmount > 0 ? `${lastSubmittedData.totalAmount} XAF` : '0 XAF'}</span> {lastSubmittedData.totalAmount === 0 && <span className="italic">(bêta gratuite)</span>}
                   </p>
                 </div>
               </div>
