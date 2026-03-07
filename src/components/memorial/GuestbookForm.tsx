@@ -163,6 +163,18 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   };
 
   const handleConfirmSubmit = async () => {
+    // ── PAID MODE: intercept and redirect to eBilling modal ──
+    if (isMonetized) {
+      console.log('[Redirect Audit]', { action: 'Open eBilling Modal', isMonetized });
+      setShowConfirmDialog(false);
+      toast.info('Préparation du paiement sécurisé...');
+      // Use memorialId as postId context for the eBilling modal
+      setPendingPostId(memorialId || "");
+      setShowEbillingModal(true);
+      return;
+    }
+
+    // ── FREE MODE: submit directly ──
     setIsSubmitting(true);
     const submittedCandleCount = candleCount;
     const submittedFlowerCount = flowerCount;
@@ -178,28 +190,56 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
-      // Save data for success modal
       setLastSubmittedData({
         candleCount: submittedCandleCount,
         flowerCount: submittedFlowerCount,
         relation: submittedRelation,
       });
 
-      // Reset form
       setMessageContent("");
       setPhotos([]);
       setCandleCount(0);
       setFlowerCount(0);
       setErrors({});
       setShowConfirmDialog(false);
-      
-      // Show success modal
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('Submit error:', error);
       toast.error("Une erreur est survenue lors de la publication");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEbillingConfirm = async (phone?: string) => {
+    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount });
+    // The GesteRituelModal handles the eBilling call internally via onConfirm
+    // After payment success, submit the post
+    try {
+      await onSubmit({
+        content: messageContent.trim(),
+        relationCategory: selectedCategory,
+        relationLink: selectedRelation,
+        photos,
+        candleCount,
+        flowerCount,
+      });
+
+      setMessageContent("");
+      setPhotos([]);
+      setCandleCount(0);
+      setFlowerCount(0);
+      setErrors({});
+      setShowEbillingModal(false);
+      setShowSuccessDialog(true);
+      setLastSubmittedData({
+        candleCount,
+        flowerCount,
+        relation: selectedRelation,
+      });
+    } catch (error) {
+      console.error('[eBilling Post Submit] error:', error);
+      toast.error("Erreur lors de la publication après paiement");
     }
   };
 
