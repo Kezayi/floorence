@@ -33,7 +33,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   // Look up the transaction
   const { data: tx, error: txErr } = await supabaseAdmin
     .from("payment_transactions")
-    .select("id, status, ebilling_reference, memorial_id, metadata")
+    .select("id, status, ebilling_reference, memorial_id, metadata, last_api_response")
     .eq("ebilling_reference", reference)
     .single();
 
@@ -41,13 +41,13 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
   }
 
-  // Already resolved
-  if (tx.status === "success") {
-    return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
-  }
-  if (tx.status === "failed") {
-    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
-  }
+    // Already resolved
+    if (tx.status === "success") {
+      return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    }
+    if (tx.status === "failed") {
+      return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    }
 
   // Query eBilling API for real status
   const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
@@ -104,15 +104,21 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
       }), { status: 200, headers: jsonHeaders });
     }
 
+    // Save raw API response to DB for diagnostics
+    await supabaseAdmin
+      .from("payment_transactions")
+      .update({ last_api_response: statusData, last_sync_at: new Date().toISOString() })
+      .eq("ebilling_reference", reference);
+
     // If API returned an error object
-    if (statusData?.error || statusData?.errorMessage || statusData?.message && !statusResponse.ok) {
+    if (statusData?.error || statusData?.errorMessage || (statusData?.message && !statusResponse.ok)) {
       const apiErrorMsg = statusData.error || statusData.errorMessage || statusData.message || "Erreur inconnue";
       console.error("[ebilling:check-status] API error response:", apiErrorMsg);
       return new Response(JSON.stringify({
         success: false,
         status: tx.status,
-        message: `Erreur API opérateur: ${apiErrorMsg}`,
-        raw_response: statusData,
+        message: `Erreur Opérateur : ${apiErrorMsg}`,
+        last_api_response: statusData,
       }), { status: 200, headers: jsonHeaders });
     }
 
@@ -153,6 +159,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
       status: tx.status,
       payment_status: paymentStatus,
       message: "Le paiement n'est toujours pas confirmé",
+      last_api_response: statusData,
     }), { status: 200, headers: jsonHeaders });
 
   } catch (apiError) {
