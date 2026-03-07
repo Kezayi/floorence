@@ -47,6 +47,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showEbillingModal, setShowEbillingModal] = useState(false);
+  const [pendingPostId, setPendingPostId] = useState<string>("");
   const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
@@ -54,6 +56,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const relationRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLDivElement>(null);
 
   // Block non-authenticated users
