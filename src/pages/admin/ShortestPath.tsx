@@ -152,6 +152,7 @@ const ShortestPath = () => {
   });
 
   const compute = useCallback(async () => {
+    console.log('[Pont des Vivants]', { selectedA, selectedB });
     if (!selectedA || !selectedB) return;
     setComputing(true);
     resetResults();
@@ -394,7 +395,7 @@ const ShortestPath = () => {
         <Button
           onClick={compute}
           disabled={!selectedA || !selectedB || computing || selectedA.userId === selectedB.userId}
-          className="gap-2"
+          className="gap-2 active:scale-95 transition-transform"
           size="lg"
         >
           <Search className="w-4 h-4" />
