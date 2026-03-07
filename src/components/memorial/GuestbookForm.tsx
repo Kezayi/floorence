@@ -222,29 +222,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       totalAmount,
     };
 
-    // Insert pending transaction BEFORE submitting the post
-    if (memorialId && user) {
-      const txPayload = {
-        user_id: user.id,
-        memorial_id: memorialId,
-        amount: totalAmount,
-        currency: 'XOF',
-        payment_type: 'basket',
-        status: 'pending',
-        payer_phone: phone || null,
-        deceased_name_snapshot: defuntName || null,
-        candle_count: candleCount,
-        flower_count: flowerCount,
-        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-      };
-      console.log('[Transaction Insert]', txPayload);
-      const { error: txErr } = await supabase.from('payment_transactions').insert(txPayload);
-      if (txErr) {
-        console.error('[Transaction Insert] error:', txErr);
-      }
-    }
-
     try {
+      // 1. Submit the post first (it will be hidden via publish-tribute)
       await onSubmit({
         content: messageContent.trim(),
         relationCategory: selectedCategory,
@@ -253,6 +232,47 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         candleCount,
         flowerCount,
       });
+
+      // 2. Call the ebilling edge function to initiate payment with the operator
+      if (memorialId && user) {
+        const itemType = candleCount > 0 ? 'cierge' : 'fleur';
+        const quantity = candleCount > 0 ? candleCount : flowerCount;
+
+        console.log('[eBilling] Calling edge function...', { memorialId, itemType, quantity, phone });
+        const { data: ebillingData, error: ebillingErr } = await supabase.functions.invoke('ebilling', {
+          body: {
+            memorial_id: memorialId,
+            item_type: itemType,
+            quantity,
+            phone: phone || undefined,
+            deceased_name: defuntName || undefined,
+            candle_count: candleCount,
+            flower_count: flowerCount,
+          },
+        });
+
+        if (ebillingErr) {
+          console.error('[eBilling] Edge function error:', ebillingErr);
+          toast.error("Erreur lors de l'initiation du paiement");
+        } else {
+          console.log('[eBilling] Edge function response:', ebillingData);
+
+          // If checkout URL is provided, redirect in same window (avoids popup blockers)
+          const checkoutUrl = ebillingData?.ebilling_response?.ppiUrlCheckout;
+          if (checkoutUrl) {
+            console.log('[eBilling] Redirecting to checkout:', checkoutUrl);
+            window.location.href = checkoutUrl;
+            return; // Don't clear form — user will navigate away
+          }
+
+          // For USSD flow (no redirect URL), show success
+          if (ebillingData?.success && ebillingData?.mode === 'gratuit') {
+            toast.success(ebillingData.message || "Geste offert avec succès");
+          } else if (ebillingData?.success) {
+            toast.info("Demande envoyée. Validez le paiement sur votre téléphone.", { duration: 10000 });
+          }
+        }
+      }
 
       setLastSubmittedData(snapshot);
       setMessageContent("");

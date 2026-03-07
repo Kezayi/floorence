@@ -16,6 +16,7 @@ import TransitiveDiscoveryWidget from "@/components/memorial/TransitiveDiscovery
 import DemoGuide from "@/components/memorial/DemoGuide";
 import JsonLdPerson from "@/components/memorial/JsonLdPerson";
 import ContributionLink from "@/components/memorial/ContributionLink";
+import PendingPaymentBanner from "@/components/memorial/PendingPaymentBanner";
 import GuestbookPost, { GuestbookPostData } from "@/components/memorial/GuestbookPost";
 import GuestbookForm from "@/components/memorial/GuestbookForm";
 import GesteRituelModal from "@/components/memorial/GesteRituelModal";
@@ -1061,6 +1062,8 @@ const MemorialInner = () => {
               <p className="font-serif mb-8 text-livreor-muted">
                 Partagez un souvenir ou un message de soutien à la famille
               </p>
+
+              {memorialData?.id && <PendingPaymentBanner memorialId={memorialData.id} />}
 
               <div ref={guestbookFormRef}>
                 <GuestbookForm
