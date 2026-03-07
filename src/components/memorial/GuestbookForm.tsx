@@ -137,7 +137,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
   const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log('[Form Validation]', { selectedRelation, messageLength: messageContent.trim().length, selectedCategory });
+    if (!validateForm()) {
+      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 10 caractères)');
+      // Scroll to first error
+      if (!selectedRelation && relationRef.current) {
+        relationRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (textareaRef.current) {
+        textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
     setShowConfirmDialog(true);
   };
 
