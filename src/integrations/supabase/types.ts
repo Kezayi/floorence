@@ -872,6 +872,7 @@ export type Database = {
         Row: {
           amount: number | null
           candle_count: number | null
+          created_at_utc: string | null
           date_libreville: string | null
           deceased_name: string | null
           ebilling_reference: string | null
@@ -883,6 +884,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           candle_count?: number | null
+          created_at_utc?: string | null
           date_libreville?: never
           deceased_name?: never
           ebilling_reference?: string | null
@@ -894,6 +896,7 @@ export type Database = {
         Update: {
           amount?: number | null
           candle_count?: number | null
+          created_at_utc?: string | null
           date_libreville?: never
           deceased_name?: never
           ebilling_reference?: string | null
