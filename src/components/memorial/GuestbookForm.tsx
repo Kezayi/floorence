@@ -486,7 +486,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               <CheckCircle className={`w-8 h-8 ${isMonetized ? 'text-foreground' : 'text-[hsl(var(--accent-green))]'}`} />
               <div>
                 <p className="text-foreground font-medium">{isMonetized ? 'Hommage Protégé' : 'Bêta gratuite'}</p>
-                <p className="text-muted-foreground text-sm">{isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé (500 FCFA)' : 'Votre hommage sera publié immédiatement'}</p>
+                <p className="text-muted-foreground text-sm">{isMonetized ? `Montant total : ${totalAmount} XAF` : 'Votre hommage sera publié immédiatement'}</p>
               </div>
             </div>
 
