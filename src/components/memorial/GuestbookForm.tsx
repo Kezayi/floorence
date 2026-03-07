@@ -253,7 +253,10 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
         if (ebillingErr) {
           console.error('[eBilling] Edge function error:', ebillingErr);
-          toast.error("Erreur lors de l'initiation du paiement");
+          toast.error(`Erreur paiement : ${JSON.stringify(ebillingData || ebillingErr)}`, { duration: 10000 });
+        } else if (ebillingData?.error) {
+          console.error('[eBilling] API error:', ebillingData);
+          toast.error(`Erreur Opérateur : ${ebillingData.error}`, { duration: 10000 });
         } else {
           console.log('[eBilling] Edge function response:', ebillingData);
 
