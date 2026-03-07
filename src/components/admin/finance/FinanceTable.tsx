@@ -87,7 +87,7 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                       <TableCell className="font-medium">{tx.deceased_name_snapshot || 'Non renseigné'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || 'Non renseigné'}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
-                      <TableCell className="text-sm">{items.length > 0 ? items.join(' + ') : '—'}</TableCell>
+                      <TableCell className="text-sm">—</TableCell>
                       <TableCell>
                         <Badge variant={st.variant}>{st.label}</Badge>
                       </TableCell>

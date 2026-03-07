@@ -112,11 +112,9 @@ const Finance = () => {
     if (filtered.length === 0) { toast.info('Aucune donnée à exporter'); return; }
     exportToCSV(filtered, [
       { key: 'date_libreville', label: 'Date (WAT)' },
-      { key: 'deceased_name', label: 'Défunt' },
+      { key: 'deceased_name_snapshot', label: 'Défunt' },
       { key: 'payer_phone', label: 'Téléphone' },
       { key: 'amount', label: 'Montant (XAF)' },
-      { key: 'candle_count', label: 'Cierges' },
-      { key: 'flower_count', label: 'Fleurs' },
       { key: 'status', label: 'Statut' },
       { key: 'ebilling_reference', label: 'Réf. eBilling' },
     ], 'transactions-floorence');
