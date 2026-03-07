@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
         amount: 0,
         currency: "XOF",
         payment_type: item_type,
-        status: "SUCCESS",
+        status: "success",
         ebilling_reference: ebillingRef,
         payer_phone: phone || null,
         deceased_name_snapshot: deceased_name || null,
