@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
         const column = itemType === "cierge" ? "candle_count" : "flower_count";
         const { data: currentPost } = await supabaseAdmin
           .from("guestbook_posts")
-          .select(column)
+          .select(`${column}, is_hidden`)
           .eq("id", postId)
           .single();
 
@@ -116,10 +116,17 @@ const handler = async (req: Request): Promise<Response> => {
           const currentCount = (currentPost as any)[column] ?? 0;
           await supabaseAdmin
             .from("guestbook_posts")
-            .update({ [column]: currentCount + quantity })
+            .update({ [column]: currentCount + quantity, is_hidden: false })
             .eq("id", postId);
         }
       }
+
+      // Also unhide any post linked via payment_reference
+      await supabaseAdmin
+        .from("guestbook_posts")
+        .update({ is_hidden: false })
+        .eq("payment_reference", ppiMerchantReference)
+        .eq("is_hidden", true);
 
       console.log("[ebilling-callback] Payment confirmed:", ppiMerchantReference);
 

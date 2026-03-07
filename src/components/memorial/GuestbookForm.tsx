@@ -235,7 +235,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         deceased_name_snapshot: defuntName || null,
         candle_count: candleCount,
         flower_count: flowerCount,
-        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       };
       console.log('[Transaction Insert]', txPayload);
       const { error: txErr } = await supabase.from('payment_transactions').insert(txPayload);
@@ -478,15 +478,16 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           {/* Submit button */}
           <button
             type="submit"
+            disabled={isSubmitting}
             className={`w-full py-3 font-serif text-sm tracking-wide rounded-sm transition-colors duration-300 text-white ${
               isMonetized
                 ? 'bg-submit-paid hover:bg-submit-paid-hover'
                 : 'bg-submit-free hover:bg-submit-free-hover'
             } ${
-              (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-50' : ''
+              (!selectedRelation || messageContent.trim().length < 5 || isSubmitting) ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {isMonetized ? 'Procéder au paiement' : 'Publier gratuitement'}
+            {isSubmitting ? 'Envoi en cours…' : (isMonetized ? 'Procéder au paiement' : 'Publier gratuitement')}
           </button>
         </div>
       </form>

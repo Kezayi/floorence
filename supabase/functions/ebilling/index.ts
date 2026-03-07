@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const unitPrice = priceData?.unit_price ?? 500;
     const totalAmount = unitPrice * quantity;
-    const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
 
     console.log(`[ebilling] mode=${isMonetized ? 'payant' : 'gratuit'}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
