@@ -6,11 +6,11 @@ import { DollarSign, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
   success: { label: 'Succès', variant: 'default' },
   pending: { label: 'En attente', variant: 'secondary' },
-  failed: { label: 'Échoué', variant: 'destructive' },
-  timeout: { label: 'Expiré', variant: 'outline' },
+  failed: { label: 'Échoué', variant: 'destructive', className: 'bg-destructive/90 text-destructive-foreground' },
+  timeout: { label: 'Expiré', variant: 'outline', className: 'text-muted-foreground border-muted-foreground/30 bg-muted/50' },
 };
 
 const PAGE_SIZE = 20;
