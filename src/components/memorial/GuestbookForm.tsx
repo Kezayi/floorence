@@ -407,7 +407,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           <button
             type="submit"
             className={`w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors ${
-              (!selectedRelation || messageContent.trim().length < 10) ? 'opacity-60' : ''
+              (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-60' : ''
             }`}
           >
             Publier mon hommage
