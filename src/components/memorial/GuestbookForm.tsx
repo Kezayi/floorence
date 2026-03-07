@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useMonetization } from "@/hooks/useMonetization";
 
 interface GuestbookFormProps {
   memorialId?: string;
