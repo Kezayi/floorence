@@ -186,6 +186,11 @@ const App = () => (
                       <AdminLayout><AdminTemplateEdit /></AdminLayout>
                     </RequireAdmin>
                   } />
+                  <Route path={`${ADMIN_PREFIX}/finances`} element={
+                    <RequireAdmin requireAdmin>
+                      <AdminLayout><AdminFinance /></AdminLayout>
+                    </RequireAdmin>
+                  } />
 
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
