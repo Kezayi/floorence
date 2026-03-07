@@ -55,7 +55,7 @@ const Finance = () => {
     if (debouncedSearch) {
       const q = sanitizeSearchInput(debouncedSearch).toLowerCase();
       result = result.filter(t =>
-        (t.deceased_name ?? '').toLowerCase().includes(q) ||
+        (t.deceased_name_snapshot ?? '').toLowerCase().includes(q) ||
         (t.payer_phone ?? '').toLowerCase().includes(q) ||
         (t.ebilling_reference ?? '').toLowerCase().includes(q)
       );
