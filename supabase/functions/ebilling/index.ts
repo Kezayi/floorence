@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const body: EbillingRequest = await req.json();
-    const { memorial_id, item_type, quantity, phone, post_id } = body;
+    const { memorial_id, item_type, quantity, phone, post_id, deceased_name, candle_count, flower_count } = body;
 
     if (!memorial_id || !item_type || !quantity || quantity < 1) {
       return new Response(
