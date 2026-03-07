@@ -35,11 +35,12 @@ async function streamQuestion(
   onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
+  // Zero-Trust: récupération session fraîche
   const { data: { session } } = await supabase.auth.getSession();
-  console.log(`[RAG Reconstruction] Session active: ${!!session}`);
+  console.log(`[RAG Zero-Trust] Session active: ${!!session}, token: ${session?.access_token ? 'present' : 'MISSING'}`);
 
   if (!session?.access_token) {
-    throw new Error("Session expirée. Veuillez vous reconnecter.");
+    throw new Error("AUTH_REQUIRED");
   }
 
   const resp = await fetch(CHAT_URL, {
@@ -48,11 +49,11 @@ async function streamQuestion(
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "X-Client-Info": "lovable-social-search",
     },
     body: JSON.stringify({ question }),
     signal,
   });
-
   if (!resp.ok) {
     const errData = await resp.json().catch(() => null);
     throw new Error(errData?.error || `Erreur ${resp.status} — ${resp.statusText}`);
