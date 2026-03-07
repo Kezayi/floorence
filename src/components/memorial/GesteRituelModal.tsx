@@ -14,6 +14,11 @@ interface GesteRituelModalProps {
   itemType: "cierge" | "fleur";
   postId: string;
   onConfirm: (phone?: string) => Promise<void>;
+  candleCount?: number;
+  flowerCount?: number;
+  totalAmount?: number;
+  priceCierge?: number;
+  priceFleur?: number;
 }
 
 const GesteRituelModal = ({
@@ -22,6 +27,11 @@ const GesteRituelModal = ({
   itemType,
   postId,
   onConfirm,
+  candleCount = 0,
+  flowerCount = 0,
+  totalAmount: externalTotal,
+  priceCierge = FALLBACK_PRICE,
+  priceFleur = FALLBACK_PRICE,
 }: GesteRituelModalProps) => {
   const { data: monetization, isLoading: isLoadingSettings, refetch } = useMonetization();
   const [phone, setPhone] = useState("");
@@ -33,6 +43,13 @@ const GesteRituelModal = ({
   // Fallback: use loaded price or 500 FCFA if still loading
   const isMonetized = monetization?.isMonetized ?? false;
   const price = monetization?.prices?.[itemType] ?? FALLBACK_PRICE;
+
+  // Use external total if provided (basket mode), otherwise single-item price
+  const hasBasket = candleCount > 0 || flowerCount > 0;
+  const computedTotal = hasBasket
+    ? (candleCount * priceCierge) + (flowerCount * priceFleur)
+    : price;
+  const displayTotal = externalTotal ?? computedTotal;
 
   const Icon = itemType === "cierge" ? Flame : Flower2;
   const label = itemType === "cierge" ? "Cierge" : "Fleur";
@@ -55,7 +72,7 @@ const GesteRituelModal = ({
   // Log props when modal opens
   useEffect(() => {
     if (open) {
-      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price });
+      console.log("[GesteRituelModal] OPENED", { postId, itemType, isMonetized, price, candleCount, flowerCount, displayTotal, hasBasket });
       if (!postId) {
         console.error("[GesteRituelModal] ⚠️ postId is undefined/empty at open — parent not passing ID!");
       }
@@ -157,19 +174,54 @@ const GesteRituelModal = ({
             {isLoadingSettings
               ? "Chargement des paramètres..."
               : isMonetized
-                ? `Ce geste est facturé ${price} FCFA via paiement mobile.`
+                ? `Montant total : ${displayTotal} XAF via paiement mobile.`
                 : "Ce geste est offert gratuitement."}
           </DialogDescription>
         </DialogHeader>
 
         {/* Allow interaction even while settings load — use fallback price */}
         <div className="space-y-4">
-          {/* Price display */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-md bg-muted/50">
-            <span className="text-sm font-sans">1 × {label}</span>
-            <span className="text-lg font-serif font-semibold">
-              {isMonetized ? `${price} FCFA` : "Offert"}
-            </span>
+          {/* Price display — basket detail */}
+          <div className="space-y-2">
+            {hasBasket ? (
+              <>
+                {candleCount > 0 && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-md bg-muted/50">
+                    <span className="text-sm font-sans flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-gesture-candle" />
+                      {candleCount} × Cierge
+                    </span>
+                    <span className="text-sm font-serif font-semibold">
+                      {isMonetized ? `${candleCount * priceCierge} XAF` : "Offert"}
+                    </span>
+                  </div>
+                )}
+                {flowerCount > 0 && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-md bg-muted/50">
+                    <span className="text-sm font-sans flex items-center gap-2">
+                      <Flower2 className="w-4 h-4 text-gesture-flower" />
+                      {flowerCount} × Fleur
+                    </span>
+                    <span className="text-sm font-serif font-semibold">
+                      {isMonetized ? `${flowerCount * priceFleur} XAF` : "Offert"}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 py-2 rounded-md bg-primary/5 border border-primary/10">
+                  <span className="text-sm font-sans font-medium">Total</span>
+                  <span className="text-lg font-serif font-bold">
+                    {isMonetized ? `${displayTotal} XAF` : "Offert"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between px-4 py-3 rounded-md bg-muted/50">
+                <span className="text-sm font-sans">1 × {label}</span>
+                <span className="text-lg font-serif font-semibold">
+                  {isMonetized ? `${price} XAF` : "Offert"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Phone input (paid mode only) */}
@@ -262,7 +314,7 @@ const GesteRituelModal = ({
                 ) : (
                   <Icon className={`w-4 h-4 mr-2`} />
                 )}
-                {isMonetized ? `Payer ${price} FCFA` : "Offrir ce geste"}
+                {isMonetized ? `Payer ${displayTotal} XAF` : "Offrir ce geste"}
               </Button>
 
               {/* Validation feedback: show what's missing when button is disabled */}

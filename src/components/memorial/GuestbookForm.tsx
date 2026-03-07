@@ -41,6 +41,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const { isAdminOrMod } = useAdminRole();
   const { data: monetization } = useMonetization();
   const isMonetized = monetization?.isMonetized ?? false;
+  const priceCierge = monetization?.prices?.cierge ?? 500;
+  const priceFleur = monetization?.prices?.fleur ?? 500;
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState(lockedRelation?.link || "Ami(e) / Connaissance");
   const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "Socio-cœur");
@@ -245,6 +247,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
   const isRelationLocked = !!lockedRelation?.link;
   const showFlowerSuggestion = messageContent.length > 200 && flowerCount === 0;
+  const totalAmount = (candleCount * priceCierge) + (flowerCount * priceFleur);
 
   return (
     <>
@@ -474,7 +477,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Confirmer votre hommage</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé' : 'Confirmez la publication de votre message'}
+              {isMonetized ? `Vous allez être redirigé vers le paiement sécurisé (${totalAmount} XAF)` : 'Confirmez la publication de votre message'}
             </DialogDescription>
           </DialogHeader>
 
@@ -483,7 +486,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               <CheckCircle className={`w-8 h-8 ${isMonetized ? 'text-foreground' : 'text-[hsl(var(--accent-green))]'}`} />
               <div>
                 <p className="text-foreground font-medium">{isMonetized ? 'Hommage Protégé' : 'Bêta gratuite'}</p>
-                <p className="text-muted-foreground text-sm">{isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé (500 FCFA)' : 'Votre hommage sera publié immédiatement'}</p>
+                <p className="text-muted-foreground text-sm">{isMonetized ? `Montant total : ${totalAmount} XAF` : 'Votre hommage sera publié immédiatement'}</p>
               </div>
             </div>
 
@@ -576,7 +579,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                 </div>
                 <div className="mt-3 pt-3 border-t border-[hsl(0,0%,92%)]">
                   <p className="text-xs text-muted-foreground font-sans">
-                    Total : <span className="font-medium text-foreground">{isMonetized ? '500 FCFA' : '0 FCFA'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
+                    Total : <span className="font-medium text-foreground">{isMonetized ? `${totalAmount} XAF` : '0 XAF'}</span> {!isMonetized && <span className="italic">(bêta gratuite)</span>}
                   </p>
                 </div>
               </div>
@@ -599,6 +602,11 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         itemType="cierge"
         postId={pendingPostId}
         onConfirm={handleEbillingConfirm}
+        candleCount={candleCount}
+        flowerCount={flowerCount}
+        totalAmount={totalAmount}
+        priceCierge={priceCierge}
+        priceFleur={priceFleur}
       />
     </>
   );
