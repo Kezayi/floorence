@@ -108,7 +108,7 @@ serve(async (req) => {
 
     const { data: memorials } = await supabase
       .from("memorials")
-      .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers")
+      .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers, biography, photo_url, photos, default_photo_index, slug")
       .eq("is_active", true)
       .eq("is_published", true)
       .limit(200);
@@ -131,11 +131,24 @@ serve(async (req) => {
       (memorials || []).map((m: any) => [m.id, `${m.first_name} ${m.last_name}`])
     );
 
+    // Build memorial photo map for response metadata
+    const memorialMeta: Record<string, { name: string; photo: string | null; slug: string | null }> = {};
+    for (const m of memorials || []) {
+      const photos = m.photos?.length ? m.photos : m.photo_url ? [m.photo_url] : [];
+      const idx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
+      memorialMeta[m.id] = {
+        name: `${m.first_name} ${m.last_name}`,
+        photo: photos[idx] || null,
+        slug: m.slug || null,
+      };
+    }
+
     const contextLines: string[] = [];
 
     for (const m of memorials || []) {
+      const bio = m.biography ? ` | Biographie: ${m.biography.slice(0, 300)}` : "";
       contextLines.push(
-        `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs ${m.is_demo ? "[DÉMO]" : ""}`
+        `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -147,8 +160,9 @@ serve(async (req) => {
 
     for (const p of posts || []) {
       const mName = memorialMap.get(p.memorial_id) || "?";
+      const contentPreview = p.content ? p.content.slice(0, 200) : "";
       contextLines.push(
-        `HOMMAGE: ${p.author_name} → ${mName} | Lien: ${p.relation_category} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} ${p.is_demo ? "[DÉMO]" : ""}`
+        `HOMMAGE: ${p.author_name} → ${mName} | Lien: ${p.relation_category} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -166,7 +180,9 @@ DIRECTIVE DE SÉCURITÉ ABSOLUE :
 
 RÈGLES D'ANALYSE :
 1. CITE TOUJOURS tes sources : "Source : Hommage de [Auteur]" ou "Source : Lien certifié".
-2. Ne JAMAIS inventer de lien. Si tu ne trouves pas, dis-le clairement.
+2. Ne JAMAIS inventer de lien. Si tu ne trouves pas, dis-le clairement avec ce message exact :
+   "Désolé, je ne trouve pas d'informations spécifiques dans les biographies pour répondre précisément, mais voici ce que je sais sur le défunt..."
+   Puis liste les faits disponibles (dates, nombre d'hommages, liens connus).
 3. Priorise la fiabilité des liens dans cet ordre :
    - Famille directe (sang) → confiance maximale
    - Socio cœur (fraternité choisie) → confiance forte
@@ -176,8 +192,9 @@ RÈGLES D'ANALYSE :
 4. L'implication émotionnelle se mesure par : nombre de cierges + fleurs + longueur de l'hommage.
 5. Réponds toujours en français, de manière structurée et avec empathie.
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
+7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte.
 
-CONTEXTE SOCIAL ACTUEL :
+CONTEXTE SOCIAL ACTUEL (${contextLines.length} entrées) :
 ${contextLines.join("\n")}`;
 
     // ── Call Lovable AI (streaming) with delimited user input ──
@@ -271,7 +288,30 @@ ${contextLines.join("\n")}`;
 
     savePromise.catch(() => {});
 
-    return new Response(clientStream, {
+    // ── Prepend memorial metadata as first SSE event, then pipe AI stream ──
+    const encoder = new TextEncoder();
+    const metaEvent = `data: ${JSON.stringify({ type: "memorial_meta", memorials: memorialMeta })}\n\n`;
+
+    const combinedStream = new ReadableStream({
+      async start(controller) {
+        // Send metadata first
+        controller.enqueue(encoder.encode(metaEvent));
+
+        // Then pipe the AI stream
+        const reader = clientStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(combinedStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
