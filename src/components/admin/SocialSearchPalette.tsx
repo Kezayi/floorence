@@ -225,6 +225,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setShowHistory(false);
     setSelectedEntry(null);
     setMemorialMeta({});
+    setUsage(null);
     abortRef.current?.abort();
   }, []);
 
