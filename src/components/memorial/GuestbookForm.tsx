@@ -57,7 +57,6 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const fileInputRef = useRef<HTMLInputElement>(null);
   const relationRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLDivElement>(null);
 
   // Block non-authenticated users
   if (!user) {
