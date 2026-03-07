@@ -36,7 +36,7 @@ async function streamQuestion(
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
-  console.log('[RAG Auth Check]', !!session);
+  console.log(`[RAG Reconstruction] Session active: ${!!session}`);
 
   if (!session?.access_token) {
     throw new Error("Session expirée. Veuillez vous reconnecter.");
