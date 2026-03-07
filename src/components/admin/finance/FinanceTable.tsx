@@ -89,7 +89,7 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
                       <TableCell className="text-sm">—</TableCell>
                       <TableCell>
-                        <Badge variant={st.variant}>{st.label}</Badge>
+                        <Badge variant={st.variant} className={st.className}>{st.label}</Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">{tx.ebilling_reference?.slice(0, 12) || '—'}</TableCell>
                     </TableRow>
