@@ -60,8 +60,8 @@ serve(async (req: Request) => {
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
       try {
-        const statusUrl = `${EBILLING_BASE_URL}/status`;
-        const statusResponse = await fetch(statusUrl, {
+        const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
+        console.log(`[reconciliation] Querying ${statusUrl} for ref=${ref}`);
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
