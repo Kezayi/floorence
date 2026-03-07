@@ -14,6 +14,7 @@ import FinanceKPIs from '@/components/admin/finance/FinanceKPIs';
 import FinanceFilters from '@/components/admin/finance/FinanceFilters';
 import FinanceTable from '@/components/admin/finance/FinanceTable';
 import FinanceChart from '@/components/admin/finance/FinanceChart';
+import OperatorHealthBar from '@/components/admin/finance/OperatorHealthBar';
 
 const CACHE = { staleTime: 60_000, gcTime: 5 * 60_000 };
 
