@@ -14,6 +14,11 @@ interface GesteRituelModalProps {
   itemType: "cierge" | "fleur";
   postId: string;
   onConfirm: (phone?: string) => Promise<void>;
+  candleCount?: number;
+  flowerCount?: number;
+  totalAmount?: number;
+  priceCierge?: number;
+  priceFleur?: number;
 }
 
 const GesteRituelModal = ({

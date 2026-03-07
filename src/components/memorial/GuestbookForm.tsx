@@ -477,7 +477,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Confirmer votre hommage</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {isMonetized ? 'Vous allez être redirigé vers le paiement sécurisé' : 'Confirmez la publication de votre message'}
+              {isMonetized ? `Vous allez être redirigé vers le paiement sécurisé (${totalAmount} XAF)` : 'Confirmez la publication de votre message'}
             </DialogDescription>
           </DialogHeader>
 
