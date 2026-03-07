@@ -411,8 +411,8 @@ const ShortestPath = () => {
           className="gap-2 active:scale-95 transition-transform"
           size="lg"
         >
-          <Search className="w-4 h-4" />
-          {computing ? "Recherche en cours…" : "Trouver le lien"}
+          {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {computing ? "Analyse de la lignée…" : "Trouver le lien"}
         </Button>
       </div>
 
