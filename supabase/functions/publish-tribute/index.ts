@@ -213,7 +213,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
        )
      }
  
-     console.log('[BETA] Tribute published successfully:', post.id)
+     console.log('[publish-tribute] Tribute published:', post.id, { is_hidden: isMonetized })
  
      return new Response(
        JSON.stringify({ 
