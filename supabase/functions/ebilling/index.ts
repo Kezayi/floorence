@@ -41,13 +41,13 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
   }
 
-  // Already resolved
-  if (tx.status === "success") {
-    return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
-  }
-  if (tx.status === "failed") {
-    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
-  }
+    // Already resolved
+    if (tx.status === "success") {
+      return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    }
+    if (tx.status === "failed") {
+      return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    }
 
   // Query eBilling API for real status
   const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
