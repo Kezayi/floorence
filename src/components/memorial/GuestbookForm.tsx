@@ -251,7 +251,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           </div>
 
           {/* Textarea */}
-          <div>
+          <div ref={textareaRef}>
             <textarea
               value={messageContent}
               onChange={(e) => {
