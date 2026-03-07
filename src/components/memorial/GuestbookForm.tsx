@@ -49,6 +49,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [flowerCount, setFlowerCount] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const relationRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLDivElement>(null);
 
   // Block non-authenticated users
   if (!user) {
