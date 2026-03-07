@@ -311,7 +311,7 @@ ${contextLines.join("\n")}`;
       },
     });
 
-    return new Response(clientStream, {
+    return new Response(combinedStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
