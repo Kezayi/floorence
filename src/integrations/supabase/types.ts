@@ -531,13 +531,17 @@ export type Database = {
       payment_transactions: {
         Row: {
           amount: number
+          candle_count: number | null
           created_at: string
           currency: string
+          deceased_name_snapshot: string | null
           ebilling_reference: string | null
           ebilling_transaction_id: string | null
+          flower_count: number | null
           id: string
           memorial_id: string | null
           metadata: Json | null
+          payer_phone: string | null
           payment_type: string
           status: string
           updated_at: string
@@ -545,13 +549,17 @@ export type Database = {
         }
         Insert: {
           amount: number
+          candle_count?: number | null
           created_at?: string
           currency?: string
+          deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           ebilling_transaction_id?: string | null
+          flower_count?: number | null
           id?: string
           memorial_id?: string | null
           metadata?: Json | null
+          payer_phone?: string | null
           payment_type: string
           status?: string
           updated_at?: string
@@ -559,13 +567,17 @@ export type Database = {
         }
         Update: {
           amount?: number
+          candle_count?: number | null
           created_at?: string
           currency?: string
+          deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           ebilling_transaction_id?: string | null
+          flower_count?: number | null
           id?: string
           memorial_id?: string | null
           metadata?: Json | null
+          payer_phone?: string | null
           payment_type?: string
           status?: string
           updated_at?: string
@@ -856,6 +868,42 @@ export type Database = {
       }
     }
     Views: {
+      backoffice_finance_audit: {
+        Row: {
+          amount: number | null
+          candle_count: number | null
+          date_libreville: string | null
+          deceased_name: string | null
+          ebilling_reference: string | null
+          flower_count: number | null
+          id: string | null
+          payer_phone: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          candle_count?: number | null
+          date_libreville?: never
+          deceased_name?: never
+          ebilling_reference?: string | null
+          flower_count?: number | null
+          id?: string | null
+          payer_phone?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          candle_count?: number | null
+          date_libreville?: never
+          deceased_name?: never
+          ebilling_reference?: string | null
+          flower_count?: number | null
+          id?: string | null
+          payer_phone?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       backoffice_humanity_index: {
         Row: {
           density_score: number | null
