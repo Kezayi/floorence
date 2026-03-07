@@ -411,8 +411,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             type="submit"
             className={`w-full py-3 font-serif text-sm tracking-wide rounded-sm transition-colors duration-300 text-white ${
               isMonetized
-                ? 'bg-zinc-900 hover:bg-zinc-700'
-                : 'bg-emerald-600 hover:bg-emerald-700'
+                ? 'bg-submit-paid hover:bg-submit-paid-hover'
+                : 'bg-submit-free hover:bg-submit-free-hover'
             } ${
               (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-50' : ''
             }`}
