@@ -50,9 +50,9 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   // Query eBilling API for real status
-  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
-  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
-  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
+  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
+  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
+  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
 
   if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
     return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
