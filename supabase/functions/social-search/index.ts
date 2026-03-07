@@ -108,7 +108,7 @@ serve(async (req) => {
 
     const { data: memorials } = await supabase
       .from("memorials")
-      .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers")
+      .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers, biography, photo_url, photos, default_photo_index, slug")
       .eq("is_active", true)
       .eq("is_published", true)
       .limit(200);
@@ -131,11 +131,24 @@ serve(async (req) => {
       (memorials || []).map((m: any) => [m.id, `${m.first_name} ${m.last_name}`])
     );
 
+    // Build memorial photo map for response metadata
+    const memorialMeta: Record<string, { name: string; photo: string | null; slug: string | null }> = {};
+    for (const m of memorials || []) {
+      const photos = m.photos?.length ? m.photos : m.photo_url ? [m.photo_url] : [];
+      const idx = (m.default_photo_index ?? 0) < photos.length ? (m.default_photo_index ?? 0) : 0;
+      memorialMeta[m.id] = {
+        name: `${m.first_name} ${m.last_name}`,
+        photo: photos[idx] || null,
+        slug: m.slug || null,
+      };
+    }
+
     const contextLines: string[] = [];
 
     for (const m of memorials || []) {
+      const bio = m.biography ? ` | Biographie: ${m.biography.slice(0, 300)}` : "";
       contextLines.push(
-        `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs ${m.is_demo ? "[DÉMO]" : ""}`
+        `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -147,8 +160,9 @@ serve(async (req) => {
 
     for (const p of posts || []) {
       const mName = memorialMap.get(p.memorial_id) || "?";
+      const contentPreview = p.content ? p.content.slice(0, 200) : "";
       contextLines.push(
-        `HOMMAGE: ${p.author_name} → ${mName} | Lien: ${p.relation_category} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} ${p.is_demo ? "[DÉMO]" : ""}`
+        `HOMMAGE: ${p.author_name} → ${mName} | Lien: ${p.relation_category} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
