@@ -262,12 +262,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               rows={5}
               className={`w-full p-5 bg-white border rounded-sm ${errors.content ? 'border-red-500' : 'border-[hsl(0,0%,75%)]'} text-foreground placeholder:text-muted-foreground font-serif resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors`}
             />
-            {errors.content && (
-              <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.content}
-              </p>
-            )}
+            <div className="flex items-center justify-between mt-1">
+              {errors.content ? (
+                <p className="flex items-center gap-1 text-destructive text-xs font-sans">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.content}
+                </p>
+              ) : <span />}
+              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {messageContent.trim().length}/10 min
+              </span>
+            </div>
           </div>
 
           {/* Flower suggestion for long messages */}
