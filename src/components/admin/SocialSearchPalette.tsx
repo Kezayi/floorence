@@ -22,10 +22,17 @@ interface MemorialMeta {
   slug: string | null;
 }
 
+interface UsageData {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
 async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onMeta: (meta: Record<string, MemorialMeta>) => void,
+  onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -48,7 +55,7 @@ async function streamQuestion(
 
   if (!resp.ok) {
     const errData = await resp.json().catch(() => null);
-    throw new Error(errData?.error || `Erreur ${resp.status}`);
+    throw new Error(errData?.error || `Erreur ${resp.status} — ${resp.statusText}`);
   }
   if (!resp.body) throw new Error("Pas de réponse du serveur");
 
@@ -73,9 +80,12 @@ async function streamQuestion(
       if (jsonStr === "[DONE]") return;
       try {
         const parsed = JSON.parse(jsonStr);
-        // Check for memorial metadata event
         if (parsed.type === "memorial_meta" && parsed.memorials) {
           onMeta(parsed.memorials);
+          continue;
+        }
+        if (parsed.type === "usage" && parsed.usage) {
+          onUsage(parsed.usage);
           continue;
         }
         const content = parsed.choices?.[0]?.delta?.content;
@@ -182,6 +192,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [memorialMeta, setMemorialMeta] = useState<Record<string, MemorialMeta>>({});
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -214,6 +225,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setShowHistory(false);
     setSelectedEntry(null);
     setMemorialMeta({});
+    setUsage(null);
     abortRef.current?.abort();
   }, []);
 
@@ -233,12 +245,13 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setAnswer("");
     setError(null);
     setMemorialMeta({});
+    setUsage(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setMemorialMeta, controller.signal);
+      await streamQuestion(q, setAnswer, setMemorialMeta, setUsage, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
@@ -394,6 +407,15 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
                       )}
                     </div>
+
+                    {/* Token usage badge */}
+                    {usage && !isLoading && (
+                      <div className="flex justify-end mt-3 pt-2 border-t border-border/30">
+                        <span className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                          Consommation : {((usage.total_tokens || ((usage.prompt_tokens || 0) + (usage.completion_tokens || 0))) / 1000).toFixed(1)}k tokens
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 

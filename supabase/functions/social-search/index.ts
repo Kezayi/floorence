@@ -244,7 +244,9 @@ ${contextLines.join("\n")}`;
 
     const [clientStream, captureStream] = aiResponse.body!.tee();
 
-    // Background task: capture full answer and save to DB
+    // Background task: capture full answer, extract usage, save to DB
+    let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
+
     const savePromise = (async () => {
       try {
         const reader = captureStream.getReader();
@@ -269,6 +271,10 @@ ${contextLines.join("\n")}`;
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) fullAnswer += content;
+              // Capture usage from the last chunk (OpenAI/Gemini pattern)
+              if (parsed.usage) {
+                usageData = parsed.usage;
+              }
             } catch { /* partial chunk */ }
           }
         }
@@ -281,6 +287,16 @@ ${contextLines.join("\n")}`;
           model: "google/gemini-3-flash-preview",
           tokens_context: contextLines.length,
         });
+
+        // Log AI usage
+        if (usageData) {
+          await supabase.from("ai_usage_logs").insert({
+            user_id: userId,
+            model_name: "google/gemini-3-flash-preview",
+            prompt_tokens: usageData.prompt_tokens || null,
+            completion_tokens: usageData.completion_tokens || null,
+          });
+        }
       } catch (e) {
         console.error("Failed to save search history:", e);
       }
@@ -306,6 +322,13 @@ ${contextLines.join("\n")}`;
             controller.enqueue(value);
           }
         } finally {
+          // Wait briefly for usage data to be captured, then send usage event
+          await savePromise.catch(() => {});
+          if (usageData) {
+            const usageEvent = `data: ${JSON.stringify({ type: "usage", usage: usageData })}\n\n`;
+            controller.enqueue(encoder.encode(usageEvent));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
       },
