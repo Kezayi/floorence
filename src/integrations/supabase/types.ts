@@ -905,6 +905,7 @@ export type Database = {
           deceased_name_snapshot: string | null
           ebilling_reference: string | null
           id: string | null
+          memorial_id: string | null
           payer_phone: string | null
           status: string | null
         }
@@ -914,6 +915,7 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
         }
@@ -923,6 +925,7 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
         }
