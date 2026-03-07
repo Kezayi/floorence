@@ -314,7 +314,7 @@ const GesteRituelModal = ({
                 ) : (
                   <Icon className={`w-4 h-4 mr-2`} />
                 )}
-                {isMonetized ? `Payer ${price} FCFA` : "Offrir ce geste"}
+                {isMonetized ? `Payer ${displayTotal} XAF` : "Offrir ce geste"}
               </Button>
 
               {/* Validation feedback: show what's missing when button is disabled */}
