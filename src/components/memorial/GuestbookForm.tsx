@@ -274,8 +274,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   {errors.content}
                 </p>
               ) : <span />}
-              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {messageContent.trim().length}/10 min
+              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {messageContent.trim().length}/5 min
               </span>
             </div>
           </div>
