@@ -51,6 +51,7 @@ const AdminShortestPath = lazy(() => import("./pages/admin/ShortestPath"));
 const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
 const AdminTemplateNew = lazy(() => import("./pages/admin/TemplateNew"));
 const AdminTemplateEdit = lazy(() => import("./pages/admin/TemplateEdit"));
+const AdminFinance = lazy(() => import("./pages/admin/Finance"));
 
 const queryClient = new QueryClient();
 

@@ -43,6 +43,7 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
     { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération' },
     { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques' },
     { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/finances`, icon: Banknote, label: 'Finances', adminOnly: true },
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
     { to: `${ADMIN_PREFIX}/modeles`, icon: BookOpen, label: 'Modèles Textes', adminOnly: true },
