@@ -62,6 +62,20 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Fallback: if deceased_name missing, look it up from memorials table
+    let resolvedDeceasedName = deceased_name || null;
+    if (!resolvedDeceasedName && memorial_id) {
+      const { data: memData } = await supabaseAdmin
+        .from("memorials")
+        .select("first_name, last_name")
+        .eq("id", memorial_id)
+        .single();
+      if (memData) {
+        resolvedDeceasedName = `${memData.first_name} ${memData.last_name}`.trim();
+      }
+      console.log(`[ebilling] Fallback name lookup: ${resolvedDeceasedName}`);
+    }
+
     // Server-side truth: check monetization mode
     const { data: monetizationSetting } = await supabaseAdmin
       .from("global_settings")
@@ -96,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: "success",
         ebilling_reference: ebillingRef,
         payer_phone: phone || null,
-        deceased_name_snapshot: deceased_name || null,
+        deceased_name_snapshot: resolvedDeceasedName,
         candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
         flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
         metadata: { mode: "gratuit", quantity, unit_price: 0 },
@@ -164,7 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
       status: "pending",
       ebilling_reference: ebillingRef,
       payer_phone: phone,
-      deceased_name_snapshot: deceased_name || null,
+      deceased_name_snapshot: resolvedDeceasedName,
       candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
       flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
       metadata: { mode: "payant", quantity, unit_price: unitPrice, phone, post_id: post_id || null },

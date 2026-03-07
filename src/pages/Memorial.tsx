@@ -587,13 +587,16 @@ const MemorialInner = () => {
 
     if (isValidUUID(postId)) {
       try {
+        const deceasedFullName = memorialData
+          ? `${memorialData.firstName} ${memorialData.lastName}`.trim()
+          : memorial.name;
         const { data, error } = await supabase.functions.invoke('ebilling', {
           body: {
             memorial_id: memorial.id,
             item_type: itemType,
             quantity: 1,
             post_id: postId,
-            deceased_name: memorial.name,
+            deceased_name: deceasedFullName,
             ...(phone ? { phone } : {}),
           },
         });
