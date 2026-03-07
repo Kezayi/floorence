@@ -49,6 +49,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [flowerCount, setFlowerCount] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const relationRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLDivElement>(null);
 
   // Block non-authenticated users
   if (!user) {
@@ -135,7 +137,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
   const handleSubmitClick = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log('[Form Validation]', { selectedRelation, messageLength: messageContent.trim().length, selectedCategory });
+    if (!validateForm()) {
+      toast.error('Veuillez vérifier les champs obligatoires (relation et message d\'au moins 10 caractères)');
+      // Scroll to first error
+      if (!selectedRelation && relationRef.current) {
+        relationRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (textareaRef.current) {
+        textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
     setShowConfirmDialog(true);
   };
 
@@ -188,7 +200,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       <form onSubmit={handleSubmitClick} className="mb-12">
         <div className="space-y-6">
           {/* Relation select */}
-          <div>
+          <div ref={relationRef}>
             {isRelationLocked ? (
               <div className="flex items-center gap-2 p-4 bg-white border border-[hsl(0,0%,75%)] rounded-sm">
                 <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -239,7 +251,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           </div>
 
           {/* Textarea */}
-          <div>
+          <div ref={textareaRef}>
             <textarea
               value={messageContent}
               onChange={(e) => {
@@ -250,12 +262,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               rows={5}
               className={`w-full p-5 bg-white border rounded-sm ${errors.content ? 'border-red-500' : 'border-[hsl(0,0%,75%)]'} text-foreground placeholder:text-muted-foreground font-serif resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors`}
             />
-            {errors.content && (
-              <p className="flex items-center gap-1 text-red-500 text-xs font-sans mt-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.content}
-              </p>
-            )}
+            <div className="flex items-center justify-between mt-1">
+              {errors.content ? (
+                <p className="flex items-center gap-1 text-destructive text-xs font-sans">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.content}
+                </p>
+              ) : <span />}
+              <span className={`text-xs font-sans tabular-nums ${messageContent.trim().length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {messageContent.trim().length}/10 min
+              </span>
+            </div>
           </div>
 
           {/* Flower suggestion for long messages */}
@@ -384,7 +401,9 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           {/* Submit button */}
           <button
             type="submit"
-            className="w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors ${
+              (!selectedRelation || messageContent.trim().length < 10) ? 'opacity-60' : ''
+            }`}
           >
             Publier mon hommage
           </button>
