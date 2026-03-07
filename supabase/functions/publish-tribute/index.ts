@@ -173,25 +173,37 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
        flowerCount 
      } = validationResult.data
  
-     console.log('[BETA] Publishing tribute:', { memorialId, userId, authorName })
- 
-     // BETA: No payment verification - publish directly
-     const { data: post, error: insertError } = await supabase
-       .from('guestbook_posts')
-       .insert({
-         memorial_id: memorialId,
-         user_id: userId,
-         author_name: authorName,
-         relation_category: relationCategory,
-         relation_link: relationLink || null,
-         content: content,
-         photos: photos,
-         candle_count: candleCount,
-         flower_count: flowerCount,
-         payment_reference: null // BETA: No payment
-       })
-       .select()
-       .single()
+      // Check server-side monetization mode
+      const { data: monetizationSetting } = await supabase
+        .from('global_settings')
+        .select('value_bool')
+        .eq('key', 'is_monetized')
+        .maybeSingle()
+
+      const isMonetized = monetizationSetting?.value_bool ?? false
+
+      console.log('[publish-tribute] Publishing tribute:', { memorialId, userId, authorName, isMonetized, is_hidden: isMonetized })
+  
+      // Insert with is_hidden based on monetization:
+      // - Free mode: is_hidden = false (visible immediately)
+      // - Paid mode: is_hidden = true (unlocked only by ebilling-callback or manual sync)
+      const { data: post, error: insertError } = await supabase
+        .from('guestbook_posts')
+        .insert({
+          memorial_id: memorialId,
+          user_id: userId,
+          author_name: authorName,
+          relation_category: relationCategory,
+          relation_link: relationLink || null,
+          content: content,
+          photos: photos,
+          candle_count: candleCount,
+          flower_count: flowerCount,
+          is_hidden: isMonetized,
+          payment_reference: null,
+        })
+        .select()
+        .single()
  
      if (insertError) {
        console.error('Error inserting post:', insertError)
@@ -201,7 +213,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
        )
      }
  
-     console.log('[BETA] Tribute published successfully:', post.id)
+     console.log('[publish-tribute] Tribute published:', post.id, { is_hidden: isMonetized })
  
      return new Response(
        JSON.stringify({ 
