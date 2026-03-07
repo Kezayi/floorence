@@ -181,12 +181,47 @@ const GesteRituelModal = ({
 
         {/* Allow interaction even while settings load — use fallback price */}
         <div className="space-y-4">
-          {/* Price display */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-md bg-muted/50">
-            <span className="text-sm font-sans">1 × {label}</span>
-            <span className="text-lg font-serif font-semibold">
-              {isMonetized ? `${price} FCFA` : "Offert"}
-            </span>
+          {/* Price display — basket detail */}
+          <div className="space-y-2">
+            {hasBasket ? (
+              <>
+                {candleCount > 0 && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-md bg-muted/50">
+                    <span className="text-sm font-sans flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-gesture-candle" />
+                      {candleCount} × Cierge
+                    </span>
+                    <span className="text-sm font-serif font-semibold">
+                      {isMonetized ? `${candleCount * priceCierge} XAF` : "Offert"}
+                    </span>
+                  </div>
+                )}
+                {flowerCount > 0 && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-md bg-muted/50">
+                    <span className="text-sm font-sans flex items-center gap-2">
+                      <Flower2 className="w-4 h-4 text-gesture-flower" />
+                      {flowerCount} × Fleur
+                    </span>
+                    <span className="text-sm font-serif font-semibold">
+                      {isMonetized ? `${flowerCount * priceFleur} XAF` : "Offert"}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 py-2 rounded-md bg-primary/5 border border-primary/10">
+                  <span className="text-sm font-sans font-medium">Total</span>
+                  <span className="text-lg font-serif font-bold">
+                    {isMonetized ? `${displayTotal} XAF` : "Offert"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between px-4 py-3 rounded-md bg-muted/50">
+                <span className="text-sm font-sans">1 × {label}</span>
+                <span className="text-lg font-serif font-semibold">
+                  {isMonetized ? `${price} XAF` : "Offert"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Phone input (paid mode only) */}
