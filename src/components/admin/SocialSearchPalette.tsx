@@ -7,7 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
+// Hard-coded URL pour bypasser tout problème de variable d'environnement
+const CHAT_URL = "https://vxuueidrzrnfglfilmnh.supabase.co/functions/v1/social-search";
 
 interface HistoryEntry {
   id: string;
