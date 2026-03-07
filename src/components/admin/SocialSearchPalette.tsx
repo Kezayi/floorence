@@ -126,28 +126,38 @@ function findMentionedMemorials(
 }
 
 /** Memorial portrait strip shown above the answer */
-const MemorialStrip = ({ memorials }: { memorials: MemorialMeta[] }) => {
+const MemorialStrip = ({ memorials, onNavigate }: { memorials: MemorialMeta[]; onNavigate: (slug: string) => void }) => {
   if (memorials.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-border/50">
       {memorials.map((m) => (
-        <div key={m.name} className="flex items-center gap-1.5 bg-muted/50 rounded-full pl-0.5 pr-2.5 py-0.5">
-          <Avatar className="w-6 h-6">
-            {m.photo && (
-              <AvatarImage
-                src={m.photo}
-                alt={m.name}
-                className="object-cover grayscale-[30%] animate-in fade-in duration-500"
-              />
-            )}
-            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-serif">
-              {m.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-[11px] font-serif text-foreground/80 truncate max-w-[100px]">
+        <Tooltip key={m.name}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => m.slug && onNavigate(`/memorial/${m.slug}`)}
+              className="flex items-center gap-1.5 bg-muted/50 rounded-full pl-0.5 pr-2.5 py-0.5 hover:ring-2 hover:ring-primary transition-all cursor-pointer group"
+            >
+              <Avatar className="w-6 h-6">
+                {m.photo && (
+                  <AvatarImage
+                    src={m.photo}
+                    alt={m.name}
+                    className="object-cover grayscale group-hover:grayscale-0 transition-[filter] duration-600 animate-in fade-in duration-500"
+                  />
+                )}
+                <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-serif">
+                  {m.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[11px] font-serif text-foreground/80 truncate max-w-[100px]">
+                {m.name}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
             {m.name}
-          </span>
-        </div>
+          </TooltipContent>
+        </Tooltip>
       ))}
     </div>
   );
