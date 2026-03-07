@@ -193,6 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const body = await req.json();
+    console.log("[EBILLING] Payload reçu:", JSON.stringify(body));
 
     // ── ROUTE: check-status ──
     if (body.action === "check-status") {
