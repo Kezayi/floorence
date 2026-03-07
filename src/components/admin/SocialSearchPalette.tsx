@@ -26,11 +26,19 @@ async function streamQuestion(
   onMeta: (meta: Record<string, MemorialMeta>) => void,
   signal: AbortSignal
 ) {
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('[RAG Auth Check]', !!session);
+
+  if (!session?.access_token) {
+    throw new Error("Session expirée. Veuillez vous reconnecter.");
+  }
+
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ question }),
     signal,
