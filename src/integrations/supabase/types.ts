@@ -569,6 +569,7 @@ export type Database = {
           ebilling_transaction_id: string | null
           flower_count: number | null
           id: string
+          last_sync_at: string | null
           memorial_id: string | null
           metadata: Json | null
           payer_phone: string | null
@@ -587,6 +588,7 @@ export type Database = {
           ebilling_transaction_id?: string | null
           flower_count?: number | null
           id?: string
+          last_sync_at?: string | null
           memorial_id?: string | null
           metadata?: Json | null
           payer_phone?: string | null
@@ -605,6 +607,7 @@ export type Database = {
           ebilling_transaction_id?: string | null
           flower_count?: number | null
           id?: string
+          last_sync_at?: string | null
           memorial_id?: string | null
           metadata?: Json | null
           payer_phone?: string | null
@@ -905,9 +908,11 @@ export type Database = {
           deceased_name_snapshot: string | null
           ebilling_reference: string | null
           id: string | null
+          last_sync_at: string | null
           memorial_id: string | null
           payer_phone: string | null
           status: string | null
+          user_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -915,9 +920,11 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          last_sync_at?: string | null
           memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
+          user_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -925,9 +932,11 @@ export type Database = {
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
           id?: string | null
+          last_sync_at?: string | null
           memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

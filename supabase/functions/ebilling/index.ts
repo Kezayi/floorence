@@ -7,17 +7,124 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface EbillingRequest {
-  memorial_id: string;
-  item_type: "cierge" | "fleur";
-  quantity: number;
-  phone?: string;
-  post_id?: string;
-  deceased_name?: string;
-  candle_count?: number;
-  flower_count?: number;
+const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
+
+function initClients(authHeader: string) {
+  const supabaseUser = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    { global: { headers: { Authorization: authHeader } } }
+  );
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  return { supabaseUser, supabaseAdmin };
 }
 
+// ── CHECK-STATUS HANDLER ──
+async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Response> {
+  const { reference } = body;
+  if (!reference) {
+    return new Response(JSON.stringify({ error: "Référence manquante" }), { status: 400, headers: jsonHeaders });
+  }
+
+  // Look up the transaction
+  const { data: tx, error: txErr } = await supabaseAdmin
+    .from("payment_transactions")
+    .select("id, status, ebilling_reference, memorial_id, metadata")
+    .eq("ebilling_reference", reference)
+    .single();
+
+  if (txErr || !tx) {
+    return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
+  }
+
+  // Already resolved
+  if (tx.status === "success") {
+    return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
+  }
+  if (tx.status === "failed") {
+    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
+  }
+
+  // Query eBilling API for real status
+  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
+  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID");
+  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY");
+
+  if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
+    return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
+  }
+
+  try {
+    const statusUrl = `${EBILLING_BASE_URL}/status`;
+    console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
+
+    const statusResponse = await fetch(statusUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ppiMerchantId: EBILLING_MERCHANT_ID,
+        ppiSecretKey: EBILLING_SECRET_KEY,
+        ppiMerchantReference: reference,
+      }),
+    });
+
+    const statusData = await statusResponse.json();
+    console.log("[ebilling:check-status] API response:", JSON.stringify(statusData));
+
+    // Check if payment confirmed (adapt field name to your eBilling provider)
+    const paymentStatus = (statusData?.ppiPaymentStatus || statusData?.status || "").toUpperCase();
+
+    if (paymentStatus === "SUCCESS" || paymentStatus === "COMPLETED" || paymentStatus === "PAID") {
+      // Update transaction to success
+      await supabaseAdmin
+        .from("payment_transactions")
+        .update({
+          status: "success",
+          last_sync_at: new Date().toISOString(),
+          ebilling_transaction_id: statusData?.ppiTransactionId || statusData?.transactionId || null,
+        })
+        .eq("ebilling_reference", reference);
+
+      // Unhide the associated guestbook post
+      await supabaseAdmin
+        .from("guestbook_posts")
+        .update({ is_hidden: false, updated_at: new Date().toISOString() })
+        .eq("payment_reference", reference)
+        .eq("is_hidden", true);
+
+      console.log(`[ebilling:check-status] ref=${reference} → SUCCESS, hommage publié`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: "success",
+        message: "Transaction validée et hommage publié",
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    // Payment not yet confirmed
+    console.log(`[ebilling:check-status] ref=${reference} → still ${paymentStatus}`);
+    return new Response(JSON.stringify({
+      success: false,
+      status: tx.status,
+      payment_status: paymentStatus,
+      message: "Le paiement n'est toujours pas confirmé",
+    }), { status: 200, headers: jsonHeaders });
+
+  } catch (apiError) {
+    console.error("[ebilling:check-status] API error:", apiError);
+    return new Response(JSON.stringify({
+      success: false,
+      status: tx.status,
+      message: "Impossible de vérifier le statut auprès de l'opérateur",
+    }), { status: 200, headers: jsonHeaders });
+  }
+}
+
+// ── MAIN HANDLER ──
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -26,40 +133,28 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Non autorisé" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401, headers: jsonHeaders });
     }
 
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const { supabaseUser, supabaseAdmin } = initClients(authHeader);
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Non autorisé" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401, headers: jsonHeaders });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const body = await req.json();
 
-    const body: EbillingRequest = await req.json();
+    // ── ROUTE: check-status ──
+    if (body.action === "check-status") {
+      return await handleCheckStatus(body, supabaseAdmin);
+    }
+
+    // ── ROUTE: default (create payment) ──
     const { memorial_id, item_type, quantity, phone, post_id, deceased_name, candle_count, flower_count } = body;
 
     if (!memorial_id || !item_type || !quantity || quantity < 1) {
-      return new Response(
-        JSON.stringify({ error: "Paramètres invalides" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
     }
 
     // Fallback: if deceased_name missing, look it up from memorials table
@@ -149,12 +244,11 @@ const handler = async (req: Request): Promise<Response> => {
           requires_phone: false,
           message: "Geste offert avec succès",
         }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
     // ── PAID MODE ──
-    // Strictly require phone in paid mode
     if (!phone) {
       return new Response(
         JSON.stringify({
@@ -164,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
           unit_price: unitPrice,
           amount: totalAmount,
         }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 400, headers: jsonHeaders }
       );
     }
 
@@ -196,30 +290,24 @@ const handler = async (req: Request): Promise<Response> => {
     const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL");
 
     if (!EBILLING_API_KEY || !EBILLING_MERCHANT_ID) {
-      return new Response(
-        JSON.stringify({ error: "Configuration eBilling manquante" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
     }
 
     if (!EBILLING_BASE_URL) {
       console.error("[ebilling] EBILLING_BASE_URL not configured");
-      return new Response(
-        JSON.stringify({ error: "Configuration serveur incomplète (BASE_URL)" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ error: "Configuration serveur incomplète (BASE_URL)" }), { status: 500, headers: jsonHeaders });
     }
 
-    // ── ENVIRONMENT GUARD: Block if monetized but not pointing to LAB ──
+    // ── ENVIRONMENT GUARD ──
     if (!EBILLING_BASE_URL.includes("lab")) {
       console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${EBILLING_BASE_URL} does not target LAB environment`);
       return new Response(
         JSON.stringify({ error: "Conflit d'environnement : la monétisation est active mais l'URL cible n'est pas l'environnement LAB. Transaction bloquée par sécurité." }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 400, headers: jsonHeaders }
       );
     }
 
-    // Build callback URL with secret for webhook security
+    // Build callback URL
     const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const callbackUrl = `${supabaseUrl}/functions/v1/ebilling-callback?secret=${encodeURIComponent(CALLBACK_SECRET)}`;
@@ -259,7 +347,7 @@ const handler = async (req: Request): Promise<Response> => {
           requires_phone: true,
           ebilling_response: ebillingData,
         }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: jsonHeaders }
       );
     } catch (ebillingError) {
       console.error("[ebilling] API error:", ebillingError);
@@ -271,14 +359,14 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(
         JSON.stringify({ error: "Erreur de communication avec le service de paiement" }),
-        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 502, headers: jsonHeaders }
       );
     }
   } catch (error: any) {
     console.error("[ebilling] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Une erreur est survenue" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: jsonHeaders }
     );
   }
 };
