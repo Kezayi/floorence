@@ -386,13 +386,26 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
               <>
                 {error && (
                   <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive space-y-2">
-                    <p>{error}</p>
-                    <button
-                      onClick={() => { setError(null); submitQuestion(query); }}
-                      className="text-xs font-medium underline hover:no-underline"
-                    >
-                      ↻ Réessayer
-                    </button>
+                    <p>{error === "AUTH_REQUIRED" ? "Authentification requise. Veuillez vous connecter." : error}</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setError(null); submitQuestion(query); }}
+                        className="text-xs font-medium underline hover:no-underline"
+                      >
+                        ↻ Réessayer
+                      </button>
+                      {(error === "AUTH_REQUIRED" || error.includes("403") || error.includes("401")) && (
+                        <button
+                          onClick={async () => {
+                            await supabase.auth.signOut();
+                            window.location.href = "/auth";
+                          }}
+                          className="text-xs font-medium text-primary underline hover:no-underline"
+                        >
+                          🔄 Réinitialiser la Session
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 

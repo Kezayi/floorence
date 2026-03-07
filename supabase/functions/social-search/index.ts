@@ -30,6 +30,8 @@ const MAX_QUESTION_LENGTH = 300;
 const MIN_QUESTION_LENGTH = 5;
 
 serve(async (req) => {
+  console.log('--- EDGE FUNCTION START --- social-search');
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
