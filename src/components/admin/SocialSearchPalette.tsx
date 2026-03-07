@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Sparkles, X, Loader2, History, Clock, ChevronLeft } from "lucide-react";
+import { Search, Sparkles, X, Loader2, History, Clock, ChevronLeft, Users } from "lucide-react";
 import { CommandDialog } from "@/components/ui/command";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,9 +14,16 @@ interface HistoryEntry {
   created_at: string;
 }
 
+interface MemorialMeta {
+  name: string;
+  photo: string | null;
+  slug: string | null;
+}
+
 async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
+  onMeta: (meta: Record<string, MemorialMeta>) => void,
   signal: AbortSignal
 ) {
   const resp = await fetch(CHAT_URL, {
@@ -55,6 +63,11 @@ async function streamQuestion(
       if (jsonStr === "[DONE]") return;
       try {
         const parsed = JSON.parse(jsonStr);
+        // Check for memorial metadata event
+        if (parsed.type === "memorial_meta" && parsed.memorials) {
+          onMeta(parsed.memorials);
+          continue;
+        }
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) {
           fullText += content;
@@ -86,6 +99,50 @@ const SUGGESTIONS = [
   "Résume le cercle social du défunt le plus actif",
 ];
 
+/** Extract mentioned memorial names from the answer to display their photos */
+function findMentionedMemorials(
+  answer: string,
+  meta: Record<string, MemorialMeta>
+): MemorialMeta[] {
+  const found: MemorialMeta[] = [];
+  const seen = new Set<string>();
+  for (const [id, m] of Object.entries(meta)) {
+    if (!seen.has(m.name) && answer.includes(m.name)) {
+      found.push(m);
+      seen.add(m.name);
+    }
+  }
+  return found.slice(0, 8); // max 8 portraits
+}
+
+/** Memorial portrait strip shown above the answer */
+const MemorialStrip = ({ memorials }: { memorials: MemorialMeta[] }) => {
+  if (memorials.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-border/50">
+      {memorials.map((m) => (
+        <div key={m.name} className="flex items-center gap-1.5 bg-muted/50 rounded-full pl-0.5 pr-2.5 py-0.5">
+          <Avatar className="w-6 h-6">
+            {m.photo && (
+              <AvatarImage
+                src={m.photo}
+                alt={m.name}
+                className="object-cover grayscale-[30%] animate-in fade-in duration-500"
+              />
+            )}
+            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-serif">
+              {m.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-[11px] font-serif text-foreground/80 truncate max-w-[100px]">
+            {m.name}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface SocialSearchPaletteProps {
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
@@ -103,6 +160,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [memorialMeta, setMemorialMeta] = useState<Record<string, MemorialMeta>>({});
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -134,6 +192,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setIsLoading(false);
     setShowHistory(false);
     setSelectedEntry(null);
+    setMemorialMeta({});
     abortRef.current?.abort();
   }, []);
 
@@ -152,12 +211,13 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setIsLoading(true);
     setAnswer("");
     setError(null);
+    setMemorialMeta({});
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, controller.signal);
+      await streamQuestion(q, setAnswer, setMemorialMeta, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
@@ -170,6 +230,8 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setSelectedEntry(null);
     loadHistory();
   }, [loadHistory]);
+
+  const mentionedMemorials = answer ? findMentionedMemorials(answer, memorialMeta) : [];
 
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
@@ -301,11 +363,16 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 )}
 
                 {answer && (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{answer}</ReactMarkdown>
-                    {isLoading && (
-                      <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
-                    )}
+                  <div>
+                    {/* Memorial portrait strip */}
+                    <MemorialStrip memorials={mentionedMemorials} />
+
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{answer}</ReactMarkdown>
+                      {isLoading && (
+                        <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
+                      )}
+                    </div>
                   </div>
                 )}
 
