@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import GesteRituelModal from "./GesteRituelModal";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
