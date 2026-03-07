@@ -1079,6 +1079,21 @@ export type Database = {
         }
         Relationships: []
       }
+      v_pending_reconciliation: {
+        Row: {
+          ebilling_reference: string | null
+          id: string | null
+        }
+        Insert: {
+          ebilling_reference?: string | null
+          id?: string | null
+        }
+        Update: {
+          ebilling_reference?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
       v_public_memorials: {
         Row: {
           biography: string | null
