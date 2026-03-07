@@ -386,7 +386,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 {answer && (
                   <div>
                     {/* Memorial portrait strip */}
-                    <MemorialStrip memorials={mentionedMemorials} />
+                    <MemorialStrip memorials={mentionedMemorials} onNavigate={(path) => { handleOpenChange(false); navigate(path); }} />
 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{answer}</ReactMarkdown>
