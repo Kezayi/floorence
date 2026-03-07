@@ -145,6 +145,19 @@ const Finance = () => {
         </div>
       </div>
 
+      <OperatorHealthBar
+        transactions={transactions}
+        onFilterIncidents={() => {
+          setStatusFilter('all');
+          setDateRange({ from: startOfDay(new Date()), to: new Date() });
+          setSearchQuery('');
+          // We filter timeout+failed via a special combined filter
+          setStatusFilter('incidents');
+          setPage(0);
+          toast.info("Affichage des incidents du jour (timeout + failed)");
+        }}
+      />
+
       <FinanceKPIs {...kpis} />
 
       <FinanceFilters
