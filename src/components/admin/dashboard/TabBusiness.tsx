@@ -28,7 +28,7 @@ const TabBusiness = ({ stats }: Props) => {
         .from('payment_transactions')
         .select('amount, status, created_at');
 
-      const completedTransactions = (data || []).filter(t => t.status === 'completed');
+      const completedTransactions = (data || []).filter(t => t.status === 'success');
 
       const last30Days: DailyRevenue[] = [];
       for (let i = 29; i >= 0; i--) {

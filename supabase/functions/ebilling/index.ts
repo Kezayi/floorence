@@ -252,7 +252,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       await supabaseAdmin
         .from("payment_transactions")
-        .update({ status: "FAILED" })
+        .update({ status: "failed" })
         .eq("ebilling_reference", ebillingRef);
 
       return new Response(
