@@ -407,7 +407,8 @@ const ShortestPath = () => {
       <div className="flex justify-center mb-8">
         <Button
           onClick={compute}
-          disabled={!selectedA || !selectedB || computing || selectedA.userId === selectedB.userId}
+          disabled={computing}
+          className={`gap-2 active:scale-95 transition-transform ${!selectedA || !selectedB ? "opacity-60" : ""}`}
           className="gap-2 active:scale-95 transition-transform"
           size="lg"
         >
