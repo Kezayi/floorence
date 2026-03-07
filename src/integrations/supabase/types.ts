@@ -793,6 +793,27 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           description: string | null
@@ -1076,6 +1097,19 @@ export type Database = {
           total_revenue: number | null
           total_users: number | null
           visible_posts: number | null
+        }
+        Relationships: []
+      }
+      v_pending_reconciliation: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          deceased_name_snapshot: string | null
+          ebilling_reference: string | null
+          id: string | null
+          memorial_id: string | null
+          payer_phone: string | null
+          status: string | null
         }
         Relationships: []
       }
