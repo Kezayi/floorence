@@ -27,6 +27,11 @@ const GesteRituelModal = ({
   itemType,
   postId,
   onConfirm,
+  candleCount = 0,
+  flowerCount = 0,
+  totalAmount: externalTotal,
+  priceCierge = FALLBACK_PRICE,
+  priceFleur = FALLBACK_PRICE,
 }: GesteRituelModalProps) => {
   const { data: monetization, isLoading: isLoadingSettings, refetch } = useMonetization();
   const [phone, setPhone] = useState("");
