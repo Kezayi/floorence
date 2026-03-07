@@ -122,6 +122,23 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log("[ebilling-callback] Payment confirmed:", ppiMerchantReference);
+
+      // Trigger certificate generation & email
+      try {
+        const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-payment-success`;
+        const certRes = await fetch(fnUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ transaction_id: tx.id }),
+        });
+        const certData = await certRes.json();
+        console.log("[ebilling-callback] Certificate result:", JSON.stringify(certData));
+      } catch (certErr) {
+        console.error("[ebilling-callback] Certificate generation failed (non-blocking):", certErr);
+      }
     } else if (normalizedStatus === "FAILED") {
       await supabaseAdmin
         .from("payment_transactions")
