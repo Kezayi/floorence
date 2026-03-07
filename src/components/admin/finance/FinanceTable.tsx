@@ -89,8 +89,8 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                       <TableCell className="whitespace-nowrap text-sm">
                         {tx.date_libreville ? format(new Date(tx.date_libreville), 'dd/MM/yyyy HH:mm', { locale: fr }) : '—'}
                       </TableCell>
-                      <TableCell className="font-medium">{tx.deceased_name || '—'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || '—'}</TableCell>
+                      <TableCell className="font-medium">{tx.deceased_name || 'Non renseigné'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || 'Non renseigné'}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
                       <TableCell className="text-sm">{items.length > 0 ? items.join(' + ') : '—'}</TableCell>
                       <TableCell>

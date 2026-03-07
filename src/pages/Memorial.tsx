@@ -593,6 +593,7 @@ const MemorialInner = () => {
             item_type: itemType,
             quantity: 1,
             post_id: postId,
+            deceased_name: memorial.name,
             ...(phone ? { phone } : {}),
           },
         });
