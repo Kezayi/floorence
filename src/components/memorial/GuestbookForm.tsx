@@ -235,7 +235,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         deceased_name_snapshot: defuntName || null,
         candle_count: candleCount,
         flower_count: flowerCount,
-        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ebilling_reference: `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       };
       console.log('[Transaction Insert]', txPayload);
       const { error: txErr } = await supabase.from('payment_transactions').insert(txPayload);
