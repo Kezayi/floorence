@@ -192,6 +192,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [memorialMeta, setMemorialMeta] = useState<Record<string, MemorialMeta>>({});
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
