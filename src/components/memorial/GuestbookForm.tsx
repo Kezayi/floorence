@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
+import GesteRituelModal from "./GesteRituelModal";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
 import { Button } from "@/components/ui/button";
 import TemplateSelector from "./TemplateSelector";
@@ -46,6 +47,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showEbillingModal, setShowEbillingModal] = useState(false);
+  const [pendingPostId, setPendingPostId] = useState<string>("");
   const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
@@ -160,6 +163,18 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   };
 
   const handleConfirmSubmit = async () => {
+    // ── PAID MODE: intercept and redirect to eBilling modal ──
+    if (isMonetized) {
+      console.log('[Redirect Audit]', { action: 'Open eBilling Modal', isMonetized });
+      setShowConfirmDialog(false);
+      toast.info('Préparation du paiement sécurisé...');
+      // Use memorialId as postId context for the eBilling modal
+      setPendingPostId(memorialId || "");
+      setShowEbillingModal(true);
+      return;
+    }
+
+    // ── FREE MODE: submit directly ──
     setIsSubmitting(true);
     const submittedCandleCount = candleCount;
     const submittedFlowerCount = flowerCount;
@@ -175,28 +190,56 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         flowerCount,
       });
 
-      // Save data for success modal
       setLastSubmittedData({
         candleCount: submittedCandleCount,
         flowerCount: submittedFlowerCount,
         relation: submittedRelation,
       });
 
-      // Reset form
       setMessageContent("");
       setPhotos([]);
       setCandleCount(0);
       setFlowerCount(0);
       setErrors({});
       setShowConfirmDialog(false);
-      
-      // Show success modal
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('Submit error:', error);
       toast.error("Une erreur est survenue lors de la publication");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEbillingConfirm = async (phone?: string) => {
+    console.log('[eBilling Confirm]', { phone, memorialId, candleCount, flowerCount });
+    // The GesteRituelModal handles the eBilling call internally via onConfirm
+    // After payment success, submit the post
+    try {
+      await onSubmit({
+        content: messageContent.trim(),
+        relationCategory: selectedCategory,
+        relationLink: selectedRelation,
+        photos,
+        candleCount,
+        flowerCount,
+      });
+
+      setMessageContent("");
+      setPhotos([]);
+      setCandleCount(0);
+      setFlowerCount(0);
+      setErrors({});
+      setShowEbillingModal(false);
+      setShowSuccessDialog(true);
+      setLastSubmittedData({
+        candleCount,
+        flowerCount,
+        relation: selectedRelation,
+      });
+    } catch (error) {
+      console.error('[eBilling Post Submit] error:', error);
+      toast.error("Erreur lors de la publication après paiement");
     }
   };
 
@@ -548,6 +591,15 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* eBilling Payment Modal (paid mode) */}
+      <GesteRituelModal
+        open={showEbillingModal}
+        onOpenChange={setShowEbillingModal}
+        itemType="cierge"
+        postId={pendingPostId}
+        onConfirm={handleEbillingConfirm}
+      />
     </>
   );
 };
