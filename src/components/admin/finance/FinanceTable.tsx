@@ -18,11 +18,9 @@ const PAGE_SIZE = 20;
 interface Transaction {
   id: string | null;
   date_libreville: string | null;
-  deceased_name: string | null;
+  deceased_name_snapshot: string | null;
   payer_phone: string | null;
   amount: number | null;
-  candle_count: number | null;
-  flower_count: number | null;
   status: string | null;
   ebilling_reference: string | null;
 }
