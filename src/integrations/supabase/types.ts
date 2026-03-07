@@ -21,6 +21,7 @@ export type Database = {
           id: string
           model_name: string | null
           prompt_tokens: number | null
+          total_tokens: number | null
           user_id: string | null
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           id?: string
           model_name?: string | null
           prompt_tokens?: number | null
+          total_tokens?: number | null
           user_id?: string | null
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           id?: string
           model_name?: string | null
           prompt_tokens?: number | null
+          total_tokens?: number | null
           user_id?: string | null
         }
         Relationships: []
@@ -898,36 +901,27 @@ export type Database = {
       backoffice_finance_audit: {
         Row: {
           amount: number | null
-          candle_count: number | null
-          created_at_utc: string | null
           date_libreville: string | null
-          deceased_name: string | null
+          deceased_name_snapshot: string | null
           ebilling_reference: string | null
-          flower_count: number | null
           id: string | null
           payer_phone: string | null
           status: string | null
         }
         Insert: {
           amount?: number | null
-          candle_count?: number | null
-          created_at_utc?: string | null
           date_libreville?: never
-          deceased_name?: never
+          deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
-          flower_count?: number | null
           id?: string | null
           payer_phone?: string | null
           status?: string | null
         }
         Update: {
           amount?: number | null
-          candle_count?: number | null
-          created_at_utc?: string | null
           date_libreville?: never
-          deceased_name?: never
+          deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
-          flower_count?: number | null
           id?: string | null
           payer_phone?: string | null
           status?: string | null
