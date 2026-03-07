@@ -169,6 +169,7 @@ interface SocialSearchPaletteProps {
 }
 
 const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearchPaletteProps = {}) => {
+  const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen ?? internalOpen;
   const setOpen = onExternalOpenChange ?? setInternalOpen;
