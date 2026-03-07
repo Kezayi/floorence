@@ -409,11 +409,15 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           {/* Submit button */}
           <button
             type="submit"
-            className={`w-full py-3 font-serif text-sm tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm transition-colors ${
-              (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-60' : ''
+            className={`w-full py-3 font-serif text-sm tracking-wide rounded-sm transition-colors duration-300 text-white ${
+              isMonetized
+                ? 'bg-zinc-900 hover:bg-zinc-700'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            } ${
+              (!selectedRelation || messageContent.trim().length < 5) ? 'opacity-50' : ''
             }`}
           >
-            Publier mon hommage
+            {isMonetized ? 'Procéder au paiement' : 'Publier gratuitement'}
           </button>
         </div>
       </form>
