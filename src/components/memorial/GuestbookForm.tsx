@@ -128,8 +128,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     }
     if (!messageContent.trim()) {
       newErrors.content = "Veuillez rédiger votre message d'hommage";
-    } else if (messageContent.trim().length < 10) {
-      newErrors.content = "Votre message doit contenir au moins 10 caractères";
+    } else if (messageContent.trim().length < 5) {
+      newErrors.content = "Votre message doit contenir au moins 5 caractères";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
