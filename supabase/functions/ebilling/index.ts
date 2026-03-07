@@ -62,6 +62,20 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Fallback: if deceased_name missing, look it up from memorials table
+    let resolvedDeceasedName = deceased_name || null;
+    if (!resolvedDeceasedName && memorial_id) {
+      const { data: memData } = await supabaseAdmin
+        .from("memorials")
+        .select("first_name, last_name")
+        .eq("id", memorial_id)
+        .single();
+      if (memData) {
+        resolvedDeceasedName = `${memData.first_name} ${memData.last_name}`.trim();
+      }
+      console.log(`[ebilling] Fallback name lookup: ${resolvedDeceasedName}`);
+    }
+
     // Server-side truth: check monetization mode
     const { data: monetizationSetting } = await supabaseAdmin
       .from("global_settings")
