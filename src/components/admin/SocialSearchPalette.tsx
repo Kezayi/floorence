@@ -38,26 +38,36 @@ async function streamQuestion(
 ) {
   // Zero-Trust: récupération session fraîche
   const { data: { session } } = await supabase.auth.getSession();
-  console.log(`[RAG Zero-Trust] Session active: ${!!session}, token: ${session?.access_token ? 'present' : 'MISSING'}`);
+  console.log(`[RAG Hard-Coded] Session active: ${!!session}, token: ${session?.access_token ? 'present' : 'MISSING'}`);
 
   if (!session?.access_token) {
     throw new Error("AUTH_REQUIRED");
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session.access_token}`,
+    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    "X-Client-Info": "lovable-social-search",
+  };
+
+  console.log('--- HEADERS TEST ---', {
+    Authorization: 'Bearer present',
+    apikey: headers.apikey ? 'present' : 'MISSING',
+    url: CHAT_URL,
+  });
+
   const resp = await fetch(CHAT_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      "X-Client-Info": "lovable-social-search",
-    },
+    headers,
     body: JSON.stringify({ question }),
     signal,
   });
   if (!resp.ok) {
     const errData = await resp.json().catch(() => null);
-    throw new Error(errData?.error || `Erreur ${resp.status} — ${resp.statusText}`);
+    const msg = errData?.message || errData?.error || `Erreur ${resp.status} — ${resp.statusText}`;
+    console.error('[RAG] Error response:', resp.status, msg);
+    throw new Error(msg);
   }
   if (!resp.body) throw new Error("Pas de réponse du serveur");
 
