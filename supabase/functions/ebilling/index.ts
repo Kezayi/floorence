@@ -59,7 +59,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   try {
-    const statusUrl = `${EBILLING_BASE_URL}/status`;
+    const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
     const statusPayload = {
