@@ -1327,6 +1327,19 @@ export type Database = {
         Args: { p_funeral_date: string }
         Returns: boolean
       }
+      match_documents: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
