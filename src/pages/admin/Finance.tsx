@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Download, FileText } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, isToday, isThisWeek, isThisMonth } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isToday, isThisWeek, isThisMonth, subHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { exportToCSV } from '@/lib/csvExport';
@@ -14,6 +14,7 @@ import FinanceKPIs from '@/components/admin/finance/FinanceKPIs';
 import FinanceFilters from '@/components/admin/finance/FinanceFilters';
 import FinanceTable from '@/components/admin/finance/FinanceTable';
 import FinanceChart from '@/components/admin/finance/FinanceChart';
+import OperatorHealthBar from '@/components/admin/finance/OperatorHealthBar';
 
 const CACHE = { staleTime: 60_000, gcTime: 5 * 60_000 };
 
@@ -62,7 +63,13 @@ const Finance = () => {
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'incidents') {
+      const todayStart = startOfDay(new Date());
+      result = result.filter(t =>
+        (t.status === 'timeout' || t.status === 'failed') &&
+        t.date_libreville && new Date(t.date_libreville) >= todayStart
+      );
+    } else if (statusFilter !== 'all') {
       result = result.filter(t => t.status === statusFilter);
     }
 
@@ -143,6 +150,19 @@ const Finance = () => {
           </Button>
         </div>
       </div>
+
+      <OperatorHealthBar
+        transactions={transactions}
+        onFilterIncidents={() => {
+          setStatusFilter('all');
+          setDateRange({ from: startOfDay(new Date()), to: new Date() });
+          setSearchQuery('');
+          // We filter timeout+failed via a special combined filter
+          setStatusFilter('incidents');
+          setPage(0);
+          toast.info("Affichage des incidents du jour (timeout + failed)");
+        }}
+      />
 
       <FinanceKPIs {...kpis} />
 

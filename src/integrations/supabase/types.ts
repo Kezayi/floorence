@@ -940,6 +940,16 @@ export type Database = {
         }
         Relationships: []
       }
+      backoffice_finance_stats: {
+        Row: {
+          day: string | null
+          failure_count: number | null
+          success_count: number | null
+          success_rate: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
       backoffice_humanity_index: {
         Row: {
           density_score: number | null
