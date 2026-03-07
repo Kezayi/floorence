@@ -1063,7 +1063,7 @@ const MemorialInner = () => {
                 Partagez un souvenir ou un message de soutien à la famille
               </p>
 
-              {memorialData?.id && <PendingPaymentBanner memorialId={memorialData.id} />}
+              {memorialData?.id && <PendingPaymentBanner memorialId={memorialData.id} onPaymentConfirmed={fetchGuestbookPosts} />}
 
               <div ref={guestbookFormRef}>
                 <GuestbookForm
