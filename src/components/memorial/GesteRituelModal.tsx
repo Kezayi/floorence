@@ -44,6 +44,13 @@ const GesteRituelModal = ({
   const isMonetized = monetization?.isMonetized ?? false;
   const price = monetization?.prices?.[itemType] ?? FALLBACK_PRICE;
 
+  // Use external total if provided (basket mode), otherwise single-item price
+  const hasBasket = candleCount > 0 || flowerCount > 0;
+  const computedTotal = hasBasket
+    ? (candleCount * priceCierge) + (flowerCount * priceFleur)
+    : price;
+  const displayTotal = externalTotal ?? computedTotal;
+
   const Icon = itemType === "cierge" ? Flame : Flower2;
   const label = itemType === "cierge" ? "Cierge" : "Fleur";
   const colorClass = itemType === "cierge" ? "text-gesture-candle" : "text-gesture-flower";
