@@ -22,10 +22,17 @@ interface MemorialMeta {
   slug: string | null;
 }
 
+interface UsageData {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
 async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onMeta: (meta: Record<string, MemorialMeta>) => void,
+  onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -48,7 +55,7 @@ async function streamQuestion(
 
   if (!resp.ok) {
     const errData = await resp.json().catch(() => null);
-    throw new Error(errData?.error || `Erreur ${resp.status}`);
+    throw new Error(errData?.error || `Erreur ${resp.status} — ${resp.statusText}`);
   }
   if (!resp.body) throw new Error("Pas de réponse du serveur");
 
@@ -73,9 +80,12 @@ async function streamQuestion(
       if (jsonStr === "[DONE]") return;
       try {
         const parsed = JSON.parse(jsonStr);
-        // Check for memorial metadata event
         if (parsed.type === "memorial_meta" && parsed.memorials) {
           onMeta(parsed.memorials);
+          continue;
+        }
+        if (parsed.type === "usage" && parsed.usage) {
+          onUsage(parsed.usage);
           continue;
         }
         const content = parsed.choices?.[0]?.delta?.content;
