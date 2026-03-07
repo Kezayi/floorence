@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { DollarSign, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DollarSign, Loader2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
   success: { label: 'Succès', variant: 'default' },
@@ -35,6 +39,37 @@ interface FinanceTableProps {
 const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTableProps) => {
   const totalPages = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
   const paginated = transactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const [checkingRef, setCheckingRef] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const handleCheckStatus = async (reference: string) => {
+    setCheckingRef(reference);
+    try {
+      const { data, error } = await supabase.functions.invoke('ebilling', {
+        body: { action: 'check-status', reference },
+      });
+
+      if (error) {
+        toast.error("Erreur lors de la vérification");
+        console.error("[check-status] invoke error:", error);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success(data.message || "Transaction validée et hommage publié");
+        queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
+      } else {
+        toast.info(data?.message || "Le paiement n'est toujours pas confirmé");
+      }
+    } catch (err) {
+      console.error("[check-status] error:", err);
+      toast.error("Erreur réseau lors de la vérification");
+    } finally {
+      setCheckingRef(null);
+    }
+  };
+
+  const canCheck = (status: string | null) => status === 'pending' || status === 'timeout';
 
   return (
     <Card className="bg-card shadow-sm border-border/50">
@@ -71,14 +106,15 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                   <TableHead>Défunt</TableHead>
                   <TableHead>Téléphone</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
-                  <TableHead>Détail</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Réf.</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginated.map(tx => {
                   const st = statusConfig[tx.status || 'pending'] || statusConfig.pending;
+                  const isChecking = checkingRef === tx.ebilling_reference;
                   return (
                     <TableRow key={tx.id}>
                       <TableCell className="whitespace-nowrap text-sm">
@@ -87,11 +123,30 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                       <TableCell className="font-medium">{tx.deceased_name_snapshot || 'Non renseigné'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || 'Non renseigné'}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
-                      <TableCell className="text-sm">—</TableCell>
                       <TableCell>
                         <Badge variant={st.variant} className={st.className}>{st.label}</Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">{tx.ebilling_reference?.slice(0, 12) || '—'}</TableCell>
+                      <TableCell className="text-center">
+                        {canCheck(tx.status) && tx.ebilling_reference ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            disabled={isChecking}
+                            onClick={() => handleCheckStatus(tx.ebilling_reference!)}
+                          >
+                            {isChecking ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                            Vérifier
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
