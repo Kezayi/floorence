@@ -152,6 +152,7 @@ const ShortestPath = () => {
   });
 
   const compute = useCallback(async () => {
+    console.log('[Pont des Vivants]', { selectedA, selectedB });
     if (!selectedA || !selectedB) return;
     setComputing(true);
     resetResults();
