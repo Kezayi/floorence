@@ -247,6 +247,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
   const isRelationLocked = !!lockedRelation?.link;
   const showFlowerSuggestion = messageContent.length > 200 && flowerCount === 0;
+  const totalAmount = (candleCount * priceCierge) + (flowerCount * priceFleur);
 
   return (
     <>
