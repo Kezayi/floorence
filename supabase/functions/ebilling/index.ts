@@ -75,7 +75,8 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   try {
-    const statusUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/status';
+    const statusUrl = buildEbillingUrl("status");
+    console.log(`[ebilling:check-status] Base URL détectée: ${Deno.env.get("EBILLING_BASE_URL")?.trim()}`);
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
     const statusPayload = {
