@@ -67,7 +67,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   try {
-    const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
+    const statusUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/status';
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
     const statusPayload = {
@@ -79,7 +79,10 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
 
     const statusResponse = await fetch(statusUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
       body: JSON.stringify(statusPayload),
     });
 
@@ -375,13 +378,16 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
-    const checkoutUrl = new URL("/checkout", EBILLING_BASE_URL).toString();
+    const checkoutUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/checkout';
     console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
 
     try {
       const ebillingResponse = await fetch(checkoutUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
         body: JSON.stringify(ebillingPayload),
       });
 

@@ -60,10 +60,13 @@ serve(async (req: Request) => {
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
       try {
-        const statusUrl = new URL("/status", EBILLING_BASE_URL).toString();
+        const statusUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/status';
         const statusResponse = await fetch(statusUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
           body: JSON.stringify({
             ppiMerchantId: EBILLING_MERCHANT_ID,
             ppiSecretKey: EBILLING_SECRET_KEY,

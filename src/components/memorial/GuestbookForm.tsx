@@ -268,7 +268,13 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           toast.error(`Erreur paiement : ${errorMsg}`, { duration: 10000 });
         } else if (ebillingData?.error) {
           console.error('[eBilling] API error:', ebillingData);
-          toast.error(`Erreur Opérateur : ${ebillingData.error}`, { duration: 10000 });
+          const details = ebillingData.details || '';
+          const isHtml = details.includes('<!DOCTYPE') || details.includes('<html');
+          if (isHtml) {
+            toast.error("ERREUR CRITIQUE : L'opérateur renvoie une page HTML au lieu d'une réponse API. Vérifiez l'URL ou le Merchant ID.", { duration: 15000 });
+          } else {
+            toast.error(`Erreur Opérateur : ${ebillingData.error}`, { duration: 10000 });
+          }
         } else {
           console.log('[eBilling] Edge function response:', ebillingData);
 
