@@ -9,6 +9,14 @@ const corsHeaders = {
 
 const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
 
+// ── FLEXIBLE URL BUILDER ──
+function buildEbillingUrl(endpoint: "status" | "checkout"): string {
+  const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, '');
+  // If baseUrl already contains a path (e.g. /api/v1), append directly
+  // Otherwise use the default root-level route
+  return `${baseUrl}/${endpoint}`;
+}
+
 // ── SECRETS VALIDATION ──
 const REQUIRED_KEYS = ["EBILLING_MERCHANT_ID", "EBILLING_SECRET_KEY", "EBILLING_BASE_URL"];
 
@@ -67,7 +75,8 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   try {
-    const statusUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/status';
+    const statusUrl = buildEbillingUrl("status");
+    console.log(`[ebilling:check-status] Base URL détectée: ${Deno.env.get("EBILLING_BASE_URL")?.trim()}`);
     console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
 
     const statusPayload = {
@@ -378,7 +387,8 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
-    const checkoutUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/checkout';
+    const checkoutUrl = buildEbillingUrl("checkout");
+    console.log(`[ebilling] Base URL détectée: ${EBILLING_BASE_URL}`);
     console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
 
     try {
