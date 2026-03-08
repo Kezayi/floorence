@@ -933,8 +933,6 @@ export type Database = {
           ebilling_reference: string | null
           id: string | null
           last_api_response: string | null
-          last_sync_at: string | null
-          memorial_id: string | null
           payer_phone: string | null
           status: string | null
           user_id: string | null
@@ -946,8 +944,6 @@ export type Database = {
           ebilling_reference?: string | null
           id?: string | null
           last_api_response?: string | null
-          last_sync_at?: string | null
-          memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
           user_id?: string | null
@@ -959,8 +955,6 @@ export type Database = {
           ebilling_reference?: string | null
           id?: string | null
           last_api_response?: string | null
-          last_sync_at?: string | null
-          memorial_id?: string | null
           payer_phone?: string | null
           status?: string | null
           user_id?: string | null
