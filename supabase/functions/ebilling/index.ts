@@ -387,7 +387,8 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
-    const checkoutUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/checkout';
+    const checkoutUrl = buildEbillingUrl("checkout");
+    console.log(`[ebilling] Base URL détectée: ${EBILLING_BASE_URL}`);
     console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
 
     try {
