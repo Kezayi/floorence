@@ -9,6 +9,14 @@ const corsHeaders = {
 
 const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
 
+// ── FLEXIBLE URL BUILDER ──
+function buildEbillingUrl(endpoint: "status" | "checkout"): string {
+  const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, '');
+  // If baseUrl already contains a path (e.g. /api/v1), append directly
+  // Otherwise use the default root-level route
+  return `${baseUrl}/${endpoint}`;
+}
+
 // ── SECRETS VALIDATION ──
 const REQUIRED_KEYS = ["EBILLING_MERCHANT_ID", "EBILLING_SECRET_KEY", "EBILLING_BASE_URL"];
 
