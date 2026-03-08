@@ -378,13 +378,16 @@ const handler = async (req: Request): Promise<Response> => {
       ppiCallbackUrl: callbackUrl,
     };
 
-    const checkoutUrl = new URL("/checkout", EBILLING_BASE_URL).toString();
+    const checkoutUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/checkout';
     console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
 
     try {
       const ebillingResponse = await fetch(checkoutUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
         body: JSON.stringify(ebillingPayload),
       });
 
