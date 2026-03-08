@@ -42,7 +42,7 @@ serve(async (req: Request) => {
 
     console.log(`[reconciliation] Found ${pending.length} transactions to check`);
 
-    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
+    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim()?.replace(/\/+$/, '');
     const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
     const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
 
@@ -54,13 +54,15 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log(`[reconciliation] Base URL détectée: ${EBILLING_BASE_URL}`);
+
     let reconciledCount = 0;
     const results: { ref: string; result: string }[] = [];
 
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
       try {
-        const statusUrl = EBILLING_BASE_URL.replace(/\/+$/, '') + '/status';
+        const statusUrl = `${EBILLING_BASE_URL}/status`;
         const statusResponse = await fetch(statusUrl, {
           method: "POST",
           headers: {
