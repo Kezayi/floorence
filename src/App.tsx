@@ -32,8 +32,8 @@ import Index from "./pages/Index";
  const Mission = lazy(() => import("./pages/Mission"));
  const NotFound = lazy(() => import("./pages/NotFound"));
  const CommunityGraph = lazy(() => import("./pages/CommunityGraph"));
- const SuggestedLinks = lazy(() => import("./pages/SuggestedLinks"));
- // ShareTokenRedirect no longer needed — Memorial page handles both slug and token
+const SuggestedLinks = lazy(() => import("./pages/SuggestedLinks"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -108,6 +108,7 @@ const App = () => (
                       <SuggestedLinks />
                     </RequireAuth>
                   } />
+                  <Route path="/paiement-succes" element={<PaymentSuccess />} />
 
                   {/* Admin routes — obfuscated prefix, real security via RequireAdmin */}
                   <Route path={ADMIN_PREFIX} element={
