@@ -108,6 +108,7 @@ const App = () => (
                       <SuggestedLinks />
                     </RequireAuth>
                   } />
+                  <Route path="/paiement-succes" element={<PaymentSuccess />} />
 
                   {/* Admin routes — obfuscated prefix, real security via RequireAdmin */}
                   <Route path={ADMIN_PREFIX} element={
