@@ -278,19 +278,23 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         } else {
           console.log('[eBilling] Edge function response:', ebillingData);
 
-          // If checkout URL is provided, redirect in same window (avoids popup blockers)
-          const checkoutUrl = ebillingData?.ebilling_response?.ppiUrlCheckout;
-          if (checkoutUrl) {
-            console.log('[eBilling] Redirecting to checkout:', checkoutUrl);
-            window.location.href = checkoutUrl;
-            return; // Don't clear form — user will navigate away
-          }
-
-          // For USSD flow (no redirect URL), show success
           if (ebillingData?.success && ebillingData?.mode === 'gratuit') {
             toast.success(ebillingData.message || "Geste offert avec succès");
+          } else if (ebillingData?.success && ebillingData?.ussd_push_sent) {
+            // USSD push was sent successfully — user needs to confirm on their phone
+            const operatorName = ebillingData.payment_system === 'moovmoney4' ? 'Moov Money' : 'Airtel Money';
+            toast.info(
+              `Push USSD envoyé sur votre ${operatorName}. Tapez votre code secret pour confirmer le paiement.`,
+              { duration: 15000 }
+            );
+          } else if (ebillingData?.success && ebillingData?.checkout_url) {
+            // USSD push failed — redirect to eBilling web portal as fallback
+            console.log('[eBilling] USSD push failed, redirecting to portal:', ebillingData.checkout_url);
+            toast.info("Redirection vers le portail de paiement...", { duration: 5000 });
+            window.location.href = ebillingData.checkout_url;
+            return; // Don't clear form — user will navigate away
           } else if (ebillingData?.success) {
-            toast.info("Demande envoyée. Validez le paiement sur votre téléphone.", { duration: 10000 });
+            toast.info(ebillingData.message || "Demande envoyée.", { duration: 10000 });
           }
         }
       }
