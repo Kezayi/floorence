@@ -9,23 +9,22 @@ const corsHeaders = {
 
 const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
 
-// ── FLEXIBLE URL BUILDER ──
-function buildEbillingUrl(endpoint: "status" | "checkout"): string {
-  const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, '');
-  // If baseUrl already contains a path (e.g. /api/v1), append directly
-  // Otherwise use the default root-level route
-  return `${baseUrl}/${endpoint}`;
+// ── eBilling API Config (from official docs) ──
+// Base URL: https://lab.billing-easy.net/api/v1/merchant/
+// Auth: Basic Auth (Username:SharedKey)
+// Payment portal: https://test.billing-easy.net
+
+function getEbillingConfig() {
+  const username = (Deno.env.get("EBILLING_USERNAME") ?? "").trim();
+  const sharedKey = (Deno.env.get("EBILLING_SHARED_KEY") ?? "").trim();
+  const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "https://lab.billing-easy.net/api/v1/merchant").trim().replace(/\/+$/, "");
+  const portalBaseUrl = "https://test.billing-easy.net";
+
+  return { username, sharedKey, baseUrl, portalBaseUrl };
 }
 
-// ── SECRETS VALIDATION ──
-const REQUIRED_KEYS = ["EBILLING_MERCHANT_ID", "EBILLING_SECRET_KEY", "EBILLING_BASE_URL"];
-
-function validateSecrets(): string | null {
-  for (const key of REQUIRED_KEYS) {
-    const val = Deno.env.get(key)?.trim();
-    if (!val) return key;
-  }
-  return null;
+function buildBasicAuth(username: string, sharedKey: string): string {
+  return "Basic " + btoa(`${username}:${sharedKey}`);
 }
 
 function initClients(authHeader: string) {
@@ -42,7 +41,9 @@ function initClients(authHeader: string) {
   return { supabaseUser, supabaseAdmin };
 }
 
-// ── CHECK-STATUS HANDLER ──
+// ── CHECK-STATUS: Query invoice by bill_id ──
+// Uses: GET {baseUrl}/e_bills/{bill_id} OR we store bill_id in metadata
+// Fallback: We query using the ebilling_reference stored as external_reference
 async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Response> {
   const { reference } = body;
   if (!reference) {
@@ -51,7 +52,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
 
   const { data: tx, error: txErr } = await supabaseAdmin
     .from("payment_transactions")
-    .select("id, status, ebilling_reference, memorial_id, metadata, last_api_response")
+    .select("id, status, ebilling_reference, memorial_id, metadata, last_api_response, ebilling_transaction_id")
     .eq("ebilling_reference", reference)
     .single();
 
@@ -60,93 +61,80 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 
   if (tx.status === "success") {
-    return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
   }
   if (tx.status === "failed") {
-    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement", last_api_response: tx.last_api_response }), { status: 200, headers: jsonHeaders });
+    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
   }
 
-  const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim();
-  const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
-  const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
+  // We need the bill_id to query the invoice status
+  const metadata = tx.metadata as Record<string, any> | null;
+  const billId = metadata?.bill_id || tx.ebilling_transaction_id;
 
-  if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
-    return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), { status: 500, headers: jsonHeaders });
+  if (!billId) {
+    console.log(`[ebilling:check-status] ref=${reference} → no bill_id stored, cannot query status`);
+    return new Response(JSON.stringify({
+      success: false,
+      status: tx.status,
+      payment_status: "NO_BILL_ID",
+      message: "Aucun identifiant de facture eBilling. Le paiement n'a peut-être pas été initié correctement.",
+    }), { status: 200, headers: jsonHeaders });
+  }
+
+  const { username, sharedKey, baseUrl } = getEbillingConfig();
+
+  if (!username || !sharedKey) {
+    return new Response(JSON.stringify({ error: "Configuration eBilling manquante (credentials)" }), { status: 500, headers: jsonHeaders });
   }
 
   try {
-    const statusUrl = buildEbillingUrl("status");
-    console.log(`[ebilling:check-status] Base URL détectée: ${Deno.env.get("EBILLING_BASE_URL")?.trim()}`);
-    console.log(`[ebilling:check-status] Querying ${statusUrl} for ref=${reference}`);
+    // Query invoice status: the eBilling guide doesn't have a dedicated status endpoint,
+    // but the SHAP API has GET /query-invoice/{bill_id}
+    // We'll try the e_bills endpoint first
+    const queryUrl = `${baseUrl}/e_bills/${billId}`;
+    console.log(`[ebilling:check-status] Querying ${queryUrl} for bill_id=${billId}`);
 
-    const statusPayload = {
-      ppiMerchantId: EBILLING_MERCHANT_ID,
-      ppiSecretKey: EBILLING_SECRET_KEY,
-      ppiApiKey: Deno.env.get("EBILLING_API_KEY")?.trim() || undefined,
-      ppiMerchantReference: reference,
-    };
-
-    const statusResponse = await fetch(statusUrl, {
-      method: "POST",
+    const response = await fetch(queryUrl, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
+        "Authorization": buildBasicAuth(username, sharedKey),
+        "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      body: JSON.stringify(statusPayload),
     });
 
-    console.log("[ebilling:check-status] HTTP status:", statusResponse.status);
+    const rawText = await response.text();
+    console.log(`[ebilling:check-status] HTTP ${response.status}, raw: ${rawText.substring(0, 500)}`);
 
-    if (statusResponse.status === 404) {
-      console.log(`[ebilling:check-status] ref=${reference} → 404, transaction non encore initiée côté opérateur`);
-      return new Response(JSON.stringify({
-        success: false,
-        status: tx.status,
-        payment_status: "NOT_INITIATED",
-        message: "Transaction non encore initiée côté opérateur. Réessayez dans quelques instants.",
-      }), { status: 200, headers: jsonHeaders });
-    }
-
-    const rawText = await statusResponse.text();
-    console.log("[ebilling:check-status] Raw API response body:", rawText);
-
-    let statusData: any;
+    let data: any;
     try {
-      statusData = JSON.parse(rawText);
+      data = JSON.parse(rawText);
     } catch {
-      console.error("[ebilling:check-status] Non-JSON response from API");
+      console.error("[ebilling:check-status] Non-JSON response");
       return new Response(JSON.stringify({
         success: false,
         status: tx.status,
-        message: `Réponse non-JSON de l'opérateur (HTTP ${statusResponse.status}): ${rawText.substring(0, 200)}`,
+        message: `Réponse non-JSON de l'opérateur (HTTP ${response.status})`,
       }), { status: 200, headers: jsonHeaders });
     }
 
+    // Save API response
     await supabaseAdmin
       .from("payment_transactions")
-      .update({ last_api_response: statusData, last_sync_at: new Date().toISOString() })
+      .update({ last_api_response: JSON.stringify(data), last_sync_at: new Date().toISOString() })
       .eq("ebilling_reference", reference);
 
-    if (statusData?.error || statusData?.errorMessage || (statusData?.message && !statusResponse.ok)) {
-      const apiErrorMsg = statusData.error || statusData.errorMessage || statusData.message || "Erreur inconnue";
-      console.error("[ebilling:check-status] API error response:", apiErrorMsg);
-      return new Response(JSON.stringify({
-        success: false,
-        status: tx.status,
-        message: `Erreur Opérateur : ${apiErrorMsg}`,
-        last_api_response: statusData,
-      }), { status: 200, headers: jsonHeaders });
-    }
+    // Check state from e_bill response
+    const billState = (data?.e_bill?.state || data?.data?.state || data?.state || "").toLowerCase();
 
-    const paymentStatus = (statusData?.ppiPaymentStatus || statusData?.status || "").toUpperCase();
-
-    if (paymentStatus === "SUCCESS" || paymentStatus === "COMPLETED" || paymentStatus === "PAID") {
+    if (billState === "paid" || billState === "success" || billState === "completed") {
+      // Payment confirmed!
       await supabaseAdmin
         .from("payment_transactions")
         .update({
           status: "success",
           last_sync_at: new Date().toISOString(),
-          ebilling_transaction_id: statusData?.ppiTransactionId || statusData?.transactionId || null,
+          ebilling_transaction_id: data?.e_bill?.bill_id || data?.data?.bill_id || billId,
         })
         .eq("ebilling_reference", reference);
 
@@ -156,7 +144,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
         .eq("payment_reference", reference)
         .eq("is_hidden", true);
 
-      console.log(`[ebilling:check-status] ref=${reference} → SUCCESS, hommage publié`);
+      console.log(`[ebilling:check-status] ref=${reference} → PAID, hommage publié`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -165,22 +153,43 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
       }), { status: 200, headers: jsonHeaders });
     }
 
-    console.log(`[ebilling:check-status] ref=${reference} → still ${paymentStatus}`);
+    if (billState === "ready" || billState === "pending") {
+      return new Response(JSON.stringify({
+        success: false,
+        status: tx.status,
+        payment_status: "NOT_INITIATED",
+        message: "Paiement en attente. Tapez votre code secret sur votre téléphone.",
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    if (billState === "expired" || billState === "cancelled" || billState === "failed") {
+      await supabaseAdmin
+        .from("payment_transactions")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("ebilling_reference", reference);
+
+      return new Response(JSON.stringify({
+        success: false,
+        status: "failed",
+        payment_status: billState.toUpperCase(),
+        message: `Paiement ${billState}. Veuillez réessayer.`,
+      }), { status: 200, headers: jsonHeaders });
+    }
+
+    console.log(`[ebilling:check-status] ref=${reference} → unknown state: ${billState}`);
     return new Response(JSON.stringify({
       success: false,
       status: tx.status,
-      payment_status: paymentStatus,
-      message: "Le paiement n'est toujours pas confirmé",
-      last_api_response: statusData,
+      payment_status: billState || "UNKNOWN",
+      message: "Statut inconnu, réessayez dans quelques instants.",
     }), { status: 200, headers: jsonHeaders });
 
   } catch (apiError) {
-    const attemptedUrl = EBILLING_BASE_URL ? new URL("/status", EBILLING_BASE_URL).toString() : "URL non configurée";
     console.error("[ebilling:check-status] API error:", apiError);
     return new Response(JSON.stringify({
       success: false,
       status: tx.status,
-      message: `URL tentée: ${attemptedUrl} - Erreur: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
+      message: `Erreur: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
     }), { status: 200, headers: jsonHeaders });
   }
 }
@@ -192,15 +201,17 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // ── SECRETS VALIDATION ──
-    const missingKey = validateSecrets();
-    if (missingKey) {
-      console.error(`[ebilling] FATAL: Missing secret: ${missingKey}`);
+    const { username, sharedKey, baseUrl, portalBaseUrl } = getEbillingConfig();
+
+    if (!username || !sharedKey) {
+      console.error("[ebilling] FATAL: Missing EBILLING_USERNAME or EBILLING_SHARED_KEY");
       return new Response(
-        JSON.stringify({ error: `Configuration serveur incomplète: ${missingKey} manquant` }),
+        JSON.stringify({ error: "Configuration serveur incomplète: identifiants eBilling manquants" }),
         { status: 500, headers: jsonHeaders }
       );
     }
+
+    console.log(`[EBILLING] Base URL détectée: ${baseUrl}`);
 
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
@@ -229,7 +240,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
     }
 
-    // Fallback: if deceased_name missing, look it up from memorials table
+    // Fallback: if deceased_name missing, look it up
     let resolvedDeceasedName = deceased_name || null;
     if (!resolvedDeceasedName && memorial_id) {
       const { data: memData } = await supabaseAdmin
@@ -264,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
     const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
 
-    console.log(`[ebilling] mode=${isMonetized ? 'payant' : 'gratuit'}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
+    console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
     // ── FREE MODE ──
     if (!isMonetized) {
@@ -334,7 +345,170 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Record pending transaction
+    // ── ENVIRONMENT GUARD ──
+    if (!baseUrl.includes("lab")) {
+      console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${baseUrl} does not target LAB environment`);
+      return new Response(
+        JSON.stringify({ error: "Conflit d'environnement : la monétisation est active mais l'URL cible n'est pas l'environnement LAB. Transaction bloquée par sécurité." }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    // ── STEP 1: Create e_bill (invoice) ──
+    // POST https://lab.billing-easy.net/api/v1/merchant/e_bills
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET") ?? "";
+    const callbackUrl = `${supabaseUrl}/functions/v1/ebilling-callback?secret=${encodeURIComponent(CALLBACK_SECRET)}`;
+    const paymentSuccessUrl = `https://floorence.lovable.app/paiement-succes?reference=${ebillingRef}`;
+
+    const createBillUrl = `${baseUrl}/e_bills`;
+    const createBillPayload = {
+      payer_msisdn: phone,
+      payer_email: user.email || "client@floorence.com",
+      payer_name: resolvedDeceasedName ? `Hommage - ${resolvedDeceasedName}` : "Hommage Floorence",
+      amount: totalAmount.toString(),
+      external_reference: ebillingRef,
+      short_description: `${itemLabel} x${quantity} - Floorence`,
+      expiry_period: "30",
+    };
+
+    console.log(`[ebilling] Creating bill at: ${createBillUrl}`);
+    console.log(`[ebilling] Payload:`, JSON.stringify(createBillPayload));
+
+    const billResponse = await fetch(createBillUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": buildBasicAuth(username, sharedKey),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      body: JSON.stringify(createBillPayload),
+    });
+
+    const rawBillText = await billResponse.text();
+    console.log(`[ebilling] Create bill HTTP ${billResponse.status}, raw: ${rawBillText.substring(0, 500)}`);
+
+    let billData: any;
+    try {
+      billData = JSON.parse(rawBillText);
+    } catch {
+      console.error("[ebilling] Non-JSON response from create bill API");
+      // Record failed transaction
+      await supabaseAdmin.from("payment_transactions").insert({
+        user_id: user.id,
+        memorial_id,
+        amount: totalAmount,
+        currency: "XOF",
+        payment_type: item_type,
+        status: "failed",
+        ebilling_reference: ebillingRef,
+        payer_phone: phone,
+        deceased_name_snapshot: resolvedDeceasedName,
+        candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
+        flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
+        last_api_response: rawBillText.substring(0, 500),
+        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
+      });
+
+      return new Response(
+        JSON.stringify({
+          error: `L'opérateur a renvoyé une réponse invalide (HTTP ${billResponse.status}). Vérifiez la configuration eBilling.`,
+          details: rawBillText.substring(0, 200),
+        }),
+        { status: 502, headers: jsonHeaders }
+      );
+    }
+
+    // Check for API errors
+    if (billData?.error_code || billData?.error) {
+      console.error("[ebilling] API error:", JSON.stringify(billData));
+      await supabaseAdmin.from("payment_transactions").insert({
+        user_id: user.id,
+        memorial_id,
+        amount: totalAmount,
+        currency: "XOF",
+        payment_type: item_type,
+        status: "failed",
+        ebilling_reference: ebillingRef,
+        payer_phone: phone,
+        deceased_name_snapshot: resolvedDeceasedName,
+        last_api_response: JSON.stringify(billData),
+        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
+      });
+
+      return new Response(
+        JSON.stringify({
+          error: `Erreur eBilling: ${billData.error_description || billData.error || "Erreur inconnue"}`,
+          error_code: billData.error_code,
+        }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    // Extract bill_id from response
+    const billId = billData?.e_bill?.bill_id || billData?.bill_id;
+    if (!billId) {
+      console.error("[ebilling] No bill_id in response:", JSON.stringify(billData));
+      return new Response(
+        JSON.stringify({ error: "L'opérateur n'a pas retourné d'identifiant de facture (bill_id)" }),
+        { status: 502, headers: jsonHeaders }
+      );
+    }
+
+    console.log(`[ebilling] Bill created: bill_id=${billId}`);
+
+    // ── STEP 2: Send USSD Push ──
+    // Detect operator from phone number (Gabon):
+    // 07x = Airtel Money ("airtelmoney")
+    // 06x = Moov Money ("moovmoney4")
+    const cleanPhone = phone.replace(/\s+/g, "").replace(/^\+241/, "");
+    let paymentSystemName = "airtelmoney"; // default
+    if (cleanPhone.startsWith("06")) {
+      paymentSystemName = "moovmoney4";
+    } else if (cleanPhone.startsWith("07")) {
+      paymentSystemName = "airtelmoney";
+    }
+
+    const ussdPushUrl = `${baseUrl}/e_bills/${billId}/ussd_push`;
+    const ussdPayload = {
+      payer_msisdn: phone,
+      payment_system_name: paymentSystemName,
+    };
+
+    console.log(`[ebilling] Sending USSD push to ${ussdPushUrl}`, JSON.stringify(ussdPayload));
+
+    let ussdSuccess = false;
+    let ussdData: any = null;
+
+    try {
+      const ussdResponse = await fetch(ussdPushUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": buildBasicAuth(username, sharedKey),
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+        body: JSON.stringify(ussdPayload),
+      });
+
+      const rawUssdText = await ussdResponse.text();
+      console.log(`[ebilling] USSD push HTTP ${ussdResponse.status}, raw: ${rawUssdText.substring(0, 500)}`);
+
+      try {
+        ussdData = JSON.parse(rawUssdText);
+      } catch {
+        ussdData = { raw: rawUssdText.substring(0, 300) };
+      }
+
+      ussdSuccess = ussdResponse.ok && (ussdData?.message === "Accepted" || ussdData?.success);
+    } catch (ussdErr) {
+      console.error("[ebilling] USSD push error:", ussdErr);
+      ussdData = { error: (ussdErr as Error).message };
+    }
+
+    // Record pending transaction with bill_id in metadata
     const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
       user_id: user.id,
       memorial_id,
@@ -343,11 +517,22 @@ const handler = async (req: Request): Promise<Response> => {
       payment_type: item_type,
       status: "pending",
       ebilling_reference: ebillingRef,
+      ebilling_transaction_id: billId,
       payer_phone: phone,
       deceased_name_snapshot: resolvedDeceasedName,
       candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
       flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
-      metadata: { mode: "payant", quantity, unit_price: unitPrice, phone, post_id: post_id || null },
+      last_api_response: JSON.stringify({ bill: billData, ussd: ussdData }),
+      metadata: {
+        mode: "payant",
+        quantity,
+        unit_price: unitPrice,
+        phone,
+        post_id: post_id || null,
+        bill_id: billId,
+        payment_system: paymentSystemName,
+        ussd_push_sent: ussdSuccess,
+      },
     });
 
     if (txError) {
@@ -355,107 +540,33 @@ const handler = async (req: Request): Promise<Response> => {
       throw txError;
     }
 
-    // Call eBilling API
-    const EBILLING_API_KEY = Deno.env.get("EBILLING_API_KEY")?.trim();
-    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim()!;
-    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim()!;
-    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim()!;
+    // Build fallback checkout URL (portal redirect) in case USSD push fails
+    const checkoutUrl = `${portalBaseUrl}?invoice=${billId}&redirect_url=${encodeURIComponent(paymentSuccessUrl)}`;
 
-    // ── ENVIRONMENT GUARD ──
-    if (!EBILLING_BASE_URL.includes("lab")) {
-      console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${EBILLING_BASE_URL} does not target LAB environment`);
-      return new Response(
-        JSON.stringify({ error: "Conflit d'environnement : la monétisation est active mais l'URL cible n'est pas l'environnement LAB. Transaction bloquée par sécurité." }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
+    return new Response(
+      JSON.stringify({
+        success: true,
+        mode: "payant",
+        reference: ebillingRef,
+        amount: totalAmount,
+        unit_price: unitPrice,
+        requires_phone: true,
+        bill_id: billId,
+        ussd_push_sent: ussdSuccess,
+        payment_system: paymentSystemName,
+        checkout_url: checkoutUrl,
+        ebilling_response: billData,
+        message: ussdSuccess
+          ? `Push USSD envoyé sur votre ${paymentSystemName === "airtelmoney" ? "Airtel Money" : "Moov Money"}. Tapez votre code secret pour confirmer.`
+          : `Facture créée. Finalisez votre paiement via le portail eBilling.`,
+      }),
+      { status: 200, headers: jsonHeaders }
+    );
 
-    // Build callback URL
-    const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET") ?? "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const callbackUrl = `${supabaseUrl}/functions/v1/ebilling-callback?secret=${encodeURIComponent(CALLBACK_SECRET)}`;
-
-    const ebillingPayload = {
-      ppiMerchantId: EBILLING_MERCHANT_ID,
-      ppiSecretKey: EBILLING_SECRET_KEY,
-      ppiAmount: totalAmount.toString(),
-      ppiPayerPhoneNumber: phone,
-      ppiNetworkCode: "ALL",
-      ppiCurrencyISO: "XOF",
-      ppiMerchantReference: ebillingRef,
-      ppiDescription: `${itemLabel} x${quantity} - Floorence`,
-      ppiCallbackUrl: callbackUrl,
-    };
-
-    const checkoutUrl = buildEbillingUrl("checkout");
-    console.log(`[ebilling] Base URL détectée: ${EBILLING_BASE_URL}`);
-    console.log(`[ebilling] Calling checkout at: ${checkoutUrl}`);
-
-    try {
-      const ebillingResponse = await fetch(checkoutUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-        body: JSON.stringify(ebillingPayload),
-      });
-
-      // ── ROBUST RESPONSE PARSING (anti-crash on HTML/404) ──
-      const rawText = await ebillingResponse.text();
-      console.log(`[ebilling] Checkout HTTP ${ebillingResponse.status}, raw response: ${rawText.substring(0, 500)}`);
-
-      let ebillingData: any;
-      try {
-        ebillingData = JSON.parse(rawText);
-      } catch {
-        console.error("[ebilling] Non-JSON response from checkout API");
-        // Don't crash — mark as failed and return useful error
-        await supabaseAdmin
-          .from("payment_transactions")
-          .update({ status: "failed", last_api_response: { raw: rawText.substring(0, 500), http_status: ebillingResponse.status } })
-          .eq("ebilling_reference", ebillingRef);
-
-        return new Response(
-          JSON.stringify({
-            error: `L'opérateur a renvoyé une réponse invalide (HTTP ${ebillingResponse.status}). Vérifiez la configuration eBilling.`,
-            details: rawText.substring(0, 200),
-          }),
-          { status: 502, headers: jsonHeaders }
-        );
-      }
-
-      console.log("[ebilling] API response:", JSON.stringify(ebillingData));
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          mode: "payant",
-          reference: ebillingRef,
-          amount: totalAmount,
-          unit_price: unitPrice,
-          requires_phone: true,
-          ebilling_response: ebillingData,
-        }),
-        { status: 200, headers: jsonHeaders }
-      );
-    } catch (ebillingError) {
-      console.error("[ebilling] API fetch error:", ebillingError);
-
-      await supabaseAdmin
-        .from("payment_transactions")
-        .update({ status: "failed" })
-        .eq("ebilling_reference", ebillingRef);
-
-      return new Response(
-        JSON.stringify({ error: `Erreur réseau avec l'opérateur: ${(ebillingError as Error).message}` }),
-        { status: 502, headers: jsonHeaders }
-      );
-    }
   } catch (error: any) {
     console.error("[ebilling] UNHANDLED ERROR:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Une erreur est survenue", stack: error.stack }),
+      JSON.stringify({ error: error.message || "Une erreur est survenue" }),
       { status: 500, headers: jsonHeaders }
     );
   }

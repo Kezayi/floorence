@@ -7,6 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Payment Reconciliation Worker
+ * Checks pending/timeout transactions against eBilling API.
+ * Uses: GET {baseUrl}/e_bills/{bill_id} with Basic Auth
+ */
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -19,7 +24,6 @@ serve(async (req: Request) => {
   );
 
   try {
-    // Fetch up to 10 pending/timeout transactions eligible for reconciliation
     const { data: pending, error: fetchErr } = await supabaseAdmin
       .from("v_pending_reconciliation")
       .select("*");
@@ -42,79 +46,98 @@ serve(async (req: Request) => {
 
     console.log(`[reconciliation] Found ${pending.length} transactions to check`);
 
-    const EBILLING_BASE_URL = Deno.env.get("EBILLING_BASE_URL")?.trim()?.replace(/\/+$/, '');
-    const EBILLING_MERCHANT_ID = Deno.env.get("EBILLING_MERCHANT_ID")?.trim();
-    const EBILLING_SECRET_KEY = Deno.env.get("EBILLING_SECRET_KEY")?.trim();
+    // eBilling config
+    const username = (Deno.env.get("EBILLING_USERNAME") ?? "").trim();
+    const sharedKey = (Deno.env.get("EBILLING_SHARED_KEY") ?? "").trim();
+    const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "https://lab.billing-easy.net/api/v1/merchant").trim().replace(/\/+$/, "");
 
-    if (!EBILLING_BASE_URL || !EBILLING_MERCHANT_ID) {
-      console.error("[reconciliation] Missing eBilling config");
-      return new Response(JSON.stringify({ error: "Configuration eBilling manquante" }), {
+    if (!username || !sharedKey) {
+      console.error("[reconciliation] Missing eBilling credentials");
+      return new Response(JSON.stringify({ error: "Configuration eBilling manquante (credentials)" }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    console.log(`[reconciliation] Base URL détectée: ${EBILLING_BASE_URL}`);
+    console.log(`[reconciliation] Base URL: ${baseUrl}`);
+    const basicAuth = "Basic " + btoa(`${username}:${sharedKey}`);
 
     let reconciledCount = 0;
     const results: { ref: string; result: string }[] = [];
 
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
+
+      // We need the bill_id to query the invoice. It may be stored in:
+      // 1. ebilling_transaction_id column (we now store bill_id there)
+      // 2. metadata.bill_id
+      // 3. If neither exists, we can't query - skip
+      let billId: string | null = null;
+
+      // Try to get bill_id from the full transaction record
+      const { data: fullTx } = await supabaseAdmin
+        .from("payment_transactions")
+        .select("ebilling_transaction_id, metadata")
+        .eq("ebilling_reference", ref)
+        .single();
+
+      if (fullTx) {
+        const meta = fullTx.metadata as Record<string, any> | null;
+        billId = meta?.bill_id || fullTx.ebilling_transaction_id || null;
+      }
+
+      if (!billId) {
+        console.log(`[reconciliation] ref=${ref} → no bill_id, skipping`);
+        results.push({ ref, result: "no_bill_id" });
+        continue;
+      }
+
       try {
-        const statusUrl = `${EBILLING_BASE_URL}/status`;
-        const statusResponse = await fetch(statusUrl, {
-          method: "POST",
+        // Query invoice status
+        const queryUrl = `${baseUrl}/e_bills/${billId}`;
+        const response = await fetch(queryUrl, {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json",
+            "Authorization": basicAuth,
+            "Accept": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },
-          body: JSON.stringify({
-            ppiMerchantId: EBILLING_MERCHANT_ID,
-            ppiSecretKey: EBILLING_SECRET_KEY,
-            ppiMerchantReference: ref,
-          }),
         });
 
-        const rawText = await statusResponse.text();
-        console.log(`[reconciliation] ref=${ref} raw response:`, rawText);
+        const rawText = await response.text();
+        console.log(`[reconciliation] ref=${ref} bill=${billId} HTTP ${response.status}, raw: ${rawText.substring(0, 300)}`);
 
-        let statusData: any;
+        let data: any;
         try {
-          statusData = JSON.parse(rawText);
+          data = JSON.parse(rawText);
         } catch {
           console.error(`[reconciliation] ref=${ref} non-JSON response`);
-          // Save raw response for diagnostics
           await supabaseAdmin.from("payment_transactions")
-            .update({ last_api_response: { raw: rawText.substring(0, 500) }, last_sync_at: new Date().toISOString() })
+            .update({ last_api_response: rawText.substring(0, 500), last_sync_at: new Date().toISOString() })
             .eq("ebilling_reference", ref);
           results.push({ ref, result: "non_json_response" });
           continue;
         }
 
-        // Save API response to DB for diagnostics
+        // Save API response
         await supabaseAdmin.from("payment_transactions")
-          .update({ last_api_response: statusData, last_sync_at: new Date().toISOString() })
+          .update({ last_api_response: JSON.stringify(data), last_sync_at: new Date().toISOString() })
           .eq("ebilling_reference", ref);
 
-        const paymentStatus = (
-          statusData?.ppiPaymentStatus ||
-          statusData?.status ||
-          ""
-        ).toUpperCase();
+        const billState = (data?.e_bill?.state || data?.data?.state || data?.state || "").toLowerCase();
 
-        if (paymentStatus === "SUCCESS" || paymentStatus === "COMPLETED" || paymentStatus === "PAID") {
+        if (billState === "paid" || billState === "success" || billState === "completed") {
           // Update transaction to success
           await supabaseAdmin
             .from("payment_transactions")
             .update({
               status: "success",
               last_sync_at: new Date().toISOString(),
-              ebilling_transaction_id: statusData?.ppiTransactionId || statusData?.transactionId || null,
+              ebilling_transaction_id: billId,
             })
             .eq("ebilling_reference", ref);
 
-          // Unhide the associated guestbook post
+          // Unhide associated guestbook post
           await supabaseAdmin
             .from("guestbook_posts")
             .update({ is_hidden: false, updated_at: new Date().toISOString() })
@@ -126,19 +149,28 @@ serve(async (req: Request) => {
             event_type: "PAYMENT_RECONCILED",
             details: {
               ebilling_reference: ref,
+              bill_id: billId,
               amount: tx.amount,
               deceased: tx.deceased_name_snapshot,
               original_status: tx.status,
-              operator_status: paymentStatus,
+              bill_state: billState,
             },
           });
 
           reconciledCount++;
-          console.log(`Réconciliation automatique réussie pour la réf : ${ref}`);
+          console.log(`[reconciliation] ref=${ref} → RECONCILED (${billState})`);
           results.push({ ref, result: "reconciled" });
+        } else if (billState === "expired" || billState === "cancelled" || billState === "failed") {
+          await supabaseAdmin
+            .from("payment_transactions")
+            .update({ status: "failed", last_sync_at: new Date().toISOString() })
+            .eq("ebilling_reference", ref);
+
+          console.log(`[reconciliation] ref=${ref} → FAILED (${billState})`);
+          results.push({ ref, result: `failed_${billState}` });
         } else {
-          console.log(`[reconciliation] ref=${ref} still ${paymentStatus}`);
-          results.push({ ref, result: `still_${paymentStatus.toLowerCase() || tx.status}` });
+          console.log(`[reconciliation] ref=${ref} → still ${billState || tx.status}`);
+          results.push({ ref, result: `still_${billState || tx.status}` });
         }
       } catch (apiErr) {
         console.error(`[reconciliation] API error for ref=${ref}:`, apiErr);

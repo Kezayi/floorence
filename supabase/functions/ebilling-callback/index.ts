@@ -9,8 +9,18 @@ const corsHeaders = {
 
 /**
  * eBilling Webhook Callback
- * Called by eBilling when a payment status changes.
- * SECURED by shared secret token validation.
+ * Called by eBilling when a payment is validated.
+ *
+ * According to the official eBilling docs, the callback sends a POST with:
+ * - reference (= our external_reference / ebilling_reference)
+ * - amount
+ * - transactionid
+ * - paymentsystem
+ * - billingid (= bill_id)
+ * - merchantid
+ * - customerid
+ *
+ * SECURED by shared secret token validation (query param or header).
  */
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -28,7 +38,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check secret from header first, then query param as fallback
     const url = new URL(req.url);
     const headerSecret = req.headers.get("x-callback-secret");
     const paramSecret = url.searchParams.get("secret");
@@ -48,18 +57,44 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const body = await req.json();
-    console.log("[ebilling-callback] Received (authenticated):", JSON.stringify(body));
+    // Parse body - eBilling may send form-data or JSON
+    let callbackData: Record<string, any> = {};
+    const contentType = req.headers.get("content-type") || "";
 
-    const {
-      ppiMerchantReference,
-      ppiTransactionId,
-      ppiPaymentStatus,
-    } = body;
+    if (contentType.includes("application/json")) {
+      callbackData = await req.json();
+    } else if (contentType.includes("form")) {
+      const formData = await req.formData();
+      formData.forEach((value, key) => {
+        callbackData[key] = value;
+      });
+    } else {
+      // Try JSON first, fallback to URL params
+      try {
+        callbackData = await req.json();
+      } catch {
+        // Check URL search params as last resort
+        url.searchParams.forEach((value, key) => {
+          if (key !== "secret") callbackData[key] = value;
+        });
+      }
+    }
 
-    if (!ppiMerchantReference) {
+    console.log("[ebilling-callback] Received (authenticated):", JSON.stringify(callbackData));
+
+    // eBilling callback fields (from official docs):
+    // reference = our external_reference (ebilling_reference in DB)
+    // amount, transactionid, paymentsystem, billingid, merchantid, customerid
+    const ebillingRef = callbackData.reference || callbackData.ppiMerchantReference;
+    const transactionId = callbackData.transactionid || callbackData.ppiTransactionId || callbackData.billingid;
+    // eBilling callback is only sent on SUCCESS (per docs)
+    // But we handle potential status field just in case
+    const status = (callbackData.status || callbackData.ppiPaymentStatus || "SUCCESS").toUpperCase();
+
+    if (!ebillingRef) {
+      console.error("[ebilling-callback] No reference in callback data");
       return new Response(
-        JSON.stringify({ error: "Missing ppiMerchantReference" }),
+        JSON.stringify({ error: "Missing reference" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -68,11 +103,11 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: tx, error: txError } = await supabaseAdmin
       .from("payment_transactions")
       .select("id, memorial_id, payment_type, status, metadata")
-      .eq("ebilling_reference", ppiMerchantReference)
+      .eq("ebilling_reference", ebillingRef)
       .maybeSingle();
 
     if (txError || !tx) {
-      console.error("[ebilling-callback] Transaction not found:", ppiMerchantReference);
+      console.error("[ebilling-callback] Transaction not found:", ebillingRef);
       return new Response(
         JSON.stringify({ error: "Transaction not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -87,14 +122,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const normalizedStatus = (ppiPaymentStatus || "").toUpperCase();
-
-    if (normalizedStatus === "SUCCESS") {
+    if (status === "SUCCESS" || status === "PAID" || status === "COMPLETED") {
+      // Update transaction to success
       await supabaseAdmin
         .from("payment_transactions")
         .update({
           status: "success",
-          ebilling_transaction_id: ppiTransactionId || null,
+          ebilling_transaction_id: transactionId || null,
+          last_api_response: JSON.stringify(callbackData),
           updated_at: new Date().toISOString(),
         })
         .eq("id", tx.id);
@@ -104,6 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
       const quantity = metadata?.quantity || 1;
       const itemType = tx.payment_type;
 
+      // Update guestbook post gesture counts
       if (postId) {
         const column = itemType === "cierge" ? "candle_count" : "flower_count";
         const { data: currentPost } = await supabaseAdmin
@@ -121,16 +157,16 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // Also unhide any post linked via payment_reference
+      // Unhide any post linked via payment_reference
       await supabaseAdmin
         .from("guestbook_posts")
-        .update({ is_hidden: false })
-        .eq("payment_reference", ppiMerchantReference)
+        .update({ is_hidden: false, updated_at: new Date().toISOString() })
+        .eq("payment_reference", ebillingRef)
         .eq("is_hidden", true);
 
-      console.log("[ebilling-callback] Payment confirmed:", ppiMerchantReference);
+      console.log("[ebilling-callback] Payment confirmed:", ebillingRef);
 
-      // Trigger certificate generation & email
+      // Trigger certificate generation & email (non-blocking)
       try {
         const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-payment-success`;
         const certRes = await fetch(fnUrl, {
@@ -146,23 +182,24 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (certErr) {
         console.error("[ebilling-callback] Certificate generation failed (non-blocking):", certErr);
       }
-    } else if (normalizedStatus === "FAILED") {
+    } else if (status === "FAILED" || status === "CANCELLED" || status === "EXPIRED") {
       await supabaseAdmin
         .from("payment_transactions")
         .update({
           status: "failed",
-          ebilling_transaction_id: ppiTransactionId || null,
+          ebilling_transaction_id: transactionId || null,
+          last_api_response: JSON.stringify(callbackData),
           updated_at: new Date().toISOString(),
         })
         .eq("id", tx.id);
 
-      console.log("[ebilling-callback] Payment failed:", ppiMerchantReference);
+      console.log("[ebilling-callback] Payment failed:", ebillingRef);
     } else {
-      console.log("[ebilling-callback] Unknown status:", normalizedStatus);
+      console.log("[ebilling-callback] Unknown status:", status, "for ref:", ebillingRef);
     }
 
     return new Response(
-      JSON.stringify({ success: true, status: normalizedStatus }),
+      JSON.stringify({ success: true, status }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
