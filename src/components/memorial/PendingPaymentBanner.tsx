@@ -91,12 +91,8 @@ const PendingPaymentBanner = ({ memorialId, onPaymentConfirmed }: PendingPayment
         toast.success("Paiement confirmé ! Votre hommage est maintenant visible.");
         await resolvePayment();
       } else {
-        // If checkout URL available, redirect immediately
-        const checkoutUrl = data?.ebilling_response?.ppiUrlCheckout;
-        if (checkoutUrl) {
-          window.location.href = checkoutUrl;
-          return;
-        }
+        // No checkout URL redirect needed — the USSD flow doesn't use redirects
+        // The user should validate on their phone
 
         if (data?.payment_status === "NOT_INITIATED") {
           setStatusHint("not_initiated");
