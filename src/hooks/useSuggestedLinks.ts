@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { logAuditAction } from "@/lib/auditLogger";
-import { fireGoldenConfetti } from "@/lib/goldenConfetti";
 
 const CACHE_CONFIG = { staleTime: 60 * 1000, gcTime: 5 * 60 * 1000 };
 
@@ -196,7 +195,7 @@ export const useUserSuggestedLinks = () => {
     },
     onSuccess: (result) => {
       // Fire golden confetti celebration
-      fireGoldenConfetti();
+      void import("@/lib/goldenConfetti").then((m) => m.fireGoldenConfetti());
 
       if ((result as any).alreadySealed) {
         toast.info(
