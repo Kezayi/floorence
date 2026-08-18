@@ -250,7 +250,7 @@ const Index = () => {
               </div>
             ) : (
               <>
-                <div className={`grid ${getGridClass()} gap-4 md:gap-6 reserve-grid contain-section`}>
+                <div className={`grid ${getGridClass()} gap-4 md:gap-6 min-h-[500px] contain-section`}>
                   {filteredMemorials.map((memorial, index) => (
                     <MemorialCard
                       key={memorial.id}
