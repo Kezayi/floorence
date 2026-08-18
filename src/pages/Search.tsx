@@ -1010,8 +1010,13 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
               <div className="w-10 h-12 overflow-hidden rounded-sm bg-muted shrink-0">
                 {activity.photo && (
                   <img
-                    src={activity.photo}
+                    src={getOptimizedImageUrl(activity.photo, { width: 40, height: 48 })}
+                    srcSet={getOptimizedSrcSet(activity.photo, { width: 40, height: 48 })}
                     alt=""
+                    width={40}
+                    height={48}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 )}
