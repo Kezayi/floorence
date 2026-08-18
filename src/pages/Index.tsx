@@ -47,6 +47,29 @@ const Index = () => {
     return memorials.filter(m => m.type === filterType);
   }, [memorials, filterType]);
 
+  // Preload LCP : portrait du premier mémorial affiché (Norme AAA — Pilier 2)
+  const lcpPhotoUrl = filteredMemorials[0]?.photoUrl;
+  const lcpIsList = viewMode === "list";
+  useEffect(() => {
+    if (!lcpPhotoUrl) return;
+    const width = lcpIsList ? 160 : 400;
+    const height = lcpIsList ? 213 : 533;
+    const href = getOptimizedImageUrl(lcpPhotoUrl, { width, height });
+    const srcset = getOptimizedSrcSet(lcpPhotoUrl, { width, height });
+    if (!href) return;
+
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    if (srcset) link.setAttribute("imagesrcset", srcset);
+    link.setAttribute("fetchpriority", "high");
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [lcpPhotoUrl, lcpIsList]);
+
   const getGridClass = () => {
     switch (viewMode) {
       case "grid-4":
