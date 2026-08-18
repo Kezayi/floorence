@@ -264,6 +264,7 @@ const Index = () => {
                       type={memorial.type}
                       variant={viewMode === "list" ? "list" : "card"}
                       priority={index < 4}
+                      lcp={index === 0}
                       isDemo={memorial.isDemo}
                     />
                   ))}

@@ -73,7 +73,7 @@ const ProgressiveImage = memo(({
         srcSet={optimizedSrcSet}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : "auto"}
+        {...(priority ? { fetchpriority: "high" } : {})}
         decoding="async"
         onLoad={() => setIsLoaded(true)}
         onError={handleError}

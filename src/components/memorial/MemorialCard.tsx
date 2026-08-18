@@ -21,6 +21,8 @@ interface MemorialCardProps {
   type: "RECENT" | "PAST";
   variant?: "card" | "list";
   priority?: boolean;
+  /** Candidat LCP : le tout premier portrait de la grille. */
+  lcp?: boolean;
   isDemo?: boolean;
 }
 
@@ -38,6 +40,7 @@ const MemorialCard = ({
   type,
   variant = "card",
   priority = false,
+  lcp = false,
   isDemo = false,
 }: MemorialCardProps) => {
   const { prefetchMemorial } = useMemorialPrefetch();
@@ -75,7 +78,7 @@ const MemorialCard = ({
               width={160}
               height={213}
               loading={priority ? "eager" : "lazy"}
-              fetchPriority={priority ? "high" : "auto"}
+              {...(lcp ? { fetchpriority: "high" } : {})}
               decoding="async"
               onError={handleImageError}
               className="w-full h-full object-cover portrait-memorial"
@@ -153,7 +156,7 @@ const MemorialCard = ({
             width={400}
             height={533}
             loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "auto"}
+            {...(lcp ? { fetchpriority: "high" } : {})}
             decoding="async"
             onError={handleImageError}
             className="w-full h-full object-cover portrait-memorial"
