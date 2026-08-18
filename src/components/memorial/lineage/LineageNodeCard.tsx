@@ -56,7 +56,8 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
       >
         {inView && node.photo ? (
           <img
-            src={node.photo}
+            src={getOptimizedImageUrl(node.photo, { width: 80, height: 80 })}
+            srcSet={getOptimizedSrcSet(node.photo, { width: 80, height: 80 })}
             alt={displayName(node.name, isAuthenticated)}
             className="w-full h-full object-cover"
             loading="lazy"
