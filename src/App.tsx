@@ -11,8 +11,10 @@ import { NotificationsProvider } from "./contexts/NotificationsContext";
 import ScrollToTop from "./components/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireAdmin from "./components/admin/RequireAdmin";
-import AdminLayout from "./components/admin/AdminLayout";
 import { ADMIN_PREFIX } from "./lib/adminRoutes";
+
+// Lazy load: admin shell (keeps cmdk/markdown out of the initial bundle)
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 
 // Lazy load: FAQ
 const FAQ = lazy(() => import("./pages/FAQ"));
@@ -80,7 +82,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <ScrollToTop />
               <Suspense fallback={<PageLoader />}>
                 <Routes>

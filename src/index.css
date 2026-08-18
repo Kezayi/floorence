@@ -31,7 +31,7 @@
 
     /* Surfaces atténuées */
     --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    --muted-foreground: 0 0% 38%;
 
     /* Accent subtil - Gris chaud */
     --accent: 30 5% 92%;
@@ -51,12 +51,12 @@
     /* Zone sombre - Livre d'Or */
     --memorial-dark: 0 0% 6%;
     --memorial-dark-foreground: 0 0% 92%;
-    --memorial-dark-muted: 0 0% 35%;
+    --memorial-dark-muted: 0 0% 66%;
 
     /* Zone Hommages - Brun terre solennel */
     --hommages-bg: 25 30% 12%;
     --hommages-foreground: 30 15% 90%;
-    --hommages-muted: 25 15% 50%;
+    --hommages-muted: 25 15% 70%;
 
     /* Zone Livre d'Or - Ghostwhite */
     --livreor-bg: 240 6% 97%;
@@ -132,7 +132,7 @@
     --secondary-foreground: 0 0% 92%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 72%;
 
     --accent: 0 0% 12%;
     --accent-foreground: 0 0% 92%;
@@ -387,4 +387,11 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+
+  /* Reflow containment — isolate layout/style recalcs per section */
+  .contain-section { contain: layout style; }
+
+  /* Reserved space for async sections (anti-CLS) */
+  .reserve-grid { min-height: 480px; }
+  .reserve-block { min-height: 300px; }
 }

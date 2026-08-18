@@ -117,7 +117,9 @@ const fetchMemorialsData = async (): Promise<{ memorials: ExtendedSearchableMemo
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching memorials:', error);
+    if (import.meta.env.DEV) {
+      console.warn('[Memorials] fetch unavailable:', error.message);
+    }
     throw error;
   }
 
