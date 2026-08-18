@@ -146,11 +146,16 @@ const MemorialCard = ({
       <div className="aspect-[3/4] relative overflow-hidden bg-muted">
         {photoUrl ? (
           <img
-            src={photoUrl}
+            src={getOptimizedImageUrl(photoUrl, { width: 400, height: 533 })}
+            srcSet={getOptimizedSrcSet(photoUrl, { width: 400, height: 533 })}
+            sizes="(max-width: 768px) 50vw, 400px"
             alt={`Portrait de ${name}`}
             width={400}
             height={533}
             loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
+            decoding="async"
+            onError={handleImageError}
             className="w-full h-full object-cover portrait-memorial"
           />
         ) : (
