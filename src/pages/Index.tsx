@@ -105,10 +105,13 @@ const Index = () => {
 
       <main className="flex-1 pt-16 md:pt-20">
 
-        {/* Paroles d'Éternité — Featured Tribute */}
-        <Suspense fallback={<div className="reserve-block contain-section" aria-hidden="true" />}>
-          <HommageFeatured />
-        </Suspense>
+        {/* Paroles d'Éternité — Featured Tribute (hauteur verrouillée : zéro CLS) */}
+        <div className="min-h-[180px] md:min-h-[200px] contain-section">
+          <Suspense fallback={<div className="min-h-[180px] md:min-h-[200px]" aria-hidden="true" />}>
+            <HommageFeatured />
+          </Suspense>
+        </div>
+
 
         {/* Memorial Grid */}
         <section className="px-4 py-4 md:px-8 md:py-6 contain-section">
