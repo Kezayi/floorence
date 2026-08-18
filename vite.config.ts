@@ -35,6 +35,15 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("lucide-react")) return "icons";
           if (id.includes("@radix-ui")) return "radix";
           if (id.includes("@tanstack")) return "query";
+          if (
+            id.includes("react-markdown") || id.includes("remark") || id.includes("rehype") ||
+            id.includes("micromark") || id.includes("mdast") || id.includes("hast") ||
+            id.includes("unist") || id.includes("vfile") || id.includes("unified")
+          ) return "markdown";
+          if (id.includes("date-fns") || id.includes("react-day-picker")) return "dates";
+          if (id.includes("react-hook-form") || id.includes("zod") || id.includes("@hookform")) return "forms";
+          if (id.includes("react-router")) return "router";
+          if (id.includes("embla") || id.includes("cmdk") || id.includes("canvas-confetti") || id.includes("input-otp")) return "widgets";
           return "vendor";
         },
       },
