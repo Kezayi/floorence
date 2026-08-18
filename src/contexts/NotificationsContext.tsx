@@ -131,6 +131,30 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     return () => { supabase.removeChannel(channel); };
   }, [user, queryClient]);
 
+  // Realtime: liens de lignée en attente de validation par le Gardien
+  useEffect(() => {
+    if (!user || myIds.length === 0) return;
+    const channel = supabase
+      .channel("guardian-pending-relations")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "memorial_relations" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pending-link-requests", user.id] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "suggested_links" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pending-suggested-links-count", user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, myIds.length, queryClient]);
+
   // Fetch pending link requests
   const { data: linkRequests } = useQuery({
     queryKey: ["pending-link-requests", user?.id],
