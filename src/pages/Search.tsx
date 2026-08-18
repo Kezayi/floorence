@@ -1,6 +1,7 @@
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useMemorialsWithGuestbook } from "@/contexts/MemorialsContext";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
@@ -861,8 +862,13 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
           <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0">
             {group.deceasedPhoto ? (
               <img
-                src={group.deceasedPhoto}
+                src={getOptimizedImageUrl(group.deceasedPhoto, { width: 56, height: 64 })}
+                srcSet={getOptimizedSrcSet(group.deceasedPhoto, { width: 56, height: 64 })}
                 alt=""
+                width={56}
+                height={64}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -954,8 +960,13 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
           <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
             {profile.mainPhoto ? (
               <img
-                src={profile.mainPhoto}
+                src={getOptimizedImageUrl(profile.mainPhoto, { width: 56, height: 64 })}
+                srcSet={getOptimizedSrcSet(profile.mainPhoto, { width: 56, height: 64 })}
                 alt=""
+                width={56}
+                height={64}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -999,8 +1010,13 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
               <div className="w-10 h-12 overflow-hidden rounded-sm bg-muted shrink-0">
                 {activity.photo && (
                   <img
-                    src={activity.photo}
+                    src={getOptimizedImageUrl(activity.photo, { width: 40, height: 48 })}
+                    srcSet={getOptimizedSrcSet(activity.photo, { width: 40, height: 48 })}
                     alt=""
+                    width={40}
+                    height={48}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 )}

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { displayName } from "@/lib/privacyUtils";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import type { LinkStyle } from "./lineageConstants";
 
 export interface TreeNode {
@@ -56,7 +57,8 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
       >
         {inView && node.photo ? (
           <img
-            src={node.photo}
+            src={getOptimizedImageUrl(node.photo, { width: 80, height: 80 })}
+            srcSet={getOptimizedSrcSet(node.photo, { width: 80, height: 80 })}
             alt={displayName(node.name, isAuthenticated)}
             className="w-full h-full object-cover"
             loading="lazy"

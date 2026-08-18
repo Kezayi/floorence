@@ -5,6 +5,7 @@ import { CrossIcon } from "./MemorialIcons";
 import { calculateAge } from "@/lib/dateUtils";
 import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
 import DemoBadge from "./DemoBadge";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 
 interface MemorialCardProps {
   id: string;
@@ -20,6 +21,8 @@ interface MemorialCardProps {
   type: "RECENT" | "PAST";
   variant?: "card" | "list";
   priority?: boolean;
+  /** Candidat LCP : le tout premier portrait de la grille. */
+  lcp?: boolean;
   isDemo?: boolean;
 }
 
@@ -37,11 +40,23 @@ const MemorialCard = ({
   type,
   variant = "card",
   priority = false,
+  lcp = false,
   isDemo = false,
 }: MemorialCardProps) => {
   const { prefetchMemorial } = useMemorialPrefetch();
   const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
   const age = calculateAge(birthDate, deathDate);
+  // Filet de sécurité : si la CDN de transformation échoue, on retombe sur l'original.
+  const handleImageError = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      if (photoUrl && img.src !== photoUrl) {
+        img.srcset = "";
+        img.src = photoUrl;
+      }
+    },
+    [photoUrl]
+  );
   // Prefer obfuscated token URL, fallback to slug
   const memorialUrl = shareToken ? `/m/${shareToken}` : `/memorial/${slug}`;
   if (variant === "list") {
@@ -56,11 +71,16 @@ const MemorialCard = ({
         <div className="w-24 md:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden bg-muted aspect-[3/4]">
           {photoUrl ? (
             <img
-              src={photoUrl}
+              src={getOptimizedImageUrl(photoUrl, { width: 160, height: 213 })}
+              srcSet={getOptimizedSrcSet(photoUrl, { width: 160, height: 213 })}
+              sizes="(max-width: 768px) 96px, 160px"
               alt={`Portrait de ${name}`}
               width={160}
               height={213}
               loading={priority ? "eager" : "lazy"}
+              {...(lcp ? { fetchpriority: "high" } : {})}
+              decoding="async"
+              onError={handleImageError}
               className="w-full h-full object-cover portrait-memorial"
             />
           ) : (
@@ -129,11 +149,16 @@ const MemorialCard = ({
       <div className="aspect-[3/4] relative overflow-hidden bg-muted">
         {photoUrl ? (
           <img
-            src={photoUrl}
+            src={getOptimizedImageUrl(photoUrl, { width: 400, height: 533 })}
+            srcSet={getOptimizedSrcSet(photoUrl, { width: 400, height: 533 })}
+            sizes="(max-width: 768px) 50vw, 400px"
             alt={`Portrait de ${name}`}
             width={400}
             height={533}
             loading={priority ? "eager" : "lazy"}
+            {...(lcp ? { fetchpriority: "high" } : {})}
+            decoding="async"
+            onError={handleImageError}
             className="w-full h-full object-cover portrait-memorial"
           />
         ) : (
