@@ -52,7 +52,13 @@ export const usePaginatedMemorials = (): UsePaginatedMemorialsReturn => {
       });
 
       if (error) {
-        console.error("[PaginatedMemorials] RPC error:", error);
+        if (import.meta.env.DEV) {
+          console.warn("[PaginatedMemorials] RPC unavailable:", error.message);
+        }
+        if (isInitial) {
+          setMemorials([]);
+          setTotalCount(0);
+        }
         return;
       }
 
@@ -104,6 +110,15 @@ export const usePaginatedMemorials = (): UsePaginatedMemorialsReturn => {
 
       setMemorials((prev) => (isInitial ? cards : [...prev, ...cards]));
       setOffset(pageOffset + PAGE_SIZE);
+    } catch (err) {
+      // Network failure (offline / blocked fetch) — degrade gracefully, keep console clean
+      if (import.meta.env.DEV) {
+        console.warn("[PaginatedMemorials] network error:", (err as Error)?.message);
+      }
+      if (isInitial) {
+        setMemorials([]);
+        setTotalCount(0);
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);

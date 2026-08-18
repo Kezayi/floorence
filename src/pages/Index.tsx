@@ -1,13 +1,9 @@
 import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
 import MemorialCard from "@/components/memorial/MemorialCard";
-import InfinityScrollLoader from "@/components/home/InfinityScrollLoader";
-import UpcomingEvents from "@/components/home/UpcomingEvents";
-import HommageFeatured from "@/components/home/HommageFeatured";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
 import EmptyState from "@/components/ui/empty-state";
 import { LayoutGrid, Grid3X3, List, Square, Heart } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePaginatedMemorials } from "@/hooks/usePaginatedMemorials";
@@ -18,6 +14,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Code splitting: below-the-fold / non-critical modules
+const Footer = lazy(() => import("@/components/layout/Footer"));
+const InfinityScrollLoader = lazy(() => import("@/components/home/InfinityScrollLoader"));
+const UpcomingEvents = lazy(() => import("@/components/home/UpcomingEvents"));
+const HommageFeatured = lazy(() => import("@/components/home/HommageFeatured"));
 
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 type FilterType = "all" | "RECENT" | "PAST";
@@ -80,10 +82,12 @@ const Index = () => {
       <main className="flex-1 pt-16 md:pt-20">
 
         {/* Paroles d'Éternité — Featured Tribute */}
-        <HommageFeatured />
+        <Suspense fallback={<div className="reserve-block contain-section" aria-hidden="true" />}>
+          <HommageFeatured />
+        </Suspense>
 
         {/* Memorial Grid */}
-        <section className="px-4 py-4 md:px-8 md:py-6">
+        <section className="px-4 py-4 md:px-8 md:py-6 contain-section">
           <div className="container mx-auto">
             {/* Header with title and controls */}
             <div className="flex flex-col gap-3 mb-4">
@@ -219,7 +223,7 @@ const Index = () => {
               </div>
             ) : (
               <>
-                <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+                <div className={`grid ${getGridClass()} gap-4 md:gap-6 reserve-grid contain-section`}>
                   {filteredMemorials.map((memorial, index) => (
                     <MemorialCard
                       key={memorial.id}
@@ -241,28 +245,34 @@ const Index = () => {
                   ))}
                 </div>
                 
+                <Suspense fallback={<div className="h-16" aria-hidden="true" />}>
                 <InfinityScrollLoader
                   hasMore={hasMore}
                   loading={loadingMore}
                   onLoadMore={loadMore}
                 />
+                </Suspense>
               </>
             )}
           </div>
         </section>
 
         {/* Upcoming Events Section */}
-        <section className="px-4 py-6 md:px-8 md:py-10 border-t border-border">
+        <section className="px-4 py-6 md:px-8 md:py-10 border-t border-border contain-section">
           <div className="container mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+              <Suspense fallback={<div className="reserve-block" aria-hidden="true" />}>
               <UpcomingEvents type="funerals" title="Prochains Obsèques" events={eventsData?.funerals ?? []} loading={eventsLoading} />
               <UpcomingEvents type="gatherings" title="Prochains Recueillements" events={eventsData?.gatherings ?? []} loading={eventsLoading} />
+              </Suspense>
             </div>
           </div>
         </section>
       </main>
 
-      <Footer />
+      <Suspense fallback={<div className="h-40" aria-hidden="true" />}>
+        <Footer />
+      </Suspense>
     </div>
   );
 };
