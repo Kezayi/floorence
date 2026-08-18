@@ -1,6 +1,7 @@
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useMemorialsWithGuestbook } from "@/contexts/MemorialsContext";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { SearchableMemorial } from "@/lib/searchWithRelations";
