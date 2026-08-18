@@ -960,8 +960,13 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
           <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0 flex items-center justify-center">
             {profile.mainPhoto ? (
               <img
-                src={profile.mainPhoto}
+                src={getOptimizedImageUrl(profile.mainPhoto, { width: 56, height: 64 })}
+                srcSet={getOptimizedSrcSet(profile.mainPhoto, { width: 56, height: 64 })}
                 alt=""
+                width={56}
+                height={64}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
