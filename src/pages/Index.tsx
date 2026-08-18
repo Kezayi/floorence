@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 
 // Code splitting: below-the-fold / non-critical modules
 const Footer = lazy(() => import("@/components/layout/Footer"));
