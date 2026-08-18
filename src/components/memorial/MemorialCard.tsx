@@ -43,6 +43,17 @@ const MemorialCard = ({
   const { prefetchMemorial } = useMemorialPrefetch();
   const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
   const age = calculateAge(birthDate, deathDate);
+  // Filet de sécurité : si la CDN de transformation échoue, on retombe sur l'original.
+  const handleImageError = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      if (photoUrl && img.src !== photoUrl) {
+        img.srcset = "";
+        img.src = photoUrl;
+      }
+    },
+    [photoUrl]
+  );
   // Prefer obfuscated token URL, fallback to slug
   const memorialUrl = shareToken ? `/m/${shareToken}` : `/memorial/${slug}`;
   if (variant === "list") {
