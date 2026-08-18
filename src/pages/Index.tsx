@@ -88,7 +88,7 @@ const Index = () => {
 
   // Loading skeleton
   const renderSkeleton = () => (
-    <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+    <div className={`grid ${getGridClass()} gap-4 md:gap-6 min-h-[500px]`}>
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="space-y-3">
           <Skeleton className="aspect-[3/4] w-full" />
