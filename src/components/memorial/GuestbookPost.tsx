@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import AuthorAvatar from "./AuthorAvatar";
 
 export interface GuestbookPostData {
