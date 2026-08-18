@@ -861,8 +861,13 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
           <div className="w-14 h-16 overflow-hidden rounded-sm bg-muted shrink-0">
             {group.deceasedPhoto ? (
               <img
-                src={group.deceasedPhoto}
+                src={getOptimizedImageUrl(group.deceasedPhoto, { width: 56, height: 64 })}
+                srcSet={getOptimizedSrcSet(group.deceasedPhoto, { width: 56, height: 64 })}
                 alt=""
+                width={56}
+                height={64}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
