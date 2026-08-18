@@ -20,7 +20,7 @@ const notificationIcons = {
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, acceptLinkRequest, rejectLinkRequest } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, acceptLinkRequest, rejectLinkRequest, pendingLinkRequests } = useNotifications();
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   const formatTimeAgo = (dateString: string) => {
@@ -81,8 +81,20 @@ const NotificationBell = () => {
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-sans font-medium rounded-full flex items-center justify-center">
+            <span
+              className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs font-sans font-medium rounded-full flex items-center justify-center transition-transform duration-300 ease-out"
+              style={pendingLinkRequests > 0 ? { transform: "scale(1.05)" } : undefined}
+            >
               {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+          {pendingLinkRequests > 0 && (
+            <span
+              className="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-sans font-semibold bg-[hsl(45,90%,50%)] text-[hsl(0,0%,10%)] transition-transform duration-300 ease-out"
+              style={{ boxShadow: "0 0 10px rgba(212, 175, 55, 0.7)" }}
+              title={`${pendingLinkRequests} lien${pendingLinkRequests > 1 ? "s" : ""} de lignée à valider`}
+            >
+              {pendingLinkRequests > 9 ? "9+" : pendingLinkRequests}
             </span>
           )}
         </button>
