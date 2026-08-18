@@ -17,7 +17,8 @@ const SoulCounter = ({ count, label = "âmes reliées", className = "" }: SoulCo
   const [display, setDisplay] = useState(count);
   const [glowing, setGlowing] = useState(false);
   const prevRef = useRef(count);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
+  const glowRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const from = prevRef.current;
@@ -27,9 +28,8 @@ const SoulCounter = ({ count, label = "âmes reliées", className = "" }: SoulCo
 
     if (to > from) {
       setGlowing(true);
-      const t = window.setTimeout(() => setGlowing(false), 1400);
-      // eslint-disable-next-line consistent-return
-      var clearGlow = () => window.clearTimeout(t);
+      window.clearTimeout(glowRef.current);
+      glowRef.current = window.setTimeout(() => setGlowing(false), 1400);
     }
 
     const duration = 600;
@@ -44,10 +44,10 @@ const SoulCounter = ({ count, label = "âmes reliées", className = "" }: SoulCo
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      // @ts-expect-error conditional cleanup
-      if (typeof clearGlow === "function") clearGlow();
     };
   }, [count]);
+
+  useEffect(() => () => window.clearTimeout(glowRef.current), []);
 
   return (
     <div
