@@ -5,6 +5,7 @@ import { CrossIcon } from "./MemorialIcons";
 import { calculateAge } from "@/lib/dateUtils";
 import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
 import DemoBadge from "./DemoBadge";
+import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 
 interface MemorialCardProps {
   id: string;
