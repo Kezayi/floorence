@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { maskName } from "@/lib/privacyUtils";
+import SoulCounter from "@/components/community/SoulCounter";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Link } from "react-router-dom";
@@ -1005,7 +1006,7 @@ const CommunityGraph = () => {
             <>
               {/* Stats */}
               <div className="flex items-center gap-6 mb-4 text-sm text-muted-foreground font-sans">
-                <span>{nodeCount} nœuds</span>
+                <SoulCounter count={nodeCount} />
                 <span>{edgeCount} liaisons</span>
                 <span className="text-xs italic">
                   Rendu : {useCanvas ? "Canvas (optimisé)" : "Canvas"}
