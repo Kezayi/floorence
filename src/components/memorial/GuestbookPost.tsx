@@ -142,10 +142,14 @@ const GuestbookPost = ({
               className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-livreor-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-livreor-foreground/30 transition-all"
             >
               <img
-                src={photo}
+                src={getOptimizedImageUrl(photo, { width: 64, height: 64 })}
+                srcSet={getOptimizedSrcSet(photo, { width: 64, height: 64 })}
                 alt={`Photo ${index + 1}`}
+                width={64}
+                height={64}
                 className="w-full h-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
             </button>
           ))}
