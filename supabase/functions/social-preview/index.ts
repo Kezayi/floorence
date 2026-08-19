@@ -140,14 +140,10 @@ Deno.serve(async (req) => {
     }
     ogDescription += ` et rejoignez son maillage familial sur Floorence.`;
 
-    // Get best photo
-    let imageUrl = DEFAULT_IMAGE;
-    if (memorial.photos && memorial.photos.length > 0) {
-      const photoIndex = Math.min(memorial.default_photo_index ?? 0, memorial.photos.length - 1);
-      imageUrl = memorial.photos[photoIndex];
-    } else if (memorial.photo_url) {
-      imageUrl = memorial.photo_url;
-    }
+    // RÈGLE MÉTIER : la photo du défunt doit TOUJOURS apparaître dans le partage.
+    const rawImage = resolvePortrait(memorial);
+    const imageUrl = buildShareImageUrl(rawImage);
+    const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
     const brandedTitle = `${ogTitle} | Floorence : Honorer \xb7 Relier \xb7 Transmettre`;
 
@@ -165,8 +161,12 @@ Deno.serve(async (req) => {
 <meta property="og:title" content="${escapeHtml(brandedTitle)}">
 <meta property="og:description" content="${escapeHtml(ogDescription)}">
 <meta property="og:image" content="${escapeHtml(imageUrl)}">
+<meta property="og:image:secure_url" content="${escapeHtml(imageUrl)}">
+<meta property="og:image:type" content="${imageType}">
+<meta property="og:image:alt" content="${escapeHtml(`Portrait de ${fullName}`)}">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:height" content="1200">
+
 <meta property="og:site_name" content="Floorence">
 <meta property="og:locale" content="fr_FR">
 
