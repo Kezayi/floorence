@@ -29,11 +29,17 @@ async function streamQuestion(
   onDelta: (text: string) => void,
   signal: AbortSignal
 ) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error("Session expirée — veuillez vous reconnecter pour interroger le moteur.");
+  }
+
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ question }),
     signal,
@@ -41,7 +47,17 @@ async function streamQuestion(
 
   if (!resp.ok) {
     const errData = await resp.json().catch(() => null);
-    throw new Error(errData?.error || `Erreur ${resp.status}`);
+    const detail = errData?.error || errData?.message;
+    if (resp.status === 401) {
+      throw new Error("Session expirée — veuillez vous reconnecter pour interroger le moteur.");
+    }
+    if (resp.status === 403) {
+      throw new Error("Accès refusé — ce moteur est réservé aux administrateurs et modérateurs.");
+    }
+    if (resp.status >= 500) {
+      throw new Error(`Le moteur est momentanément indisponible${detail ? ` (${detail})` : ""}. Réessayez dans un instant.`);
+    }
+    throw new Error(detail || `Erreur ${resp.status}`);
   }
   if (!resp.body) throw new Error("Pas de réponse du serveur");
 
