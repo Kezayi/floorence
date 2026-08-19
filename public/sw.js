@@ -1,6 +1,6 @@
 // Floorence Service Worker — Cache-first for static assets, network-first for API
 // v2: exclude Vite dep chunks from cache to prevent stale React copies
-const CACHE_NAME = 'floorence-v4';
+const CACHE_NAME = 'floorence-v5';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to pre-cache on install

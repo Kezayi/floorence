@@ -6,7 +6,7 @@ import "./index.css";
 // Register Service Worker for offline support (with one-time stale-cache reset)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    const RESET_KEY = 'floorence-sw-reset-v4';
+    const RESET_KEY = 'floorence-sw-reset-v5';
 
     if (!localStorage.getItem(RESET_KEY)) {
       try {
