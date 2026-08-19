@@ -38,7 +38,6 @@ async function streamQuestion(
 ) {
   // Zero-Trust: récupération session fraîche
   const { data: { session } } = await supabase.auth.getSession();
-  console.log(`[RAG Hard-Coded] Session active: ${!!session}, token: ${session?.access_token ? 'present' : 'MISSING'}`);
 
   if (!session?.access_token) {
     throw new Error("AUTH_REQUIRED");
@@ -51,11 +50,6 @@ async function streamQuestion(
     "X-Client-Info": "lovable-social-search",
   };
 
-  console.log('--- HEADERS TEST ---', {
-    Authorization: 'Bearer present',
-    apikey: headers.apikey ? 'present' : 'MISSING',
-    url: CHAT_URL,
-  });
 
   const resp = await fetch(CHAT_URL, {
     method: "POST",
