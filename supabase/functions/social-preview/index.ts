@@ -15,6 +15,54 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/**
+ * Sélectionne le portrait du défunt : photo par défaut, sinon première photo
+ * valide, sinon photo_url. Ne renvoie jamais une valeur vide.
+ */
+function resolvePortrait(memorial: any): string | null {
+  const photos: string[] = Array.isArray(memorial.photos)
+    ? memorial.photos.filter((p: unknown) => typeof p === 'string' && p.trim().length > 0)
+    : [];
+
+  if (photos.length > 0) {
+    const index = Math.min(Math.max(memorial.default_photo_index ?? 0, 0), photos.length - 1);
+    return photos[index] ?? photos[0];
+  }
+  if (typeof memorial.photo_url === 'string' && memorial.photo_url.trim().length > 0) {
+    return memorial.photo_url.trim();
+  }
+  return null;
+}
+
+/**
+ * Construit une URL d'image absolue, publique et calibrée pour les crawlers
+ * (WhatsApp/Facebook) : 1200x1200, qualité 80, servie par la CDN de
+ * transformation du Storage. Toute image relative est résolue sur le Storage.
+ */
+function buildShareImageUrl(raw: string | null): string {
+  if (!raw) return DEFAULT_IMAGE;
+
+  const supabaseUrl = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/$/, '');
+  let url = raw.trim();
+
+  // Chemin relatif dans un bucket public -> URL publique absolue
+  if (!/^https?:\/\//i.test(url)) {
+    if (!supabaseUrl) return DEFAULT_IMAGE;
+    url = `${supabaseUrl}/storage/v1/object/public/${url.replace(/^\/+/, '')}`;
+  }
+
+  const OBJECT_PUBLIC = '/storage/v1/object/public/';
+  const RENDER_PUBLIC = '/storage/v1/render/image/public/';
+
+  if (!url.includes(OBJECT_PUBLIC)) return url;
+
+  const [base, query] = url.split('?');
+  if (query?.includes('width=')) return url;
+
+  return `${base.replace(OBJECT_PUBLIC, RENDER_PUBLIC)}?width=1200&height=1200&resize=cover&quality=80`;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
