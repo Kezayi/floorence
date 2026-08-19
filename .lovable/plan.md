@@ -25,6 +25,6 @@ C'est la contrepartie du gain de bundle : le découpage est trop fin et brise le
 
 ## Détails techniques
 
-- Fichiers touchés : `vite.document`n/a — `vite.config.ts`, éventuellement `public/sw.js` (version de cache).
+- Fichiers touchés : `vite.config.ts`, éventuellement `public/sw.js` (version de cache).
 - Aucun changement de schéma base de données, aucune modification d'UI ni de logique métier.
 - L'erreur `createContext` étant un échec d'init de chunk, aucun error boundary React ne peut l'attraper : la seule correction possible est côté bundling.
