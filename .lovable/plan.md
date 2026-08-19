@@ -1,48 +1,30 @@
+# Correctif urgent — page blanche en production
 
+## Constat vérifié
 
-# Correction du bug de flash 404 sur les espaces memoriels
+- Sur `https://www.floorence.org/`, seule la coquille statique de `index.html` s'affiche ("Floorence / Honorer, relier et transmettre…") : React ne monte jamais.
+- L'erreur JS capturée sur le site publié est : `Cannot read properties of undefined (reading 'createContext')`.
+- En preview de développement (`localhost:8080`), la page d'accueil se charge normalement, sans erreur console. Le bug est donc propre au **bundle de production**.
 
-## Diagnostic
+## Cause
 
-Le probleme est confirme a la **ligne 455** de `Memorial.tsx`. La condition de chargement n'a jamais ete corrigee depuis le diagnostic precedent :
+Le `manualChunks` ajouté dans `vite.config.ts` lors de l'optimisation PageSpeed isole React dans un chunk `react-core`, séparé des chunks qui le consomment (`radix`, `query`, `router`, `vendor`…). À l'exécution, l'ordre d'initialisation des chunks fait qu'un module appelle `React.createContext` avant que le module React ne soit initialisé → `undefined.createContext` → crash avant tout rendu.
 
-```text
-Etat actuel (ligne 455):
-  if (memorialsLoading || dbFallbackLoading)
+C'est la contrepartie du gain de bundle : le découpage est trop fin et brise le graphe d'initialisation.
 
-Ce qui se passe:
-  1. memorialsLoading passe a false (contexte charge)
-  2. contextMemorial = null (le memorial est trouve via shareToken mais le contexte n'est pas encore pret)
-  3. dbFallbackLoading = false (le useEffect n'a pas encore demarre)
-  4. dbFallbackDone = false
-  --> Le code saute au bloc 404 (ligne 460)
-  5. Le useEffect de fallback se declenche APRES
-  --> Flash 404 visible par l'utilisateur
-```
+## Correctif
 
-## Correction (1 seule ligne a modifier)
+1. **Rétablir un découpage sûr** dans `vite.config.ts` :
+   - Supprimer le chunk `react-core` séparé et laisser Rollup regrouper React avec les modules qui en dépendent (comportement par défaut, sûr).
+   - Conserver uniquement les découpages sans dépendance React au moment de l'init : `charts` (recharts/d3), `markdown`, `dates`, `supabase`.
+   - Option retenue si le doute persiste : retirer entièrement `manualChunks` (retour au comportement Vite par défaut, déjà correct grâce au `React.lazy` par route déjà en place). La priorité est un site fonctionnel ; le gain de bundle reste assuré par le code splitting des routes.
+2. **Vérification obligatoire avant clôture** :
+   - Build de production local, puis service du `dist` et chargement de `/` via Playwright : zéro `pageerror`, présence de la grille des mémoriaux (pas seulement le H1 statique).
+   - Contrôle d'une seconde route (`/recherche`) pour valider l'ordre des chunks lazy.
+3. **Cache Service Worker** : après le correctif, s'assurer que le SW ne resserve pas l'ancien bundle cassé (bump de la clé de reset / version de cache dans `public/sw.js` si le SW met en cache les assets JS).
 
-### Fichier : `src/pages/Memorial.tsx`, ligne 455
+## Détails techniques
 
-Remplacer :
-```typescript
-if (memorialsLoading || dbFallbackLoading) {
-```
-
-Par :
-```typescript
-if (memorialsLoading || dbFallbackLoading || (!contextMemorial && !dbFallback && !dbFallbackDone)) {
-```
-
-Cette condition garantit que le skeleton reste affiche tant que :
-- Le contexte charge, OU
-- Le fallback DB charge, OU
-- **Aucune source n'a encore trouve le memorial ET le fallback n'a pas termine**
-
-## Impact
-
-- **1 ligne modifiee** dans 1 fichier
-- Zero risque de regression : on affiche simplement un skeleton au lieu d'un faux 404
-- Compatible avec les deux routes : `/m/:token` et `/memorial/:slug`
-- Les 13 liens fonctionneront sans flash 404
-
+- Fichiers touchés : `vite.document`n/a — `vite.config.ts`, éventuellement `public/sw.js` (version de cache).
+- Aucun changement de schéma base de données, aucune modification d'UI ni de logique métier.
+- L'erreur `createContext` étant un échec d'init de chunk, aucun error boundary React ne peut l'attraper : la seule correction possible est côté bundling.
