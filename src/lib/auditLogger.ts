@@ -9,7 +9,11 @@ export type AuditActionType =
   | 'guestbook_post_updated'
   | 'guestbook_post_deleted'
   | 'guestbook_post_hidden'
-  | 'guestbook_post_restored';
+  | 'guestbook_post_restored'
+  | 'memorial_soft_deleted'
+  | 'guestbook_post_soft_deleted'
+  | 'trash_restored'
+  | 'trash_purged';
 
 interface AuditLogDetails {
   memorial_id?: string;
