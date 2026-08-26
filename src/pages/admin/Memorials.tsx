@@ -364,35 +364,30 @@ const Memorials = () => {
     },
   });
 
+  // Suppression réversible (Norme AAA — Pilier 7A) : mise en corbeille, jamais de purge immédiate
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // First delete related guestbook posts
+      const now = new Date().toISOString();
+
+      // Les hommages liés suivent le mémorial en corbeille
       const { error: postsError } = await supabase
         .from('guestbook_posts')
-        .delete()
-        .eq('memorial_id', id);
+        .update({ deleted_at: now, deleted_by: user?.id ?? null })
+        .eq('memorial_id', id)
+        .is('deleted_at', null);
 
       if (postsError) throw postsError;
 
-      // Then delete memorial events
-      const { error: eventsError } = await supabase
-        .from('memorial_events')
-        .delete()
-        .eq('memorial_id', id);
-
-      if (eventsError) throw eventsError;
-
-      // Finally delete the memorial
       const { error } = await supabase
         .from('memorials')
-        .delete()
+        .update({ deleted_at: now, deleted_by: user?.id ?? null, is_active: false, is_published: false })
         .eq('id', id);
 
       if (error) throw error;
 
       // Log audit
       await logAuditAction(
-        'memorial_deleted',
+        'memorial_soft_deleted',
         user?.id || '',
         user?.email || null,
         { memorial_id: id, name: `${selectedMemorial?.first_name} ${selectedMemorial?.last_name}` }
@@ -401,13 +396,14 @@ const Memorials = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
       queryClient.invalidateQueries({ queryKey: ['admin-memorials-count'] });
-      toast.success('Mémorial supprimé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['admin-trash'] });
+      toast.success('Mémorial placé dans la corbeille — restaurable à tout moment');
       setShowDeleteDialog(false);
       setSelectedMemorial(null);
     },
     onError: (error) => {
       console.error('Delete error:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error('Erreur lors de la mise en corbeille');
     },
   });
 
