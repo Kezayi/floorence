@@ -54,6 +54,7 @@ const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
 const AdminTemplateNew = lazy(() => import("./pages/admin/TemplateNew"));
 const AdminTemplateEdit = lazy(() => import("./pages/admin/TemplateEdit"));
 const AdminFinance = lazy(() => import("./pages/admin/Finance"));
+const AdminTrash = lazy(() => import("./pages/admin/Trash"));
 
 const queryClient = new QueryClient();
 
@@ -192,6 +193,12 @@ const App = () => (
                   <Route path={`${ADMIN_PREFIX}/finances`} element={
                     <RequireAdmin requireAdmin>
                       <AdminLayout><AdminFinance /></AdminLayout>
+                    </RequireAdmin>
+                  } />
+
+                  <Route path={`${ADMIN_PREFIX}/corbeille`} element={
+                    <RequireAdmin requireAdmin>
+                      <AdminLayout><AdminTrash /></AdminLayout>
                     </RequireAdmin>
                   } />
 

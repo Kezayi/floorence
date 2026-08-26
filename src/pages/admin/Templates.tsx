@@ -69,6 +69,7 @@ const AdminTemplates = () => {
     const { data, error } = await supabase
       .from("guestbook_templates")
       .select("*")
+      .is("deleted_at", null)
       .order("usage_count", { ascending: false });
 
     if (error) {
@@ -104,14 +105,14 @@ const AdminTemplates = () => {
     if (!deleteTarget) return;
     const { error } = await supabase
       .from("guestbook_templates")
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), is_active: false })
       .eq("id", deleteTarget.id);
 
     if (error) {
       toast.error("Erreur de suppression");
       return;
     }
-    toast.success("Modèle supprimé");
+    toast.success("Modèle placé dans la corbeille — restaurable à tout moment");
     setTemplates((prev) => prev.filter((t) => t.id !== deleteTarget.id));
     setDeleteTarget(null);
   };

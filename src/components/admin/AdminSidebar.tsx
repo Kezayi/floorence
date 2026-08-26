@@ -15,6 +15,7 @@ import {
   Sparkles,
   Route,
   Banknote,
+  Trash2,
 } from 'lucide-react';
 import { useAdminSuggestedLinks } from '@/hooks/useSuggestedLinks';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -47,6 +48,7 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
     { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
     { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
     { to: `${ADMIN_PREFIX}/modeles`, icon: BookOpen, label: 'Modèles Textes', adminOnly: true },
+    { to: `${ADMIN_PREFIX}/corbeille`, icon: Trash2, label: 'Corbeille', adminOnly: true },
   ];
 
   return (

@@ -102,6 +102,8 @@ export type Database = {
           candle_count: number
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           flower_count: number
           hidden_at: string | null
           hidden_by: string | null
@@ -124,6 +126,8 @@ export type Database = {
           candle_count?: number
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           flower_count?: number
           hidden_at?: string | null
           hidden_by?: string | null
@@ -146,6 +150,8 @@ export type Database = {
           candle_count?: number
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           flower_count?: number
           hidden_at?: string | null
           hidden_by?: string | null
@@ -191,6 +197,8 @@ export type Database = {
           category: string
           content: string
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_active: boolean | null
           relation: string | null
@@ -201,6 +209,8 @@ export type Database = {
           category: string
           content: string
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_active?: boolean | null
           relation?: string | null
@@ -211,6 +221,8 @@ export type Database = {
           category?: string
           content?: string
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_active?: boolean | null
           relation?: string | null
@@ -435,6 +447,8 @@ export type Database = {
           creator_relation: string | null
           death_date: string | null
           default_photo_index: number | null
+          deleted_at: string | null
+          deleted_by: string | null
           donation_enabled: boolean
           first_name: string
           funeral_date: string | null
@@ -471,6 +485,8 @@ export type Database = {
           creator_relation?: string | null
           death_date?: string | null
           default_photo_index?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           donation_enabled?: boolean
           first_name: string
           funeral_date?: string | null
@@ -507,6 +523,8 @@ export type Database = {
           creator_relation?: string | null
           death_date?: string | null
           default_photo_index?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           donation_enabled?: boolean
           first_name?: string
           funeral_date?: string | null
