@@ -88,7 +88,8 @@ const Moderation = () => {
     queryFn: async () => {
       const { count, error } = await supabase
         .from('guestbook_posts')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null);
 
       if (error) throw error;
       return count ?? 0;
@@ -114,6 +115,7 @@ const Moderation = () => {
           created_at, memorial_id, candle_count, flower_count, photos, user_id,
           memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name, slug)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .range(pagination.from, pagination.to);
 
@@ -293,14 +295,14 @@ const Moderation = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('guestbook_posts')
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null, is_hidden: true })
         .eq('id', id);
 
       if (error) throw error;
 
       // Log audit
       await logAuditAction(
-        'guestbook_post_deleted',
+        'guestbook_post_soft_deleted',
         user?.id || '',
         user?.email || null,
         { guestbook_post_id: id, author_name: selectedPost?.author_name || '' }
@@ -309,7 +311,8 @@ const Moderation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts-count'] });
-      toast.success('Hommage supprimé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['admin-trash'] });
+      toast.success('Hommage placé dans la corbeille — restaurable à tout moment');
       setShowDeleteDialog(false);
       setSelectedPost(null);
     },

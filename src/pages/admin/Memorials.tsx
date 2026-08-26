@@ -128,7 +128,8 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null);
 
       if (searchQuery) {
         const safe = sanitizeSearchInput(searchQuery);
@@ -163,6 +164,7 @@ const Memorials = () => {
       let query = supabase
         .from('memorials')
         .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, is_demo, merged_into, created_at, created_by, creator_relation')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
