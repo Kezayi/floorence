@@ -1525,6 +1525,20 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_resolved_memorial_relations: {
+        Args: { p_master_id: string }
+        Returns: {
+          endpoint_a: string
+          endpoint_b: string
+          is_biological: boolean
+          is_conflict: boolean
+          normalized_type: string
+          origin_memorial_ids: string[]
+          relation_ids: string[]
+          relation_labels: string[]
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
