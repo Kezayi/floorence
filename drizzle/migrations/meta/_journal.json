@@ -8,6 +8,13 @@
       "when": 1791548011031,
       "tag": "0000_v2_fix_certificates_insert_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791548227584,
+      "tag": "0001_v1_fix_social_search_history_rls",
+      "breakpoints": true
     }
   ]
 }
