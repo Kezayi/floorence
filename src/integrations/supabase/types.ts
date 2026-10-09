@@ -1509,6 +1509,22 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_public_memorial_events_consolidated: {
+        Args: { p_master_id: string }
+        Returns: {
+          created_at: string
+          description: string
+          event_date: string
+          event_end_time: string
+          event_type: string
+          gps_coordinates: string
+          id: string
+          is_public: boolean
+          location: string
+          memorial_id: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
