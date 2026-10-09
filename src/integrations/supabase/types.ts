@@ -1525,6 +1525,20 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_resolved_memorial_lineage: {
+        Args: { p_master_id: string }
+        Returns: {
+          endpoint_a: string
+          endpoint_b: string
+          is_conflict: boolean
+          lineage_class: string
+          normalized_type: string
+          origin_memorial_ids: string[]
+          relation_ids: string[]
+          relation_labels: string[]
+          status: string
+        }[]
+      }
       get_resolved_memorial_relations: {
         Args: { p_master_id: string }
         Returns: {
