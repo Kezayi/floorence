@@ -338,6 +338,94 @@ export type Database = {
           },
         ]
       }
+      memorial_merge_confirmations: {
+        Row: {
+          confirmed_at: string
+          confirmed_by: string
+          confirmer_capacity: string
+          created_at: string
+          id: string
+          master_memorial_id: string
+          revocation_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          source_memorial_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          confirmed_at?: string
+          confirmed_by: string
+          confirmer_capacity: string
+          created_at?: string
+          id?: string
+          master_memorial_id: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source_memorial_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          confirmed_at?: string
+          confirmed_by?: string
+          confirmer_capacity?: string
+          created_at?: string
+          id?: string
+          master_memorial_id?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source_memorial_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_merge_confirmations_master_memorial_id_fkey"
+            columns: ["master_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorial_merge_confirmations_master_memorial_id_fkey"
+            columns: ["master_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_merge_confirmations_master_memorial_id_fkey"
+            columns: ["master_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_merge_confirmations_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_humanity_index"
+            referencedColumns: ["memorial_id"]
+          },
+          {
+            foreignKeyName: "memorial_merge_confirmations_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "memorials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_merge_confirmations_source_memorial_id_fkey"
+            columns: ["source_memorial_id"]
+            isOneToOne: false
+            referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memorial_relations: {
         Row: {
           id: string
@@ -1397,6 +1485,10 @@ export type Database = {
       }
       inverse_normalized: { Args: { ntype: string }; Returns: string }
       is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
+      is_master_representative: {
+        Args: { _master_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_memorial_creation_free: {
         Args: { p_funeral_date: string }
         Returns: boolean
