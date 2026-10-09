@@ -57,6 +57,13 @@
       "when": 1791551304986,
       "tag": "0007_m2_1a_memorial_merge_confirmations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791551351574,
+      "tag": "0008_m2_1a_tighten_grants",
+      "breakpoints": true
     }
   ]
 }
