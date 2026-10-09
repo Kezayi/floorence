@@ -36,6 +36,13 @@
       "when": 1791549339845,
       "tag": "0004_drop_duplicate_updated_at_trigger_memorials",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791549969764,
+      "tag": "0005_fix_t2r_dedupe_relation_triggers",
+      "breakpoints": true
     }
   ]
 }
