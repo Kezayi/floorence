@@ -1481,6 +1481,24 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_public_guestbook_posts_consolidated: {
+        Args: { p_limit?: number; p_master_id: string; p_offset?: number }
+        Returns: {
+          author_name: string
+          author_photo_url: string
+          candle_count: number
+          content: string
+          created_at: string
+          flower_count: number
+          id: string
+          memorial_id: string
+          photos: string[]
+          relation_category: string
+          relation_link: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
