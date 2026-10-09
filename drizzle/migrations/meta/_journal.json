@@ -43,6 +43,13 @@
       "when": 1791549969764,
       "tag": "0005_fix_t2r_dedupe_relation_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791550341236,
+      "tag": "0006_fix_t3_suggested_links_unique_pair",
+      "breakpoints": true
     }
   ]
 }
