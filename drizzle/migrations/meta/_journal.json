@@ -71,6 +71,13 @@
       "when": 1791551680559,
       "tag": "0009_m2_1b_master_merge_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791551917920,
+      "tag": "0010_m2_1c_lock_merged_into",
+      "breakpoints": true
     }
   ]
 }
