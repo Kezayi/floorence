@@ -1442,6 +1442,16 @@ export type Database = {
           total_flowers: number
         }[]
       }
+      get_memorial_gesture_stats_consolidated: {
+        Args: { p_master_id: string }
+        Returns: {
+          is_total: boolean
+          memorial_id: string
+          post_count: number
+          total_candles: number
+          total_flowers: number
+        }[]
+      }
       get_memorial_social_stats: {
         Args: { target_memorial_id: string }
         Returns: {

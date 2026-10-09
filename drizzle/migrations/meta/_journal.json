@@ -106,6 +106,13 @@
       "when": 1791553088662,
       "tag": "0014_fix_m22c_t1_deterministic_order",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791553414423,
+      "tag": "0015_m22d_consolidated_gesture_stats",
+      "breakpoints": true
     }
   ]
 }
