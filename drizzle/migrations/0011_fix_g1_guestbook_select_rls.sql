@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Allow authenticated read access" ON public.guestbook_posts;
