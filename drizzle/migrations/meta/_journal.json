@@ -29,6 +29,13 @@
       "when": 1791548857122,
       "tag": "0003_disable_demo_auto_delete_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791549339845,
+      "tag": "0004_drop_duplicate_updated_at_trigger_memorials",
+      "breakpoints": true
     }
   ]
 }
