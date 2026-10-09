@@ -1429,6 +1429,10 @@ export type Database = {
             Args: { p_memorial_id_1?: string; p_memorial_id_2?: string }
             Returns: undefined
           }
+      get_memorial_family_ids: {
+        Args: { p_master_id: string }
+        Returns: string[]
+      }
       get_memorial_gesture_stats: {
         Args: { p_memorial_ids: string[] }
         Returns: {
