@@ -1409,6 +1409,11 @@ export type Database = {
     }
     Functions: {
       admin_force_validate_all_suggestions: { Args: never; Returns: Json }
+      admin_merge_memorial: {
+        Args: { master_id: string; source_id: string }
+        Returns: Json
+      }
+      admin_unmerge_memorial: { Args: { source_id: string }; Returns: Json }
       confirm_payment_and_publish: {
         Args: { p_ebilling_ref: string; p_transaction_id: string }
         Returns: Json
