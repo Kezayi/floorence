@@ -120,6 +120,13 @@
       "when": 1791553618582,
       "tag": "0016_m22e_consolidated_memorial_events",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791554088131,
+      "tag": "0017_m23b_resolved_memorial_relations",
+      "breakpoints": true
     }
   ]
 }
