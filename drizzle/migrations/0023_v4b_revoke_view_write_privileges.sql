@@ -1,0 +1,1 @@
+REVOKE INSERT, UPDATE, DELETE ON public.v_public_memorials FROM anon, authenticated, PUBLIC;
