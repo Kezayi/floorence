@@ -141,6 +141,13 @@
       "when": 1791614049208,
       "tag": "0019_fix_b1_relation_direction",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791754191268,
+      "tag": "0020_fix_b2_inference_trigger_security",
+      "breakpoints": true
     }
   ]
 }
