@@ -148,6 +148,13 @@
       "when": 1791754191268,
       "tag": "0020_fix_b2_inference_trigger_security",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791754724320,
+      "tag": "0021_m23e_master_aware_sql_inference",
+      "breakpoints": true
     }
   ]
 }
