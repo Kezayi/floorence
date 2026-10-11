@@ -983,13 +983,13 @@ const MemorialInner = () => {
                   <RelationshipMaillage 
                     deceasedName={safeName}
                     memorialId={memorial.id}
-                    posts={guestbookPosts.map(post => ({
+                    posts={(isMaillageUUID && maillagePosts ? maillagePosts : guestbookPosts.map(post => ({
                       authorId: post.authorId,
                       authorName: post?.authorName || "Anonyme",
                       authorAvatarUrl: post?.authorAvatarUrl || null,
                       relationCategory: post?.relationCategory || "autre",
                       relationLink: post?.relationLink || null,
-                    }))}
+                    })))}
                   />
                 </SecureDataDisplay>
               </div>
