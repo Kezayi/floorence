@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 
 /**
  * Prefetches tab data on hover so content is instant on click.
@@ -35,22 +36,15 @@ export const useTabPrefetch = (memorialId: string) => {
         case "lineage":
           queryClient.prefetchQuery({
             queryKey: ["lineage-tree-relations", memorialId],
-            queryFn: async () => {
-              const { data } = await supabase
-                .from("memorial_relations")
-                .select("id, relation_type, memorial_id_1, memorial_id_2, status, is_lineage")
-                .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
-                .in("status", ["accepted", "pending"]);
-              return data;
-            },
+            queryFn: () => fetchResolvedGraph(memorialId, "lineage", ["accepted", "pending"]),
             staleTime: 2 * 60_000,
           });
           queryClient.prefetchQuery({
             queryKey: ["lineage-tree-tributes-raw", memorialId],
             queryFn: async () => {
               const { data } = await supabase
-                .rpc("get_public_guestbook_posts", { p_memorial_id: memorialId });
-              return data;
+                .rpc("get_public_guestbook_posts_consolidated", { p_master_id: memorialId, p_limit: 500, p_offset: 0 });
+              return data || [];
             },
             staleTime: 2 * 60_000,
           });

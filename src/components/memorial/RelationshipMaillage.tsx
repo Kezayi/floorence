@@ -3,7 +3,7 @@ import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,60 +50,30 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
 
   // Fetch inter-memorial links (Pont des Ancêtres)
   const isValidUUID = memorialId ? /^[0-9a-f]{8}-/.test(memorialId) : false;
-  const { data: interMemorialLinks } = useQuery({
+  const { data: interMemorialRaw } = useQuery({
     queryKey: ["memorial-relations-graph", memorialId],
     enabled: !!memorialId && isValidUUID,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('memorial_relations')
-        .select('id, relation_type, memorial_id_1, memorial_id_2')
-        .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
-        .eq('status', 'accepted');
-
-      if (!data || data.length === 0) return [];
-
-      const linkedIds = data.map(r =>
-        r.memorial_id_1 === memorialId ? r.memorial_id_2 : r.memorial_id_1
-      ).filter((id): id is string => !!id);
-
-      if (linkedIds.length === 0) return [];
-
-      const { data: linkedMemorials } = await supabase
-        .from('memorials')
-        .select('id, first_name, last_name')
-        .in('id', linkedIds);
-
-      const nameMap = new Map(
-        (linkedMemorials || []).map(m => [m.id, `${m.first_name} ${m.last_name}`])
-      );
-      const firstNameMap = new Map(
-        (linkedMemorials || []).map(m => [m.id, m.first_name])
-      );
-
-      const currentFirstName = deceasedName.split(' ')[0];
-
-      return data.map(r => {
-        const isSource = r.memorial_id_1 === memorialId;
-        const linkedId = isSource ? r.memorial_id_2 : r.memorial_id_1;
-        const relType = r.relation_type;
-        if (!linkedId) return { name: 'Inconnu', relationType: relType };
-
-        let relationType: string;
-        if (isSource) {
-          relationType = getGenderAwareRelation(relType, currentFirstName);
-        } else {
-          relationType = getInverseRelation(relType, currentFirstName);
-        }
-
-        return {
-          name: nameMap.get(linkedId) || 'Inconnu',
-          relationType,
-        };
-      });
-    },
+    queryFn: () => fetchResolvedGraph(memorialId as string, "relations", ["accepted"]),
   });
+  const interMemorialLinks = useMemo(() => {
+    if (!interMemorialRaw) return [];
+    const nameMap = new Map(interMemorialRaw.memorials.map(m => [m.id, `${m.first_name} ${m.last_name}`]));
+    const currentFirstName = deceasedName.split(' ')[0];
+    const seen = new Set<string>();
+    const out: Array<{ name: string; relationType: string }> = [];
+    for (const e of interMemorialRaw.edges) {
+      const relationType = e.masterIsSource
+        ? getGenderAwareRelation(e.relationType, currentFirstName)
+        : getInverseRelation(e.relationType, currentFirstName);
+      const key = `${e.linkedId}|${relationType}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ name: nameMap.get(e.linkedId) || 'Inconnu', relationType });
+    }
+    return out;
+  }, [interMemorialRaw, deceasedName]);
   const directRelations = useMemo(() => {
     // ═══ DEDUP by UUID — one entry per unique author ═══
     // Fallback to normalized name for anonymous authors (no UUID)
