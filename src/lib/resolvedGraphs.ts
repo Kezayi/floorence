@@ -45,6 +45,8 @@ export async function fetchResolvedGraph(
     .select("id, relation_type, memorial_id_1, memorial_id_2")
     .in("id", relIds);
   const origMap = new Map((originals || []).map((o) => [o.id, o]));
+  const { data: fam } = await supabase.rpc("get_memorial_family_ids", { p_master_id: masterId });
+  const family = new Set<string>([masterId, ...((fam as string[] | null) || [])]);
 
   const edges: ResolvedEdgeRaw[] = [];
   const seen = new Set<string>();
@@ -54,10 +56,8 @@ export async function fetchResolvedGraph(
     for (const rid of r.relation_ids || []) {
       const o = origMap.get(rid);
       if (!o) continue;
-      // Orientation: the original endpoint that is NOT the linked identity side belongs to the Master family.
-      const masterIsSource = o.memorial_id_2 !== linkedId && o.memorial_id_1 !== linkedId
-        ? true
-        : o.memorial_id_1 !== linkedId;
+      // Orientation: Master family (Master + direct sources) on memorial_id_1 => Master is source.
+      const masterIsSource = !!o.memorial_id_1 && family.has(o.memorial_id_1);
       const key = `${linkedId}|${o.relation_type}|${masterIsSource}|${r.status}`;
       if (seen.has(key)) continue; // dedup identical declarations (no doubled edge)
       seen.add(key);
