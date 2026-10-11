@@ -283,6 +283,14 @@ export const computeTransitiveSuggestions = (
       const pivotNode = memorials.get(pivotId);
 
       if (!xNode || !yNode || !pivotNode) continue;
+      if (targetMemorialId === yId) continue;
+
+      // M2.3F: never expose a private memorial to another owner (mirrors SQL B2)
+      if (
+        xNode.isPublished !== undefined && yNode.isPublished !== undefined &&
+        !(xNode.isPublished && yNode.isPublished) &&
+        xNode.createdBy !== yNode.createdBy
+      ) continue;
 
       // Compute the base relation and apply gender
       const baseRelation = NORMALIZED_TO_BASE[rule.result];
@@ -298,8 +306,10 @@ export const computeTransitiveSuggestions = (
       // Skip if chronologically impossible
       if (!chrono.isValid) continue;
 
-      // Build reason
-      const pivotFullName = `${pivotNode.firstName} ${pivotNode.lastName}`;
+      // Build reason (private pivot anonymized)
+      const pivotFullName = pivotNode.isPublished === false
+        ? "un avis privé"
+        : `${pivotNode.firstName} ${pivotNode.lastName}`;
       const xFullName = `${xNode.firstName} ${xNode.lastName}`;
       const yFullName = `${yNode.firstName} ${yNode.lastName}`;
       const reason = `${pivotFullName} est relié(e) à ${xFullName} et à ${yFullName}`;
