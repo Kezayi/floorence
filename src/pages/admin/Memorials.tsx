@@ -287,29 +287,13 @@ const Memorials = () => {
 
   const mergeMutation = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
-      // Mark source as merged into target
-      const { error: mergeError } = await supabase
-        .from('memorials')
-        .update({ merged_into: targetId, is_active: false })
-        .eq('id', sourceId);
-
-      if (mergeError) throw mergeError;
-
-      // Move all guestbook posts to target memorial
-      const { error: postsError } = await supabase
-        .from('guestbook_posts')
-        .update({ memorial_id: targetId })
-        .eq('memorial_id', sourceId);
-
-      if (postsError) throw postsError;
-
-      // Log audit
-      await logAuditAction(
-        'memorial_merged',
-        user?.id || '',
-        user?.email || null,
-        { source_memorial_id: sourceId, target_memorial_id: targetId }
-      );
+      // M2.5B — fusion exclusivement via la RPC serveur (contrôles Admin,
+      // confirmation familiale, verrous et journalisation côté base).
+      const { error } = await supabase.rpc('admin_merge_memorial', {
+        source_id: sourceId,
+        master_id: targetId,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
@@ -319,8 +303,8 @@ const Memorials = () => {
       setSelectedMemorial(null);
       setTargetMemorialId('');
     },
-    onError: () => {
-      toast.error('Erreur lors de la fusion');
+    onError: (error: { message?: string }) => {
+      toast.error('Erreur lors de la fusion', { description: error?.message });
     },
   });
 

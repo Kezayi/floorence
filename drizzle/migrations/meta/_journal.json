@@ -169,6 +169,13 @@
       "when": 1791760041764,
       "tag": "0023_v4b_revoke_view_write_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791761272925,
+      "tag": "0024_m25b_merge_publication_guard",
+      "breakpoints": true
     }
   ]
 }
