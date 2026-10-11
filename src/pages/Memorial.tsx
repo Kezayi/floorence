@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
-import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MemorialErrorBoundary from "@/components/memorial/MemorialErrorBoundary";
@@ -84,6 +84,8 @@ const MemorialInner = () => {
   const { memorials, loading: memorialsLoading } = useMemorials();
   const { user } = useAuth();
   const guestbookFormRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const historicalRedirectRef = useRef(false);
   
   const [memorialEvents, setMemorialEvents] = useState<MemorialEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -185,6 +187,33 @@ const MemorialInner = () => {
             shareToken: data.share_token || null,
           });
         } else {
+          // M2.4B — historical link of a source notice associated to a Master.
+          // Source must be public (published, active, not deleted via view); only the direct Master is resolved.
+          let srcQuery = supabase
+            .from('v_public_memorials')
+            .select('id, merged_into')
+            .eq('is_published', true)
+            .eq('is_active', true)
+            .not('merged_into', 'is', null);
+          srcQuery = token
+            ? srcQuery.eq('share_token', token)
+            : srcQuery.or(`slug.eq.${slug},legacy_slug.eq.${slug}`);
+          const { data: src } = await srcQuery.maybeSingle();
+          if (src?.merged_into && src.merged_into !== src.id && !historicalRedirectRef.current) {
+            const { data: master } = await supabase
+              .from('v_public_memorials')
+              .select('id, share_token')
+              .eq('id', src.merged_into)
+              .eq('is_published', true)
+              .eq('is_active', true)
+              .is('merged_into', null)
+              .maybeSingle();
+            if (master?.share_token && master.share_token !== token) {
+              historicalRedirectRef.current = true;
+              navigate(`/m/${master.share_token}`, { replace: true });
+              return;
+            }
+          }
           console.warn('[Memorial] Not found in DB either. Token/slug:', token || slug);
         }
       } catch (err) {
