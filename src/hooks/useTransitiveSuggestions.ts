@@ -47,7 +47,7 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
     },
   });
 
-  // Fetch all memorials (minimal data: id, names, birth_date)
+  // Fetch all memorials (minimal data + M2.3F identity fields)
   const { data: allMemorials } = useQuery({
     queryKey: ["transitive-all-memorials"],
     ...CACHE_CONFIG,
@@ -55,13 +55,30 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("memorials")
-        .select("id, first_name, last_name, birth_date")
+        .select("id, first_name, last_name, birth_date, merged_into, is_published, created_by")
         .eq("is_active", true);
       if (error) {
         console.error("Error fetching memorials:", error);
         return [];
       }
       return data || [];
+    },
+  });
+
+  // M2.3F: existing suggestions (family-level dedup)
+  const { data: existingSuggestions } = useQuery({
+    queryKey: ["transitive-existing-suggestions"],
+    ...CACHE_CONFIG,
+    enabled: !!memorialId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suggested_links")
+        .select("source_memorial_id, target_memorial_id");
+      if (error) return [];
+      return (data || []).map((s) => ({
+        sourceMemorialId: s.source_memorial_id || "",
+        targetMemorialId: s.target_memorial_id || "",
+      }));
     },
   });
 
@@ -74,6 +91,9 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
         firstName: m.first_name,
         lastName: m.last_name,
         birthDate: m.birth_date,
+        mergedInto: m.merged_into,
+        isPublished: !!m.is_published,
+        createdBy: m.created_by,
       });
     });
     return map;
@@ -84,10 +104,10 @@ export const useTransitiveSuggestions = (memorialId: string | undefined) => {
     if (!memorialId || !allRelations || allRelations.length === 0 || memorialMap.size === 0) {
       return [];
     }
-    const raw = computeTransitiveSuggestions(memorialId, allRelations, memorialMap);
+    const raw = computeTransitiveSuggestions(memorialId, allRelations, memorialMap, existingSuggestions || []);
     // Filter out ignored suggestions
     return raw.filter((s) => !ignoredKeys.has(s.pairKey));
-  }, [memorialId, allRelations, memorialMap, ignoredKeys]);
+  }, [memorialId, allRelations, memorialMap, ignoredKeys, existingSuggestions]);
 
   // Confirm a suggestion: create the relation as accepted
   const confirmSuggestion = useCallback(

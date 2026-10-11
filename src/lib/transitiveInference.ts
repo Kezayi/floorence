@@ -50,7 +50,22 @@ export interface MemorialNode {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  /** M2.3F: Master UUID when this memorial is a merged source */
+  mergedInto?: string | null;
+  isPublished?: boolean;
+  createdBy?: string | null;
 }
+
+export interface ExistingSuggestionEdge {
+  sourceMemorialId: string;
+  targetMemorialId: string;
+}
+
+/** M2.3F: resolved identity = COALESCE(merged_into, id) when the Master is accessible */
+const resolveId = (id: string, memorials: Map<string, MemorialNode>): string => {
+  const m = memorials.get(id)?.mergedInto;
+  return m && memorials.has(m) ? m : id;
+};
 
 export interface RelationEdge {
   id: string;
@@ -149,12 +164,18 @@ const TRANSITIVE_RULES: Record<string, { result: NormalizedType; confidence: "hi
  * Scanne toutes les relations acceptées pour trouver des liens à 2 sauts.
  */
 export const computeTransitiveSuggestions = (
-  targetMemorialId: string,
+  targetMemorialIdRaw: string,
   relations: RelationEdge[],
-  memorials: Map<string, MemorialNode>
+  memorials: Map<string, MemorialNode>,
+  existingSuggestions: ExistingSuggestionEdge[] = []
 ): TransitiveSuggestion[] => {
   const acceptedRelations = relations.filter(r => r.status === "accepted");
   if (acceptedRelations.length < 2) return [];
+
+  // M2.3F: work on resolved identities (source → Master)
+  const targetMemorialId = resolveId(targetMemorialIdRaw, memorials);
+  const pairOf = (a: string, b: string) =>
+    [resolveId(a, memorials), resolveId(b, memorials)].sort().join("|");
 
   // Build adjacency: for each memorial, list of (otherMemorialId, relation from this to other)
   const adjacency = new Map<string, Array<{ otherId: string; normalizedType: NormalizedType; rawType: string }>>();
@@ -162,34 +183,38 @@ export const computeTransitiveSuggestions = (
   for (const rel of acceptedRelations) {
     const normType = normalizeRelation(rel.relationType);
     if (!normType) continue;
+    const a = resolveId(rel.memorialId1, memorials);
+    const b = resolveId(rel.memorialId2, memorials);
+    // Same resolved identity (source↔Master) is never kinship
+    if (a === b) continue;
 
     // memorial_id_1 is [relationType] of memorial_id_2
-    if (!adjacency.has(rel.memorialId1)) adjacency.set(rel.memorialId1, []);
-    adjacency.get(rel.memorialId1)!.push({
-      otherId: rel.memorialId2,
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    adjacency.get(a)!.push({
+      otherId: b,
       normalizedType: normType,
       rawType: rel.relationType,
     });
 
     // Inverse direction
-    if (!adjacency.has(rel.memorialId2)) adjacency.set(rel.memorialId2, []);
-    adjacency.get(rel.memorialId2)!.push({
-      otherId: rel.memorialId1,
+    if (!adjacency.has(b)) adjacency.set(b, []);
+    adjacency.get(b)!.push({
+      otherId: a,
       normalizedType: inverseNormalized(normType),
       rawType: rel.relationType, // raw type is from the perspective of memorial_id_1
     });
   }
 
-  // Build set of existing direct links (to avoid suggesting duplicates)
+  // Build set of existing direct links at family level (accepted + pending + suggested_links)
   const existingPairs = new Set<string>();
-  for (const rel of acceptedRelations) {
-    existingPairs.add([rel.memorialId1, rel.memorialId2].sort().join("|"));
-  }
-
-  // Also include pending relations
   for (const rel of relations) {
-    if (rel.status === "pending") {
-      existingPairs.add([rel.memorialId1, rel.memorialId2].sort().join("|"));
+    if (rel.status === "accepted" || rel.status === "pending") {
+      existingPairs.add(pairOf(rel.memorialId1, rel.memorialId2));
+    }
+  }
+  for (const s of existingSuggestions) {
+    if (s.sourceMemorialId && s.targetMemorialId) {
+      existingPairs.add(pairOf(s.sourceMemorialId, s.targetMemorialId));
     }
   }
 
@@ -258,6 +283,14 @@ export const computeTransitiveSuggestions = (
       const pivotNode = memorials.get(pivotId);
 
       if (!xNode || !yNode || !pivotNode) continue;
+      if (targetMemorialId === yId) continue;
+
+      // M2.3F: never expose a private memorial to another owner (mirrors SQL B2)
+      if (
+        xNode.isPublished !== undefined && yNode.isPublished !== undefined &&
+        !(xNode.isPublished && yNode.isPublished) &&
+        xNode.createdBy !== yNode.createdBy
+      ) continue;
 
       // Compute the base relation and apply gender
       const baseRelation = NORMALIZED_TO_BASE[rule.result];
@@ -273,8 +306,10 @@ export const computeTransitiveSuggestions = (
       // Skip if chronologically impossible
       if (!chrono.isValid) continue;
 
-      // Build reason
-      const pivotFullName = `${pivotNode.firstName} ${pivotNode.lastName}`;
+      // Build reason (private pivot anonymized)
+      const pivotFullName = pivotNode.isPublished === false
+        ? "un avis privé"
+        : `${pivotNode.firstName} ${pivotNode.lastName}`;
       const xFullName = `${xNode.firstName} ${xNode.lastName}`;
       const yFullName = `${yNode.firstName} ${yNode.lastName}`;
       const reason = `${pivotFullName} est relié(e) à ${xFullName} et à ${yFullName}`;
