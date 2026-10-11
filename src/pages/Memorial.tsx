@@ -110,6 +110,7 @@ const MemorialInner = () => {
     setDbFallback(null);
     setDbFallbackDone(false);
     setDbFallbackLoading(false);
+    historicalRedirectRef.current = false;
   }, [token, slug]);
   
   // Check if contributions are enabled globally
