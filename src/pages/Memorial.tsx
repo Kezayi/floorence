@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useParams, Link, Navigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
@@ -336,6 +337,37 @@ const MemorialInner = () => {
   useEffect(() => {
     fetchGuestbookPosts();
   }, [fetchGuestbookPosts]);
+
+  // Consolidated tribute authors for the maillage (Master + authorized source memorials).
+  // Read-only: same public visibility rules as get_public_guestbook_posts (hidden/trashed excluded).
+  const memorialIdForMaillage = memorialData?.id;
+  const isMaillageUUID = !!memorialIdForMaillage && isValidUUID(memorialIdForMaillage);
+  const { data: maillagePosts } = useQuery({
+    queryKey: ["maillage-posts-consolidated", memorialIdForMaillage],
+    enabled: isMaillageUUID,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .rpc("get_public_guestbook_posts_consolidated", { p_master_id: memorialIdForMaillage as string });
+      if (error) {
+        console.error("Error fetching consolidated maillage posts:", error);
+        return [];
+      }
+      const isDemo = memorialData?.isDemo === true;
+      return (data || []).map((post: any) => ({
+        authorId: post.user_id
+          ? `author-${post.user_id}`
+          : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, "-")}` : `anon-${post.id}`),
+        authorName: post.author_name || "Anonyme",
+        authorAvatarUrl: isDemo
+          ? (post.author_name ? getDemoAvatarUrl(post.author_name) : null)
+          : (post.author_photo_url || null),
+        relationCategory: post.relation_category || "autre",
+        relationLink: post.relation_link || null,
+      }));
+    },
+  });
 
   // Fetch user's locked relation (first post on this memorial)
   useEffect(() => {
@@ -951,13 +983,13 @@ const MemorialInner = () => {
                   <RelationshipMaillage 
                     deceasedName={safeName}
                     memorialId={memorial.id}
-                    posts={guestbookPosts.map(post => ({
+                    posts={(isMaillageUUID && maillagePosts ? maillagePosts : guestbookPosts.map(post => ({
                       authorId: post.authorId,
                       authorName: post?.authorName || "Anonyme",
                       authorAvatarUrl: post?.authorAvatarUrl || null,
                       relationCategory: post?.relationCategory || "autre",
                       relationLink: post?.relationLink || null,
-                    }))}
+                    })))}
                   />
                 </SecureDataDisplay>
               </div>
