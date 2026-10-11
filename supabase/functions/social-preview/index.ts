@@ -134,6 +134,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // M2.4B — historical public link of a source associated to a Master: resolve the direct Master only.
+    let historicalMasterToken: string | null = null;
+    if (!memorial) {
+      let srcQ = supabase
+        .from('memorials')
+        .select('id, merged_into')
+        .eq('is_active', true)
+        .eq('is_published', true)
+        .is('deleted_at', null)
+        .not('merged_into', 'is', null);
+      srcQ = token ? srcQ.eq('share_token', token) : srcQ.or(`slug.eq.${slug},legacy_slug.eq.${slug}`);
+      const { data: src } = await srcQ.maybeSingle();
+      if (src?.merged_into && src.merged_into !== src.id) {
+        const { data: master } = await supabase
+          .from('memorials')
+          .select('slug, share_token, first_name, last_name, photo_url, photos, default_photo_index, birth_date, death_date, biography')
+          .eq('id', src.merged_into)
+          .eq('is_active', true)
+          .eq('is_published', true)
+          .is('deleted_at', null)
+          .is('merged_into', null)
+          .maybeSingle();
+        if (master?.share_token) {
+          memorial = master;
+          historicalMasterToken = master.share_token;
+        }
+      }
+    }
+
     if (!memorial) {
       return new Response(null, {
         status: 302,
@@ -142,7 +171,9 @@ Deno.serve(async (req) => {
     }
 
     // Always use the CANONICAL (current) slug for URLs
-    const canonicalUrl = `${APP_BASE_URL}/memorial/${memorial.slug}`;
+    const canonicalUrl = historicalMasterToken
+      ? `${APP_BASE_URL}/m/${historicalMasterToken}`
+      : `${APP_BASE_URL}/memorial/${memorial.slug}`;
 
     // Redirect non-crawlers to the SPA with canonical URL
     if (!isCrawler) {
