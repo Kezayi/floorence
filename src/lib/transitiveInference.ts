@@ -50,7 +50,22 @@ export interface MemorialNode {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  /** M2.3F: Master UUID when this memorial is a merged source */
+  mergedInto?: string | null;
+  isPublished?: boolean;
+  createdBy?: string | null;
 }
+
+export interface ExistingSuggestionEdge {
+  sourceMemorialId: string;
+  targetMemorialId: string;
+}
+
+/** M2.3F: resolved identity = COALESCE(merged_into, id) when the Master is accessible */
+const resolveId = (id: string, memorials: Map<string, MemorialNode>): string => {
+  const m = memorials.get(id)?.mergedInto;
+  return m && memorials.has(m) ? m : id;
+};
 
 export interface RelationEdge {
   id: string;
