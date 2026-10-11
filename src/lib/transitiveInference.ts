@@ -164,12 +164,18 @@ const TRANSITIVE_RULES: Record<string, { result: NormalizedType; confidence: "hi
  * Scanne toutes les relations acceptées pour trouver des liens à 2 sauts.
  */
 export const computeTransitiveSuggestions = (
-  targetMemorialId: string,
+  targetMemorialIdRaw: string,
   relations: RelationEdge[],
-  memorials: Map<string, MemorialNode>
+  memorials: Map<string, MemorialNode>,
+  existingSuggestions: ExistingSuggestionEdge[] = []
 ): TransitiveSuggestion[] => {
   const acceptedRelations = relations.filter(r => r.status === "accepted");
   if (acceptedRelations.length < 2) return [];
+
+  // M2.3F: work on resolved identities (source → Master)
+  const targetMemorialId = resolveId(targetMemorialIdRaw, memorials);
+  const pairOf = (a: string, b: string) =>
+    [resolveId(a, memorials), resolveId(b, memorials)].sort().join("|");
 
   // Build adjacency: for each memorial, list of (otherMemorialId, relation from this to other)
   const adjacency = new Map<string, Array<{ otherId: string; normalizedType: NormalizedType; rawType: string }>>();
@@ -177,34 +183,38 @@ export const computeTransitiveSuggestions = (
   for (const rel of acceptedRelations) {
     const normType = normalizeRelation(rel.relationType);
     if (!normType) continue;
+    const a = resolveId(rel.memorialId1, memorials);
+    const b = resolveId(rel.memorialId2, memorials);
+    // Same resolved identity (source↔Master) is never kinship
+    if (a === b) continue;
 
     // memorial_id_1 is [relationType] of memorial_id_2
-    if (!adjacency.has(rel.memorialId1)) adjacency.set(rel.memorialId1, []);
-    adjacency.get(rel.memorialId1)!.push({
-      otherId: rel.memorialId2,
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    adjacency.get(a)!.push({
+      otherId: b,
       normalizedType: normType,
       rawType: rel.relationType,
     });
 
     // Inverse direction
-    if (!adjacency.has(rel.memorialId2)) adjacency.set(rel.memorialId2, []);
-    adjacency.get(rel.memorialId2)!.push({
-      otherId: rel.memorialId1,
+    if (!adjacency.has(b)) adjacency.set(b, []);
+    adjacency.get(b)!.push({
+      otherId: a,
       normalizedType: inverseNormalized(normType),
       rawType: rel.relationType, // raw type is from the perspective of memorial_id_1
     });
   }
 
-  // Build set of existing direct links (to avoid suggesting duplicates)
+  // Build set of existing direct links at family level (accepted + pending + suggested_links)
   const existingPairs = new Set<string>();
-  for (const rel of acceptedRelations) {
-    existingPairs.add([rel.memorialId1, rel.memorialId2].sort().join("|"));
-  }
-
-  // Also include pending relations
   for (const rel of relations) {
-    if (rel.status === "pending") {
-      existingPairs.add([rel.memorialId1, rel.memorialId2].sort().join("|"));
+    if (rel.status === "accepted" || rel.status === "pending") {
+      existingPairs.add(pairOf(rel.memorialId1, rel.memorialId2));
+    }
+  }
+  for (const s of existingSuggestions) {
+    if (s.sourceMemorialId && s.targetMemorialId) {
+      existingPairs.add(pairOf(s.sourceMemorialId, s.targetMemorialId));
     }
   }
 
