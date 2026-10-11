@@ -2,6 +2,7 @@ import { useMemo, useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TreePine, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -31,73 +32,50 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
   // Reserve the Cujus photo to guarantee avatar uniqueness (Règle d'Or)
   reservePortrait(deceasedPhoto);
 
-  // 1. Fetch inter-memorial relations (Pont des Ancêtres)
-  const { data: interMemorialNodes, isLoading: loadingRelations } = useQuery({
+  // 1. Fetch consolidated lineage (M2.3G) — biological only, resolved identities
+  const { data: lineageRaw, isLoading: loadingRelations } = useQuery({
     queryKey: ["lineage-tree-relations", memorialId],
     enabled: isValidUUID,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("memorial_relations")
-        .select("id, relation_type, memorial_id_1, memorial_id_2, status, is_lineage")
-        .or(`memorial_id_1.eq.${memorialId},memorial_id_2.eq.${memorialId}`)
-        .in("status", ["accepted", "pending"]);
-
-      if (!data || data.length === 0) return [];
-
-      const linkedIds = data
-        .map(r => r.memorial_id_1 === memorialId ? r.memorial_id_2 : r.memorial_id_1)
-        .filter((id): id is string => !!id);
-
-      if (linkedIds.length === 0) return [];
-
-      const { data: linkedMemorials } = await supabase
-        .from("memorials")
-        .select("id, first_name, last_name, photo_url, photos, default_photo_index, share_token, created_by")
-        .in("id", linkedIds);
-
-      if (!linkedMemorials) return [];
-
-      const memorialMap = new Map(linkedMemorials.map(m => [m.id, m]));
-      const currentFirstName = deceasedName.split(" ")[0];
-
-      return data.map(r => {
-        const isSource = r.memorial_id_1 === memorialId;
-        const linkedId = isSource ? r.memorial_id_2 : r.memorial_id_1;
-        if (!linkedId) return null;
-
-        const linked = memorialMap.get(linkedId);
-        if (!linked) return null;
-
-        const relType = r.relation_type;
-        const relation = isSource
-          ? getGenderAwareRelation(relType, currentFirstName)
-          : getInverseRelation(relType, currentFirstName);
-
-        const photos = (linked.photos && linked.photos.length > 0)
-          ? linked.photos.filter((p: string) => p && !p.startsWith("data:"))
-          : linked.photo_url ? [linked.photo_url] : [];
-        const safeIdx = (linked.default_photo_index ?? 0) < photos.length ? (linked.default_photo_index ?? 0) : 0;
-
-        return {
-          id: linked.id,
-          name: `${linked.first_name || ''} ${linked.last_name || ''}`.trim(),
-          firstName: linked.first_name || '',
-          photo: photos[safeIdx] || null,
-          shareToken: linked.share_token || null,
-          relation,
-          createdBy: linked.created_by,
-          isLineageFromDb: r.is_lineage !== false, // Use DB column
-          source: "memorial" as const,
-        };
-      }).filter(Boolean) as Array<{
-        id: string; name: string; firstName: string; photo: string | null;
-        shareToken: string | null; relation: string; createdBy: string; 
-        isLineageFromDb: boolean; source: "memorial";
-      }>;
-    },
+    queryFn: () => fetchResolvedGraph(memorialId, "lineage", ["accepted", "pending"]),
   });
+
+  const interMemorialNodes = useMemo(() => {
+    if (!lineageRaw) return [];
+    const memorialMap = new Map(lineageRaw.memorials.map(m => [m.id, m]));
+    const currentFirstName = deceasedName.split(" ")[0];
+    const seen = new Set<string>();
+    return lineageRaw.edges.map(e => {
+      const linked = memorialMap.get(e.linkedId);
+      if (!linked) return null;
+      const relation = e.masterIsSource
+        ? getGenderAwareRelation(e.relationType, currentFirstName)
+        : getInverseRelation(e.relationType, currentFirstName);
+      const key = `${linked.id}|${relation}`;
+      if (seen.has(key)) return null;
+      seen.add(key);
+      const photos = (linked.photos && linked.photos.length > 0)
+        ? linked.photos.filter((p: string) => p && !p.startsWith("data:"))
+        : linked.photo_url ? [linked.photo_url] : [];
+      const safeIdx = (linked.default_photo_index ?? 0) < photos.length ? (linked.default_photo_index ?? 0) : 0;
+      return {
+        id: linked.id,
+        name: `${linked.first_name || ''} ${linked.last_name || ''}`.trim(),
+        firstName: linked.first_name || '',
+        photo: photos[safeIdx] || null,
+        shareToken: linked.share_token || null,
+        relation,
+        createdBy: linked.created_by,
+        isLineageFromDb: true, // lineage RPC already excludes spouses/social
+        source: "memorial" as const,
+      };
+    }).filter(Boolean) as Array<{
+      id: string; name: string; firstName: string; photo: string | null;
+      shareToken: string | null; relation: string; createdBy: string;
+      isLineageFromDb: boolean; source: "memorial";
+    }>;
+  }, [lineageRaw, deceasedName]);
 
   // 2. Fetch raw guestbook tributes
   const { data: rawTributes, isLoading: loadingTributes } = useQuery({
@@ -107,7 +85,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data } = await supabase
-        .rpc("get_public_guestbook_posts", { p_memorial_id: memorialId });
+        .rpc("get_public_guestbook_posts_consolidated", { p_master_id: memorialId, p_limit: 500, p_offset: 0 });
       return data || [];
     },
   });
