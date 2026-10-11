@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useParams, Link, Navigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
