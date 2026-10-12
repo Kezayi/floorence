@@ -8,6 +8,7 @@ import Footer from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, FileText, Heart, LogOut, ChevronRight, Flame, Loader2, AlertCircle, Share2, Receipt } from "lucide-react";
 import AvatarUpload from "@/components/account/AvatarUpload";
+import FamilyIdentityAttestation from "@/components/account/FamilyIdentityAttestation";
 import { ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -468,6 +469,7 @@ const Account = () => {
                             Vous n'avez pas encore créé d'espace mémoriel
                           </p>
                         )}
+                        {user && <FamilyIdentityAttestation userId={user.id} />}
                       </div>
                     </TabsContent>
 
