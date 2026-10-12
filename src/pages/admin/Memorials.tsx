@@ -434,28 +434,12 @@ const Memorials = () => {
 
   const handleMerge = (memorial: Memorial) => {
     setSelectedMemorial(memorial);
+    setTargetMemorialId('');
     setShowMergeDialog(true);
   };
 
-  const handleEdit = (memorial: Memorial) => {
-    setSelectedMemorial(memorial);
-    setEditForm({
-      first_name: memorial.first_name,
-      last_name: memorial.last_name,
-      birth_date: memorial.birth_date || '',
-      death_date: memorial.death_date || '',
-      biography: memorial.biography || '',
-    });
-    setShowEditDialog(true);
-  };
-
-  const handleDelete = (memorial: Memorial) => {
-    setSelectedMemorial(memorial);
-    setShowDeleteDialog(true);
-  };
-
   const confirmMerge = () => {
-    if (selectedMemorial && targetMemorialId) {
+    if (selectedMemorial && targetMemorialId && hasActiveConfirmation) {
       mergeMutation.mutate({
         sourceId: selectedMemorial.id,
         targetId: targetMemorialId,
