@@ -285,6 +285,45 @@ const Memorials = () => {
     enabled: showMergeDialog,
   });
 
+  // M2.5D — lecture seule de la confirmation familiale active pour la paire exacte.
+  const mergeSourceId = selectedMemorial?.id ?? '';
+  const {
+    data: mergeConfirmation,
+    isFetching: mergeConfirmationLoading,
+    isError: mergeConfirmationError,
+  } = useQuery({
+    queryKey: ['admin-merge-confirmation', mergeSourceId, targetMemorialId],
+    enabled: showMergeDialog && Boolean(mergeSourceId) && Boolean(targetMemorialId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('memorial_merge_confirmations')
+        .select('id, source_memorial_id, master_memorial_id, status, confirmed_at, confirmer_capacity')
+        .eq('source_memorial_id', mergeSourceId)
+        .eq('master_memorial_id', targetMemorialId)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+      if (error) throw error;
+      if (
+        data &&
+        (data.source_memorial_id !== mergeSourceId ||
+          data.master_memorial_id !== targetMemorialId ||
+          data.status !== 'confirmed')
+      ) {
+        return null;
+      }
+      return data;
+    },
+  });
+  const hasActiveConfirmation =
+    Boolean(targetMemorialId) &&
+    !mergeConfirmationLoading &&
+    !mergeConfirmationError &&
+    mergeConfirmation?.source_memorial_id === mergeSourceId &&
+    mergeConfirmation?.master_memorial_id === targetMemorialId;
+
   const mergeMutation = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
       // M2.5B — fusion exclusivement via la RPC serveur (contrôles Admin,
@@ -395,6 +434,7 @@ const Memorials = () => {
 
   const handleMerge = (memorial: Memorial) => {
     setSelectedMemorial(memorial);
+    setTargetMemorialId('');
     setShowMergeDialog(true);
   };
 
@@ -416,7 +456,7 @@ const Memorials = () => {
   };
 
   const confirmMerge = () => {
-    if (selectedMemorial && targetMemorialId) {
+    if (selectedMemorial && targetMemorialId && hasActiveConfirmation) {
       mergeMutation.mutate({
         sourceId: selectedMemorial.id,
         targetId: targetMemorialId,
@@ -792,6 +832,17 @@ const Memorials = () => {
                   ))}
               </SelectContent>
             </Select>
+            {targetMemorialId && (
+              <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
+                {mergeConfirmationLoading
+                  ? 'Vérification de la confirmation familiale…'
+                  : mergeConfirmationError
+                    ? 'Impossible de vérifier la confirmation familiale. Fusion indisponible.'
+                    : hasActiveConfirmation
+                      ? `Confirmation familiale active (${mergeConfirmation?.confirmer_capacity === 'heir' ? 'Gardien' : 'créateur'}, ${new Date(mergeConfirmation!.confirmed_at).toLocaleDateString('fr-FR')}).`
+                      : 'Aucune confirmation familiale active pour cette paire. Fusion indisponible.'}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMergeDialog(false)}>
@@ -799,7 +850,7 @@ const Memorials = () => {
             </Button>
             <Button
               onClick={confirmMerge}
-              disabled={!targetMemorialId || mergeMutation.isPending}
+              disabled={!targetMemorialId || !hasActiveConfirmation || mergeMutation.isPending}
             >
               Confirmer la fusion
             </Button>
