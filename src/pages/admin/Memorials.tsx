@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/table';
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2, Link2 } from 'lucide-react';
+import { Search, GitMerge, ExternalLink, Pencil, Trash2, AlertCircle, RefreshCw, MessageSquare, Flame, Flower2, Link2, Unlink } from 'lucide-react';
 import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -323,6 +323,23 @@ const Memorials = () => {
     !mergeConfirmationError &&
     mergeConfirmation?.source_memorial_id === mergeSourceId &&
     mergeConfirmation?.master_memorial_id === targetMemorialId;
+
+  // M2.5F-A — dissociation exclusivement via la RPC serveur (journalisée côté base)
+  const unmergeMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const { error } = await supabase.rpc('admin_unmerge_memorial', { source_id: sourceId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-memorials'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-memorials-count'] });
+      queryClient.invalidateQueries({ queryKey: ['merge-confirmation'] });
+      toast.success('Avis dissocié avec succès');
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error?.message || 'Dissociation refusée');
+    },
+  });
 
   const mergeMutation = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
@@ -769,6 +786,22 @@ const Memorials = () => {
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
+                        {memorial.merged_into && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={unmergeMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Dissocier « ${memorial.first_name} ${memorial.last_name} » de son avis de référence ? L'avis redeviendra indépendant ; aucune donnée ne sera supprimée.`)) {
+                                unmergeMutation.mutate(memorial.id);
+                              }
+                            }}
+                            title="Dissocier"
+                          >
+                            <Unlink className="w-4 h-4" />
+                          </Button>
+                        )}
                         {!memorial.merged_into && hasDuplicates && (
                           <Button
                             variant="ghost"

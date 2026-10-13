@@ -49,6 +49,7 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
   const [sourceId, setSourceId] = useState("");
   const [attested, setAttested] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -141,6 +142,29 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
     load();
   };
 
+  const revoke = async (c: Confirmation) => {
+    if (!window.confirm("Révoquer cette attestation ? Elle restera dans l'historique et ne pourra plus servir à un regroupement.")) return;
+    setRevokingId(c.id);
+    const { error } = await supabase
+      .from("memorial_merge_confirmations")
+      .update({
+        status: "revoked",
+        revoked_by: userId,
+        revoked_at: new Date().toISOString(), // recalculé par le serveur
+        revocation_reason: "family_revoke",
+      })
+      .eq("id", c.id)
+      .eq("status", "confirmed")
+      .select("id");
+    setRevokingId(null);
+    if (error) {
+      toast.error(error.message || "Révocation refusée.");
+      return;
+    }
+    toast.success("Attestation révoquée.");
+    load();
+  };
+
   if (loading || masters.length === 0) return null;
 
   return (
@@ -156,15 +180,30 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
         </button>
       </div>
 
-      {confirmations.map((c) => (
-        <div key={c.id} className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-sm">
-          <ShieldCheck className="w-4 h-4 text-foreground/50 shrink-0" />
-          <span className="font-sans">
-            {fullName(byId.get(c.source_memorial_id))} → {fullName(byId.get(c.master_memorial_id))} ·{" "}
-            {c.status === "confirmed" ? "Attestée" : "Révoquée"} le {fmt(c.confirmed_at)}
-          </span>
-        </div>
-      ))}
+      {confirmations.map((c) => {
+        // Fusion considérée active si l'avis en double n'apparaît plus parmi les avis indépendants publics.
+        // Le serveur reste seul juge (trigger de garde : refus si fusion active).
+        const mergeActive = !sources.some((s) => s.id === c.source_memorial_id);
+        return (
+          <div key={c.id} className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-sm">
+            <ShieldCheck className="w-4 h-4 text-foreground/50 shrink-0" />
+            <span className="font-sans flex-1">
+              {fullName(byId.get(c.source_memorial_id))} → {fullName(byId.get(c.master_memorial_id))} ·{" "}
+              {c.status === "confirmed" ? "Attestée" : "Révoquée"} le {fmt(c.confirmed_at)}
+            </span>
+            {c.status === "confirmed" && !mergeActive && (
+              <button
+                type="button"
+                disabled={revokingId === c.id}
+                onClick={() => revoke(c)}
+                className="text-sm font-sans text-muted-foreground hover:text-foreground underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                {revokingId === c.id ? "…" : "Révoquer"}
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
         <DialogContent className="max-w-lg">
