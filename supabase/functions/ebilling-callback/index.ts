@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,83 +124,26 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (status === "SUCCESS" || status === "PAID" || status === "COMPLETED") {
-      // Update transaction to success — conditional, so concurrent duplicate callbacks credit once
-      const { data: claimed } = await supabaseAdmin
-        .from("payment_transactions")
-        .update({
-          status: "success",
-          ebilling_transaction_id: transactionId || null,
-          last_api_response: JSON.stringify(callbackData),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", tx.id)
-        .neq("status", "success")
-        .select("id");
-      if (!claimed || claimed.length === 0) {
+      // G1-FIX2: shared atomic success pipeline (claim → unhide → credit → certificate)
+      const result = await finalizePaymentSuccess(supabaseAdmin, {
+        txId: tx.id,
+        reference: ebillingRef,
+        channel: "callback",
+        ebillingTransactionId: transactionId || null,
+        lastApiResponse: JSON.stringify(callbackData),
+      });
+      if (!result.claimed) {
         return new Response(
           JSON.stringify({ success: true, message: "Already processed" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-
-      const metadata = tx.metadata as Record<string, any> | null;
-      const postId = metadata?.post_id;
-      const quantity = metadata?.quantity || 1;
-      const itemType = tx.payment_type;
-
-      // Update guestbook post gesture counts
-      if (postId) {
-        const column = itemType === "cierge" ? "candle_count" : "flower_count";
-        const { data: currentPost } = await supabaseAdmin
-          .from("guestbook_posts")
-          .select(`${column}, is_hidden`)
-          .eq("id", postId)
-          .single();
-
-        if (currentPost) {
-          const currentCount = (currentPost as any)[column] ?? 0;
-          await supabaseAdmin
-            .from("guestbook_posts")
-            .update({ [column]: currentCount + quantity, is_hidden: false })
-            .eq("id", postId);
-        }
-      }
-
-      // Unhide any post linked via payment_reference
-      await supabaseAdmin
-        .from("guestbook_posts")
-        .update({ is_hidden: false, updated_at: new Date().toISOString() })
-        .eq("payment_reference", ebillingRef)
-        .eq("is_hidden", true);
-
       console.log("[ebilling-callback] Payment confirmed:", ebillingRef);
-
-      // Trigger certificate generation & email (non-blocking)
-      try {
-        const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-payment-success`;
-        const certRes = await fetch(fnUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({ transaction_id: tx.id }),
-        });
-        const certData = await certRes.json();
-        console.log("[ebilling-callback] Certificate result:", JSON.stringify(certData));
-      } catch (certErr) {
-        console.error("[ebilling-callback] Certificate generation failed (non-blocking):", certErr);
-      }
     } else if (status === "FAILED" || status === "CANCELLED" || status === "EXPIRED") {
-      await supabaseAdmin
-        .from("payment_transactions")
-        .update({
-          status: "failed",
-          ebilling_transaction_id: transactionId || null,
-          last_api_response: JSON.stringify(callbackData),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", tx.id);
+      await markPaymentFailed(supabaseAdmin, tx.id, {
+        ebilling_transaction_id: transactionId || null,
+        last_api_response: JSON.stringify(callbackData),
+      });
 
       console.log("[ebilling-callback] Payment failed:", ebillingRef);
     } else {
