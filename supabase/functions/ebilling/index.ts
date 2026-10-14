@@ -307,7 +307,14 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("item_type", item_type)
       .single();
 
-    const unitPrice = priceData?.unit_price ?? 500;
+    // G1-FIX6: active price only, never a hardcoded fallback.
+    const unitPrice = priceData?.unit_price;
+    if (typeof unitPrice !== "number" || unitPrice < 0) {
+      return new Response(
+        JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const totalAmount = unitPrice * quantity;
     const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";

@@ -83,6 +83,10 @@ export const useUpdateMonetization = () => {
   });
 };
 
+// G1-FIX6: prices are written to system_settings through the audited admin function;
+// ritual_prices is a database-synced mirror.
+const RITUAL_SETTING_KEY: Record<string, string> = { cierge: 'candle_price', fleur: 'flower_price' };
+
 export const useUpdateRitualPrice = () => {
   const queryClient = useQueryClient();
 
@@ -91,14 +95,17 @@ export const useUpdateRitualPrice = () => {
       if (unitPrice < 500) {
         throw new Error('Le prix minimum est de 500 FCFA');
       }
-      const { error } = await supabase
-        .from('ritual_prices')
-        .update({ unit_price: unitPrice })
-        .eq('item_type', itemType);
+      const key = RITUAL_SETTING_KEY[itemType];
+      if (!key) throw new Error('Type de geste inconnu');
+      const { data, error } = await supabase.functions.invoke('admin-settings', {
+        body: { key, value: { amount: unitPrice, currency: 'XAF' } },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monetization'] });
+      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
     },
   });
 };
