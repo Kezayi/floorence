@@ -66,7 +66,7 @@ export async function finalizePaymentSuccess(admin: Admin, input: FinalizeInput)
     }
   }
 
-  return { claimed: true, unhidden: unhiddenIds.length, credited };
+  return { claimed: true, unhidden: r.unhidden ?? 0, credited };
 }
 
 // Failure transition that can never overwrite a confirmed payment.
