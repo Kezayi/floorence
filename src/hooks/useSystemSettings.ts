@@ -46,11 +46,11 @@ export const useSystemSettings = () => {
       if (error) throw error;
 
       const settings: SystemSettings = {
-        candle_price: { amount: 500, currency: 'XOF' },
-        flower_price: { amount: 1000, currency: 'XOF' },
+        candle_price: { amount: 500, currency: 'XAF' },
+        flower_price: { amount: 1000, currency: 'XAF' },
         donation_enabled: { enabled: true },
-        memorial_price_future: { amount: 15000, currency: 'XOF' },
-        memorial_price_past: { amount: 10000, currency: 'XOF' },
+        memorial_price_future: { amount: 15000, currency: 'XAF' },
+        memorial_price_past: { amount: 10000, currency: 'XAF' },
         contribution_link_template: { url: '', enabled: false },
         notification_frequency: { frequency: 'weekly_saturday' },
         notification_window: { start_day: 25, end_day: 5 },

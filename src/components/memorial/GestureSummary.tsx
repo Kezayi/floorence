@@ -78,7 +78,7 @@ const GestureSummary = ({
                <span className="text-xs font-sans">Cierges</span>
                {userHasPosted && (
                  <span className="text-[10px] text-muted-foreground">
-                   {isMonetized ? `${candlePrice} FCFA` : 'Offert'}
+                   {isMonetized ? `${candlePrice} XAF` : 'Offert'}
                  </span>
                )}
             </button>
@@ -94,7 +94,7 @@ const GestureSummary = ({
               <span className="text-xs font-sans">Fleurs</span>
               {userHasPosted && (
                 <span className="text-[10px] text-muted-foreground">
-                  {isMonetized ? `${flowerPrice} FCFA` : 'Offert'}
+                  {isMonetized ? `${flowerPrice} XAF` : 'Offert'}
                 </span>
               )}
             </button>
