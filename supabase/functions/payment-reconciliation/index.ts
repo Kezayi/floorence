@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +65,7 @@ serve(async (req: Request) => {
 
     let reconciledCount = 0;
     const results: { ref: string; result: string }[] = [];
+    const txRowIdCache: Record<string, string | null> = {};
 
     for (const tx of pending) {
       const ref = tx.ebilling_reference;
