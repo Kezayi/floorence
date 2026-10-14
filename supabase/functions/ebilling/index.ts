@@ -126,7 +126,11 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     }), { status: 200, headers: jsonHeaders });
   }
 
-  const { username, sharedKey, baseUrl } = getEbillingConfig();
+  const { username, sharedKey, baseUrl, ok: envOk, mode: envMode, errors: envErrors } = getEbillingConfig();
+  if (!envOk) {
+    console.error(`[ebilling:check-status] BLOCKED env=${envMode}: ${envErrors.join(" | ")}`);
+    return new Response(JSON.stringify({ error: "Configuration de paiement invalide pour l'environnement actif" }), { status: 500, headers: jsonHeaders });
+  }
 
   if (!username || !sharedKey) {
     return new Response(JSON.stringify({ error: "Configuration eBilling manquante (credentials)" }), { status: 500, headers: jsonHeaders });
@@ -234,7 +238,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { username, sharedKey, baseUrl, portalBaseUrl } = getEbillingConfig();
+    const { username, sharedKey, baseUrl, portalBaseUrl, ok: envOk, mode: envMode, errors: envErrors } = getEbillingConfig();
 
     if (!username || !sharedKey) {
       console.error("[ebilling] FATAL: Missing EBILLING_USERNAME or EBILLING_SHARED_KEY");
