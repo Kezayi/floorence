@@ -157,6 +157,7 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
   };
 
   const revoke = async (c: Confirmation) => {
+    if (sourceMerge[c.source_memorial_id] !== null || !(c.source_memorial_id in sourceMerge)) return;
     if (!window.confirm("Révoquer cette attestation ? Elle restera dans l'historique et ne pourra plus servir à un regroupement.")) return;
     setRevokingId(c.id);
     const { error } = await supabase
