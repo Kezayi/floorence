@@ -37,6 +37,8 @@ const Settings = () => {
   const [isMonetized, setIsMonetized] = useState(false);
   const [candlePrice, setCandlePrice] = useState(500);
   const [flowerPrice, setFlowerPrice] = useState(500);
+  const [memorialPriceFuture, setMemorialPriceFuture] = useState(0);
+  const [memorialPricePast, setMemorialPricePast] = useState(0);
 
   useEffect(() => {
     if (settings) {
@@ -45,6 +47,8 @@ const Settings = () => {
       setNotifFrequency(settings.notification_frequency.frequency);
       setNotifStartDay(settings.notification_window.start_day);
       setNotifEndDay(settings.notification_window.end_day);
+      setMemorialPriceFuture(settings.memorial_price_future.amount);
+      setMemorialPricePast(settings.memorial_price_past.amount);
     }
   }, [settings]);
 
@@ -90,9 +94,15 @@ const Settings = () => {
       return;
     }
     try {
+      if (memorialPriceFuture < 0 || memorialPricePast < 0) {
+        toast.error('Le prix de création ne peut pas être négatif');
+        return;
+      }
       await updateMonetization.mutateAsync({ isMonetized });
       await updateRitualPrice.mutateAsync({ itemType: 'cierge', unitPrice: candlePrice });
       await updateRitualPrice.mutateAsync({ itemType: 'fleur', unitPrice: flowerPrice });
+      await updateSetting.mutateAsync({ key: 'memorial_price_future', value: { amount: memorialPriceFuture, currency: 'XAF' } });
+      await updateSetting.mutateAsync({ key: 'memorial_price_past', value: { amount: memorialPricePast, currency: 'XAF' } });
       toast.success('Paramètres de monétisation mis à jour');
     } catch (error: any) {
       toast.error(error?.message || 'Erreur lors de la mise à jour');
@@ -172,6 +182,28 @@ const Settings = () => {
                 {flowerPrice < 500 && (
                   <p className="text-xs text-destructive">Minimum : 500 FCFA</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="memorial-price-future">Prix création — obsèques à venir (FCFA)</Label>
+                <Input
+                  id="memorial-price-future"
+                  type="number"
+                  min={0}
+                  value={memorialPriceFuture}
+                  onChange={(e) => setMemorialPriceFuture(parseInt(e.target.value) || 0)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="memorial-price-past">Prix création — obsèques passées (FCFA)</Label>
+                <Input
+                  id="memorial-price-past"
+                  type="number"
+                  min={0}
+                  value={memorialPricePast}
+                  onChange={(e) => setMemorialPricePast(parseInt(e.target.value) || 0)}
+                />
               </div>
             </div>
 
