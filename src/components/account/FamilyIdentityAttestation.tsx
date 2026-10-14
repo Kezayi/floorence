@@ -50,6 +50,8 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
   const [attested, setAttested] = useState(false);
   const [saving, setSaving] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  // id source -> merged_into (null = explicitement non fusionnée ; clé absente = état inconnu)
+  const [sourceMerge, setSourceMerge] = useState<Record<string, string | null>>({});
 
   const load = async () => {
     setLoading(true);
@@ -81,7 +83,19 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
         (own.data || []).filter((m: any) => (m.heir_user_id ?? m.created_by) === userId) as MemorialLite[]
       );
       setSources((pub.data || []) as MemorialLite[]);
-      setConfirmations((conf.data || []) as Confirmation[]);
+      const confs = (conf.data || []) as Confirmation[];
+      setConfirmations(confs);
+      // FIX M2.5F-B : lecture explicite de merged_into des sources attestées
+      const ids = [...new Set(confs.map((c) => c.source_memorial_id))];
+      const states: Record<string, string | null> = {};
+      if (ids.length) {
+        const { data: srcRows, error: srcErr } = await supabase
+          .from("v_public_memorials")
+          .select("id, merged_into")
+          .in("id", ids);
+        if (!srcErr) (srcRows || []).forEach((r: any) => { states[r.id] = r.merged_into ?? null; });
+      }
+      setSourceMerge(states);
     } catch {
       toast.error("Impossible de charger les attestations.");
     } finally {
@@ -181,9 +195,11 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
       </div>
 
       {confirmations.map((c) => {
-        // Fusion considérée active si l'avis en double n'apparaît plus parmi les avis indépendants publics.
-        // Le serveur reste seul juge (trigger de garde : refus si fusion active).
-        const mergeActive = !sources.some((s) => s.id === c.source_memorial_id);
+        // Révocable uniquement si la source est explicitement non fusionnée (merged_into === null).
+        // État inconnu (clé absente) => action refusée. Le serveur reste seul juge.
+        const explicitlyUnmerged =
+          Object.prototype.hasOwnProperty.call(sourceMerge, c.source_memorial_id) &&
+          sourceMerge[c.source_memorial_id] === null;
         return (
           <div key={c.id} className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-sm">
             <ShieldCheck className="w-4 h-4 text-foreground/50 shrink-0" />
@@ -191,7 +207,7 @@ export const FamilyIdentityAttestation = ({ userId }: { userId: string }) => {
               {fullName(byId.get(c.source_memorial_id))} → {fullName(byId.get(c.master_memorial_id))} ·{" "}
               {c.status === "confirmed" ? "Attestée" : "Révoquée"} le {fmt(c.confirmed_at)}
             </span>
-            {c.status === "confirmed" && !mergeActive && (
+            {c.status === "confirmed" && explicitlyUnmerged && (
               <button
                 type="button"
                 disabled={revokingId === c.id}
