@@ -15,13 +15,57 @@ const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
 // Auth: Basic Auth (Username:SharedKey)
 // Payment portal: https://test.billing-easy.net
 
-function getEbillingConfig() {
-  const username = (Deno.env.get("EBILLING_USERNAME") ?? "").trim();
-  const sharedKey = (Deno.env.get("EBILLING_SHARED_KEY") ?? "").trim();
-  const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "https://lab.billing-easy.net/api/v1/merchant").trim().replace(/\/+$/, "");
-  const portalBaseUrl = "https://test.billing-easy.net";
+// ── G1-FIX4: explicit environment selection (lab by default) ──
+export const LAB_API_HOSTS = ["lab.billing-easy.net"];
+export const LAB_PORTAL_HOSTS = ["test.billing-easy.net"];
+const LAB_DEFAULT_API = "https://lab.billing-easy.net/api/v1/merchant";
+const LAB_DEFAULT_PORTAL = "https://test.billing-easy.net";
 
-  return { username, sharedKey, baseUrl, portalBaseUrl };
+function hostOf(url: string): string | null {
+  try { const u = new URL(url); return u.protocol === "https:" ? u.hostname.toLowerCase() : null; } catch { return null; }
+}
+function splitList(v: string | undefined): string[] {
+  return (v ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
+export function resolveEbillingConfig(env: (k: string) => string | undefined) {
+  const rawEnv = (env("EBILLING_ENV") ?? "").trim().toLowerCase();
+  const mode: "lab" | "production" = rawEnv === "production" ? "production" : "lab";
+  const username = (env("EBILLING_USERNAME") ?? "").trim();
+  const sharedKey = (env("EBILLING_SHARED_KEY") ?? "").trim();
+  const callbackSecret = (env("EBILLING_CALLBACK_SECRET") ?? "").trim();
+  const rawBase = (env("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, "");
+  const rawPortal = (env("EBILLING_PORTAL_BASE_URL") ?? "").trim().replace(/\/+$/, "");
+  const errors: string[] = [];
+
+  let baseUrl: string;
+  let portalBaseUrl: string;
+  if (mode === "lab") {
+    baseUrl = rawBase || LAB_DEFAULT_API;
+    portalBaseUrl = rawPortal || LAB_DEFAULT_PORTAL;
+    const bh = hostOf(baseUrl); const ph = hostOf(portalBaseUrl);
+    if (!bh || !LAB_API_HOSTS.includes(bh)) errors.push("LAB: endpoint API hors liste LAB refusé");
+    if (!ph || !LAB_PORTAL_HOSTS.includes(ph)) errors.push("LAB: portail hors liste LAB refusé");
+  } else {
+    baseUrl = rawBase;
+    portalBaseUrl = rawPortal;
+    const allowedApi = splitList(env("EBILLING_PROD_ALLOWED_API_HOSTS"));
+    const allowedPortal = splitList(env("EBILLING_PROD_ALLOWED_PORTAL_HOSTS"));
+    if (!baseUrl) errors.push("PRODUCTION: EBILLING_BASE_URL manquant");
+    if (!portalBaseUrl) errors.push("PRODUCTION: EBILLING_PORTAL_BASE_URL manquant");
+    if (!username || !sharedKey) errors.push("PRODUCTION: identifiants marchands manquants");
+    if (!callbackSecret) errors.push("PRODUCTION: EBILLING_CALLBACK_SECRET manquant");
+    if (allowedApi.length === 0) errors.push("PRODUCTION: EBILLING_PROD_ALLOWED_API_HOSTS manquant");
+    if (allowedPortal.length === 0) errors.push("PRODUCTION: EBILLING_PROD_ALLOWED_PORTAL_HOSTS manquant");
+    const bh = baseUrl ? hostOf(baseUrl) : null; const ph = portalBaseUrl ? hostOf(portalBaseUrl) : null;
+    if (baseUrl && (!bh || !allowedApi.includes(bh) || LAB_API_HOSTS.includes(bh))) errors.push("PRODUCTION: endpoint API non autorisé");
+    if (portalBaseUrl && (!ph || !allowedPortal.includes(ph) || LAB_PORTAL_HOSTS.includes(ph))) errors.push("PRODUCTION: portail non autorisé");
+  }
+  return { mode, username, sharedKey, baseUrl, portalBaseUrl, errors, ok: errors.length === 0 };
+}
+
+function getEbillingConfig() {
+  return resolveEbillingConfig((k) => Deno.env.get(k));
 }
 
 function buildBasicAuth(username: string, sharedKey: string): string {
@@ -361,11 +405,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // ── ENVIRONMENT GUARD ──
-    if (!baseUrl.includes("lab")) {
-      console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${baseUrl} does not target LAB environment`);
+    // ── ENVIRONMENT GUARD (G1-FIX4: explicit EBILLING_ENV) ──
+    if (!envOk) {
+      console.error(`[ebilling] BLOCKED env=${envMode}: ${envErrors.join(" | ")}`);
       return new Response(
-        JSON.stringify({ error: "Conflit d'environnement : la monétisation est active mais l'URL cible n'est pas l'environnement LAB. Transaction bloquée par sécurité." }),
+        JSON.stringify({ error: "Configuration de paiement invalide pour l'environnement actif. Transaction bloquée par sécurité." }),
         { status: 400, headers: jsonHeaders }
       );
     }
