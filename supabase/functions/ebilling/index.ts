@@ -345,6 +345,33 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ── G1-FIX1: validate post_id server-side before any operator call ──
+    // Hidden post = paid tribute awaiting payment → must belong to caller, same memorial, unlinked.
+    // Visible post = symbolic gesture on an existing tribute → no reference link (unchanged behaviour).
+    let tributeLink: string | null = null;
+    if (post_id) {
+      const { data: post, error: postErr } = await supabaseAdmin
+        .from("guestbook_posts")
+        .select("id, memorial_id, user_id, is_hidden, payment_reference, deleted_at")
+        .eq("id", post_id)
+        .maybeSingle();
+      if (postErr || !post || post.deleted_at) {
+        return new Response(JSON.stringify({ error: "Hommage introuvable" }), { status: 404, headers: jsonHeaders });
+      }
+      if (post.memorial_id !== memorial_id) {
+        return new Response(JSON.stringify({ error: "Hommage non rattaché à ce mémorial" }), { status: 400, headers: jsonHeaders });
+      }
+      if (post.is_hidden) {
+        if (post.user_id !== user.id) {
+          return new Response(JSON.stringify({ error: "Hommage non autorisé" }), { status: 403, headers: jsonHeaders });
+        }
+        if (post.payment_reference) {
+          return new Response(JSON.stringify({ error: "Hommage déjà associé à une transaction" }), { status: 409, headers: jsonHeaders });
+        }
+        tributeLink = post.id;
+      }
+    }
+
     // ── ENVIRONMENT GUARD ──
     if (!baseUrl.includes("lab")) {
       console.error(`[ebilling] BLOCKED: is_monetized=true but EBILLING_BASE_URL=${baseUrl} does not target LAB environment`);
@@ -538,6 +565,26 @@ const handler = async (req: Request): Promise<Response> => {
     if (txError) {
       console.error("[ebilling] Transaction insert error:", txError);
       throw txError;
+    }
+
+    // ── G1-FIX1: atomic link tribute ↔ payment reference (hidden tribute only) ──
+    if (tributeLink) {
+      const { data: linked, error: linkErr } = await supabaseAdmin
+        .from("guestbook_posts")
+        .update({ payment_reference: ebillingRef })
+        .eq("id", tributeLink)
+        .eq("memorial_id", memorial_id)
+        .eq("user_id", user.id)
+        .eq("is_hidden", true)
+        .is("payment_reference", null)
+        .select("id");
+      if (linkErr || !linked || linked.length === 0) {
+        console.error("[ebilling] Tribute link failed (race or invalid):", linkErr);
+        await supabaseAdmin.from("payment_transactions")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("ebilling_reference", ebillingRef);
+        return new Response(JSON.stringify({ error: "Association hommage impossible (déjà associé ou invalide)" }), { status: 409, headers: jsonHeaders });
+      }
     }
 
     // Build fallback checkout URL (portal redirect) in case USSD push fails

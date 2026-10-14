@@ -744,6 +744,7 @@ const MemorialInner = () => {
       if (response.data?.success) {
         // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
+        const createdPostId: string | undefined = response.data?.postId;
         // Notify followers (fire and forget)
         supabase.functions.invoke('notify-followers', {
           body: {
@@ -753,6 +754,7 @@ const MemorialInner = () => {
             message: `Nouvel hommage déposé pour ${memorial.name}`,
           },
         }).catch(() => {});
+        return { success: true, postId: createdPostId };
       } else if (response.data?.rateLimited) {
         toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
       } else {
@@ -762,6 +764,7 @@ const MemorialInner = () => {
       console.error('Publish error:', error);
       toast.error("Une erreur est survenue lors de la publication");
     }
+    return { success: false };
   };
 
   const scrollToGuestbook = () => {
