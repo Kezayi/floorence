@@ -123,8 +123,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (status === "SUCCESS" || status === "PAID" || status === "COMPLETED") {
-      // Update transaction to success
-      await supabaseAdmin
+      // Update transaction to success — conditional, so concurrent duplicate callbacks credit once
+      const { data: claimed } = await supabaseAdmin
         .from("payment_transactions")
         .update({
           status: "success",
@@ -132,7 +132,15 @@ const handler = async (req: Request): Promise<Response> => {
           last_api_response: JSON.stringify(callbackData),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", tx.id);
+        .eq("id", tx.id)
+        .neq("status", "success")
+        .select("id");
+      if (!claimed || claimed.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "Already processed" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
 
       const metadata = tx.metadata as Record<string, any> | null;
       const postId = metadata?.post_id;
