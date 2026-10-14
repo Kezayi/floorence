@@ -1419,6 +1419,15 @@ export type Database = {
         Returns: Json
       }
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
+      fulfill_payment_success: {
+        Args: {
+          p_ebilling_transaction_id?: string
+          p_last_api_response?: string
+          p_reference: string
+          p_tx_id: string
+        }
+        Returns: Json
+      }
       generate_secure_slug: {
         Args: { first_name: string; last_name: string }
         Returns: string
