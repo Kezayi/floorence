@@ -744,6 +744,7 @@ const MemorialInner = () => {
       if (response.data?.success) {
         // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
+        const createdPostId: string | undefined = response.data?.postId;
         // Notify followers (fire and forget)
         supabase.functions.invoke('notify-followers', {
           body: {
