@@ -30,7 +30,7 @@ interface GuestbookFormProps {
     photos: string[];
     candleCount: number;
     flowerCount: number;
-  }) => void | Promise<void>;
+  }) => void | Promise<void | { success: boolean; postId?: string }>;
   lockedRelation?: { link: string; category: string };
 }
 
@@ -224,7 +224,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
     try {
       // 1. Submit the post first (it will be hidden via publish-tribute)
-      await onSubmit({
+      const submitResult = await onSubmit({
         content: messageContent.trim(),
         relationCategory: selectedCategory,
         relationLink: selectedRelation,
@@ -232,13 +232,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         candleCount,
         flowerCount,
       });
+      const createdPostId = submitResult && typeof submitResult === 'object' ? submitResult.postId : undefined;
+      if (submitResult && typeof submitResult === 'object' && submitResult.success === false) {
+        return; // publication failed — never initiate payment
+      }
 
       // 2. Call the ebilling edge function to initiate payment with the operator
       if (memorialId && user) {
         const itemType = candleCount > 0 ? 'cierge' : 'fleur';
         const quantity = candleCount > 0 ? candleCount : flowerCount;
 
-        console.log('[eBilling] Calling edge function...', { memorialId, itemType, quantity, phone });
+        console.log('[eBilling] Calling edge function...', { memorialId, itemType, quantity, phone, createdPostId });
         const { data: ebillingData, error: ebillingErr } = await supabase.functions.invoke('ebilling', {
           body: {
             memorial_id: memorialId,
@@ -248,6 +252,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             deceased_name: defuntName || undefined,
             candle_count: candleCount,
             flower_count: flowerCount,
+            ...(createdPostId ? { post_id: createdPostId } : {}),
           },
         });
 
