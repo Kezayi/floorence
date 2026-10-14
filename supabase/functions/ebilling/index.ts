@@ -128,27 +128,18 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     const billState = (data?.e_bill?.state || data?.data?.state || data?.state || "").toLowerCase();
 
     if (billState === "paid" || billState === "success" || billState === "completed") {
-      // Payment confirmed!
-      await supabaseAdmin
-        .from("payment_transactions")
-        .update({
-          status: "success",
-          last_sync_at: new Date().toISOString(),
-          ebilling_transaction_id: data?.e_bill?.bill_id || data?.data?.bill_id || billId,
-        })
-        .eq("ebilling_reference", reference);
-
-      await supabaseAdmin
-        .from("guestbook_posts")
-        .update({ is_hidden: false, updated_at: new Date().toISOString() })
-        .eq("payment_reference", reference)
-        .eq("is_hidden", true);
-
-      console.log(`[ebilling:check-status] ref=${reference} → PAID, hommage publié`);
+      // G1-FIX2: shared atomic success pipeline
+      const result = await finalizePaymentSuccess(supabaseAdmin, {
+        txId: tx.id,
+        reference,
+        channel: "check-status",
+        ebillingTransactionId: data?.e_bill?.bill_id || data?.data?.bill_id || billId,
+      });
 
       return new Response(JSON.stringify({
         success: true,
         status: "success",
+        already_confirmed: !result.claimed,
         message: "Transaction validée et hommage publié",
       }), { status: 200, headers: jsonHeaders });
     }
@@ -163,10 +154,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     }
 
     if (billState === "expired" || billState === "cancelled" || billState === "failed") {
-      await supabaseAdmin
-        .from("payment_transactions")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
-        .eq("ebilling_reference", reference);
+      await markPaymentFailed(supabaseAdmin, tx.id);
 
       return new Response(JSON.stringify({
         success: false,

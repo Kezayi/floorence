@@ -127,22 +127,18 @@ serve(async (req: Request) => {
         const billState = (data?.e_bill?.state || data?.data?.state || data?.state || "").toLowerCase();
 
         if (billState === "paid" || billState === "success" || billState === "completed") {
-          // Update transaction to success
-          await supabaseAdmin
-            .from("payment_transactions")
-            .update({
-              status: "success",
-              last_sync_at: new Date().toISOString(),
-              ebilling_transaction_id: billId,
-            })
-            .eq("ebilling_reference", ref);
-
-          // Unhide associated guestbook post
-          await supabaseAdmin
-            .from("guestbook_posts")
-            .update({ is_hidden: false, updated_at: new Date().toISOString() })
-            .eq("payment_reference", ref)
-            .eq("is_hidden", true);
+          // G1-FIX2: shared atomic success pipeline
+          const { data: txRow } = await supabaseAdmin
+            .from("payment_transactions").select("id").eq("ebilling_reference", ref).single();
+          const result = txRow
+            ? await finalizePaymentSuccess(supabaseAdmin, {
+                txId: txRow.id, reference: ref, channel: "reconciliation", ebillingTransactionId: billId,
+              })
+            : { claimed: false };
+          if (!result.claimed) {
+            results.push({ ref, result: "already_processed" });
+            continue;
+          }
 
           // Log the reconciliation
           await supabaseAdmin.from("system_logs").insert({
@@ -161,10 +157,12 @@ serve(async (req: Request) => {
           console.log(`[reconciliation] ref=${ref} → RECONCILED (${billState})`);
           results.push({ ref, result: "reconciled" });
         } else if (billState === "expired" || billState === "cancelled" || billState === "failed") {
-          await supabaseAdmin
-            .from("payment_transactions")
-            .update({ status: "failed", last_sync_at: new Date().toISOString() })
-            .eq("ebilling_reference", ref);
+          if (txRowIdCache[ref] === undefined) {
+            const { data: r } = await supabaseAdmin
+              .from("payment_transactions").select("id").eq("ebilling_reference", ref).single();
+            txRowIdCache[ref] = r?.id ?? null;
+          }
+          if (txRowIdCache[ref]) await markPaymentFailed(supabaseAdmin, txRowIdCache[ref] as string);
 
           console.log(`[reconciliation] ref=${ref} → FAILED (${billState})`);
           results.push({ ref, result: `failed_${billState}` });
