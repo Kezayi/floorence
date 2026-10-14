@@ -86,6 +86,7 @@ interface Memorial {
   photo_url: string | null;
   photos: string[] | null;
   is_active: boolean;
+  is_published?: boolean;
   is_demo: boolean;
   merged_into: string | null;
   created_at: string;
@@ -163,7 +164,7 @@ const Memorials = () => {
     queryFn: async () => {
       let query = supabase
         .from('memorials')
-        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, is_demo, merged_into, created_at, created_by, creator_relation')
+        .select('id, slug, first_name, last_name, death_date, birth_date, biography, photo_url, photos, is_active, is_published, is_demo, merged_into, created_at, created_by, creator_relation')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
@@ -277,13 +278,22 @@ const Memorials = () => {
         .from('memorials')
         .select('id, first_name, last_name, merged_into')
         .is('merged_into', null)
+        .is('deleted_at', null)
+        .eq('is_published', true)
+        .eq('is_active', true)
         .order('last_name', { ascending: true });
 
       if (error) throw error;
       return data;
     },
-    enabled: showMergeDialog,
   });
+
+  // FIX M2.6D-A — éligibilité à la fusion indépendante du nom de famille.
+  // La validation finale reste l'attestation familiale de la paire exacte + admin_merge_memorial.
+  const isMergeEligible = (m: Memorial) =>
+    !m.merged_into && m.is_active && m.is_published === true;
+  const hasOtherEligible = (m: Memorial) =>
+    (allMemorials ?? []).some((o) => o.id !== m.id);
 
   // M2.5D — lecture seule de la confirmation familiale active pour la paire exacte.
   const mergeSourceId = selectedMemorial?.id ?? '';
@@ -802,7 +812,7 @@ const Memorials = () => {
                             <Unlink className="w-4 h-4" />
                           </Button>
                         )}
-                        {!memorial.merged_into && hasDuplicates && (
+                        {isMergeEligible(memorial) && hasOtherEligible(memorial) && (
                           <Button
                             variant="ghost"
                             size="sm"
