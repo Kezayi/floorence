@@ -183,6 +183,13 @@
       "when": 1792012168968,
       "tag": "0025_g1_sec1_lock_confirm_payment_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792012618502,
+      "tag": "0026_g1_fix3_atomic_payment_fulfillment",
+      "breakpoints": true
     }
   ]
 }

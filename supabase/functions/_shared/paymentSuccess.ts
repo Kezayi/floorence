@@ -30,56 +30,25 @@ export interface FinalizeResult {
   credited: { postId: string; column: string; quantity: number } | null;
 }
 
+// G1-FIX3: claim + unhide + gesture credit run in ONE PostgreSQL transaction
+// (public.fulfill_payment_success, service_role only, row lock FOR UPDATE, full rollback on error).
 export async function finalizePaymentSuccess(admin: Admin, input: FinalizeInput): Promise<FinalizeResult> {
-  const now = new Date().toISOString();
-  const patch: Record<string, unknown> = { status: "success", updated_at: now, last_sync_at: now };
-  if (input.ebillingTransactionId) patch.ebilling_transaction_id = input.ebillingTransactionId;
-  if (input.lastApiResponse) patch.last_api_response = input.lastApiResponse;
-
-  // 1. Atomic claim
-  const { data: claimedRows, error: claimErr } = await admin
-    .from("payment_transactions")
-    .update(patch)
-    .eq("id", input.txId)
-    .neq("status", "success")
-    .select("id, payment_type, metadata");
-  if (claimErr) throw claimErr;
-  if (!claimedRows || claimedRows.length === 0) {
-    console.log(`[payment-success:${input.channel}] ref=${input.reference} already processed`);
+  const { data, error } = await admin.rpc("fulfill_payment_success", {
+    p_tx_id: input.txId,
+    p_reference: input.reference,
+    p_ebilling_transaction_id: input.ebillingTransactionId ?? null,
+    p_last_api_response: input.lastApiResponse ?? null,
+  });
+  if (error) throw error;
+  const r = (data ?? {}) as { claimed?: boolean; reason?: string; unhidden?: number; credited?: FinalizeResult["credited"] };
+  if (!r.claimed) {
+    console.log(`[payment-success:${input.channel}] ref=${input.reference} not claimed (${r.reason})`);
     return { claimed: false, unhidden: 0, credited: null };
   }
-  const tx = claimedRows[0];
-
-  // 2. Unhide the paid tribute linked to this reference (if any)
-  const { data: unhiddenRows } = await admin
-    .from("guestbook_posts")
-    .update({ is_hidden: false, updated_at: now })
-    .eq("payment_reference", input.reference)
-    .eq("is_hidden", true)
-    .select("id");
-  const unhiddenIds: string[] = (unhiddenRows ?? []).map((r: { id: string }) => r.id);
-
-  // 3. Credit a gesture on an existing tribute (not the linked paid tribute)
-  let credited: FinalizeResult["credited"] = null;
-  const meta = (tx.metadata ?? {}) as Record<string, unknown>;
-  const postId = typeof meta.post_id === "string" ? meta.post_id : null;
-  const quantity = Number(meta.quantity) > 0 ? Number(meta.quantity) : 1;
-  if (postId) {
-    const { data: post } = await admin
-      .from("guestbook_posts")
-      .select("id, payment_reference, candle_count, flower_count, deleted_at")
-      .eq("id", postId)
-      .maybeSingle();
-    const isLinkedTribute = post && (post.payment_reference === input.reference || unhiddenIds.includes(post.id));
-    if (post && !post.deleted_at && !isLinkedTribute) {
-      const column = tx.payment_type === "cierge" ? "candle_count" : "flower_count";
-      const current = Number(post[column] ?? 0);
-      await admin.from("guestbook_posts").update({ [column]: current + quantity }).eq("id", postId);
-      credited = { postId, column, quantity };
-    }
-  }
-
-  console.log(`[payment-success:${input.channel}] ref=${input.reference} claimed, unhidden=${unhiddenIds.length}, credited=${JSON.stringify(credited)}`);
+  const credited = r.credited ?? null;
+  console.log(`[payment-success:${input.channel}] ref=${input.reference} claimed, unhidden=${r.unhidden ?? 0}, credited=${JSON.stringify(credited)}`);
+  // Recovery note: if the certificate call below fails after commit, the transaction is
+  // already 'success'; re-run process-payment-success with { transaction_id } (idempotent caller-side).
 
   // 4. Certificate / receipt — winner only, non-blocking
   if (!input.skipCertificate) {
@@ -97,7 +66,7 @@ export async function finalizePaymentSuccess(admin: Admin, input: FinalizeInput)
     }
   }
 
-  return { claimed: true, unhidden: unhiddenIds.length, credited };
+  return { claimed: true, unhidden: r.unhidden ?? 0, credited };
 }
 
 // Failure transition that can never overwrite a confirmed payment.
