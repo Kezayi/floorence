@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
+import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -489,7 +490,7 @@ const handler = async (req: Request): Promise<Response> => {
     const createBillPayload = {
       payer_msisdn: phone,
       payer_email: user.email || "client@floorence.com",
-      payer_name: resolvedDeceasedName ? `Hommage - ${resolvedDeceasedName}` : "Hommage Floorence",
+      payer_name: resolvedDeceasedName ? `${isMemorialPayment ? "Mémorial" : "Hommage"} - ${resolvedDeceasedName}` : "Hommage Floorence",
       amount: totalAmount.toString(),
       external_reference: ebillingRef,
       short_description: `${itemLabel} x${quantity} - Floorence`,
@@ -532,7 +533,7 @@ const handler = async (req: Request): Promise<Response> => {
         candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
         flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
         last_api_response: rawBillText.substring(0, 500),
-        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
+        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
       });
 
       return new Response(
@@ -558,7 +559,7 @@ const handler = async (req: Request): Promise<Response> => {
         payer_phone: phone,
         deceased_name_snapshot: resolvedDeceasedName,
         last_api_response: JSON.stringify(billData),
-        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
+        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
       });
 
       return new Response(
@@ -648,6 +649,7 @@ const handler = async (req: Request): Promise<Response> => {
       flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
       last_api_response: JSON.stringify({ bill: billData, ussd: ussdData }),
       metadata: {
+        ...memorialMeta,
         mode: "payant",
         quantity,
         unit_price: unitPrice,
