@@ -48,6 +48,10 @@
 
     --radius: 0.25rem;
 
+    /* Scene ink — fond neutre des photographies (Norme AAA, #0D0D0D) */
+    --scene-ink: 0 0% 5%;
+    --scene-ink-foreground: 0 0% 92%;
+
     /* Zone sombre - Livre d'Or */
     --memorial-dark: 0 0% 6%;
     --memorial-dark-foreground: 0 0% 92%;
@@ -326,7 +330,8 @@
 
   /* Photo portrait N&B */
   .portrait-memorial {
-    @apply grayscale transition-all duration-700;
+    @apply grayscale transition-all;
+    transition-duration: 800ms;
     filter: grayscale(100%) contrast(1.05) brightness(0.95);
   }
 
@@ -394,4 +399,31 @@
   /* Reserved space for async sections (anti-CLS) */
   .reserve-grid { min-height: 480px; }
   .reserve-block { min-height: 300px; }
+}
+
+/* Photo souveraine — N&B mémoriel, couleur au survol (Norme AAA : 0,8 s) */
+@layer utilities {
+  .photo-memorial {
+    filter: grayscale(100%) contrast(1.05) brightness(0.95);
+    transition: filter 0.8s ease-in-out, opacity 0.7s ease-out;
+  }
+  .group:hover .photo-memorial,
+  .photo-memorial:hover {
+    filter: grayscale(0%) contrast(1) brightness(1);
+  }
+}
+
+/* Accessibilité — mouvement réduit (Norme AAA, Pilier 3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html { scroll-behavior: auto; }
+  .skeleton-shimmer { animation: none !important; }
+  .candle-glow::before { animation: none !important; opacity: 0.6; }
 }

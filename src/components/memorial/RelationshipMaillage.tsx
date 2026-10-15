@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { getDemoAvatarUrl } from "@/lib/demoAvatars";
+import Photo from "@/components/ui/Photo";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -233,18 +232,17 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
                           : getCleanRelationName(rel.category);
                         return (
                           <div key={idx} className="flex items-center gap-2 text-sm py-1">
-                            <Avatar className="w-6 h-6 shrink-0">
-                              {(rel.avatarUrl || rel.name) ? (
-                                <AvatarImage
-                                  src={rel.avatarUrl || getDemoAvatarUrl(rel.name)}
-                                  alt={rel.name}
-                                  className="object-cover grayscale-[30%]"
-                                />
-                              ) : null}
-                              <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
-                                {rel.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="w-6 h-6 shrink-0">
+                              <Photo
+                                src={rel.avatarUrl}
+                                alt={rel.name}
+                                variant="node"
+                                fallbackName={rel.name}
+                                targetWidth={24}
+                                targetHeight={24}
+                                className="[&_span]:text-[9px] [&_span]:font-sans"
+                              />
+                            </div>
                             <span
                               className="inline-block text-xs font-sans px-2 py-0.5 rounded-sm"
                               style={{ color: color }}
@@ -399,12 +397,15 @@ const PersonGroupCard = ({ person, isAuthenticated }: { person: GroupedPerson; i
   return (
     <div className="p-4 bg-card/80 rounded-sm border border-border/40">
       <div className="flex items-center gap-2 mb-3">
-        <Avatar className="w-6 h-6 shrink-0">
-          <AvatarImage src={getDemoAvatarUrl(person.name)} alt={person.name} className="object-cover grayscale-[30%]" />
-          <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-sans">
-            {person.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="w-6 h-6 shrink-0">
+          <Photo
+            src={null}
+            alt={person.name}
+            variant="node"
+            fallbackName={person.name}
+            className="[&_span]:text-[9px] [&_span]:font-sans"
+          />
+        </div>
         <span className="font-serif text-foreground font-medium">{displayName(person.name, isAuthenticated)}</span>
         <span className="text-xs text-muted-foreground font-sans">— {person.relationWithDeceased}</span>
       </div>

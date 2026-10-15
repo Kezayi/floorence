@@ -72,6 +72,10 @@ export default {
           anthracite: "hsl(var(--memorial-anthracite))",
           "anthracite-foreground": "hsl(var(--memorial-anthracite-foreground))",
         },
+        "scene-ink": {
+          DEFAULT: "hsl(var(--scene-ink))",
+          foreground: "hsl(var(--scene-ink-foreground))",
+        },
         candle: {
           glow: "hsl(var(--candle-glow))",
         },

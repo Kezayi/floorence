@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { displayName } from "@/lib/privacyUtils";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
-import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
+import Photo from "@/components/ui/Photo";
 import type { LinkStyle } from "./lineageConstants";
 
 export interface TreeNode {
@@ -28,7 +28,6 @@ interface LineageNodeCardProps {
 }
 
 const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased = true, deceasedGender = 'male' }: LineageNodeCardProps) => {
-  const initials = node.name.split(" ").map(n => n[0]).join("").slice(0, 2);
 
   // Lazy loading: only render photo when card enters viewport (saves RAM on entry-level phones)
   const { ref: inViewRef, inView } = useInView({
@@ -55,24 +54,14 @@ const LineageNodeCard = memo(({ node, isAuthenticated, isCurrentUser, isDeceased
             : "border-lineage-extended"
         } bg-transparent ${isDeceased ? "grayscale hover:grayscale-0" : ""}`}
       >
-        {inView && node.photo ? (
-          <img
-            src={getOptimizedImageUrl(node.photo, { width: 80, height: 80 })}
-            srcSet={getOptimizedSrcSet(node.photo, { width: 80, height: 80 })}
-            alt={displayName(node.name, isAuthenticated)}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            decoding="async"
-            width={80}
-            height={80}
-          />
-        ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted/30">
-            <span className="font-serif text-lg text-lineage-direct">
-              {initials}
-            </span>
-          </div>
-        )}
+        <Photo
+          src={inView ? node.photo : null}
+          alt={displayName(node.name, isAuthenticated)}
+          variant="node"
+          fallbackName={node.name}
+          targetWidth={80}
+          targetHeight={80}
+        />
       </div>
 
       {/* Deceased indicator — subtle candle, increased stroke for low-lum screens */}

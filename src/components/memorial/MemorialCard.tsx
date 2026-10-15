@@ -5,7 +5,7 @@ import { CrossIcon } from "./MemorialIcons";
 import { calculateAge } from "@/lib/dateUtils";
 import { useMemorialPrefetch } from "@/hooks/useMemorialPrefetch";
 import DemoBadge from "./DemoBadge";
-import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
+import Photo from "@/components/ui/Photo";
 
 interface MemorialCardProps {
   id: string;
@@ -46,17 +46,6 @@ const MemorialCard = ({
   const { prefetchMemorial } = useMemorialPrefetch();
   const handlePrefetch = useCallback(() => prefetchMemorial(id), [id, prefetchMemorial]);
   const age = calculateAge(birthDate, deathDate);
-  // Filet de sécurité : si la CDN de transformation échoue, on retombe sur l'original.
-  const handleImageError = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      const img = e.currentTarget;
-      if (photoUrl && img.src !== photoUrl) {
-        img.srcset = "";
-        img.src = photoUrl;
-      }
-    },
-    [photoUrl]
-  );
   // Prefer obfuscated token URL, fallback to slug
   const memorialUrl = shareToken ? `/m/${shareToken}` : `/memorial/${slug}`;
   if (variant === "list") {
@@ -69,27 +58,18 @@ const MemorialCard = ({
       >
         {/* Photo Portrait - Left */}
         <div className="w-24 md:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden bg-muted aspect-[3/4]">
-          {photoUrl ? (
-            <img
-              src={getOptimizedImageUrl(photoUrl, { width: 160, height: 213 })}
-              srcSet={getOptimizedSrcSet(photoUrl, { width: 160, height: 213 })}
-              sizes="(max-width: 768px) 96px, 160px"
-              alt={`Portrait de ${name}`}
-              width={160}
-              height={213}
-              loading={priority ? "eager" : "lazy"}
-              {...(lcp ? { fetchpriority: "high" } : {})}
-              decoding="async"
-              onError={handleImageError}
-              className="w-full h-full object-cover portrait-memorial"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-secondary">
-              <span className="font-serif text-3xl text-muted-foreground/30">
-                {name.charAt(0)}
-              </span>
-            </div>
-          )}
+          <Photo
+            src={photoUrl}
+            alt={`Portrait de ${name}`}
+            variant="card"
+            tone="memorial"
+            fallbackName={name}
+            targetWidth={160}
+            targetHeight={213}
+            sizes="(max-width: 768px) 96px, 160px"
+            priority={priority}
+            lcp={lcp}
+          />
           {type === "RECENT" && (
             <div className="absolute top-2 left-2">
               <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-xs font-sans">
@@ -147,27 +127,18 @@ const MemorialCard = ({
     >
       {/* Photo Portrait */}
       <div className="aspect-[3/4] relative overflow-hidden bg-muted">
-        {photoUrl ? (
-          <img
-            src={getOptimizedImageUrl(photoUrl, { width: 400, height: 533 })}
-            srcSet={getOptimizedSrcSet(photoUrl, { width: 400, height: 533 })}
-            sizes="(max-width: 768px) 50vw, 400px"
+        <Photo
+            src={photoUrl}
             alt={`Portrait de ${name}`}
-            width={400}
-            height={533}
-            loading={priority ? "eager" : "lazy"}
-            {...(lcp ? { fetchpriority: "high" } : {})}
-            decoding="async"
-            onError={handleImageError}
-            className="w-full h-full object-cover portrait-memorial"
+            variant="card"
+            tone="memorial"
+            fallbackName={name}
+            targetWidth={400}
+            targetHeight={533}
+            sizes="(max-width: 768px) 50vw, 400px"
+            priority={priority}
+            lcp={lcp}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-secondary">
-            <span className="font-serif text-6xl text-muted-foreground/30">
-              {name.charAt(0)}
-            </span>
-          </div>
-        )}
 
         {/* Type Badge */}
         {type === "RECENT" && (
