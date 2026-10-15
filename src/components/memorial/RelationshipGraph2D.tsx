@@ -4,6 +4,7 @@ import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import { inferGender } from "@/lib/genderInference";
+import { getOptimizedImageUrl } from "@/lib/imageUrl";
 
 interface InterMemorialLink {
   name: string;
@@ -17,6 +18,7 @@ interface RelationshipGraph2DProps {
     authorName: string;
     relationCategory: string;
     relationLink?: string | null;
+    authorAvatarUrl?: string | null;
   }>;
   interMemorialLinks?: InterMemorialLink[];
 }
@@ -137,6 +139,21 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Portraits par nœud (même clé de dédup que les nœuds) — rendu uniquement, topologie inchangée
+  const avatarById = useMemo(() => {
+    const map = new Map<string, string>();
+    posts.forEach((post) => {
+      const key = post.authorId && post.authorId.length > 0
+        ? post.authorId
+        : `name::${post.authorName.trim().toLowerCase()}`;
+      if (!map.has(key) && post.authorAvatarUrl && !post.authorAvatarUrl.startsWith("data:")) {
+        const url = getOptimizedImageUrl(post.authorAvatarUrl, { width: 48, height: 48 });
+        if (url) map.set(key, url);
+      }
+    });
+    return map;
+  }, [posts]);
+
   const nodes = useMemo(() => {
     // ═══ DEDUP by UUID — one node per unique author ═══
     // For authors without UUID (anonymous), deduplicate by normalized name
@@ -635,13 +652,32 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
                   className="transition-all duration-300"
                 />
                 
-                {/* Point intérieur coloré */}
-                <circle
-                  cx={node.x} cy={node.y}
-                  r={isHovered ? 5 : 3.5}
-                  fill={style.fill}
-                  className="transition-all duration-300"
-                />
+                {/* Médaillon photo (adaptation SVG du composant souverain <Photo>) ou point coloré en repli */}
+                {avatarById.get(node.id) ? (
+                  <>
+                    <clipPath id={`node-clip-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`}>
+                      <circle cx={node.x} cy={node.y} r={isHovered ? 12 : 10} />
+                    </clipPath>
+                    <image
+                      href={avatarById.get(node.id)}
+                      x={node.x - (isHovered ? 12 : 10)}
+                      y={node.y - (isHovered ? 12 : 10)}
+                      width={isHovered ? 24 : 20}
+                      height={isHovered ? 24 : 20}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#node-clip-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")})`}
+                      className="pointer-events-none"
+                      aria-label={node.name}
+                    />
+                  </>
+                ) : (
+                  <circle
+                    cx={node.x} cy={node.y}
+                    r={isHovered ? 5 : 3.5}
+                    fill={style.fill}
+                    className="transition-all duration-300"
+                  />
+                )}
                 
                 {/* Nom */}
                 <text
