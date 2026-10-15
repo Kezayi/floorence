@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, FileText, Heart, LogOut, ChevronRight, Flame, Loader2, AlertCircle, Share2, Receipt } from "lucide-react";
 import AvatarUpload from "@/components/account/AvatarUpload";
 import FamilyIdentityAttestation from "@/components/account/FamilyIdentityAttestation";
+import PendingMemorialCard, { type PendingMemorial, type MemorialTx } from "@/components/account/PendingMemorialCard";
 import { ChrysanthemumIcon } from "@/components/memorial/MemorialIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -47,6 +48,7 @@ interface Memorial {
   slug: string;
   created_at: string;
   is_active: boolean;
+  is_published: boolean;
 }
 
 
@@ -68,6 +70,9 @@ const Account = () => {
   const [myMemorials, setMyMemorials] = useState<Memorial[]>([]);
   const [myTransactions, setMyTransactions] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [pendingMemorials, setPendingMemorials] = useState<PendingMemorial[]>([]);
+  const [memorialTxByMemorial, setMemorialTxByMemorial] = useState<Record<string, MemorialTx>>({});
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -122,14 +127,15 @@ const Account = () => {
         // Fetch user's created memorials
         const { data: memorials } = await supabase
           .from('memorials')
-          .select('id, first_name, last_name, slug, created_at, is_active')
+          .select('id, first_name, last_name, slug, created_at, is_active, is_published, birth_date, death_date, funeral_date, funeral_location, biography, photos, photo_url, default_photo_index')
           .eq('created_by', user.id)
+          .is('deleted_at', null)
           .order('created_at', { ascending: false });
 
         // Fetch user's payment transactions
         const { data: transactions } = await supabase
           .from('payment_transactions')
-          .select('id, amount, currency, payment_type, status, created_at, ebilling_reference, metadata')
+          .select('id, amount, currency, payment_type, status, created_at, ebilling_reference, metadata, memorial_id')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -152,7 +158,15 @@ const Account = () => {
         }));
 
         setMyPosts(transformedPosts);
-        setMyMemorials(memorials || []);
+        const all = memorials || [];
+        setMyMemorials(all.filter((m) => m.is_published));
+        setPendingMemorials(all.filter((m) => !m.is_published) as PendingMemorial[]);
+        // G1-FIX8: latest memorial-publication transaction per memorial (transactions are ordered desc).
+        const txMap: Record<string, MemorialTx> = {};
+        (transactions || []).forEach((t: any) => {
+          if (t.payment_type === 'memorial' && t.memorial_id && !txMap[t.memorial_id]) txMap[t.memorial_id] = t;
+        });
+        setMemorialTxByMemorial(txMap);
         setMyTransactions(transactions || []);
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -162,7 +176,7 @@ const Account = () => {
     };
 
     fetchUserData();
-  }, [user]);
+  }, [user, reloadKey]);
 
   const handleCompleteProfile = async () => {
     if (!profile?.avatar_url) {
@@ -433,8 +447,17 @@ const Account = () => {
                           <div className="flex justify-center py-8">
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                           </div>
-                        ) : myMemorials.length > 0 ? (
-                          myMemorials.map((memorial) => (
+                        ) : myMemorials.length > 0 || pendingMemorials.length > 0 ? (
+                          <>
+                          {pendingMemorials.map((m) => (
+                            <PendingMemorialCard
+                              key={m.id}
+                              memorial={m}
+                              lastTx={memorialTxByMemorial[m.id] ?? null}
+                              onChanged={() => setReloadKey((k) => k + 1)}
+                            />
+                          ))}
+                          {myMemorials.map((memorial) => (
                             <Link
                               key={memorial.id}
                               to={`/memorial/${memorial.slug}`}
@@ -463,7 +486,8 @@ const Account = () => {
                                 </div>
                               </div>
                             </Link>
-                          ))
+                          ))}
+                          </>
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore créé d'espace mémoriel

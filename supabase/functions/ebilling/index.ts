@@ -268,6 +268,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // ── ROUTE: check-status ──
     if (body.action === "check-status") {
+      // G1-FIX8: only the transaction owner (or an admin) may query/advance a transaction.
+      if (body.reference) {
+        const { data: ownTx } = await supabaseAdmin
+          .from("payment_transactions").select("user_id").eq("ebilling_reference", body.reference).maybeSingle();
+        if (ownTx && ownTx.user_id !== user.id) {
+          const { data: isAdmin } = await supabaseAdmin.rpc("has_role", { _user_id: user.id, _role: "admin" });
+          if (!isAdmin) {
+            return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
+          }
+        }
+      }
       return await handleCheckStatus(body, supabaseAdmin);
     }
 
