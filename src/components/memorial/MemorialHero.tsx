@@ -96,11 +96,15 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                     index === currentPhotoIndex ? 'active' : ''
                   }`}
                 >
-                  <ProgressiveImage
+                  <Photo
                     src={photo}
                     alt={`Portrait de ${memorial.name}`}
-                    className="w-full h-full object-cover memorial-photo-grayscale"
+                    variant="portrait"
+                    fallbackName={memorial.name}
+                    targetWidth={800}
+                    imgClassName="memorial-photo-grayscale"
                     priority={index === 0}
+                    lcp={index === 0}
                   />
                 </div>
               ))}
