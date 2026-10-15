@@ -885,23 +885,23 @@ const MemorialInner = () => {
         <section id="memorial-tabs" className="container mx-auto px-4 py-12 scroll-mt-20">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList aria-label="Sections du mémorial" className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto overflow-y-hidden flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <TabsTrigger value="hommages" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <TabsTrigger value="hommages" className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Heart className="w-4 h-4" aria-hidden="true" />
                 <span>Hommage</span>
               </TabsTrigger>
-              <TabsTrigger value="relationships" onMouseEnter={() => prefetchTab("relationships")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <TabsTrigger value="relationships" onMouseEnter={() => prefetchTab("relationships")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <GitBranch className="w-4 h-4" aria-hidden="true" />
                 <span>Maillage</span>
               </TabsTrigger>
-              <TabsTrigger value="lineage" onMouseEnter={() => prefetchTab("lineage")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <TabsTrigger value="lineage" onMouseEnter={() => prefetchTab("lineage")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <TreePine className="w-4 h-4" aria-hidden="true" />
                 <span>Lignage</span>
               </TabsTrigger>
-              <TabsTrigger value="inferences" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <TabsTrigger value="inferences" className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Link2 className="w-4 h-4" aria-hidden="true" />
                 <span>Inférences</span>
               </TabsTrigger>
-              <TabsTrigger value="gatherings" onMouseEnter={() => prefetchTab("gatherings")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <TabsTrigger value="gatherings" onMouseEnter={() => prefetchTab("gatherings")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Calendar className="w-4 h-4" aria-hidden="true" />
                 <span>Événements</span>
               </TabsTrigger>

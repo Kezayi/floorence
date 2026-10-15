@@ -12,39 +12,45 @@
 @layer base {
   :root {
     /* FLOORENCE - Palette Mémorielle */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 8%;
+    --background: 240 100% 99%; /* Ghostwhite #F8F8FF */
+    --foreground: 209 49% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 8%;
+    --card-foreground: 209 49% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 209 49% 13%;
 
     /* Noir profond - Couleur principale */
-    --primary: 0 0% 8%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 209 49% 15%; /* Bleu nuit #14283B */
+    --primary-foreground: 240 100% 99%;
 
     /* Gris doux */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 15%;
+    --secondary: 230 30% 96%;
+    --secondary-foreground: 209 49% 15%;
 
     /* Surfaces atténuées */
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 38%;
+    --muted: 230 20% 94%;
+    --muted-foreground: 209 15% 36%;
 
     /* Accent subtil - Gris chaud */
-    --accent: 30 5% 92%;
-    --accent-foreground: 0 0% 12%;
+    --accent: 39 45% 92%;
+    --accent-foreground: 209 49% 15%;
+
+    /* Champagne #C7A66A & Sauge minérale */
+    --champagne: 39 45% 60%;
+    --champagne-foreground: 209 49% 15%;
+    --sage: 140 12% 52%;
+    --sage-foreground: 240 100% 99%;
 
     /* Destructif sobre */
     --destructive: 0 40% 35%;
     --destructive-foreground: 0 0% 98%;
 
     /* Bordures délicates */
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 20%;
+    --border: 225 18% 88%;
+    --input: 225 18% 88%;
+    --ring: 39 45% 50%;
 
     --radius: 0.25rem;
 
