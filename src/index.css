@@ -330,7 +330,8 @@
 
   /* Photo portrait N&B */
   .portrait-memorial {
-    @apply grayscale transition-all duration-[800ms];
+    @apply grayscale transition-all;
+    transition-duration: 800ms;
     filter: grayscale(100%) contrast(1.05) brightness(0.95);
   }
 
