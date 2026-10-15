@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import ProgressiveImage from "@/components/ui/ProgressiveImage";
+import Photo from "@/components/ui/Photo";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff, Feather } from "lucide-react";
@@ -130,7 +130,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
 
                 .memorial-photo-grayscale {
                   filter: grayscale(100%);
-                  transition: filter 0.6s ease-in-out;
+                  transition: filter 0.8s ease-in-out;
                 }
 
                 .memorial-photo-slide.active:hover .memorial-photo-grayscale {
