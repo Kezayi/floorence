@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getDemoAvatarUrl, reservePortrait } from "@/lib/demoAvatars";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
+import Photo from "@/components/ui/Photo";
 import LineageNodeCard, { type TreeNode } from "./lineage/LineageNodeCard";
 import LineageGenerationRow from "./lineage/LineageGenerationRow";
 import LineageViewFilter from "./lineage/LineageViewFilter";
@@ -360,15 +361,15 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
                   >
                     <div className="w-full h-full rounded-full p-[2.5px] bg-[#800000]">
                       <div className="w-full h-full rounded-full overflow-hidden bg-muted grayscale hover:grayscale-0 transition-all duration-600">
-                        {deceasedPhoto ? (
-                          <img src={deceasedPhoto} alt={deceasedName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-serif text-2xl text-muted-foreground">
-                              {deceasedName.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                            </span>
-                          </div>
-                        )}
+                        <Photo
+                          src={deceasedPhoto}
+                          alt={`Portrait de ${deceasedName}`}
+                          variant="node"
+                          fallbackName={deceasedName}
+                          targetWidth={112}
+                          targetHeight={112}
+                          imgClassName="text-2xl"
+                        />
                       </div>
                     </div>
                   </div>
