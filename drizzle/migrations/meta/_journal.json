@@ -204,6 +204,13 @@
       "when": 1792015175048,
       "tag": "0028_g1_fix6_system_settings_price_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792078185581,
+      "tag": "0029_g1_fix7_paid_memorial_publication",
+      "breakpoints": true
     }
   ]
 }

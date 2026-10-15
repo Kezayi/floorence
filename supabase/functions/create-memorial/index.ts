@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+import { classifyMemorial, readMemorialPrice } from '../_shared/memorialPricing.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -160,18 +161,39 @@ serve(async (req) => {
       }
     }
 
+    // ── G1-FIX7: server-side category + active price (system_settings) ──
+    const classification = classifyMemorial(data.deathDate, data.funeralDate || null)
+    if (!classification.ok) {
+      return new Response(
+        JSON.stringify({ error: classification.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const category = classification.category
+
+    const supabaseAdmin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+    const price = await readMemorialPrice(supabaseAdmin, category)
+    if (price === null) {
+      return new Response(
+        JSON.stringify({ error: 'Tarif indisponible, réessayez plus tard' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: monetization } = await supabaseAdmin
+      .from('global_settings').select('value_bool').eq('key', 'is_monetized').maybeSingle()
+    const isMonetized = monetization?.value_bool ?? false
+    const requiresPayment = isMonetized && price > 0
+
     const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
 
-    console.log('[BETA] Creating memorial with slug:', slug)
-
-    // Build photos array from provided URLs
     const photosArray = data.photos && data.photos.length > 0
       ? data.photos
       : data.photoUrl
         ? [data.photoUrl]
         : []
 
-    const { data: memorial, error: createError } = await supabase
+    // Insert through the server role: end users can never publish directly (trg_guard_memorial_publication).
+    const { data: memorial, error: createError } = await supabaseAdmin
       .from('memorials')
       .insert({
         first_name: data.firstName,
@@ -189,7 +211,7 @@ serve(async (req) => {
         slug: slug,
         created_by: user.id,
         is_active: true,
-        is_published: true,
+        is_published: !requiresPayment,
         notification_frequency: data.notificationFrequency || null,
         notification_start_day: data.notificationStartDay ?? null,
         notification_end_day: data.notificationEndDay ?? null,
@@ -205,14 +227,20 @@ serve(async (req) => {
       )
     }
 
-    console.log('[BETA] Memorial created and published:', memorial.id)
+    console.log(`[create-memorial] ${memorial.id} category=${category} price=${price} published=${!requiresPayment}`)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
+        category,
+        price,
+        currency: 'XAF',
+        requires_payment: requiresPayment,
+        published: !requiresPayment,
         memorial: {
           id: memorial.id,
           slug: memorial.slug,
+          share_token: memorial.share_token,
           firstName: memorial.first_name,
           lastName: memorial.last_name,
         }

@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DateMaskedInput } from "@/components/ui/DateMaskedInput";
 import { formatDateFrench } from "@/lib/dateUtils";
+import { useMonetization } from "@/hooks/useMonetization";
+import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -45,6 +47,19 @@ const CreateMemorial = () => {
     notificationStartDay: null as number | null,
     notificationEndDay: null as number | null,
   });
+
+  // G1-FIX7: active tariff for the computed category (server re-checks everything).
+  const { data: monetization } = useMonetization();
+  const [payerPhone, setPayerPhone] = useState("");
+  const [createdMemorial, setCreatedMemorial] = useState<{ id: string; slug: string; share_token?: string } | null>(null);
+  const [paymentState, setPaymentState] = useState<{ status: "pending" | "failed" | "timeout"; reference?: string; message?: string; checkoutUrl?: string } | null>(null);
+  const displayCategory = classifyMemorialForDisplay(formData.deathDate, formData.funeralDate);
+  const displayPrice = systemSettings && displayCategory
+    ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
+    : null;
+  const requiresPaymentDisplay = !!monetization?.isMonetized && (displayPrice ?? 0) > 0;
+
+
 
   const steps = [
     { number: 1, title: "Type d'espace" },
@@ -131,9 +146,57 @@ const CreateMemorial = () => {
     }
   };
 
+  const goToMemorial = (m: { share_token?: string; slug: string }) =>
+    navigate(m.share_token ? `/m/${m.share_token}` : `/memorial/${m.slug}`);
+
+  // G1-FIX7: poll the existing check-status route until a terminal state.
+  const pollPayment = async (reference: string, memorial: { share_token?: string; slug: string }) => {
+    for (let i = 0; i < 36; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const { data } = await supabase.functions.invoke("ebilling", { body: { action: "check-status", reference } });
+      if (data?.status === "success") {
+        toast.success("Paiement confirmé — espace mémoriel publié");
+        goToMemorial(memorial);
+        return;
+      }
+      if (data?.status === "failed" || data?.status === "expired" || data?.status === "cancelled") {
+        setPaymentState({ status: "failed", reference, message: data?.message });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    setPaymentState({ status: "timeout", reference, message: "Délai dépassé. Votre espace reste non publié ; vous pouvez réessayer." });
+    setIsSubmitting(false);
+  };
+
+  const startMemorialPayment = async (memorial: { id: string; share_token?: string; slug: string }) => {
+    const { data, error } = await supabase.functions.invoke("ebilling", {
+      body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: payerPhone.replace(/\s+/g, "") },
+    });
+    if (error || !data?.success) {
+      setPaymentState({ status: "failed", message: data?.error || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié." });
+      setIsSubmitting(false);
+      return;
+    }
+    setPaymentState({ status: "pending", reference: data.reference, message: data.message, checkoutUrl: data.checkout_url });
+    pollPayment(data.reference, memorial);
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
-    
+
+    if (requiresPaymentDisplay && !/^\+?\d{8,15}$/.test(payerPhone.replace(/\s+/g, ""))) {
+      setErrors({ payerPhone: "Numéro Mobile Money requis" });
+      return;
+    }
+
+    // Retry after a failed payment: memorial already exists (unpublished).
+    if (createdMemorial) {
+      setIsSubmitting(true);
+      await startMemorialPayment(createdMemorial);
+      return;
+    }
+
     // Validate user profile name
     const { data: profile } = await supabase
       .from('profiles')
@@ -184,10 +247,16 @@ const CreateMemorial = () => {
         return;
       }
 
-       toast.success("Espace mémoriel créé avec succès !");
-       // Navigate to token URL if available, fallback to slug
-       const shareToken = createData.memorial.share_token;
-       navigate(shareToken ? `/m/${shareToken}` : `/memorial/${createData.memorial.slug}`);
+      const memorial = createData.memorial;
+      if (createData.requires_payment) {
+        setCreatedMemorial(memorial);
+        toast.message(`Espace enregistré, non publié. Paiement de ${Number(createData.price).toLocaleString("fr-FR")} XAF requis.`);
+        await startMemorialPayment(memorial);
+        return;
+      }
+
+      toast.success("Espace mémoriel créé et publié !");
+      goToMemorial(memorial);
 
     } catch (error) {
       console.error('Submit error:', error);
@@ -764,14 +833,55 @@ const CreateMemorial = () => {
                      <div className="flex items-center gap-3 mb-4">
                        <CheckCircle className="w-6 h-6 text-primary" />
                        <div>
-                         <h4 className="font-sans text-sm font-medium">Bêta gratuite</h4>
-                         <p className="text-xs text-muted-foreground">Création d'espace mémoriel offerte</p>
+                         <h4 className="font-sans text-sm font-medium">
+                           {displayCategory === "future" ? "Nouveau décès" : displayCategory === "past" ? "Publication historique" : "Publication"}
+                         </h4>
+                         <p className="text-xs text-muted-foreground">
+                           {displayPrice === null
+                             ? "Tarif en cours de chargement…"
+                             : requiresPaymentDisplay
+                               ? `${displayPrice.toLocaleString("fr-FR")} XAF`
+                               : "Publication offerte"}
+                         </p>
                       </div>
                      </div>
                      <p className="text-sm text-muted-foreground">
-                       Durant la phase bêta, la création d'espaces mémoriels est entièrement gratuite. 
-                       Profitez-en pour honorer la mémoire de vos proches.
+                       {requiresPaymentDisplay
+                         ? "L'espace sera publié dès la confirmation de votre paiement mobile (Airtel Money ou Moov Money). Le tarif définitif est vérifié au moment du paiement."
+                         : "L'espace sera publié immédiatement après sa création."}
                      </p>
+
+                     {requiresPaymentDisplay && !paymentState && (
+                       <div className="mt-4">
+                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money</Label>
+                         <Input
+                           id="memorial-payer-phone"
+                           inputMode="tel"
+                           placeholder="24107XXXXXXX"
+                           value={payerPhone}
+                           onChange={(e) => setPayerPhone(e.target.value)}
+                           className="mt-1"
+                         />
+                         {errors.payerPhone && <p className="text-xs text-destructive mt-1">{errors.payerPhone}</p>}
+                       </div>
+                     )}
+
+                     {paymentState && (
+                       <div className="mt-4 text-sm" role="status" aria-live="polite">
+                         {paymentState.status === "pending" && (
+                           <p className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{paymentState.message || "Paiement en attente. Validez sur votre téléphone."}</p>
+                         )}
+                         {(paymentState.status === "failed" || paymentState.status === "timeout") && (
+                           <div>
+                             <p className="text-destructive">{paymentState.message || "Le paiement n'a pas abouti. Votre espace n'est pas publié."}</p>
+                             <button type="button" className="btn-ghost mt-2" onClick={() => setPaymentState(null)}>Réessayer le paiement</button>
+                           </div>
+                         )}
+                         {paymentState.checkoutUrl && paymentState.status === "pending" && (
+                           <a href={paymentState.checkoutUrl} target="_blank" rel="noreferrer" className="underline text-xs mt-2 inline-block">Finaliser via le portail de paiement</a>
+                         )}
+                       </div>
+                     )}
                   </div>
 
                   {/* Notification Preferences */}

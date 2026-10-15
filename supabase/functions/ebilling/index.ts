@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
+import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -300,15 +301,67 @@ const handler = async (req: Request): Promise<Response> => {
 
     const isMonetized = monetizationSetting?.value_bool ?? false;
 
-    // Get dynamic price
-    const { data: priceData } = await supabaseAdmin
-      .from("ritual_prices")
-      .select("unit_price")
-      .eq("item_type", item_type)
-      .single();
+    // ── G1-FIX7: memorial publication payment (price recomputed server-side) ──
+    const isMemorialPayment = item_type === "memorial";
+    let memorialPrice: number | null = null;
+    let memorialCategory: string | null = null;
+    if (isMemorialPayment) {
+      if (quantity !== 1 || post_id) {
+        return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
+      }
+      const { data: mem } = await supabaseAdmin
+        .from("memorials")
+        .select("id, created_by, is_published, deleted_at, death_date, funeral_date")
+        .eq("id", memorial_id)
+        .maybeSingle();
+      if (!mem || mem.deleted_at) {
+        return new Response(JSON.stringify({ error: "Mémorial introuvable" }), { status: 404, headers: jsonHeaders });
+      }
+      if (mem.created_by !== user.id) {
+        return new Response(JSON.stringify({ error: "Mémorial non autorisé" }), { status: 403, headers: jsonHeaders });
+      }
+      if (mem.is_published) {
+        return new Response(JSON.stringify({ error: "Mémorial déjà publié" }), { status: 409, headers: jsonHeaders });
+      }
+      const cls = classifyMemorial(mem.death_date, mem.funeral_date);
+      if (!cls.ok) {
+        return new Response(JSON.stringify({ error: cls.error }), { status: 400, headers: jsonHeaders });
+      }
+      memorialCategory = cls.category;
+      memorialPrice = await readMemorialPrice(supabaseAdmin, cls.category);
+      if (memorialPrice === null) {
+        return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
+      }
+      if (!isMonetized || memorialPrice === 0) {
+        return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
+      }
+      const { data: openTx } = await supabaseAdmin
+        .from("payment_transactions")
+        .select("id, status")
+        .eq("memorial_id", memorial_id)
+        .eq("payment_type", "memorial")
+        .in("status", ["pending", "success"])
+        .limit(1);
+      if (openTx && openTx.length > 0) {
+        return new Response(JSON.stringify({ error: "Un paiement est déjà en cours pour ce mémorial", reference_status: openTx[0].status }), { status: 409, headers: jsonHeaders });
+      }
+    } else if (item_type !== "cierge" && item_type !== "fleur") {
+      return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
+    }
+
+    let unitPrice: number | undefined;
+    if (isMemorialPayment) {
+      unitPrice = memorialPrice ?? undefined;
+    } else {
+      const { data: priceData } = await supabaseAdmin
+        .from("ritual_prices")
+        .select("unit_price")
+        .eq("item_type", item_type)
+        .single();
+      unitPrice = priceData?.unit_price;
+    }
 
     // G1-FIX6: active price only, never a hardcoded fallback.
-    const unitPrice = priceData?.unit_price;
     if (typeof unitPrice !== "number" || unitPrice < 0) {
       return new Response(
         JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }),
@@ -317,7 +370,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const totalAmount = unitPrice * quantity;
     const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
+    const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge" ? "Cierge" : "Fleur";
+    const memorialMeta = isMemorialPayment ? { memorial_id, memorial_category: memorialCategory } : {};
 
     console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
@@ -436,7 +490,7 @@ const handler = async (req: Request): Promise<Response> => {
     const createBillPayload = {
       payer_msisdn: phone,
       payer_email: user.email || "client@floorence.com",
-      payer_name: resolvedDeceasedName ? `Hommage - ${resolvedDeceasedName}` : "Hommage Floorence",
+      payer_name: resolvedDeceasedName ? `${isMemorialPayment ? "Mémorial" : "Hommage"} - ${resolvedDeceasedName}` : "Hommage Floorence",
       amount: totalAmount.toString(),
       external_reference: ebillingRef,
       short_description: `${itemLabel} x${quantity} - Floorence`,
@@ -479,7 +533,7 @@ const handler = async (req: Request): Promise<Response> => {
         candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
         flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
         last_api_response: rawBillText.substring(0, 500),
-        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
+        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
       });
 
       return new Response(
@@ -505,7 +559,7 @@ const handler = async (req: Request): Promise<Response> => {
         payer_phone: phone,
         deceased_name_snapshot: resolvedDeceasedName,
         last_api_response: JSON.stringify(billData),
-        metadata: { mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
+        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
       });
 
       return new Response(
@@ -595,6 +649,7 @@ const handler = async (req: Request): Promise<Response> => {
       flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
       last_api_response: JSON.stringify({ bill: billData, ussd: ussdData }),
       metadata: {
+        ...memorialMeta,
         mode: "payant",
         quantity,
         unit_price: unitPrice,
