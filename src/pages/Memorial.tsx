@@ -879,15 +879,8 @@ const MemorialInner = () => {
 
         {/* Tabs Content — NAV-P1 : Hommage · Maillage · Lignage · Inférences · Événements */}
         {(() => {
-          const isPastFuneral = (() => {
-            if (!memorial.funeralDate) return false;
-            const funeralDateTime = new Date(memorial.funeralDate);
-            if (isNaN(funeralDateTime.getTime())) return false;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            return funeralDateTime.getTime() < today.getTime();
-          })();
-          const showNoticeTab = memorial.type !== "PAST" && !isPastFuneral;
+          // NAV-P1-C : l'avis de décès et les actions du créateur ne dépendent plus de la date des obsèques.
+          // Les événements à venir restent filtrés par GatheringsCalendar ; publication/confidentialité inchangées.
           return (
         <section id="memorial-tabs" className="container mx-auto px-4 py-12 scroll-mt-20">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1056,7 +1049,6 @@ const MemorialInner = () => {
             </TabsContent>
 
             <TabsContent value="gatherings" className="mt-0">
-              {showNoticeTab && (
               <div className="mb-10">
                 <div className="max-w-2xl space-y-6">
                    {isOwner && (
@@ -1103,7 +1095,6 @@ const MemorialInner = () => {
                   />
                 </div>
               </div>
-              )}
               <div className="max-w-2xl">
                 <GatheringsCalendar
                   events={memorialEvents}
