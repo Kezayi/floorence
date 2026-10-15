@@ -346,15 +346,22 @@ const handler = async (req: Request): Promise<Response> => {
       if (!isMonetized || memorialPrice === 0) {
         return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
       }
-      const { data: openTx } = await supabaseAdmin
+      // G1-FIX9: resolve stale attempts (>30 min) before deciding; never invent an operator status.
+      await resolveStaleMemorialPayments(supabaseAdmin, memorial_id);
+      const { data: openTxs } = await supabaseAdmin
         .from("payment_transactions")
-        .select("id, status")
+        .select("id, status, metadata")
         .eq("memorial_id", memorial_id)
         .eq("payment_type", "memorial")
-        .in("status", ["pending", "success"])
-        .limit(1);
-      if (openTx && openTx.length > 0) {
-        return new Response(JSON.stringify({ error: "Un paiement est déjà en cours pour ce mémorial", reference_status: openTx[0].status }), { status: 409, headers: jsonHeaders });
+        .in("status", ["pending", "success", "timeout"]);
+      const blocking = (openTxs ?? []).filter((t: any) => isBlockingMemorialTx(t));
+      if (blocking.length > 0) {
+        const s = blocking.some((t: any) => t.status === "success") ? "success"
+          : blocking.some((t: any) => t.status === "pending") ? "pending" : "timeout";
+        const error = s === "success" ? "Ce mémorial a déjà été payé"
+          : s === "pending" ? "Un paiement est déjà en cours pour ce mémorial"
+          : "Le paiement précédent est en cours de vérification auprès de l'opérateur. Nouvelle tentative impossible pour éviter un double débit.";
+        return new Response(JSON.stringify({ error, reference_status: s }), { status: 409, headers: jsonHeaders });
       }
     } else if (item_type !== "cierge" && item_type !== "fleur") {
       return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
