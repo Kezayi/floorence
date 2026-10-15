@@ -1012,7 +1012,7 @@ const CreateMemorial = () => {
                           Création en cours...
                         </>
                       ) : (
-                         "Créer l'espace mémoriel"
+                         requiresPaymentDisplay ? (createdMemorial ? "Relancer le paiement" : "Créer et payer") : "Créer l'espace mémoriel"
                       )}
                     </button>
                   </div>
