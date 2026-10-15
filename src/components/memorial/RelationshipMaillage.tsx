@@ -25,6 +25,8 @@ interface RelationshipMaillageProps {
     relationCategory: string;
     relationLink?: string | null;
   }>;
+  /** NAV-P1: "graph" = onglet Maillage (graphe seul), "inferences" = onglet Inférences (3 modules). */
+  section?: "graph" | "inferences";
 }
 
 // 5 catégories ordonnées avec couleurs exactes
@@ -42,7 +44,7 @@ const confidenceBadges = {
   low: { label: "Lien indirect", className: "bg-muted text-muted-foreground border-border" },
 };
 
-const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipMaillageProps) => {
+const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "graph" }: RelationshipMaillageProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const [fullscreenGraph, setFullscreenGraph] = useState(false);
@@ -111,76 +113,27 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
 
   const isMaillageEmpty = directRelations.length === 0;
 
-  return (
-    <div className="space-y-8">
-      {/* En-tête */}
-      <div>
-        <h3 className="flex items-center gap-2 mb-2">
-          <GitBranch className="w-5 h-5 text-foreground/70" />
-          Maillage relationnel
-        </h3>
-        <p className="font-serif text-muted-foreground">
-          Visualisation des liens autour de {deceasedName}
-        </p>
-      </div>
-
-      {isMaillageEmpty ? (
-        <div className="bg-muted/30 border border-border rounded-sm p-10 text-center">
-          <Users className="w-10 h-10 mx-auto text-muted-foreground/40 mb-4" />
-          <h4 className="text-lg font-serif mb-2">Commencer à tisser la communauté</h4>
-          <p className="text-sm text-muted-foreground font-serif max-w-md mx-auto mb-3">
-            Aucun hommage n'a encore été déposé. Soyez le premier à partager un souvenir 
-            et à construire le maillage relationnel autour de {deceasedName}.
-          </p>
-          <p className="text-xs text-muted-foreground/60 font-sans italic">
-            Chaque témoignage enrichit la mémoire collective et révèle les liens qui unissent les proches.
+  if (section === "inferences") {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h3 className="flex items-center gap-2 mb-2">
+            <Link2 className="w-5 h-5 text-foreground/70" />
+            Inférences
+          </h3>
+          <p className="font-serif text-muted-foreground">
+            Liens attestés, déclarés et déduits autour de {deceasedName}
           </p>
         </div>
-      ) : (
-        <>
-          {/* Graphe 2D */}
-          <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute bottom-2 right-2 sm:bottom-auto sm:top-2 z-20 h-8 w-8 p-0 bg-background/80 hover:bg-background border border-border/60"
-              onClick={() => setFullscreenGraph(true)}
-              aria-label="Mode immersion plein écran"
-              title="Mode immersion"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <Suspense fallback={<Skeleton className="w-full h-[400px] rounded-xl" />}>
-              <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
-            </Suspense>
+        {isMaillageEmpty ? (
+          <div className="bg-muted/30 border border-border rounded-sm p-10 text-center">
+            <Users className="w-10 h-10 mx-auto text-muted-foreground/40 mb-4" />
+            <p className="text-sm text-muted-foreground font-serif max-w-md mx-auto">
+              Aucune relation n'est encore disponible pour {deceasedName}.
+            </p>
           </div>
-
-          {/* Fullscreen Graph Dialog */}
-          {fullscreenGraph && (
-            <div className="fixed inset-0 z-50 bg-background flex flex-col gpu-accelerated" style={{ contain: 'layout style paint' }}>
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <GitBranch className="w-5 h-5 text-foreground/70" />
-                  <h3 className="font-serif text-lg">Maillage de {deceasedName}</h3>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setFullscreenGraph(false)}
-                  aria-label="Fermer le mode immersion"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="flex-1 p-4">
-                <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" />}>
-                  <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
-                </Suspense>
-              </div>
-            </div>
-          )}
-
+        ) : (
+          <>
           {/* Pont des Ancêtres */}
           {interMemorialLinks && interMemorialLinks.length > 0 && (
             <div className="bg-ai-gold/5 border border-ai-gold/20 p-5 rounded-sm">
@@ -273,6 +226,82 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
               </p>
             </div>
           )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* En-tête */}
+      <div>
+        <h3 className="flex items-center gap-2 mb-2">
+          <GitBranch className="w-5 h-5 text-foreground/70" />
+          Maillage relationnel
+        </h3>
+        <p className="font-serif text-muted-foreground">
+          Visualisation des liens autour de {deceasedName}
+        </p>
+      </div>
+
+      {isMaillageEmpty ? (
+        <div className="bg-muted/30 border border-border rounded-sm p-10 text-center">
+          <Users className="w-10 h-10 mx-auto text-muted-foreground/40 mb-4" />
+          <h4 className="text-lg font-serif mb-2">Commencer à tisser la communauté</h4>
+          <p className="text-sm text-muted-foreground font-serif max-w-md mx-auto mb-3">
+            Aucun hommage n'a encore été déposé. Soyez le premier à partager un souvenir 
+            et à construire le maillage relationnel autour de {deceasedName}.
+          </p>
+          <p className="text-xs text-muted-foreground/60 font-sans italic">
+            Chaque témoignage enrichit la mémoire collective et révèle les liens qui unissent les proches.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Graphe 2D */}
+          <div className="relative bg-card/50 border border-border/60 rounded-sm p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute bottom-2 right-2 sm:bottom-auto sm:top-2 z-20 h-8 w-8 p-0 bg-background/80 hover:bg-background border border-border/60"
+              onClick={() => setFullscreenGraph(true)}
+              aria-label="Mode immersion plein écran"
+              title="Mode immersion"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+            <Suspense fallback={<Skeleton className="w-full h-[400px] rounded-xl" />}>
+              <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+            </Suspense>
+          </div>
+
+          {/* Fullscreen Graph Dialog */}
+          {fullscreenGraph && (
+            <div className="fixed inset-0 z-50 bg-background flex flex-col gpu-accelerated" style={{ contain: 'layout style paint' }}>
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-foreground/70" />
+                  <h3 className="font-serif text-lg">Maillage de {deceasedName}</h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setFullscreenGraph(false)}
+                  aria-label="Fermer le mode immersion"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex-1 p-4">
+                <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" />}>
+                  <RelationshipGraph2D deceasedName={deceasedName} posts={posts.map(p => ({ ...p, relationLink: p.relationLink }))} interMemorialLinks={interMemorialLinks || []} />
+                </Suspense>
+              </div>
+            </div>
+          )}
+
         </>
       )}
     </div>

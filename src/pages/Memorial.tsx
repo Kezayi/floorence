@@ -25,7 +25,7 @@ import RelationshipMaillage from "@/components/memorial/RelationshipMaillage";
 import LineageTree from "@/components/memorial/LineageTree";
 import SecureDataDisplay from "@/components/memorial/SecureDataDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, ChevronLeft, FileText, Calendar, Book, GitBranch, TreePine } from "lucide-react";
+import { Heart, ChevronLeft, Calendar, Book, GitBranch, TreePine, Link2 } from "lucide-react";
 import { useMemorials } from "@/contexts/MemorialsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,7 @@ const MemorialInner = () => {
   const isMonetized = monetization?.isMonetized ?? false;
   const POSTS_PER_PAGE = 5;
   const [hommagesPage, setHommagesPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("hommages");
   // Gesture modal state
   const [gesteModal, setGesteModal] = useState<{ open: boolean; itemType: "cierge" | "fleur"; postId: string }>({
     open: false, itemType: "cierge", postId: "",
@@ -479,6 +480,7 @@ const MemorialInner = () => {
   // Reset page when memorial changes
   useEffect(() => {
     setHommagesPage(1);
+    setActiveTab("hommages");
   }, [slug, token]);
 
   // Paginated posts
@@ -768,11 +770,13 @@ const MemorialInner = () => {
   };
 
   const scrollToGuestbook = () => {
-    guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" });
+    setActiveTab("hommages");
+    requestAnimationFrame(() => guestbookFormRef.current?.scrollIntoView({ behavior: "smooth" }));
   };
 
   const scrollToDarkZone = () => {
-    document.querySelector(".dark-zone")?.scrollIntoView({ behavior: "smooth" });
+    setActiveTab("hommages");
+    requestAnimationFrame(() => document.getElementById("memorial-tabs")?.scrollIntoView({ behavior: "smooth" }));
   };
 
   // Convert death date for anniversary component
@@ -873,7 +877,7 @@ const MemorialInner = () => {
 
         <div className="divider-elegant" />
 
-        {/* Tabs Content */}
+        {/* Tabs Content — NAV-P1 : Hommage · Maillage · Lignage · Inférences · Événements */}
         {(() => {
           const isPastFuneral = (() => {
             if (!memorial.funeralDate) return false;
@@ -883,179 +887,37 @@ const MemorialInner = () => {
             today.setHours(0, 0, 0, 0);
             return funeralDateTime.getTime() < today.getTime();
           })();
-          
           const showNoticeTab = memorial.type !== "PAST" && !isPastFuneral;
-          const defaultTab = showNoticeTab ? "notice" : "relationships";
           return (
-        <section className="container mx-auto px-4 py-12">
-          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto flex-nowrap">
-              {showNoticeTab && (
-                <TabsTrigger
-                  value="notice"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="hidden sm:inline">Avis de décès</span>
-                  <span className="sm:hidden">Avis</span>
-                </TabsTrigger>
-              )}
-              
-                <TabsTrigger
-                  value="relationships"
-                  onMouseEnter={() => prefetchTab("relationships")}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-                >
-                <GitBranch className="w-4 h-4" />
-                <span className="hidden sm:inline">Maillage</span>
-                <span className="sm:hidden">Liens</span>
+        <section id="memorial-tabs" className="container mx-auto px-4 py-12 scroll-mt-20">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList aria-label="Sections du mémorial" className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto overflow-y-hidden flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <TabsTrigger value="hommages" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Heart className="w-4 h-4" aria-hidden="true" />
+                <span>Hommage</span>
               </TabsTrigger>
-              
-                <TabsTrigger
-                  value="lineage"
-                  onMouseEnter={() => prefetchTab("lineage")}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-                >
-                <TreePine className="w-4 h-4" />
-                <span className="hidden sm:inline">Arbre</span>
-                <span className="sm:hidden">Arbre</span>
+              <TabsTrigger value="relationships" onMouseEnter={() => prefetchTab("relationships")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <GitBranch className="w-4 h-4" aria-hidden="true" />
+                <span>Maillage</span>
               </TabsTrigger>
-              
-                <TabsTrigger
-                  value="gatherings"
-                  onMouseEnter={() => prefetchTab("gatherings")}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-                >
-                <Calendar className="w-4 h-4" />
-                <span className="hidden sm:inline">Événements</span>
-                <span className="sm:hidden">Événements</span>
+              <TabsTrigger value="lineage" onMouseEnter={() => prefetchTab("lineage")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <TreePine className="w-4 h-4" aria-hidden="true" />
+                <span>Lignage</span>
               </TabsTrigger>
-              
-              {memorial.enableContributions && contributionsEnabled && (
-                <TabsTrigger
-                  value="contributions"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap"
-                >
-                  <Heart className="w-4 h-4" />
-                  <span className="hidden sm:inline">Contributions</span>
-                  <span className="sm:hidden">Aider</span>
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="inferences" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Link2 className="w-4 h-4" aria-hidden="true" />
+                <span>Inférences</span>
+              </TabsTrigger>
+              <TabsTrigger value="gatherings" onMouseEnter={() => prefetchTab("gatherings")} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Calendar className="w-4 h-4" aria-hidden="true" />
+                <span>Événements</span>
+              </TabsTrigger>
             </TabsList>
 
-            {showNoticeTab && (
-              <TabsContent value="notice" className="mt-0">
-                <div className="max-w-2xl space-y-6">
-                   {isOwner && (
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap justify-end gap-3">
-                        <EditMemorialDialog
-                          memorialId={memorial.id}
-                          initialData={{
-                            bio: safeBio,
-                            funeralDate: memorial.funeralDate,
-                            funeralLocation: memorial.funeralLocation,
-                            photos: safePhotos,
-                            defaultPhotoIndex: memorial.defaultPhotoIndex,
-                            memorialId: memorial.id,
-                          }}
-                          onSave={handleMemorialUpdated}
-                        />
-                        <AddEventDialog
-                          memorialId={memorial.id}
-                          onEventAdded={fetchEventsAgain}
-                        />
-                        <RequestLinkDialog
-                          memorialId={memorial.id}
-                          memorialName={safeName}
-                        />
-                      </div>
-                      <InferredLinkSuggestions
-                        memorialId={memorial.id}
-                        memorialName={safeName}
-                      />
-                    </div>
-                  )}
-                  
-                  <DeathNotice
-                    memorial={{
-                      name: safeName,
-                      birthDate: memorial.birthDate,
-                      deathDate: memorial.deathDate,
-                      bio: safeBio,
-                      funeralDate: memorial.funeralDate,
-                      funeralLocation: memorial.funeralLocation,
-                    }}
-                    events={memorialEvents}
-                  />
-                </div>
-              </TabsContent>
-            )}
-
-            <TabsContent value="gatherings" className="mt-0">
-              <div className="max-w-2xl">
-                <GatheringsCalendar
-                  events={memorialEvents}
-                  memorialName={safeName}
-                  memorialId={memorial.id}
-                  isOwner={isOwner}
-                  onAddEvent={fetchEventsAgain}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="relationships" className="mt-0">
-              <div className="max-w-3xl space-y-6">
-                {isOwner && (
-                  <TransitiveDiscoveryWidget
-                    memorialId={memorial.id}
-                    memorialName={safeName}
-                  />
-                )}
-                <SecureDataDisplay blurPreview>
-                  <RelationshipMaillage 
-                    deceasedName={safeName}
-                    memorialId={memorial.id}
-                    posts={(isMaillageUUID && maillagePosts ? maillagePosts : guestbookPosts.map(post => ({
-                      authorId: post.authorId,
-                      authorName: post?.authorName || "Anonyme",
-                      authorAvatarUrl: post?.authorAvatarUrl || null,
-                      relationCategory: post?.relationCategory || "autre",
-                      relationLink: post?.relationLink || null,
-                    })))}
-                  />
-                </SecureDataDisplay>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="lineage" className="mt-0">
-              <div className="max-w-3xl">
-                <LineageTree
-                  memorialId={memorial.id}
-                  deceasedName={safeName}
-                  deceasedPhoto={bestPhoto}
-                  isOwner={isOwner}
-                />
-              </div>
-            </TabsContent>
-
-            {memorial.enableContributions && contributionsEnabled && (
-              <TabsContent value="contributions" className="mt-0">
-                <div className="max-w-2xl">
-                  <ContributionLink deceasedName={safeName} />
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
-        </section>
-          );
-        })()}
-
-        {/* Hommages Section — Fond Ghostwhite */}
-        {guestbookPosts.length > 0 && (
-        <section className="section-padding bg-livreor">
-          <div className="container mx-auto">
-            <div className="max-w-2xl">
+            <TabsContent value="hommages" className="mt-0">
+              <div className="max-w-2xl space-y-12">
+                {guestbookPosts.length > 0 && (
+                <div>
               <div className="flex items-center gap-3 mb-2">
                 <Heart className="w-6 h-6 text-livreor-foreground" />
                 <h2 className="text-livreor-foreground">Hommages</h2>
@@ -1111,15 +973,10 @@ const MemorialInner = () => {
                   </button>
                 </div>
               )}
-            </div>
-          </div>
-        </section>
-        )}
+                </div>
+                )}
 
-        {/* Livre d'Or - Ghostwhite Zone (form only) */}
-        <section className="section-padding bg-livreor">
-          <div className="container mx-auto">
-            <div className="max-w-2xl">
+                <div>
               <div className="flex items-center gap-3 mb-2">
                 <Book className="w-6 h-6 text-livreor-foreground" />
                 <h2 className="text-livreor-foreground">Livre d'or</h2>
@@ -1138,9 +995,130 @@ const MemorialInner = () => {
                   lockedRelation={userLockedRelation}
                 />
               </div>
-            </div>
-          </div>
+                </div>
+
+                {memorial.enableContributions && contributionsEnabled && (
+                  <ContributionLink deceasedName={safeName} />
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="relationships" className="mt-0">
+              <div className="max-w-3xl space-y-6">
+                {isOwner && (
+                  <TransitiveDiscoveryWidget memorialId={memorial.id} memorialName={safeName} />
+                )}
+                <SecureDataDisplay blurPreview>
+                  <RelationshipMaillage
+                    section="graph"
+                    deceasedName={safeName}
+                    memorialId={memorial.id}
+                    posts={(isMaillageUUID && maillagePosts ? maillagePosts : guestbookPosts.map(post => ({
+                      authorId: post.authorId,
+                      authorName: post?.authorName || "Anonyme",
+                      authorAvatarUrl: post?.authorAvatarUrl || null,
+                      relationCategory: post?.relationCategory || "autre",
+                      relationLink: post?.relationLink || null,
+                    })))}
+                  />
+                </SecureDataDisplay>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="lineage" className="mt-0">
+              <div className="max-w-3xl">
+                <LineageTree
+                  memorialId={memorial.id}
+                  deceasedName={safeName}
+                  deceasedPhoto={bestPhoto}
+                  isOwner={isOwner}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="inferences" className="mt-0">
+              <div className="max-w-3xl">
+                <SecureDataDisplay blurPreview>
+                  <RelationshipMaillage
+                    section="inferences"
+                    deceasedName={safeName}
+                    memorialId={memorial.id}
+                    posts={(isMaillageUUID && maillagePosts ? maillagePosts : guestbookPosts.map(post => ({
+                      authorId: post.authorId,
+                      authorName: post?.authorName || "Anonyme",
+                      authorAvatarUrl: post?.authorAvatarUrl || null,
+                      relationCategory: post?.relationCategory || "autre",
+                      relationLink: post?.relationLink || null,
+                    })))}
+                  />
+                </SecureDataDisplay>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="gatherings" className="mt-0">
+              {showNoticeTab && (
+              <div className="mb-10">
+                <div className="max-w-2xl space-y-6">
+                   {isOwner && (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap justify-end gap-3">
+                        <EditMemorialDialog
+                          memorialId={memorial.id}
+                          initialData={{
+                            bio: safeBio,
+                            funeralDate: memorial.funeralDate,
+                            funeralLocation: memorial.funeralLocation,
+                            photos: safePhotos,
+                            defaultPhotoIndex: memorial.defaultPhotoIndex,
+                            memorialId: memorial.id,
+                          }}
+                          onSave={handleMemorialUpdated}
+                        />
+                        <AddEventDialog
+                          memorialId={memorial.id}
+                          onEventAdded={fetchEventsAgain}
+                        />
+                        <RequestLinkDialog
+                          memorialId={memorial.id}
+                          memorialName={safeName}
+                        />
+                      </div>
+                      <InferredLinkSuggestions
+                        memorialId={memorial.id}
+                        memorialName={safeName}
+                      />
+                    </div>
+                  )}
+                  
+                  <DeathNotice
+                    memorial={{
+                      name: safeName,
+                      birthDate: memorial.birthDate,
+                      deathDate: memorial.deathDate,
+                      bio: safeBio,
+                      funeralDate: memorial.funeralDate,
+                      funeralLocation: memorial.funeralLocation,
+                    }}
+                    events={memorialEvents}
+                  />
+                </div>
+              </div>
+              )}
+              <div className="max-w-2xl">
+                <GatheringsCalendar
+                  events={memorialEvents}
+                  memorialName={safeName}
+                  memorialId={memorial.id}
+                  isOwner={isOwner}
+                  onAddEvent={fetchEventsAgain}
+                />
+              </div>
+            </TabsContent>
+
+          </Tabs>
         </section>
+          );
+        })()}
       </main>
 
       <Footer />
