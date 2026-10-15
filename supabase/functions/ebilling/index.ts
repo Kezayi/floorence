@@ -232,6 +232,69 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
 }
 
+// ── G1-FIX9: stale memorial payment resolution ──
+// Rules: a real pending always carries a bill_id (inserted only after bill creation).
+//  - pending > 30 min, no bill_id → never reached the operator → local closure
+//    (status timeout + metadata.local_closure='no_operator_bill'), retry allowed.
+//  - pending/timeout > 30 min with bill_id → ask the operator (GET, no debit):
+//    paid → atomic fulfillment; failed/expired/cancelled → failed (retry allowed);
+//    anything else → timeout, status unknown, retry stays BLOCKED.
+export const STALE_MS = 30 * 60 * 1000;
+
+export function isBlockingMemorialTx(t: { status: string; metadata?: any }): boolean {
+  if (t.status === "success" || t.status === "pending") return true;
+  if (t.status === "timeout") return t.metadata?.local_closure !== "no_operator_bill";
+  return false;
+}
+
+async function resolveStaleMemorialPayments(supabaseAdmin: any, memorialId: string) {
+  const cutoff = new Date(Date.now() - STALE_MS).toISOString();
+  const { data: stale } = await supabaseAdmin
+    .from("payment_transactions")
+    .select("id, status, ebilling_reference, metadata, ebilling_transaction_id")
+    .eq("memorial_id", memorialId)
+    .eq("payment_type", "memorial")
+    .in("status", ["pending", "timeout"])
+    .lt("created_at", cutoff);
+  for (const tx of stale ?? []) {
+    const meta = (tx.metadata ?? {}) as Record<string, any>;
+    if (meta.local_closure === "no_operator_bill") continue;
+    const billId = meta.bill_id || tx.ebilling_transaction_id;
+    const now = new Date().toISOString();
+    if (!billId) {
+      await supabaseAdmin.from("payment_transactions")
+        .update({ status: "timeout", updated_at: now, metadata: { ...meta, local_closure: "no_operator_bill", local_closed_at: now } })
+        .eq("id", tx.id).in("status", ["pending", "timeout"]);
+      console.log(`[ebilling:stale] ref=${tx.ebilling_reference} → local closure (no bill_id)`);
+      continue;
+    }
+    const { username, sharedKey, baseUrl, ok } = getEbillingConfig();
+    let state = "";
+    if (ok && username && sharedKey) {
+      try {
+        const r = await fetch(`${baseUrl}/e_bills/${billId}`, {
+          method: "GET",
+          headers: { "Authorization": buildBasicAuth(username, sharedKey), "Accept": "application/json" },
+        });
+        const d = JSON.parse(await r.text());
+        state = (d?.e_bill?.state || d?.data?.state || d?.state || "").toLowerCase();
+      } catch (e) {
+        console.error(`[ebilling:stale] ref=${tx.ebilling_reference} operator query failed`, e);
+      }
+    }
+    if (state === "paid" || state === "success" || state === "completed") {
+      await finalizePaymentSuccess(supabaseAdmin, { txId: tx.id, reference: tx.ebilling_reference, channel: "reconciliation", ebillingTransactionId: billId });
+    } else if (state === "expired" || state === "cancelled" || state === "failed") {
+      await markPaymentFailed(supabaseAdmin, tx.id);
+    } else if (tx.status === "pending") {
+      await supabaseAdmin.from("payment_transactions")
+        .update({ status: "timeout", updated_at: now, metadata: { ...meta, operator_status: state || "unknown", operator_checked_at: now } })
+        .eq("id", tx.id).eq("status", "pending");
+    }
+    console.log(`[ebilling:stale] ref=${tx.ebilling_reference} operator_state=${state || "unknown"}`);
+  }
+}
+
 // ── MAIN HANDLER ──
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
