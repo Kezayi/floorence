@@ -8,7 +8,7 @@ import { displayName } from "@/lib/privacyUtils";
 import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
 import { inferGender } from "@/lib/genderInference";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDemoAvatarUrl, reservePortrait } from "@/lib/demoAvatars";
+import { reservePortrait } from "@/lib/demoAvatars";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
 import Photo from "@/components/ui/Photo";
