@@ -143,7 +143,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts }: RelationshipM
             <Button
               variant="ghost"
               size="sm"
-              className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 hover:bg-background border border-border/60"
+              className="absolute bottom-2 right-2 sm:bottom-auto sm:top-2 z-20 h-8 w-8 p-0 bg-background/80 hover:bg-background border border-border/60"
               onClick={() => setFullscreenGraph(true)}
               aria-label="Mode immersion plein écran"
               title="Mode immersion"
