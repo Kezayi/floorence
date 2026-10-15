@@ -300,15 +300,67 @@ const handler = async (req: Request): Promise<Response> => {
 
     const isMonetized = monetizationSetting?.value_bool ?? false;
 
-    // Get dynamic price
-    const { data: priceData } = await supabaseAdmin
-      .from("ritual_prices")
-      .select("unit_price")
-      .eq("item_type", item_type)
-      .single();
+    // ── G1-FIX7: memorial publication payment (price recomputed server-side) ──
+    const isMemorialPayment = item_type === "memorial";
+    let memorialPrice: number | null = null;
+    let memorialCategory: string | null = null;
+    if (isMemorialPayment) {
+      if (quantity !== 1 || post_id) {
+        return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
+      }
+      const { data: mem } = await supabaseAdmin
+        .from("memorials")
+        .select("id, created_by, is_published, deleted_at, death_date, funeral_date")
+        .eq("id", memorial_id)
+        .maybeSingle();
+      if (!mem || mem.deleted_at) {
+        return new Response(JSON.stringify({ error: "Mémorial introuvable" }), { status: 404, headers: jsonHeaders });
+      }
+      if (mem.created_by !== user.id) {
+        return new Response(JSON.stringify({ error: "Mémorial non autorisé" }), { status: 403, headers: jsonHeaders });
+      }
+      if (mem.is_published) {
+        return new Response(JSON.stringify({ error: "Mémorial déjà publié" }), { status: 409, headers: jsonHeaders });
+      }
+      const cls = classifyMemorial(mem.death_date, mem.funeral_date);
+      if (!cls.ok) {
+        return new Response(JSON.stringify({ error: cls.error }), { status: 400, headers: jsonHeaders });
+      }
+      memorialCategory = cls.category;
+      memorialPrice = await readMemorialPrice(supabaseAdmin, cls.category);
+      if (memorialPrice === null) {
+        return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
+      }
+      if (!isMonetized || memorialPrice === 0) {
+        return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
+      }
+      const { data: openTx } = await supabaseAdmin
+        .from("payment_transactions")
+        .select("id, status")
+        .eq("memorial_id", memorial_id)
+        .eq("payment_type", "memorial")
+        .in("status", ["pending", "success"])
+        .limit(1);
+      if (openTx && openTx.length > 0) {
+        return new Response(JSON.stringify({ error: "Un paiement est déjà en cours pour ce mémorial", reference_status: openTx[0].status }), { status: 409, headers: jsonHeaders });
+      }
+    } else if (item_type !== "cierge" && item_type !== "fleur") {
+      return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
+    }
+
+    let unitPrice: number | undefined;
+    if (isMemorialPayment) {
+      unitPrice = memorialPrice ?? undefined;
+    } else {
+      const { data: priceData } = await supabaseAdmin
+        .from("ritual_prices")
+        .select("unit_price")
+        .eq("item_type", item_type)
+        .single();
+      unitPrice = priceData?.unit_price;
+    }
 
     // G1-FIX6: active price only, never a hardcoded fallback.
-    const unitPrice = priceData?.unit_price;
     if (typeof unitPrice !== "number" || unitPrice < 0) {
       return new Response(
         JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }),
@@ -317,7 +369,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const totalAmount = unitPrice * quantity;
     const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    const itemLabel = item_type === "cierge" ? "Cierge" : "Fleur";
+    const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge" ? "Cierge" : "Fleur";
+    const memorialMeta = isMemorialPayment ? { memorial_id, memorial_category: memorialCategory } : {};
 
     console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
