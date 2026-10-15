@@ -480,6 +480,7 @@ const MemorialInner = () => {
   // Reset page when memorial changes
   useEffect(() => {
     setHommagesPage(1);
+    setActiveTab("hommages");
   }, [slug, token]);
 
   // Paginated posts
