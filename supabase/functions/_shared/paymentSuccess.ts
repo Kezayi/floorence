@@ -40,18 +40,18 @@ export async function finalizePaymentSuccess(admin: Admin, input: FinalizeInput)
     p_last_api_response: input.lastApiResponse ?? null,
   });
   if (error) throw error;
-  const r = (data ?? {}) as { claimed?: boolean; reason?: string; unhidden?: number; credited?: FinalizeResult["credited"] };
+  const r = (data ?? {}) as { claimed?: boolean; reason?: string; unhidden?: number; credited?: FinalizeResult["credited"]; published_memorial_id?: string | null };
   if (!r.claimed) {
     console.log(`[payment-success:${input.channel}] ref=${input.reference} not claimed (${r.reason})`);
     return { claimed: false, unhidden: 0, credited: null };
   }
   const credited = r.credited ?? null;
-  console.log(`[payment-success:${input.channel}] ref=${input.reference} claimed, unhidden=${r.unhidden ?? 0}, credited=${JSON.stringify(credited)}`);
+  console.log(`[payment-success:${input.channel}] ref=${input.reference} claimed, unhidden=${r.unhidden ?? 0}, credited=${JSON.stringify(credited)}, published=${r.published_memorial_id ?? null}`);
   // Recovery note: if the certificate call below fails after commit, the transaction is
   // already 'success'; re-run process-payment-success with { transaction_id } (idempotent caller-side).
 
-  // 4. Certificate / receipt — winner only, non-blocking
-  if (!input.skipCertificate) {
+  // 4. Certificate / receipt — winner only, non-blocking (gesture/tribute payments only; G1-FIX7)
+  if (!input.skipCertificate && !r.published_memorial_id) {
     try {
       await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/process-payment-success`, {
         method: "POST",
