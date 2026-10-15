@@ -48,6 +48,10 @@
 
     --radius: 0.25rem;
 
+    /* Scene ink — fond neutre des photographies (Norme AAA, #0D0D0D) */
+    --scene-ink: 0 0% 5%;
+    --scene-ink-foreground: 0 0% 92%;
+
     /* Zone sombre - Livre d'Or */
     --memorial-dark: 0 0% 6%;
     --memorial-dark-foreground: 0 0% 92%;
