@@ -764,14 +764,55 @@ const CreateMemorial = () => {
                      <div className="flex items-center gap-3 mb-4">
                        <CheckCircle className="w-6 h-6 text-primary" />
                        <div>
-                         <h4 className="font-sans text-sm font-medium">Bêta gratuite</h4>
-                         <p className="text-xs text-muted-foreground">Création d'espace mémoriel offerte</p>
+                         <h4 className="font-sans text-sm font-medium">
+                           {displayCategory === "future" ? "Nouveau décès" : displayCategory === "past" ? "Publication historique" : "Publication"}
+                         </h4>
+                         <p className="text-xs text-muted-foreground">
+                           {displayPrice === null
+                             ? "Tarif en cours de chargement…"
+                             : requiresPaymentDisplay
+                               ? `${displayPrice.toLocaleString("fr-FR")} XAF`
+                               : "Publication offerte"}
+                         </p>
                       </div>
                      </div>
                      <p className="text-sm text-muted-foreground">
-                       Durant la phase bêta, la création d'espaces mémoriels est entièrement gratuite. 
-                       Profitez-en pour honorer la mémoire de vos proches.
+                       {requiresPaymentDisplay
+                         ? "L'espace sera publié dès la confirmation de votre paiement mobile (Airtel Money ou Moov Money). Le tarif définitif est vérifié au moment du paiement."
+                         : "L'espace sera publié immédiatement après sa création."}
                      </p>
+
+                     {requiresPaymentDisplay && !paymentState && (
+                       <div className="mt-4">
+                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money</Label>
+                         <Input
+                           id="memorial-payer-phone"
+                           inputMode="tel"
+                           placeholder="24107XXXXXXX"
+                           value={payerPhone}
+                           onChange={(e) => setPayerPhone(e.target.value)}
+                           className="mt-1"
+                         />
+                         {errors.payerPhone && <p className="text-xs text-destructive mt-1">{errors.payerPhone}</p>}
+                       </div>
+                     )}
+
+                     {paymentState && (
+                       <div className="mt-4 text-sm" role="status" aria-live="polite">
+                         {paymentState.status === "pending" && (
+                           <p className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{paymentState.message || "Paiement en attente. Validez sur votre téléphone."}</p>
+                         )}
+                         {(paymentState.status === "failed" || paymentState.status === "timeout") && (
+                           <div>
+                             <p className="text-destructive">{paymentState.message || "Le paiement n'a pas abouti. Votre espace n'est pas publié."}</p>
+                             <button type="button" className="btn-ghost mt-2" onClick={() => setPaymentState(null)}>Réessayer le paiement</button>
+                           </div>
+                         )}
+                         {paymentState.checkoutUrl && paymentState.status === "pending" && (
+                           <a href={paymentState.checkoutUrl} target="_blank" rel="noreferrer" className="underline text-xs mt-2 inline-block">Finaliser via le portail de paiement</a>
+                         )}
+                       </div>
+                     )}
                   </div>
 
                   {/* Notification Preferences */}
