@@ -120,7 +120,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
       id: `tribute-${post.id}`,
       name: post.author_name,
       firstName: post.author_name.split(" ")[0],
-      photo: (post as any).author_photo_url || getDemoAvatarUrl(post.author_name),
+      photo: (post as any).author_photo_url || null,
       shareToken: null as string | null,
       relation: post.relation_link || post.relation_category,
       createdBy: "",

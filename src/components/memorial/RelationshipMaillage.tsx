@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import Photo from "@/components/ui/Photo";
-import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
