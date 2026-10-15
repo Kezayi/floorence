@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DateMaskedInput } from "@/components/ui/DateMaskedInput";
 import { formatDateFrench } from "@/lib/dateUtils";
+import { useMonetization } from "@/hooks/useMonetization";
+import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -45,6 +47,19 @@ const CreateMemorial = () => {
     notificationStartDay: null as number | null,
     notificationEndDay: null as number | null,
   });
+
+  // G1-FIX7: active tariff for the computed category (server re-checks everything).
+  const { data: monetization } = useMonetization();
+  const [payerPhone, setPayerPhone] = useState("");
+  const [createdMemorial, setCreatedMemorial] = useState<{ id: string; slug: string; share_token?: string } | null>(null);
+  const [paymentState, setPaymentState] = useState<{ status: "pending" | "failed" | "timeout"; reference?: string; message?: string; checkoutUrl?: string } | null>(null);
+  const displayCategory = classifyMemorialForDisplay(formData.deathDate, formData.funeralDate);
+  const displayPrice = systemSettings && displayCategory
+    ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
+    : null;
+  const requiresPaymentDisplay = !!monetization?.isMonetized && (displayPrice ?? 0) > 0;
+
+
 
   const steps = [
     { number: 1, title: "Type d'espace" },
@@ -131,9 +146,57 @@ const CreateMemorial = () => {
     }
   };
 
+  const goToMemorial = (m: { share_token?: string; slug: string }) =>
+    navigate(m.share_token ? `/m/${m.share_token}` : `/memorial/${m.slug}`);
+
+  // G1-FIX7: poll the existing check-status route until a terminal state.
+  const pollPayment = async (reference: string, memorial: { share_token?: string; slug: string }) => {
+    for (let i = 0; i < 36; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const { data } = await supabase.functions.invoke("ebilling", { body: { action: "check-status", reference } });
+      if (data?.status === "success") {
+        toast.success("Paiement confirmé — espace mémoriel publié");
+        goToMemorial(memorial);
+        return;
+      }
+      if (data?.status === "failed" || data?.status === "expired" || data?.status === "cancelled") {
+        setPaymentState({ status: "failed", reference, message: data?.message });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    setPaymentState({ status: "timeout", reference, message: "Délai dépassé. Votre espace reste non publié ; vous pouvez réessayer." });
+    setIsSubmitting(false);
+  };
+
+  const startMemorialPayment = async (memorial: { id: string; share_token?: string; slug: string }) => {
+    const { data, error } = await supabase.functions.invoke("ebilling", {
+      body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: payerPhone.replace(/\s+/g, "") },
+    });
+    if (error || !data?.success) {
+      setPaymentState({ status: "failed", message: data?.error || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié." });
+      setIsSubmitting(false);
+      return;
+    }
+    setPaymentState({ status: "pending", reference: data.reference, message: data.message, checkoutUrl: data.checkout_url });
+    pollPayment(data.reference, memorial);
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
-    
+
+    if (requiresPaymentDisplay && !/^\+?\d{8,15}$/.test(payerPhone.replace(/\s+/g, ""))) {
+      setErrors({ payerPhone: "Numéro Mobile Money requis" });
+      return;
+    }
+
+    // Retry after a failed payment: memorial already exists (unpublished).
+    if (createdMemorial) {
+      setIsSubmitting(true);
+      await startMemorialPayment(createdMemorial);
+      return;
+    }
+
     // Validate user profile name
     const { data: profile } = await supabase
       .from('profiles')
@@ -184,10 +247,16 @@ const CreateMemorial = () => {
         return;
       }
 
-       toast.success("Espace mémoriel créé avec succès !");
-       // Navigate to token URL if available, fallback to slug
-       const shareToken = createData.memorial.share_token;
-       navigate(shareToken ? `/m/${shareToken}` : `/memorial/${createData.memorial.slug}`);
+      const memorial = createData.memorial;
+      if (createData.requires_payment) {
+        setCreatedMemorial(memorial);
+        toast.message(`Espace enregistré, non publié. Paiement de ${Number(createData.price).toLocaleString("fr-FR")} XAF requis.`);
+        await startMemorialPayment(memorial);
+        return;
+      }
+
+      toast.success("Espace mémoriel créé et publié !");
+      goToMemorial(memorial);
 
     } catch (error) {
       console.error('Submit error:', error);
