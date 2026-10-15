@@ -99,7 +99,9 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
         body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: clean },
       });
       if (error || !data?.success) {
-        toast.error(data?.error || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié.");
+        let serverMsg: string | undefined = data?.error;
+        try { serverMsg = serverMsg ?? (await (error as { context?: Response })?.context?.json())?.error; } catch { /* ignore */ }
+        toast.error(serverMsg || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié.");
       } else {
         toast.success(data?.message || "Paiement initié. Validez sur votre téléphone.");
       }
