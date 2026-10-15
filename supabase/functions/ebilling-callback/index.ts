@@ -81,50 +81,72 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log("[ebilling-callback] Received (authenticated):", JSON.stringify(callbackData));
+    const json = (body: unknown, status: number) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    const str = (v: unknown) => (v === undefined || v === null ? "" : String(v).trim());
 
-    // eBilling callback fields (from official docs):
-    // reference = our external_reference (ebilling_reference in DB)
-    // amount, transactionid, paymentsystem, billingid, merchantid, customerid
-    const ebillingRef = callbackData.reference || callbackData.ppiMerchantReference;
-    const transactionId = callbackData.transactionid || callbackData.ppiTransactionId || callbackData.billingid;
-    // eBilling callback is only sent on SUCCESS (per docs)
-    // But we handle potential status field just in case
-    const status = (callbackData.status || callbackData.ppiPaymentStatus || "SUCCESS").toUpperCase();
+    const ebillingRef = str(callbackData.reference) || str(callbackData.ppiMerchantReference);
+    const billingId = str(callbackData.billingid);
+    const transactionId = str(callbackData.transactionid) || str(callbackData.ppiTransactionId) || billingId;
+
+    // G2-SEC3: fail-closed state resolution — no implicit default, `state` first.
+    const SUCCESS_STATES = new Set(["SUCCESS", "PAID", "COMPLETED"]);
+    const FAILURE_STATES = new Set(["FAILED", "CANCELLED", "EXPIRED"]);
+    const rawStates = [callbackData.state, callbackData.status, callbackData.ppiPaymentStatus]
+      .map((v) => str(v).toUpperCase())
+      .filter((v) => v.length > 0);
+    const category = (s: string) =>
+      SUCCESS_STATES.has(s) ? "success" : FAILURE_STATES.has(s) ? "failure" : `other:${s}`;
 
     if (!ebillingRef) {
-      console.error("[ebilling-callback] No reference in callback data");
-      return new Response(
-        JSON.stringify({ error: "Missing reference" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      console.warn("[ebilling-callback] Rejected: missing reference");
+      return json({ error: "Missing reference" }, 400);
     }
+    if (rawStates.length === 0) {
+      console.warn("[ebilling-callback] Rejected: missing state, ref=", ebillingRef);
+      return json({ error: "Missing state" }, 400);
+    }
+    if (new Set(rawStates.map(category)).size > 1) {
+      console.warn("[ebilling-callback] Rejected: conflicting state fields, ref=", ebillingRef);
+      return json({ error: "Conflicting state" }, 422);
+    }
+    const status = rawStates[0];
 
-    // Find the transaction
     const { data: tx, error: txError } = await supabaseAdmin
       .from("payment_transactions")
-      .select("id, memorial_id, payment_type, status, metadata")
+      .select("id, memorial_id, payment_type, status, metadata, amount, ebilling_transaction_id")
       .eq("ebilling_reference", ebillingRef)
       .maybeSingle();
 
     if (txError || !tx) {
-      console.error("[ebilling-callback] Transaction not found:", ebillingRef);
-      return new Response(
-        JSON.stringify({ error: "Transaction not found" }),
-        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      console.warn("[ebilling-callback] Rejected: unknown reference", ebillingRef);
+      return json({ error: "Transaction not found" }, 404);
     }
 
-    // Already processed
+    // Bill identity: if both sides know the bill id, they must match.
+    const storedBillId = str((tx.metadata as Record<string, unknown> | null)?.bill_id) || str(tx.ebilling_transaction_id);
+    if (billingId && storedBillId && billingId !== storedBillId) {
+      console.warn("[ebilling-callback] Rejected: bill id mismatch, ref=", ebillingRef);
+      return json({ error: "Bill mismatch" }, 422);
+    }
+
     if (tx.status === "success") {
-      return new Response(
-        JSON.stringify({ success: true, message: "Already processed" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return json({ success: true, message: "Already processed" }, 200);
     }
 
-    if (status === "SUCCESS" || status === "PAID" || status === "COMPLETED") {
-      // G1-FIX2: shared atomic success pipeline (claim → unhide → credit → certificate)
+    if (SUCCESS_STATES.has(status)) {
+      // Exact integer XAF amount, no tolerance.
+      const rawAmount = str(callbackData.amount);
+      const expected = Number(tx.amount);
+      const received = /^\d+(\.0+)?$/.test(rawAmount) ? Number(rawAmount) : NaN;
+      if (!Number.isSafeInteger(received) || !Number.isSafeInteger(expected) || received !== expected) {
+        console.warn("[ebilling-callback] Rejected: amount mismatch or invalid, ref=", ebillingRef);
+        return json({ error: "Amount mismatch" }, 422);
+      }
+
       const result = await finalizePaymentSuccess(supabaseAdmin, {
         txId: tx.id,
         reference: ebillingRef,
@@ -133,21 +155,17 @@ const handler = async (req: Request): Promise<Response> => {
         lastApiResponse: JSON.stringify(callbackData),
       });
       if (!result.claimed) {
-        return new Response(
-          JSON.stringify({ success: true, message: "Already processed" }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+        return json({ success: true, message: "Already processed" }, 200);
       }
       console.log("[ebilling-callback] Payment confirmed:", ebillingRef);
-    } else if (status === "FAILED" || status === "CANCELLED" || status === "EXPIRED") {
+    } else if (FAILURE_STATES.has(status)) {
       await markPaymentFailed(supabaseAdmin, tx.id, {
         ebilling_transaction_id: transactionId || null,
         last_api_response: JSON.stringify(callbackData),
       });
-
       console.log("[ebilling-callback] Payment failed:", ebillingRef);
     } else {
-      console.log("[ebilling-callback] Unknown status:", status, "for ref:", ebillingRef);
+      console.log("[ebilling-callback] Non-final state, no effect:", status, "ref:", ebillingRef);
     }
 
     return new Response(
