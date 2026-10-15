@@ -50,7 +50,15 @@ serve(async (req: Request) => {
     // eBilling config
     const username = (Deno.env.get("EBILLING_USERNAME") ?? "").trim();
     const sharedKey = (Deno.env.get("EBILLING_SHARED_KEY") ?? "").trim();
-    const baseUrl = (Deno.env.get("EBILLING_BASE_URL") ?? "https://lab.billing-easy.net/api/v1/merchant").trim().replace(/\/+$/, "");
+    // G2-FIX2: Swagger v1 normalization (origin or full merchant base, never doubled)
+    const rawBase = (Deno.env.get("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, "") || "https://lab.billing-easy.net";
+    const baseUrl = /\/api\/v1\/merchant$/i.test(rawBase) ? rawBase : `${rawBase}/api/v1/merchant`;
+    if (new URL(baseUrl).hostname.toLowerCase() !== "lab.billing-easy.net" && (Deno.env.get("EBILLING_ENV") ?? "").trim().toLowerCase() !== "production") {
+      return new Response(JSON.stringify({ error: "LAB: endpoint API hors liste LAB refusé" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     if (!username || !sharedKey) {
       console.error("[reconciliation] Missing eBilling credentials");

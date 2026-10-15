@@ -29,13 +29,21 @@ function splitList(v: string | undefined): string[] {
   return (v ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
+// G2-FIX2: Swagger v1 — merchant API lives under /api/v1/merchant. Accepts an origin
+// or a full merchant base; never appends the path twice.
+export function normalizeMerchantApiBase(raw: string | undefined): string {
+  const v = (raw ?? "").trim().replace(/\/+$/, "");
+  if (!v) return "";
+  return /\/api\/v1\/merchant$/i.test(v) ? v : `${v}/api/v1/merchant`;
+}
+
 export function resolveEbillingConfig(env: (k: string) => string | undefined) {
   const rawEnv = (env("EBILLING_ENV") ?? "").trim().toLowerCase();
   const mode: "lab" | "production" = rawEnv === "production" ? "production" : "lab";
   const username = (env("EBILLING_USERNAME") ?? "").trim();
   const sharedKey = (env("EBILLING_SHARED_KEY") ?? "").trim();
   const callbackSecret = (env("EBILLING_CALLBACK_SECRET") ?? "").trim();
-  const rawBase = (env("EBILLING_BASE_URL") ?? "").trim().replace(/\/+$/, "");
+  const rawBase = normalizeMerchantApiBase(env("EBILLING_BASE_URL"));
   const rawPortal = (env("EBILLING_PORTAL_BASE_URL") ?? "").trim().replace(/\/+$/, "");
   const errors: string[] = [];
 
