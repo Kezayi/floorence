@@ -181,7 +181,7 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
             <DialogDescription>Aperçu privé — non visible du public tant que le paiement n'est pas confirmé.</DialogDescription>
           </DialogHeader>
           {cover && (
-            <div className="bg-scene-ink flex justify-center">
+            <div className="bg-secondary flex justify-center">
               <img src={cover} alt={`Portrait de ${name}`} className="max-h-72 object-contain" />
             </div>
           )}
