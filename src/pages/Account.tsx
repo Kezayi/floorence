@@ -164,12 +164,13 @@ const Account = () => {
         // G1-FIX8-C: memorial-level payment state, aligned with the server guard in ebilling
         // (any pending/success tx blocks a new attempt). Priority: success > pending > latest resolved.
         const txMap: Record<string, MemorialTx> = {};
-        const rank = (s: string) => (s === 'success' ? 2 : s === 'pending' ? 1 : 0);
+        // G1-FIX9: a timeout with unknown operator status still blocks (unless closed locally: no operator bill).
+        const rank = (s: string, m?: any) => (s === 'success' ? 3 : s === 'pending' ? 2 : s === 'timeout' && m?.local_closure !== 'no_operator_bill' ? 1 : 0);
         (transactions || []).forEach((t: any) => {
           if (t.payment_type !== 'memorial' || !t.memorial_id) return;
           const cur = txMap[t.memorial_id];
           // transactions are ordered desc: keep the first of the highest rank
-          if (!cur || rank(t.status) > rank(cur.status)) txMap[t.memorial_id] = t;
+          if (!cur || rank(t.status, t.metadata) > rank(cur.status, (cur as any).metadata)) txMap[t.memorial_id] = t;
         });
         setMemorialTxByMemorial(txMap);
         setMyTransactions(transactions || []);

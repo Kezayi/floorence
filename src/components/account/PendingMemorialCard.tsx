@@ -34,6 +34,7 @@ export interface MemorialTx {
   amount: number;
   ebilling_reference: string | null;
   created_at: string;
+  metadata?: { local_closure?: string } | null;
 }
 
 interface Props {
@@ -56,8 +57,10 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
   const [preview, setPreview] = useState(false);
 
   const status = lastTx?.status ?? null;
-  const isPending = status === "pending";
-  const label = status ? STATUS_LABEL[status] ?? "Non publié" : "Paiement non initié";
+  // G1-FIX9: timeout with unknown operator status keeps retry blocked (double-debit protection).
+  const isUnknown = status === "timeout" && lastTx?.metadata?.local_closure !== "no_operator_bill";
+  const isPending = status === "pending" || isUnknown;
+  const label = isUnknown ? "Vérification auprès de l'opérateur" : status ? STATUS_LABEL[status] ?? "Non publié" : "Paiement non initié";
 
   const category = memorial.death_date
     ? classifyMemorialForDisplay(memorial.death_date, memorial.funeral_date ?? "")
@@ -147,7 +150,9 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
         {isPending ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-muted-foreground flex-1 min-w-[12rem]">
-              Paiement en cours : {lastTx!.amount.toLocaleString("fr-FR")} XAF. Validez sur votre téléphone, puis vérifiez.
+              {isUnknown
+                ? `Paiement de ${lastTx!.amount.toLocaleString("fr-FR")} XAF non confirmé par l'opérateur. Nouvelle tentative bloquée pour éviter un double débit.`
+                : `Paiement en cours : ${lastTx!.amount.toLocaleString("fr-FR")} XAF. Validez sur votre téléphone, puis vérifiez.`}
             </p>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={busy} onClick={checkStatus}>
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
