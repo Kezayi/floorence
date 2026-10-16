@@ -72,6 +72,8 @@ export default {
           anthracite: "hsl(var(--memorial-anthracite))",
           "anthracite-foreground": "hsl(var(--memorial-anthracite-foreground))",
         },
+        ivory: "hsl(var(--ivory))",
+        footer: { DEFAULT: "hsl(var(--footer-bg))", foreground: "hsl(var(--footer-foreground))", muted: "hsl(var(--footer-muted))" },
         champagne: { DEFAULT: "hsl(var(--champagne))", foreground: "hsl(var(--champagne-foreground))" },
         sage: { DEFAULT: "hsl(var(--sage))", foreground: "hsl(var(--sage-foreground))" },
         "scene-ink": {

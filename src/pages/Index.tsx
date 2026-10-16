@@ -114,13 +114,13 @@ const Index = () => {
 
 
         {/* Memorial Grid */}
-        <section className="px-4 py-4 md:px-8 md:py-6 contain-section">
+        <section className="px-4 py-8 md:px-8 md:py-14 contain-section">
           <div className="container mx-auto">
             {/* Header with title and controls */}
             <div className="flex flex-col gap-3 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl md:text-2xl">Espaces mémoriels</h2>
+                  <h2 className="font-serif text-2xl md:text-3xl font-normal tracking-wide">Espaces mémoriels</h2>
                   {!loading && (
                     <span className="text-sm text-muted-foreground font-sans">
                       {totalCount} espace{totalCount > 1 ? "s" : ""}
@@ -286,7 +286,7 @@ const Index = () => {
         </section>
 
         {/* Upcoming Events Section */}
-        <section className="px-4 py-6 md:px-8 md:py-10 border-t border-border contain-section">
+        <section className="px-4 py-10 md:px-8 md:py-16 border-t border-champagne/30 contain-section">
           <div className="container mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
               <Suspense fallback={<div className="reserve-block" aria-hidden="true" />}>

@@ -157,7 +157,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                 </span>
               )}
             </h1>
-            <p className="font-sans text-lg text-muted-foreground mb-1">
+            <p className="font-sans text-base md:text-lg tracking-wide text-muted-foreground mb-3">
               {memorial.birthDate} — {memorial.deathDate}
             </p>
             
@@ -172,7 +172,8 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               </Link>
             </div>
 
-            <p className="font-serif text-lg leading-relaxed text-foreground/80 mb-8">
+            <div className="premium-ornament mb-5" aria-hidden="true"><span className="text-xs">✦</span></div>
+            <p className="font-serif text-lg md:text-xl leading-relaxed text-foreground/85 mb-8 max-w-prose">
               {memorial.bio}
             </p>
 
@@ -248,7 +249,7 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
             {/* Gesture Summary - Hommages reçus */}
             {gestureTotals && onGestureClick && (
               <div className="mt-6">
-                <div className="h-px bg-admin-burgundy/25 mb-4" />
+                <div className="h-px bg-champagne/35 mb-4" />
                 <GestureSummary
                   totals={gestureTotals}
                   userHasPosted={userHasPosted || false}
