@@ -882,7 +882,7 @@ const MemorialInner = () => {
           // NAV-P1-C : l'avis de décès et les actions du créateur ne dépendent plus de la date des obsèques.
           // Les événements à venir restent filtrés par GatheringsCalendar ; publication/confidentialité inchangées.
           return (
-        <section id="memorial-tabs" className="container mx-auto px-4 py-12 scroll-mt-20">
+        <section id="memorial-tabs" className="container mx-auto px-4 pt-6 pb-16 md:pt-10 md:pb-20 scroll-mt-20">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList aria-label="Sections du mémorial" className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto mb-8 overflow-x-auto overflow-y-hidden flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <TabsTrigger value="hommages" className="rounded-none border-b-2 border-transparent data-[state=active]:border-champagne data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-medium text-muted-foreground px-4 md:px-6 py-3 font-sans flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -907,7 +907,7 @@ const MemorialInner = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="hommages" className="mt-0">
+            <TabsContent value="hommages" className="mt-0 premium-panel">
               <div className="max-w-2xl space-y-12">
                 {guestbookPosts.length > 0 && (
                 <div>
@@ -996,7 +996,7 @@ const MemorialInner = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="relationships" className="mt-0">
+            <TabsContent value="relationships" className="mt-0 premium-panel">
               <div className="max-w-3xl space-y-6">
                 {isOwner && (
                   <TransitiveDiscoveryWidget memorialId={memorial.id} memorialName={safeName} />
@@ -1018,7 +1018,7 @@ const MemorialInner = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="lineage" className="mt-0">
+            <TabsContent value="lineage" className="mt-0 premium-panel">
               <div className="max-w-3xl">
                 <LineageTree
                   memorialId={memorial.id}
@@ -1029,7 +1029,7 @@ const MemorialInner = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="inferences" className="mt-0">
+            <TabsContent value="inferences" className="mt-0 premium-panel">
               <div className="max-w-3xl">
                 <SecureDataDisplay blurPreview>
                   <RelationshipMaillage
@@ -1048,7 +1048,7 @@ const MemorialInner = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="gatherings" className="mt-0">
+            <TabsContent value="gatherings" className="mt-0 premium-panel">
               <div className="mb-10">
                 <div className="max-w-2xl space-y-6">
                    {isOwner && (

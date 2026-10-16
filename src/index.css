@@ -55,6 +55,12 @@
     --radius: 0.25rem;
 
     /* Scene ink — fond neutre des photographies (Norme AAA, #0D0D0D) */
+    --ivory: 40 33% 98%;
+    --footer-bg: 209 49% 15%;
+    --footer-foreground: 240 100% 99%;
+    --footer-muted: 39 32% 80%;
+    --shadow-premium: 0 1px 2px hsl(209 49% 15% / 0.04), 0 12px 32px -16px hsl(209 49% 15% / 0.12);
+
     --scene-ink: 0 0% 5%;
     --scene-ink-foreground: 0 0% 92%;
 
@@ -205,6 +211,24 @@
 }
 
 @layer components {
+  /* PREMIUM-FINISH — habillage des panneaux mémoriels */
+  .premium-panel {
+    background-color: hsl(var(--ivory));
+    border: 1px solid hsl(var(--champagne) / 0.28);
+    border-radius: calc(var(--radius) * 2);
+    box-shadow: var(--shadow-premium);
+    padding: 1.5rem 1rem;
+  }
+  @media (min-width: 768px) { .premium-panel { padding: 2.5rem 2.75rem; } }
+  .premium-ornament {
+    display: flex; align-items: center; gap: 0.75rem;
+    color: hsl(var(--champagne));
+  }
+  .premium-ornament::before, .premium-ornament::after {
+    content: ""; height: 1px; width: 2.5rem;
+    background: hsl(var(--champagne) / 0.5);
+  }
+
   /* Carte Mémorial */
   .memorial-card {
     @apply relative overflow-hidden bg-card transition-all duration-500 ease-out;
