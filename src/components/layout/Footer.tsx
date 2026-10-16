@@ -14,7 +14,7 @@ const Footer = () => {
         <div className="premium-ornament justify-center mb-12" aria-hidden="true"><span className="text-sm">✦</span></div>
 
         {/* Footer Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           <div>
             <h4 className="font-serif text-lg font-normal mb-4 text-footer-foreground">
               Navigation
