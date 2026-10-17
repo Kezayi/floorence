@@ -1438,6 +1438,10 @@ export type Database = {
             Args: { p_memorial_id_1?: string; p_memorial_id_2?: string }
             Returns: undefined
           }
+      get_contributor_profile: {
+        Args: { p_limit?: number; p_offset?: number; p_post_id: string }
+        Returns: Json
+      }
       get_memorial_family_ids: {
         Args: { p_master_id: string }
         Returns: string[]
@@ -1562,6 +1566,7 @@ export type Database = {
           status: string
         }[]
       }
+      get_viewer_relational_eligibility: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1599,6 +1604,7 @@ export type Database = {
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
+      rel_p1_is_eligible: { Args: { p_user: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       transfer_memorial_ownership: {
