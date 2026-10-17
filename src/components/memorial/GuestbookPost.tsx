@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import AuthorAvatar from "./AuthorAvatar";
+import ContributorRelationalSheet, { useRelationalEligibility } from "./ContributorRelationalSheet";
 
 export interface GuestbookPostData {
   id: string;
@@ -32,6 +33,7 @@ interface GuestbookPostProps {
   deceasedGender?: 'male' | 'female';
   onAddCandle: (postId: string) => void;
   onAddFlower: (postId: string) => void;
+  deceasedName?: string;
 }
 
 /* Relation label: no background, italic muted text */
@@ -42,6 +44,7 @@ const GuestbookPost = ({
   deceasedGender = 'male',
   onAddCandle,
   onAddFlower,
+  deceasedName = "",
 }: GuestbookPostProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
@@ -49,6 +52,8 @@ const GuestbookPost = ({
   const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState(0);
   const [candlePulse, setCandlePulse] = useState(false);
   const [flowerPulse, setFlowerPulse] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { data: canViewProfile } = useRelationalEligibility();
 
   const openLightbox = (index: number) => {
     setLightboxPhotoIndex(index);
@@ -93,6 +98,9 @@ const GuestbookPost = ({
 
   return (
     <article className="py-6 animate-fade-in">
+      {profileOpen && (
+        <ContributorRelationalSheet postId={post.id} deceasedName={deceasedName} onClose={() => setProfileOpen(false)} />
+      )}
       {/* Author info with avatar */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-start gap-3">
@@ -105,7 +113,11 @@ const GuestbookPost = ({
           <div>
             <AuthorTooltip authorId={post.authorId} authorName={post.authorName}>
               <h4 className="font-serif text-lg text-livreor-foreground cursor-pointer hover:underline decoration-livreor-muted/40 underline-offset-4 transition-all flex items-center gap-2">
-                {displayName(post.authorName, isAuthenticated)}
+                {canViewProfile && post.authorUserId ? (
+                  <button type="button" onClick={() => setProfileOpen(true)} className="font-serif hover:underline decoration-accent underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm" aria-label={`Ouvrir la fiche relationnelle de ${post.authorName}`}>
+                    {displayName(post.authorName, isAuthenticated)}
+                  </button>
+                ) : displayName(post.authorName, isAuthenticated)}
                 {isDeletedUser && (
                   <span className="text-livreor-muted ml-1">*</span>
                 )}

@@ -931,6 +931,7 @@ const MemorialInner = () => {
                       deceasedGender={inferGender(memorialData?.name?.split(" ")[0] || "")}
                       onAddCandle={handleAddCandle}
                       onAddFlower={handleAddFlower}
+                      deceasedName={memorialData?.name}
                     />
                     {/* Arabesque separator between posts */}
                     {index < paginatedPosts.length - 1 && (
