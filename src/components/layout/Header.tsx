@@ -8,6 +8,17 @@ import { usePendingSuggestionsCount } from "@/hooks/usePendingSuggestionsCount";
 import { useProfile } from "@/hooks/useProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import NotificationBell from "./NotificationBell";
+import SearchBar from "@/components/search/SearchBar";
+
+// PWA installée uniquement (display-mode standalone / iOS). ?pwa=1 force le mode pour la recette.
+const detectPWA = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("pwa") === "1") sessionStorage.setItem("floorence-pwa-test", "1");
+    if (sessionStorage.getItem("floorence-pwa-test") === "1") return true;
+  } catch { /* stockage indisponible */ }
+  return window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+};
 import { ADMIN_PREFIX } from "@/lib/adminRoutes";
 
 const Header = () => {
@@ -19,6 +30,7 @@ const Header = () => {
   const hasMemorials = useHasMemorials();
   const pendingCount = usePendingSuggestionsCount();
   const { profile } = useProfile();
+  const [isPWA] = useState(detectPWA);
 
   const userInitials = (profile?.display_name || user?.email?.split("@")[0] || "U")
     .split(" ")
@@ -41,7 +53,7 @@ const Header = () => {
       ];
 
   // Mobile bottom nav items (includes Search)
-  const mobileNavItems = user
+  const allMobileNavItems = user
     ? [
         { path: "/", label: "Accueil", icon: Home },
         { path: "/recherche", label: "Recherche", icon: Search },
@@ -54,6 +66,9 @@ const Header = () => {
         { path: "/creer", label: "Créer", icon: PlusCircle },
         { path: "/auth", label: "Connexion", icon: LogIn },
       ];
+
+  // En PWA, la recherche est dans l'en-tête : pas de doublon dans le menu inférieur
+  const mobileNavItems = isPWA ? allMobileNavItems.filter((i) => i.path !== "/recherche") : allMobileNavItems;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -241,11 +256,17 @@ const Header = () => {
               <NotificationBell />
             </div>
           </div>
+          {isPWA && (
+            <div className="md:hidden pb-3">
+              <SearchBar />
+            </div>
+          )}
         </div>
       </header>
+      {isPWA && <div className="md:hidden h-[60px]" aria-hidden="true" />}
 
       {/* Bottom Navigation - Mobile Only (TikTok style) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-memorial-dark border-t border-memorial-dark-foreground/10 safe-area-bottom">
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 md:hidden bg-memorial-dark border-t safe-area-bottom ${isPWA ? "border-dashed border-champagne" : "border-memorial-dark-foreground/10"}`}>
         <div className="flex items-center justify-around h-16">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
