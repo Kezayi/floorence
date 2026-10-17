@@ -53,7 +53,7 @@ const GuestbookPost = ({
   const [candlePulse, setCandlePulse] = useState(false);
   const [flowerPulse, setFlowerPulse] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const { data: canViewProfile } = useRelationalEligibility();
+  const { data: canViewProfile } = useRelationalEligibility(post.memorialId);
 
   const openLightbox = (index: number) => {
     setLightboxPhotoIndex(index);
