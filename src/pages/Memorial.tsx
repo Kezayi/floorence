@@ -339,6 +339,7 @@ const MemorialInner = () => {
 
           return {
             id: post.id,
+            memorialId: post.memorial_id,
             authorId: post.user_id
               ? `author-${post.user_id}`
               : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${post.id}`),

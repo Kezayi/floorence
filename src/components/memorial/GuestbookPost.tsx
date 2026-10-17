@@ -13,6 +13,8 @@ import ContributorRelationalSheet, { useRelationalEligibility } from "./Contribu
 
 export interface GuestbookPostData {
   id: string;
+  /** Memorial the post belongs to (server-side Voir+ check is scoped to it) */
+  memorialId?: string;
   authorId: string;
   /** Raw user UUID for business logic (nullable for anonymous/demo) */
   authorUserId?: string | null;
