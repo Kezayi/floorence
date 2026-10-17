@@ -5,7 +5,7 @@ import { ArrowLeft, Flame, Flower2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { Photo } from "@/components/ui/Photo";
+import Photo from "@/components/ui/Photo";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfileData {
