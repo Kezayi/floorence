@@ -257,7 +257,7 @@ const Header = () => {
             </div>
           </div>
           {isPWA && (
-            <div className="md:hidden px-4 pb-3">
+            <div className="md:hidden pb-3">
               <SearchBar />
             </div>
           )}
