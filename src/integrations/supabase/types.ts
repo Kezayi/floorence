@@ -1567,6 +1567,10 @@ export type Database = {
         }[]
       }
       get_viewer_relational_eligibility: { Args: never; Returns: boolean }
+      get_viewer_relational_eligibility_for: {
+        Args: { p_memorial_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1604,6 +1608,10 @@ export type Database = {
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
+      rel_p1_can_view: {
+        Args: { p_memorial: string; p_user: string }
+        Returns: boolean
+      }
       rel_p1_is_eligible: { Args: { p_user: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

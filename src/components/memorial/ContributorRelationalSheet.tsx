@@ -21,15 +21,15 @@ interface ProfileData {
 
 const PAGE = 5;
 
-/** Server-checked eligibility (paid, confirmed gesture). Never derived from client counters. */
-export const useRelationalEligibility = () => {
+/** Server-checked access: admin, memorial creator, or paid confirmed gesture. Never derived from client counters. */
+export const useRelationalEligibility = (memorialId?: string) => {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["rel-p1-eligibility", user?.id],
-    enabled: !!user,
+    queryKey: ["rel-p1-eligibility", user?.id, memorialId],
+    enabled: !!user && !!memorialId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_viewer_relational_eligibility");
+      const { data, error } = await supabase.rpc("get_viewer_relational_eligibility_for", { p_memorial_id: memorialId! });
       if (error) return false;
       return data === true;
     },
