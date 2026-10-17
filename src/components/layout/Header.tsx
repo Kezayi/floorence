@@ -10,14 +10,32 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import NotificationBell from "./NotificationBell";
 import SearchBar from "@/components/search/SearchBar";
 
-// PWA installée uniquement (display-mode standalone / iOS). ?pwa=1 force le mode pour la recette.
+// Simulation (?pwa=1 / ?display=standalone) autorisée uniquement en dev, localhost ou preview Lovable.
+export const isPwaSimulationAllowed = (hostname: string, isDev: boolean) =>
+  isDev ||
+  hostname === "localhost" ||
+  hostname === "127.0.0.1" ||
+  hostname.startsWith("id-preview--") ||
+  hostname.startsWith("preview--") ||
+  hostname === "lovableproject.com" ||
+  hostname.endsWith(".lovableproject.com");
+
+// Production : détection exclusivement via display-mode standalone et navigator.standalone (iOS).
 const detectPWA = () => {
   if (typeof window === "undefined") return false;
+  const native =
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
   try {
-    if (new URLSearchParams(window.location.search).get("pwa") === "1") sessionStorage.setItem("floorence-pwa-test", "1");
+    if (!isPwaSimulationAllowed(window.location.hostname, import.meta.env.DEV)) {
+      sessionStorage.removeItem("floorence-pwa-test");
+      return native;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pwa") === "1" || params.get("display") === "standalone") sessionStorage.setItem("floorence-pwa-test", "1");
     if (sessionStorage.getItem("floorence-pwa-test") === "1") return true;
   } catch { /* stockage indisponible */ }
-  return window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return native;
 };
 import { ADMIN_PREFIX } from "@/lib/adminRoutes";
 
