@@ -1622,6 +1622,10 @@ export type Database = {
       }
       transitive_rule: { Args: { r_px: string; r_py: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      verify_reconciliation_token: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator"
