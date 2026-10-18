@@ -4,16 +4,15 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DashboardSkeleton } from '@/components/admin/AdminSkeletons';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { usePendingSuggestionsCount } from '@/hooks/usePendingSuggestionsCount';
 import TabVerite from '@/components/admin/dashboard/TabVerite';
 import TabClassement from '@/components/admin/dashboard/TabClassement';
-import TabBusiness from '@/components/admin/dashboard/TabBusiness';
-import TabSuggestions from '@/components/admin/dashboard/TabSuggestions';
+import BusinessCockpit from '@/components/admin/dashboard/BusinessCockpit';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import TabImpact from '@/components/admin/dashboard/TabImpact';
 
 const Dashboard = () => {
   const { data: dashStats, isLoading: dashLoading, error: dashError, refetch: refetchDash } = useDashboardStats();
-  const pendingCount = usePendingSuggestionsCount();
+  const { isAdmin } = useAdminRole();
 
   if (dashLoading) return <DashboardSkeleton />;
 
@@ -43,79 +42,29 @@ const Dashboard = () => {
     );
   }
 
+  const tabCls = 'data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-champagne text-xs sm:text-sm';
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-foreground mb-6">Tableau de bord</h1>
+    <div className="max-w-6xl">
+      <header className="mb-6">
+        <h1 className="font-serif text-3xl sm:text-4xl text-foreground">Tableau de bord</h1>
+        <p className="text-sm text-muted-foreground mt-1">Ce qui demande une décision, puis l'état de l'activité.</p>
+      </header>
 
-      <Tabs defaultValue="verite" className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-12 mb-6 bg-muted/60 p-1">
-          <TabsTrigger
-            value="verite"
-            className="data-[state=active]:bg-[hsl(var(--tab-verite))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-verite))] transition-all duration-300 text-xs sm:text-sm font-medium"
-          >
-            Vérité
-          </TabsTrigger>
-          <TabsTrigger
-            value="classement"
-            className="data-[state=active]:bg-[hsl(var(--tab-classement))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-classement))] transition-all duration-300 text-xs sm:text-sm font-medium"
-          >
-            Classement
-          </TabsTrigger>
-          <TabsTrigger
-            value="business"
-            className="data-[state=active]:bg-[hsl(var(--tab-business))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-business))] transition-all duration-300 text-xs sm:text-sm font-medium"
-          >
-            Business
-          </TabsTrigger>
-          <TabsTrigger
-            value="suggestions"
-            className="relative data-[state=active]:bg-[hsl(var(--tab-suggestions))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-suggestions))] transition-all duration-300 text-xs sm:text-sm font-medium"
-          >
-            Suggestions
-            {(pendingCount ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[hsl(var(--tab-suggestions))] text-white text-[10px] font-bold flex items-center justify-center px-1 shadow-sm">
-                {pendingCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="impact"
-            className="data-[state=active]:bg-[hsl(var(--tab-impact))] data-[state=active]:text-white data-[state=active]:shadow-md hover:text-[hsl(var(--tab-impact))] transition-all duration-300 text-xs sm:text-sm font-medium"
-          >
-            Impact
-          </TabsTrigger>
-        </TabsList>
+      {dashStats && <BusinessCockpit stats={dashStats} isAdmin={isAdmin} />}
 
-        <TabsContent value="verite">
-          <div className="rounded-xl bg-[hsl(var(--tab-verite)/0.06)] p-4 transition-colors duration-300">
-            {dashStats && <TabVerite stats={dashStats} />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="classement">
-          <div className="rounded-xl bg-[hsl(var(--tab-classement)/0.06)] p-4 transition-colors duration-300">
-            <TabClassement />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="business">
-          <div className="rounded-xl bg-[hsl(var(--tab-business)/0.06)] p-4 transition-colors duration-300">
-            {dashStats && <TabBusiness stats={dashStats} />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="suggestions">
-          <div className="rounded-xl bg-[hsl(var(--tab-suggestions)/0.25)] p-4 transition-colors duration-300">
-            <TabSuggestions />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="impact">
-          <div className="rounded-xl bg-[hsl(var(--tab-impact)/0.06)] p-4 transition-colors duration-300">
-            {dashStats && <TabImpact stats={dashStats} />}
-          </div>
-        </TabsContent>
-      </Tabs>
+      <section aria-label="Analyses approfondies">
+        <h2 className="font-serif text-xl text-foreground mb-3 pb-1 border-b border-champagne/30">Analyses approfondies</h2>
+        <Tabs defaultValue="verite" className="w-full">
+          <TabsList className="w-full grid grid-cols-3 h-11 mb-4 bg-ivory border border-champagne/30 p-1">
+            <TabsTrigger value="verite" className={tabCls}>Vérité</TabsTrigger>
+            <TabsTrigger value="classement" className={tabCls}>Classement</TabsTrigger>
+            <TabsTrigger value="impact" className={tabCls}>Impact</TabsTrigger>
+          </TabsList>
+          <TabsContent value="verite">{dashStats && <TabVerite stats={dashStats} />}</TabsContent>
+          <TabsContent value="classement"><TabClassement /></TabsContent>
+          <TabsContent value="impact">{dashStats && <TabImpact stats={dashStats} />}</TabsContent>
+        </Tabs>
+      </section>
     </div>
   );
 };
