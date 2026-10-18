@@ -4,6 +4,7 @@ import { ArrowRight, Brain } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ADMIN_PREFIX as P } from '@/lib/adminRoutes';
 import type { DashboardStats } from '@/hooks/useDashboardStats';
+import { isTestTransaction } from '@/lib/testTransactions';
 
 const CACHE = { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 };
 export const STALE_PENDING_MS = 30 * 60 * 1000;
@@ -32,9 +33,11 @@ const useFinanceCounts = (enabled: boolean) =>
     enabled,
     ...CACHE,
     queryFn: async () => {
-      const { data, error } = await supabase.from('payment_transactions').select('status, amount, created_at');
+      const { data: raw, error } = await supabase.from('payment_transactions').select('status, amount, created_at, ebilling_reference, metadata');
       if (error) throw error;
-      const by = (s: string[]) => (data || []).filter((t) => s.includes(t.status));
+      // FIN-OPS-01 : transactions de recette exclues des indicateurs, conservées dans Finances.
+      const data = (raw || []).filter((t) => !isTestTransaction(t));
+      const by = (s: string[]) => data.filter((t) => s.includes(t.status));
       const sum = (r: { amount: number }[]) => r.reduce((a, t) => a + (t.amount || 0), 0);
       const ok = by(['success']), pend = by(['pending']);
       // Seuil G1-FIX9 : une tentative pending au-delà de 30 min n'est plus un délai normal → vérification admin.

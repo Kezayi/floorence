@@ -45,19 +45,14 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Expire transactions pending for more than 30 minutes (unchanged business logic)
-    const { data, error } = await supabase
-      .from("payment_transactions")
-      .update({ status: "timeout", updated_at: new Date().toISOString() })
-      .eq("status", "pending")
-      .lt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
-      .select("id");
+    // FIN-OPS-01: single source of truth = SQL function (orphans without Digitech invoice only,
+    // test transactions excluded). Scheduled directly by pg_cron; this endpoint stays internal-only.
+    const { data: count, error } = await supabase.rpc("expire_orphan_stale_transactions");
 
     if (error) throw error;
 
-    const count = data?.length ?? 0;
-    console.log(`Expired ${count} stale transactions`);
-    return json({ success: true, expired: count });
+    console.log(`Expired ${count ?? 0} orphan stale transactions`);
+    return json({ success: true, expired: count ?? 0 });
   } catch (err) {
     console.error("Error expiring transactions:", (err as Error).message);
     return json({ error: "Erreur interne" }, 500);
