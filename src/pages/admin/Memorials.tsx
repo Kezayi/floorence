@@ -46,6 +46,7 @@ import AdminPagination from '@/components/admin/AdminPagination';
 import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
 import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
+import RAGetFusionAssistant from '@/components/admin/RAGetFusionAssistant';
 
 /**
  * Heatmap dot: bleu froid → rouge ardent selon le score d'humanité.
@@ -852,7 +853,7 @@ const Memorials = () => {
 
       {/* Merge Dialog */}
       <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90svh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Fusionner les mémoriaux</DialogTitle>
             <DialogDescription>
@@ -885,6 +886,9 @@ const Memorials = () => {
                       ? `Confirmation familiale active (${mergeConfirmation?.confirmer_capacity === 'heir' ? 'Gardien' : 'créateur'}, ${new Date(mergeConfirmation!.confirmed_at).toLocaleDateString('fr-FR')}).`
                       : 'Aucune confirmation familiale active pour cette paire. Fusion indisponible.'}
               </p>
+            )}
+            {targetMemorialId && selectedMemorial && (
+              <RAGetFusionAssistant sourceId={selectedMemorial.id} targetId={targetMemorialId} />
             )}
           </div>
           <DialogFooter>
