@@ -3,6 +3,7 @@ import { Search, Loader2, History, Clock, ChevronLeft, X, Brain, User } from "lu
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateAge } from "@/lib/dateUtils";
+import { RAGetSourceSearch } from "@/components/admin/RAGetSourceSearch";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
 
@@ -342,6 +343,7 @@ const SocialIntelligence = () => {
 
   return (
     <div>
+      <RAGetSourceSearch />
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
