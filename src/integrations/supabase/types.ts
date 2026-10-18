@@ -1711,6 +1711,10 @@ export type Database = {
       rag_index_stats: { Args: never; Returns: Json }
       rag_norm: { Args: { t: string }; Returns: string }
       rag_reindex_memorial: { Args: { p_memorial_id: string }; Returns: number }
+      rag_set_embeddings: {
+        Args: { p_items: Json; p_model: string }
+        Returns: number
+      }
       rel_p1_can_view: {
         Args: { p_memorial: string; p_user: string }
         Returns: boolean

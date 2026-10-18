@@ -232,6 +232,13 @@
       "when": 1792287432651,
       "tag": "0032_raget_rag_core_02",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792288244852,
+      "tag": "0033_raget_set_embeddings",
+      "breakpoints": true
     }
   ]
 }
