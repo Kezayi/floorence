@@ -766,6 +766,81 @@ export type Database = {
         }
         Relationships: []
       }
+      rag_chunks: {
+        Row: {
+          canonical_memorial_id: string
+          chunk_index: number
+          content: string
+          embedding: string | null
+          embedding_model: string | null
+          fts: unknown
+          id: string
+          indexed_at: string
+          memorial_id: string
+          norm: string
+          source_id: string
+          source_type: string
+          source_updated_at: string | null
+          title: string | null
+        }
+        Insert: {
+          canonical_memorial_id: string
+          chunk_index?: number
+          content: string
+          embedding?: string | null
+          embedding_model?: string | null
+          fts?: unknown
+          id?: string
+          indexed_at?: string
+          memorial_id: string
+          norm: string
+          source_id: string
+          source_type: string
+          source_updated_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          canonical_memorial_id?: string
+          chunk_index?: number
+          content?: string
+          embedding?: string | null
+          embedding_model?: string | null
+          fts?: unknown
+          id?: string
+          indexed_at?: string
+          memorial_id?: string
+          norm?: string
+          source_id?: string
+          source_type?: string
+          source_updated_at?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      rag_index_log: {
+        Row: {
+          action: string
+          chunks: number | null
+          created_at: string
+          id: string
+          memorial_id: string | null
+        }
+        Insert: {
+          action: string
+          chunks?: number | null
+          created_at?: string
+          id?: string
+          memorial_id?: string | null
+        }
+        Update: {
+          action?: string
+          chunks?: number | null
+          created_at?: string
+          id?: string
+          memorial_id?: string | null
+        }
+        Relationships: []
+      }
       ritual_prices: {
         Row: {
           created_at: string
@@ -1609,6 +1684,33 @@ export type Database = {
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
+      rag_hybrid_search: {
+        Args: {
+          p_limit?: number
+          p_memorial_id?: string
+          p_query: string
+          p_query_embedding?: string
+          p_source_types?: string[]
+        }
+        Returns: {
+          canonical_memorial_id: string
+          chunk_id: string
+          content: string
+          fts_rank: number
+          memorial_id: string
+          memorial_name: string
+          memorial_slug: string
+          rrf_score: number
+          source_id: string
+          source_type: string
+          title: string
+          trgm_rank: number
+          vec_rank: number
+        }[]
+      }
+      rag_index_stats: { Args: never; Returns: Json }
+      rag_norm: { Args: { t: string }; Returns: string }
+      rag_reindex_memorial: { Args: { p_memorial_id: string }; Returns: number }
       rel_p1_can_view: {
         Args: { p_memorial: string; p_user: string }
         Returns: boolean
