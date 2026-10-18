@@ -17,12 +17,30 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  const deny = (msg: string, status: number) =>
+    new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+
+  // FIN-OPS-02: internal-only. Accepts the vault-held cron token (x-cron-token) or the service-role key.
+  // Body is never used for authorization; rejected before any read.
+  const cronToken = (req.headers.get("x-cron-token") ?? "").trim();
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const srk = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  let authorized = false;
+  if (bearer && srk && bearer.length === srk.length) {
+    let d = 0; for (let i = 0; i < srk.length; i++) d |= bearer.charCodeAt(i) ^ srk.charCodeAt(i);
+    authorized = d === 0;
+  }
+  if (!authorized && cronToken) {
+    const { data: ok } = await supabaseAdmin.rpc("verify_reconciliation_token", { p_token: cronToken });
+    authorized = ok === true;
+  }
+  if (!authorized) return cronToken || bearer ? deny("Accès refusé", 403) : deny("Non autorisé", 401);
 
   try {
     const { data: pending, error: fetchErr } = await supabaseAdmin

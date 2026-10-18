@@ -1419,6 +1419,7 @@ export type Database = {
         Returns: Json
       }
       disable_contributions_after_funeral: { Args: never; Returns: undefined }
+      expire_orphan_stale_transactions: { Args: never; Returns: number }
       fulfill_payment_success: {
         Args: {
           p_ebilling_transaction_id?: string
