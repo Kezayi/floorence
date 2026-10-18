@@ -45,8 +45,8 @@ function Column({ role, s, rel }: { role: string; s: FusionSubject; rel: FusionR
       <p className="text-muted-foreground">{s.birth_date?.slice(0, 10) ?? '—'} · {s.death_date?.slice(0, 10) ?? '—'}</p>
       <p className="text-muted-foreground line-clamp-3">{s.biography?.trim() || 'Biographie absente'}</p>
       <p className="text-xs text-muted-foreground">{rel.length} relation(s) enregistrée(s)</p>
-      {s.slug && (
-        <a className="text-xs underline text-primary" href={`${ADMIN_PREFIX}/memorials/${s.id}`} target="_blank" rel="noreferrer">Consulter la fiche source</a>
+      {(
+        <a className="text-xs underline text-primary" href={`${ADMIN_PREFIX}/memoriaux/${s.id}`} target="_blank" rel="noreferrer">Consulter la fiche source</a>
       )}
     </div>
   );
