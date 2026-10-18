@@ -40,7 +40,7 @@ const AdminSidebar = ({ onNavigate, className }: AdminSidebarProps) => {
         <span aria-hidden className="mt-3 text-champagne text-xs">✦</span>
       </button>
 
-      <nav aria-label="Navigation administrative" className="px-3 flex-1 overflow-y-auto pb-4">
+      <nav aria-label="Navigation administrative" className="px-3 flex-1 min-h-0 overflow-y-auto pb-4">
         {ADMIN_NAV.map((pole) => {
           const items = pole.items.filter((i) => !i.adminOnly || isAdmin);
           if (!items.length) return null;
