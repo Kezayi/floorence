@@ -73,7 +73,7 @@ export function resolveAdminCrumbs(pathname: string) {
   if (!best) return null;
   const rest = pathname.slice(best.item.to.length).replace(/^\//, '');
   const sub = rest
-    ? rest.startsWith('nouveau') ? 'Nouveau' : best.item.to.endsWith('/modeles') ? 'Édition' : 'Fiche'
+    ? rest === 'new' ? 'Nouveau' : best.item.to.endsWith('/modeles') ? 'Édition' : 'Fiche'
     : null;
   return { ...best, sub };
 }

@@ -1,35 +1,21 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Settings, 
-  MessageSquare, 
-  Users, 
-  BarChart3, 
-  Flower2,
-  BookOpen,
-  LogOut,
-  User,
-  History,
-  Activity,
-  Brain,
-  Sparkles,
-  Route,
-  Banknote,
-  Trash2,
-} from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useAdminSuggestedLinks } from '@/hooks/useSuggestedLinks';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { ADMIN_PREFIX } from '@/lib/adminRoutes';
+import { ADMIN_NAV } from '@/lib/adminNav';
 
 interface AdminSidebarProps {
   onOpenSearch?: () => void;
+  onNavigate?: () => void;
+  className?: string;
 }
 
-const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
+const AdminSidebar = ({ onNavigate, className }: AdminSidebarProps) => {
   const { isAdmin } = useAdminRole();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const { stats } = useAdminSuggestedLinks();
 
@@ -38,149 +24,70 @@ const AdminSidebar = ({ onOpenSearch }: AdminSidebarProps) => {
     navigate('/');
   };
 
-  const navItems = [
-    { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-    { to: `${ADMIN_PREFIX}/memoriaux`, icon: Flower2, label: 'Mémoriaux' },
-    { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération' },
-    { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques' },
-    { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analytics', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/finances`, icon: Banknote, label: 'Finances', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Audit Suggestions', adminOnly: true, badge: stats.pending },
-    { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/modeles`, icon: BookOpen, label: 'Modèles Textes', adminOnly: true },
-    { to: `${ADMIN_PREFIX}/corbeille`, icon: Trash2, label: 'Corbeille', adminOnly: true },
-  ];
-
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
-      <div
-        className="p-6 flex flex-col items-center cursor-pointer transition-transform hover:scale-105"
-        onClick={() => {
-          if (window.location.pathname.startsWith(ADMIN_PREFIX)) {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          } else {
-            navigate(ADMIN_PREFIX);
-          }
-        }}
-        role="link"
-        aria-label="Retour en haut de page"
+    <aside className={cn('w-72 min-h-[100svh] bg-ivory border-r border-champagne/30 flex flex-col', className)}>
+      <button
+        type="button"
+        className="px-6 pt-8 pb-6 flex flex-col items-center text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne rounded-lg"
+        onClick={() => { navigate(ADMIN_PREFIX); onNavigate?.(); }}
+        aria-label="Retour au tableau de bord"
       >
-        {/* Logo Bordeaux - Plus gros, au-dessus du nom */}
-        <div className="w-20 h-20 rounded-full bg-admin-burgundy flex items-center justify-center mb-4 shadow-lg">
-          <span className="font-serif text-3xl text-white font-medium">F</span>
+        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-3 ring-1 ring-champagne/60">
+          <span className="font-serif text-3xl text-primary-foreground">F</span>
         </div>
-        <h1 className="text-xl font-bold text-foreground">Floorence</h1>
-        <p className="text-sm text-muted-foreground">Administration</p>
-      </div>
+        <span className="font-serif text-2xl text-foreground">Floorence</span>
+        <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mt-1">Administration</span>
+        <span aria-hidden className="mt-3 text-champagne text-xs">✦</span>
+      </button>
 
-      <nav className="px-3 flex-1">
-        {navItems
-          .filter(item => !item.adminOnly || isAdmin)
-          .map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-sm font-medium flex-1">{item.label}</span>
-              {item.badge && item.badge > 0 && (
-                <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-                  {item.badge > 9 ? '9+' : item.badge}
-                </span>
-              )}
-            </NavLink>
-          ))}
-
-        {/* Intelligence Sociale - page dédiée */}
-        {isAdmin && (
-          <NavLink
-            to={`${ADMIN_PREFIX}/intelligence-sociale`}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )
-            }
-          >
-            <Brain className="w-5 h-5" />
-            <span className="text-sm font-medium">Intelligence Sociale</span>
-          </NavLink>
-        )}
-
-        {/* Remaining admin-only nav items */}
-        {isAdmin && (
-          <>
-            <NavLink
-              to={`${ADMIN_PREFIX}/utilisateurs`}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )
-              }
-            >
-              <Users className="w-5 h-5" />
-              <span className="text-sm font-medium">Utilisateurs</span>
-            </NavLink>
-            <NavLink
-              to={`${ADMIN_PREFIX}/parametres`}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )
-              }
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-sm font-medium">Paramètres</span>
-            </NavLink>
-            <NavLink
-              to={`${ADMIN_PREFIX}/historique`}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )
-              }
-            >
-              <History className="w-5 h-5" />
-              <span className="text-sm font-medium">Historiques</span>
-            </NavLink>
-          </>
-        )}
+      <nav aria-label="Navigation administrative" className="px-3 flex-1 overflow-y-auto pb-4">
+        {ADMIN_NAV.map((pole) => {
+          const items = pole.items.filter((i) => !i.adminOnly || isAdmin);
+          if (!items.length) return null;
+          return (
+            <div key={pole.id} className="mb-5" role="group" aria-labelledby={`pole-${pole.id}`}>
+              <p id={`pole-${pole.id}`} className="px-3 mb-2 font-serif text-sm italic tracking-wide text-foreground/80 border-b border-champagne/25 pb-1">
+                {pole.label}
+              </p>
+              {items.map((item) => {
+                const badge = item.badgeKey === 'suggestions' ? stats.pending : 0;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 pl-3 pr-2 py-2 rounded-md mb-0.5 text-sm border-l-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne',
+                        isActive
+                          ? 'border-champagne bg-background text-foreground font-semibold'
+                          : 'border-transparent text-muted-foreground hover:bg-background hover:text-foreground'
+                      )
+                    }
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" aria-hidden />
+                    <span className="flex-1">{item.label}</span>
+                    {badge > 0 && (
+                      <span className="min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center" aria-label={`${badge} en attente`}>
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          );
+        })}
       </nav>
 
-      {/* Section Mon Compte + Déconnexion - Fond rouge foncé */}
-      <div className="p-3 border-t border-border bg-admin-burgundy">
-        <NavLink
-          to="/compte"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors mb-1"
-        >
-          <User className="w-5 h-5" />
+      <div className="p-3 border-t border-champagne/30 bg-primary">
+        <NavLink to="/compte" onClick={onNavigate} className="flex items-center gap-3 px-3 py-2.5 rounded-md text-primary-foreground/90 hover:bg-primary-foreground/10 transition-colors mb-1">
+          <User className="w-4 h-4" />
           <span className="text-sm font-medium">Mon compte</span>
         </NavLink>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white transition-colors w-full"
-        >
-          <LogOut className="w-5 h-5" />
+        <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-md text-primary-foreground/90 hover:bg-primary-foreground/10 transition-colors w-full">
+          <LogOut className="w-4 h-4" />
           <span className="text-sm font-medium">Déconnexion</span>
         </button>
       </div>
