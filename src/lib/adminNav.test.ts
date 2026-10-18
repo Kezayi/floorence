@@ -13,6 +13,15 @@ describe('BO-01 navigation', () => {
     expect(all).toHaveLength(14);
   });
   it('a 4 pôles', () => expect(ADMIN_NAV).toHaveLength(4));
+  it('pôles dans l’ordre demandé, tableau de bord en tête', () => {
+    expect(ADMIN_NAV.map((p) => p.label)).toEqual([
+      'Pilotage & finances',
+      'Opérations mémorielles',
+      'Relations & intelligence',
+      'Gouvernance',
+    ]);
+    expect(ADMIN_NAV[0].items[0]).toMatchObject({ to: P, label: 'Tableau de bord', end: true });
+  });
   it('fil d’Ariane des sous-pages', () => {
     expect(resolveAdminCrumbs(`${P}/memoriaux/abc`)?.item.to).toBe(`${P}/memoriaux`);
     expect(resolveAdminCrumbs(`${P}/modeles/new`)?.sub).toBe('Nouveau');

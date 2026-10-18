@@ -22,6 +22,16 @@ export interface AdminNavPole {
 /** BO-01 — 4 pôles métier. Toutes les routes historiques restent présentes. */
 export const ADMIN_NAV: AdminNavPole[] = [
   {
+    id: 'pilotage',
+    label: 'Pilotage & finances',
+    items: [
+      { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+      { to: `${ADMIN_PREFIX}/finances`, icon: Banknote, label: 'Transactions', adminOnly: true },
+      { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques d’activité' },
+      { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analyses par mémorial', adminOnly: true },
+    ],
+  },
+  {
     id: 'operations',
     label: 'Opérations mémorielles',
     items: [
@@ -37,16 +47,6 @@ export const ADMIN_NAV: AdminNavPole[] = [
       { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Suggestions relationnelles', adminOnly: true, badgeKey: 'suggestions' },
       { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
       { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'Exploration RAGet', adminOnly: true },
-    ],
-  },
-  {
-    id: 'pilotage',
-    label: 'Pilotage & finances',
-    items: [
-      { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-      { to: `${ADMIN_PREFIX}/finances`, icon: Banknote, label: 'Transactions', adminOnly: true },
-      { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques d’activité' },
-      { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analyses par mémorial', adminOnly: true },
     ],
   },
   {
