@@ -112,6 +112,9 @@ export type Database = {
           is_demo: boolean | null
           is_hidden: boolean
           memorial_id: string
+          moderated_at: string | null
+          moderated_by: string | null
+          moderation_status: string
           payment_reference: string | null
           photos: string[] | null
           relation_category: string
@@ -136,6 +139,9 @@ export type Database = {
           is_demo?: boolean | null
           is_hidden?: boolean
           memorial_id: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_status?: string
           payment_reference?: string | null
           photos?: string[] | null
           relation_category: string
@@ -160,6 +166,9 @@ export type Database = {
           is_demo?: boolean | null
           is_hidden?: boolean
           memorial_id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_status?: string
           payment_reference?: string | null
           photos?: string[] | null
           relation_category?: string
@@ -1682,6 +1691,10 @@ export type Database = {
         }[]
       }
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
+      moderate_guestbook_post: {
+        Args: { p_decision: string; p_post_id: string }
+        Returns: undefined
+      }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
       normalized_to_label: { Args: { ntype: string }; Returns: string }
       rag_hybrid_search: {
