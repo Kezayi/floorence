@@ -73,7 +73,7 @@ const PaymentSuccess = () => {
           setError('Une erreur est survenue lors de la publication de votre hommage.');
           toast.error('Erreur lors de la publication');
         } else {
-          toast.success('Votre hommage a été publié avec succès !');
+          toast.success('Votre hommage a été déposé et attend sa validation éditoriale.');
           setIsPublished(true);
         }
 
@@ -148,11 +148,11 @@ const PaymentSuccess = () => {
 
               <div className="space-y-4">
                 <h1 className="font-serif text-3xl font-medium">
-                  {isPublished ? "Hommage publié !" : "Paiement réussi"}
+                  {isPublished ? "Hommage déposé" : "Paiement réussi"}
                 </h1>
                 <p className="text-memorial-dark-muted text-lg">
                   {isPublished 
-                    ? "Votre hommage a été publié avec succès. Merci pour votre contribution."
+                    ? "La visibilité de votre hommage reste soumise à la validation éditoriale."
                     : "Votre paiement a été traité avec succès."
                   }
                 </p>
