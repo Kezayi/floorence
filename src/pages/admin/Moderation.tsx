@@ -30,7 +30,7 @@ import {
 import SortableTableHeader from '@/components/admin/SortableTableHeader';
 import AdminSearchHeader, { useAdminFilters } from '@/components/admin/AdminSearchHeader';
 import { useSortableTable } from '@/hooks/useSortableTable';
-import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon, AlertCircle, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, RotateCcw, Pencil, Trash2, Image as ImageIcon, AlertCircle, RefreshCw, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -47,6 +47,7 @@ interface GuestbookPost {
   content: string;
   relation_category: string;
   is_hidden: boolean;
+  moderation_status: 'pending' | 'approved' | 'rejected';
   hidden_reason: string | null;
   created_at: string;
   memorial_id: string;
@@ -111,7 +112,7 @@ const Moderation = () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
         .select(`
-          id, author_name, content, relation_category, is_hidden, hidden_reason, 
+          id, author_name, content, relation_category, is_hidden, hidden_reason, moderation_status,
           created_at, memorial_id, candle_count, flower_count, photos, user_id,
           memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name, slug)
         `)
@@ -183,6 +184,19 @@ const Moderation = () => {
   }, [posts, filters.debouncedSearch, filters.socialGroup, filters.dateFrom, filters.dateTo]);
 
   const { sortConfig, handleSort, sortedData } = useSortableTable(filteredPosts, 'created_at', 'desc');
+
+  const decisionMutation = useMutation({
+    mutationFn: async ({ id, decision }: { id: string; decision: 'approved' | 'rejected' }) => {
+      const { error } = await supabase.rpc('moderate_guestbook_post', { p_post_id: id, p_decision: decision });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['bo02-ops-counts'] });
+      toast.success('Décision éditoriale enregistrée');
+    },
+    onError: () => toast.error('Impossible d’enregistrer la décision'),
+  });
 
   const hideMutation = useMutation({
     mutationFn: async ({ postId, reason }: { postId: string; reason: string }) => {
@@ -558,7 +572,11 @@ const Moderation = () => {
                     {format(new Date(post.created_at), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>
                   <TableCell>
-                    {post.is_hidden ? (
+                    {post.moderation_status === 'pending' ? (
+                      <Badge variant="secondary">À valider</Badge>
+                    ) : post.moderation_status === 'rejected' ? (
+                      <Badge variant="destructive">Rejeté</Badge>
+                    ) : post.is_hidden ? (
                       <Badge variant="destructive">Masqué</Badge>
                     ) : (
                       <Badge variant="outline" className="text-primary border-primary/30">Visible</Badge>
@@ -566,6 +584,16 @@ const Moderation = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {post.moderation_status !== 'approved' && (
+                        <Button variant="ghost" size="sm" title="Valider l’hommage" aria-label="Valider l’hommage" disabled={decisionMutation.isPending} onClick={() => decisionMutation.mutate({ id: post.id, decision: 'approved' })}>
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {post.moderation_status === 'pending' && (
+                        <Button variant="ghost" size="sm" title="Rejeter l’hommage" aria-label="Rejeter l’hommage" disabled={decisionMutation.isPending} onClick={() => decisionMutation.mutate({ id: post.id, decision: 'rejected' })}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                       {post.is_hidden ? (
                         <Button
                           variant="ghost"
@@ -739,7 +767,7 @@ const Moderation = () => {
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer l'hommage de{' '}
               <strong>{selectedPost?.author_name}</strong> ?
-              Cette action est irréversible.
+              Cet hommage sera placé dans la corbeille et pourra être restauré.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -751,7 +779,7 @@ const Moderation = () => {
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
             >
-              Supprimer définitivement
+              Placer dans la corbeille
             </Button>
           </DialogFooter>
         </DialogContent>

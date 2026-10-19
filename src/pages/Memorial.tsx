@@ -748,15 +748,7 @@ const MemorialInner = () => {
         // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
         const createdPostId: string | undefined = response.data?.postId;
-        // Notify followers (fire and forget)
-        supabase.functions.invoke('notify-followers', {
-          body: {
-            memorial_id: memorialData.id,
-            type: "NEW_MESSAGE",
-            title: memorial.name,
-            message: `Nouvel hommage déposé pour ${memorial.name}`,
-          },
-        }).catch(() => {});
+        // No global notification before editorial approval.
         return { success: true, postId: createdPostId };
       } else if (response.data?.rateLimited) {
         toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");

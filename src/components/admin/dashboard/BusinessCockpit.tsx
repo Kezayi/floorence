@@ -20,7 +20,7 @@ const useOpsCounts = () =>
       // Floorence n'a pas de table de signalements : seul l'état « masqué » est observable.
       const [unpub, hidden, sugg] = await Promise.all([
         supabase.from('memorials').select('id', head).eq('is_published', false).is('deleted_at', null).is('merged_into', null),
-        supabase.from('guestbook_posts').select('id', head).eq('is_hidden', true).is('deleted_at', null),
+        supabase.from('guestbook_posts').select('id', head).eq('moderation_status', 'pending').is('deleted_at', null),
         supabase.from('suggested_links').select('id', head).eq('status', 'pending'),
       ]);
       return { unpublished: unpub.count ?? 0, hidden: hidden.count ?? 0, suggestions: sugg.count ?? 0 };
@@ -85,7 +85,7 @@ const BusinessCockpit = ({ stats, isAdmin }: { stats: DashboardStats; isAdmin: b
       <Section title="À traiter">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Tile label="Mémoriaux non publiés" value={ops ? fmt(ops.unpublished) : dash} hint="Brouillons ou en attente de paiement" to={`${P}/memoriaux`} />
-          <Tile label="Hommages masqués" value={ops ? fmt(ops.hidden) : dash} hint="Déjà retirés de l'affichage · aucun signalement enregistré dans Floorence" to={`${P}/moderation`} />
+          <Tile label="Hommages à valider" value={ops ? fmt(ops.hidden) : dash} hint="En attente de décision éditoriale" to={`${P}/moderation`} />
           {isAdmin && <Tile label="Suggestions en attente" value={ops ? fmt(ops.suggestions) : dash} hint="Liens à valider ou rejeter" to={`${P}/audit-suggestions`} />}
           {isAdmin && <Tile label="Paiements à vérifier" value={fin ? fmt(fin.stalePending) : dash} hint={fin ? `En attente depuis plus de 30 min · hors ${fmt(fin.failed)} échecs et ${fmt(fin.timedOut)} délai expiré, sans action requise` : undefined} to={`${P}/finances`} tone={fin && fin.stalePending > 0 ? 'alert' : undefined} />}
         </div>
