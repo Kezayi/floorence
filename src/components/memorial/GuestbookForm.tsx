@@ -551,7 +551,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Confirmer votre hommage</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {isMonetized ? `Vous allez être redirigé vers le paiement sécurisé (${totalAmount} XAF)` : 'Confirmez le dépôt de votre message'}
+              {isMonetized ? `Vous allez être redirigé vers le paiement sécurisé (${totalAmount} XAF)` : 'Confirmez la publication de votre message'}
             </DialogDescription>
           </DialogHeader>
 
@@ -560,7 +560,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               <CheckCircle className={`w-8 h-8 ${isMonetized ? 'text-foreground' : 'text-[hsl(var(--accent-green))]'}`} />
               <div>
                 <p className="text-foreground font-medium">{isMonetized ? 'Hommage Protégé' : 'Bêta gratuite'}</p>
-                <p className="text-muted-foreground text-sm">{isMonetized ? `Montant total : ${totalAmount} XAF · validation éditoriale requise` : 'Votre hommage sera visible après validation éditoriale'}</p>
+                <p className="text-muted-foreground text-sm">{isMonetized ? `Montant total : ${totalAmount} XAF` : 'Votre hommage sera publié immédiatement'}</p>
               </div>
             </div>
 
@@ -634,7 +634,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                 Votre message a été déposé avec respect
               </h3>
               <p className="text-sm text-muted-foreground font-sans">
-                Votre hommage est en attente de validation éditoriale.
+                Merci d'honorer cette mémoire avec dignité.
               </p>
             </div>
 
