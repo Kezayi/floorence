@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import WebVitalsPanel from '@/components/admin/WebVitalsPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, TrendingUp, Users, MessageSquare, Flame } from 'lucide-react';
@@ -229,6 +230,7 @@ const Statistics = () => {
           )}
         </CardContent>
       </Card>
+      <WebVitalsPanel />
     </div>
   );
 };

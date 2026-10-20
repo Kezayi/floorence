@@ -2,6 +2,9 @@ import { createRoot } from "react-dom/client";
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary";
 import App from "./App.tsx";
 import "./index.css";
+import { initWebVitals } from "./lib/webVitals";
+
+initWebVitals();
 
 // Register Service Worker for offline support (with one-time stale-cache reset)
 if ('serviceWorker' in navigator) {
