@@ -253,6 +253,13 @@
       "when": 1792450221189,
       "tag": "0035_aaa_guestbook_prior_moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792474166278,
+      "tag": "0036_restore_guestbook_behavior_after_out_of_scope_change",
+      "breakpoints": true
     }
   ]
 }
