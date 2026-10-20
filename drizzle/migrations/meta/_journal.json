@@ -260,6 +260,13 @@
       "when": 1792474166278,
       "tag": "0036_restore_guestbook_behavior_after_out_of_scope_change",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792529643729,
+      "tag": "0037_rum_web_vitals",
+      "breakpoints": true
     }
   ]
 }

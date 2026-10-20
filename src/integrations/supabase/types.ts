@@ -874,6 +874,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rum_web_vitals: {
+        Row: {
+          created_at: string
+          device: string
+          id: string
+          metric: string
+          network: string
+          rating: string | null
+          route: string | null
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          device?: string
+          id?: string
+          metric: string
+          network?: string
+          rating?: string | null
+          route?: string | null
+          value: number
+        }
+        Update: {
+          created_at?: string
+          device?: string
+          id?: string
+          metric?: string
+          network?: string
+          rating?: string | null
+          route?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
       social_search_history: {
         Row: {
           answer: string | null
@@ -1656,6 +1689,15 @@ export type Database = {
         Args: { p_memorial_id: string }
         Returns: boolean
       }
+      get_web_vitals_summary: {
+        Args: { p_days?: number; p_network?: string }
+        Returns: {
+          good_ratio: number
+          metric: string
+          p75: number
+          samples: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1728,6 +1770,7 @@ export type Database = {
         Args: { p_items: Json; p_model: string }
         Returns: number
       }
+      record_web_vitals: { Args: { p_metrics: Json }; Returns: undefined }
       rel_p1_can_view: {
         Args: { p_memorial: string; p_user: string }
         Returns: boolean
