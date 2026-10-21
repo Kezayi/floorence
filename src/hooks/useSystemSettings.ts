@@ -24,7 +24,16 @@ export interface NotificationWindowSetting {
   end_day: number;
 }
 
+export interface ObituaryPromoSetting {
+  active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  reason: string | null;
+  scope: 'worldwide';
+}
+
 export interface SystemSettings {
+  obituary_free_campaign: ObituaryPromoSetting;
   candle_price: PriceSetting;
   flower_price: PriceSetting;
   donation_enabled: DonationSetting;
@@ -46,6 +55,7 @@ export const useSystemSettings = () => {
       if (error) throw error;
 
       const settings: SystemSettings = {
+        obituary_free_campaign: { active: false, starts_at: null, ends_at: null, reason: null, scope: 'worldwide' },
         candle_price: { amount: 500, currency: 'XAF' },
         flower_price: { amount: 1000, currency: 'XAF' },
         donation_enabled: { enabled: true },
@@ -57,7 +67,9 @@ export const useSystemSettings = () => {
       };
 
       data?.forEach((row) => {
-        if (row.key === 'candle_price') {
+        if (row.key === 'obituary_free_campaign') {
+          settings.obituary_free_campaign = row.value as unknown as ObituaryPromoSetting;
+        } else if (row.key === 'candle_price') {
           settings.candle_price = row.value as unknown as PriceSetting;
         } else if (row.key === 'flower_price') {
           settings.flower_price = row.value as unknown as PriceSetting;
