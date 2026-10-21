@@ -371,6 +371,19 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             )}
           </div>
 
+          {/* GEO-02: pays de résidence au moment du dépôt (facultatif) */}
+          <div className="space-y-2">
+            <ResidenceCountrySelect id="tribute-country" label="Pays de résidence (facultatif)" value={effectiveCountry}
+              onChange={(c) => { setTributeCountry(c); if (!c) setCountryPublic(false); }}
+              className="w-full p-3 bg-secondary border-0 font-sans text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            {effectiveCountry && (
+              <label className="flex items-start gap-2 text-xs font-sans text-muted-foreground cursor-pointer">
+                <input type="checkbox" checked={countryPublic} onChange={(e) => setCountryPublic(e.target.checked)} className="mt-0.5 accent-[hsl(var(--primary))]" />
+                <span>Afficher publiquement ce pays et son drapeau avec mon hommage. Sans cette case, le pays n'est pas conservé avec l'hommage.</span>
+              </label>
+            )}
+          </div>
+
           {/* Writing assistance */}
           <div className="flex flex-wrap gap-2">
             <TemplateSelector
