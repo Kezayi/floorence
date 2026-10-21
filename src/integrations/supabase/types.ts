@@ -538,6 +538,9 @@ export type Database = {
         Row: {
           biography: string | null
           birth_date: string | null
+          burial_country: string | null
+          burial_locality: string | null
+          burial_status: string | null
           contributions_disabled_at: string | null
           created_at: string
           created_by: string
@@ -563,8 +566,12 @@ export type Database = {
           notification_end_day: number | null
           notification_frequency: string | null
           notification_start_day: number | null
+          origin_country: string | null
+          origin_locality: string | null
           photo_url: string | null
           photos: string[] | null
+          residence_country: string | null
+          residence_locality: string | null
           share_token: string | null
           slug: string
           social_density_score: number | null
@@ -576,6 +583,9 @@ export type Database = {
         Insert: {
           biography?: string | null
           birth_date?: string | null
+          burial_country?: string | null
+          burial_locality?: string | null
+          burial_status?: string | null
           contributions_disabled_at?: string | null
           created_at?: string
           created_by: string
@@ -601,8 +611,12 @@ export type Database = {
           notification_end_day?: number | null
           notification_frequency?: string | null
           notification_start_day?: number | null
+          origin_country?: string | null
+          origin_locality?: string | null
           photo_url?: string | null
           photos?: string[] | null
+          residence_country?: string | null
+          residence_locality?: string | null
           share_token?: string | null
           slug: string
           social_density_score?: number | null
@@ -614,6 +628,9 @@ export type Database = {
         Update: {
           biography?: string | null
           birth_date?: string | null
+          burial_country?: string | null
+          burial_locality?: string | null
+          burial_status?: string | null
           contributions_disabled_at?: string | null
           created_at?: string
           created_by?: string
@@ -639,8 +656,12 @@ export type Database = {
           notification_end_day?: number | null
           notification_frequency?: string | null
           notification_start_day?: number | null
+          origin_country?: string | null
+          origin_locality?: string | null
           photo_url?: string | null
           photos?: string[] | null
+          residence_country?: string | null
+          residence_locality?: string | null
           share_token?: string | null
           slug?: string
           social_density_score?: number | null
