@@ -18,6 +18,10 @@
  import PhotoUploader from "./PhotoUploader";
  import DigitalHeirSettings from "./DigitalHeirSettings";
  import { toast } from "sonner";
+ import { useQueryClient } from "@tanstack/react-query";
+ import GeoLandsFields from "./GeoLandsFields";
+ import { EMPTY_GEO, normalizeGeo, type GeoLands } from "@/lib/geoLands";
+ import { GEO_COLUMNS, memorialGeoKey } from "@/hooks/useMemorialGeo";
  
  interface EditMemorialDialogProps {
    memorialId: string;
