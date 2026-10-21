@@ -61,7 +61,9 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   // GEO-02: country proposed from the profile, correctable; public display needs explicit consent.
   const [tributeCountry, setTributeCountry] = useState<string | null | undefined>(undefined);
   const effectiveCountry = tributeCountry === undefined ? (profile?.residence_country_code ?? null) : tributeCountry;
-  const [countryPublic, setCountryPublic] = useState(false);
+  // Pre-checked when the profile already declares a country; the author can still uncheck it.
+  const [countryPublicChoice, setCountryPublic] = useState<boolean | null>(null);
+  const countryPublic = countryPublicChoice ?? !!profile?.residence_country_code;
   const [flowerCount, setFlowerCount] = useState(0);
   // PROMO-01-FIX1: any candle/flower forces the payment path; the global switch only governs written tributes.
   // MON-02: written tributes are always free; payment only when candles/flowers are chosen.
