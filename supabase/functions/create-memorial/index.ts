@@ -45,7 +45,23 @@ const CreateMemorialSchema = z.object({
   notificationFrequency: z.enum(['immediate', 'weekly_saturday', 'monthly_window', 'none']).optional(),
   notificationStartDay: z.number().int().min(1).max(31).optional(),
   notificationEndDay: z.number().int().min(1).max(31).optional(),
+  // GEO-01: optional, declared only, never inferred.
+  geo: z.object({
+    origin_country: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+    origin_locality: z.string().max(120).nullable().optional(),
+    residence_country: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+    residence_locality: z.string().max(120).nullable().optional(),
+    burial_country: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+    burial_locality: z.string().max(120).nullable().optional(),
+    burial_status: z.enum(['planned', 'done', 'unknown']).nullable().optional(),
+  }).optional(),
 })
+
+// deno-lint-ignore no-control-regex
+const cleanLocality = (v?: string | null) => {
+  const s = (v ?? '').replace(/[\u0000-\u001F\u007F<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120)
+  return s.length ? s : null
+}
 
 // Generate secure slug using initials + random ID format
 const generateSecureSlug = async (
@@ -228,6 +244,13 @@ serve(async (req) => {
         notification_frequency: data.notificationFrequency || null,
         notification_start_day: data.notificationStartDay ?? null,
         notification_end_day: data.notificationEndDay ?? null,
+        origin_country: data.geo?.origin_country ?? null,
+        origin_locality: cleanLocality(data.geo?.origin_locality),
+        residence_country: data.geo?.residence_country ?? null,
+        residence_locality: cleanLocality(data.geo?.residence_locality),
+        burial_country: data.geo?.burial_country ?? null,
+        burial_locality: cleanLocality(data.geo?.burial_locality),
+        burial_status: data.geo?.burial_status ?? null,
       })
       .select()
       .single()

@@ -1,3 +1,5 @@
+import GeoLandsFields from "@/components/memorial/GeoLandsFields";
+import { EMPTY_GEO, normalizeGeo, type GeoLands } from "@/lib/geoLands";
 import { isObituaryPromoActive } from "@/lib/obituaryPromo";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +50,7 @@ const CreateMemorial = () => {
     notificationStartDay: null as number | null,
     notificationEndDay: null as number | null,
   });
+  const [geo, setGeo] = useState<GeoLands>(EMPTY_GEO);
 
   // G1-FIX7: active tariff for the computed category (server re-checks everything).
   const { data: monetization } = useMonetization();
@@ -239,6 +242,7 @@ const CreateMemorial = () => {
           notificationFrequency: formData.notificationFrequency || undefined,
           notificationStartDay: formData.notificationStartDay ?? undefined,
           notificationEndDay: formData.notificationEndDay ?? undefined,
+          geo: normalizeGeo(geo),
         }
       });
 
@@ -574,6 +578,8 @@ const CreateMemorial = () => {
                       </div>
                     </div>
                     )}
+
+                    <GeoLandsFields value={geo} onChange={setGeo} />
 
                     <div>
                       <label className="block text-sm font-sans text-muted-foreground mb-2">

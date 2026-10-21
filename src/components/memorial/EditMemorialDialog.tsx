@@ -18,6 +18,10 @@
  import PhotoUploader from "./PhotoUploader";
  import DigitalHeirSettings from "./DigitalHeirSettings";
  import { toast } from "sonner";
+ import { useQueryClient } from "@tanstack/react-query";
+ import GeoLandsFields from "./GeoLandsFields";
+ import { EMPTY_GEO, normalizeGeo, type GeoLands } from "@/lib/geoLands";
+ import { GEO_COLUMNS, memorialGeoKey } from "@/hooks/useMemorialGeo";
  
  interface EditMemorialDialogProps {
    memorialId: string;
@@ -42,6 +46,8 @@
    const [photos, setPhotos] = useState<string[]>(initialData.photos || []);
    const [defaultPhotoIndex, setDefaultPhotoIndex] = useState(initialData.defaultPhotoIndex || 0);
    const [heirEmail, setHeirEmail] = useState<string | null>(null);
+   const [geo, setGeo] = useState<GeoLands>(EMPTY_GEO);
+   const queryClient = useQueryClient();
  
    // Reset state when dialog opens
    useEffect(() => {
@@ -54,10 +60,13 @@
        // Fetch heir_email securely (owner-only via RLS on memorials table)
        supabase
          .from('memorials')
-         .select('heir_email')
+         .select(`heir_email, ${GEO_COLUMNS}`)
          .eq('id', memorialId)
          .maybeSingle()
-         .then(({ data }) => setHeirEmail(data?.heir_email || null));
+         .then(({ data }) => {
+           setHeirEmail((data as { heir_email?: string | null } | null)?.heir_email || null);
+           setGeo(normalizeGeo(data as Partial<GeoLands> | null));
+         });
      }
    }, [open, initialData, memorialId]);
  
@@ -81,6 +90,7 @@
            photos: photos,
            default_photo_index: defaultPhotoIndex,
            photo_url: primaryPhotoUrl,
+           ...normalizeGeo(geo),
            updated_at: new Date().toISOString(),
          })
          .eq("id", memorialId);
@@ -91,6 +101,7 @@
          return;
        }
  
+       queryClient.invalidateQueries({ queryKey: memorialGeoKey(memorialId) });
        toast.success("Mémorial mis à jour avec succès");
        setOpen(false);
        onSave();
@@ -162,6 +173,7 @@
                   placeholder="Église, cimetière, etc."
                 />
               </div>
+               <GeoLandsFields value={geo} onChange={setGeo} />
             </TabsContent>
 
             <TabsContent value="photos" className="mt-4">
