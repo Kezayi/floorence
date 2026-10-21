@@ -66,7 +66,9 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [countryPublic, setCountryPublic] = useState(false);
   const [flowerCount, setFlowerCount] = useState(0);
   // PROMO-01-FIX1: any candle/flower forces the payment path; the global switch only governs written tributes.
-  const isMonetized = globalPaidMode || candleCount > 0 || flowerCount > 0;
+  // MON-02: written tributes are always free; payment only when candles/flowers are chosen.
+  void globalPaidMode;
+  const isMonetized = candleCount > 0 || flowerCount > 0;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const relationRef = useRef<HTMLDivElement>(null);

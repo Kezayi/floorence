@@ -422,7 +422,8 @@ const handler = async (req: Request): Promise<Response> => {
         const { data: promoRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", PROMO_SETTING_KEY).maybeSingle();
         promoActiveNow = isPromoActive(promoRow?.value ?? null);
       }
-      if (memorialPrice === 0 || promoActiveNow) {
+      // MON-02: free mode waives memorial publication only (never candles/flowers).
+      if (memorialPrice === 0 || promoActiveNow || !isMonetized) {
         return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
       }
       // G1-FIX9: resolve stale attempts (>30 min) before deciding; never invent an operator status.

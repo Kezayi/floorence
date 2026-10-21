@@ -198,8 +198,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
             { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
       }
-      // PROMO-01-FIX1: a tribute carrying candles/flowers stays hidden until its payment is confirmed.
-      const mustStayHidden = isMonetized || candleCount > 0 || flowerCount > 0
+      // MON-02: written tributes are always free; only candles/flowers (always paid) keep it hidden until payment.
+      const mustStayHidden = candleCount > 0 || flowerCount > 0
 
       console.log('[publish-tribute] Publishing tribute:', { memorialId, userId, authorName, isMonetized, is_hidden: isMonetized })
   
