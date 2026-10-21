@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { PROMO_SETTING_KEY, validatePromo } from "../_shared/obituaryPromo.ts";
+import { GESTURE_QUOTA_KEY, validateGesturePrice, validateGestureQuota } from "../_shared/gestureRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,7 @@ const settingLabels: Record<string, string> = {
   notification_frequency: "Fréquence des notifications",
   notification_window: "Fenêtre mensuelle des notifications",
   obituary_free_campaign: "Campagne avis de décès offerts",
+  gesture_max_per_tribute: "Maximum de gestes par hommage",
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -136,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
       ({ error: updateError } = await supabaseAdmin
         .from("system_settings")
         .update({
-          value: value as any,
+          value: finalValue as any,
           updated_at: new Date().toISOString(),
           updated_by: user.id
         })
