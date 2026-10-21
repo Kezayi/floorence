@@ -172,29 +172,65 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-primary" />
-              Gestes mémoriels — Tarifs & Limites
+              Tarifs & Limites
             </CardTitle>
             <CardDescription>
-              L'interrupteur ne concerne que les hommages écrits sans geste. Cierges, fleurs et avis de décès sont toujours facturés à leur prix actif (sauf campagne d'avis offerts).
+              Le mode ne concerne que la publication des mémoriaux. Les hommages écrits sont toujours gratuits ; cierges et fleurs sont toujours payants.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{isMonetized ? 'Mode Payant' : 'Mode Gratuit'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {isMonetized
-                    ? 'Hommages écrits soumis au paiement'
-                    : 'Hommages écrits sans geste publiés gratuitement'}
-                </p>
+          <CardContent className="space-y-8">
+            <section className="space-y-4" aria-labelledby="bloc-memoriaux">
+              <h3 id="bloc-memoriaux" className="font-serif text-lg text-foreground">Publication des mémoriaux</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{isMonetized ? 'Mode Payant' : 'Mode Gratuit'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {isMonetized
+                      ? 'Les mémoriaux sont facturés au prix ci-dessous'
+                      : 'Publication des mémoriaux offerte (0 XAF)'}
+                  </p>
+                </div>
+                <Switch
+                  checked={isMonetized}
+                  onCheckedChange={setIsMonetized}
+                  aria-label="Basculer le mode de publication des mémoriaux"
+                />
               </div>
-              <Switch
-                checked={isMonetized}
-                onCheckedChange={setIsMonetized}
-              />
-            </div>
 
-            <div className="space-y-4">
+              <div className={`space-y-4 transition-opacity ${isMonetized ? '' : 'opacity-60'}`}>
+                <div className="space-y-2">
+                  <Label htmlFor="memorial-price-future">Prix création — obsèques à venir (FCFA)</Label>
+                  <Input
+                    id="memorial-price-future"
+                    type="number"
+                    min={0}
+                    disabled={!isMonetized}
+                    value={memorialPriceFuture}
+                    onChange={(e) => setMemorialPriceFuture(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="memorial-price-past">Prix création — obsèques passées (FCFA)</Label>
+                  <Input
+                    id="memorial-price-past"
+                    type="number"
+                    min={0}
+                    disabled={!isMonetized}
+                    value={memorialPricePast}
+                    onChange={(e) => setMemorialPricePast(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                {!isMonetized && (
+                  <p className="text-xs text-muted-foreground">Inactif en Mode Gratuit : les prix sont conservés et s'appliqueront au retour du Mode Payant.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="space-y-4 border-t border-border pt-6" aria-labelledby="bloc-gestes">
+              <h3 id="bloc-gestes" className="font-serif text-lg text-foreground">Gestes rituels — toujours payants</h3>
+              <p className="text-sm text-muted-foreground">
+                Règle immuable : cierges et fleurs sont facturés à leur prix actif quel que soit le mode ou la campagne en cours. Contrôlé par le serveur.
+              </p>
               <div className="space-y-2">
                 <Label htmlFor="candle-price" className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-gesture-candle" />
@@ -241,29 +277,7 @@ const Settings = () => {
                 />
                 <p className="text-xs text-muted-foreground">Un seul type de geste (cierge ou fleur) par hommage. Contrôlé par le serveur, entre 1 et 10.</p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="memorial-price-future">Prix création — obsèques à venir (FCFA)</Label>
-                <Input
-                  id="memorial-price-future"
-                  type="number"
-                  min={0}
-                  value={memorialPriceFuture}
-                  onChange={(e) => setMemorialPriceFuture(parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="memorial-price-past">Prix création — obsèques passées (FCFA)</Label>
-                <Input
-                  id="memorial-price-past"
-                  type="number"
-                  min={0}
-                  value={memorialPricePast}
-                  onChange={(e) => setMemorialPricePast(parseInt(e.target.value) || 0)}
-                />
-              </div>
-            </div>
+            </section>
 
             <Button
               onClick={handleSaveMonetization}
