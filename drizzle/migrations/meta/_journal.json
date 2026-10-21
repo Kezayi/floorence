@@ -274,6 +274,13 @@
       "when": 1792573978077,
       "tag": "0038_geo01_memorial_three_lands",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792575692726,
+      "tag": "0039_geo02_contributor_country",
+      "breakpoints": true
     }
   ]
 }

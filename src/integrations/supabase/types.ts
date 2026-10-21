@@ -97,6 +97,7 @@ export type Database = {
       }
       guestbook_posts: {
         Row: {
+          author_country_code: string | null
           author_name: string
           author_photo_url: string | null
           candle_count: number
@@ -124,6 +125,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          author_country_code?: string | null
           author_name: string
           author_photo_url?: string | null
           candle_count?: number
@@ -151,6 +153,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          author_country_code?: string | null
           author_name?: string
           author_photo_url?: string | null
           candle_count?: number
@@ -767,6 +770,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           profile_completed: boolean
+          residence_country_code: string | null
           updated_at: string
           user_id: string | null
         }
@@ -779,6 +783,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           profile_completed?: boolean
+          residence_country_code?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -791,6 +796,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           profile_completed?: boolean
+          residence_country_code?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1677,6 +1683,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_tribute_countries: {
+        Args: { p_post_ids: string[] }
+        Returns: {
+          country_code: string
+          id: string
+        }[]
+      }
       get_resolved_memorial_lineage: {
         Args: { p_master_id: string }
         Returns: {
@@ -1807,6 +1820,10 @@ export type Database = {
       unaccent: { Args: { "": string }; Returns: string }
       verify_reconciliation_token: {
         Args: { p_token: string }
+        Returns: boolean
+      }
+      withdraw_tribute_country: {
+        Args: { p_post_id: string }
         Returns: boolean
       }
     }
