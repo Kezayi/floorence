@@ -95,15 +95,30 @@ const handler = async (req: Request): Promise<Response> => {
 
     const oldValue = currentSetting?.value;
 
-    // Update the setting
-    const { error: updateError } = await supabaseAdmin
-      .from("system_settings")
-      .update({ 
-        value: value as any, 
-        updated_at: new Date().toISOString(),
-        updated_by: user.id 
-      })
-      .eq("key", key);
+    let finalValue: unknown = value;
+    let updateError: unknown = null;
+    if (key === PROMO_SETTING_KEY) {
+      // PROMO-01: strictly validated, upserted (row may not exist yet).
+      const v = validatePromo(value);
+      if (!v.ok) {
+        return new Response(JSON.stringify({ error: v.error }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+      finalValue = v.value;
+      ({ error: updateError } = await supabaseAdmin.from("system_settings").upsert({
+        key, value: finalValue as any, description: "Campagne de publication gratuite des avis de décès",
+        updated_at: new Date().toISOString(), updated_by: user.id,
+      }, { onConflict: "key" }));
+    } else {
+      ({ error: updateError } = await supabaseAdmin
+        .from("system_settings")
+        .update({
+          value: value as any,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id
+        })
+        .eq("key", key));
+    }
 
     if (updateError) {
       console.error("Update error:", updateError);

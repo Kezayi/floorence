@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 import { classifyMemorial, readMemorialPrice } from '../_shared/memorialPricing.ts'
+import { isPromoActive, PROMO_SETTING_KEY } from '../_shared/obituaryPromo.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -237,13 +238,24 @@ serve(async (req) => {
       )
     }
 
-    console.log(`[create-memorial] ${memorial.id} category=${category} price=${price} published=${!requiresPayment}`)
+    if (promoApplied) {
+      await supabaseAdmin.from('audit_logs').insert({
+        action_type: 'obituary_promo_applied',
+        performed_by: user.id,
+        performed_by_email: user.email,
+        details: { memorial_id: memorial.id, normal_price: price, applied_price: 0, currency: 'XAF', campaign: promoValue },
+      })
+    }
+
+    console.log(`[create-memorial] ${memorial.id} category=${category} price=${price} applied=${appliedPrice} promo=${promoApplied} published=${!requiresPayment}`)
 
     return new Response(
       JSON.stringify({
         success: true,
         category,
-        price,
+        price: appliedPrice,
+        normal_price: price,
+        promo_applied: promoApplied,
         currency: 'XAF',
         requires_payment: requiresPayment,
         published: !requiresPayment,
