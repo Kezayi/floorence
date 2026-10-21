@@ -48,7 +48,7 @@ export function RAGetSourceSearch() {
         <h2 className="font-serif text-lg text-foreground">Recherche dans les sources</h2>
         {stats && (
           <p className="text-[11px] text-muted-foreground">
-            {stats.chunks} passages indexés · sémantique : {stats.embedded > 0 ? "active" : "en attente du service d'inférence"}
+            {stats.chunks} passages indexés ({stats.embedded} vectorisés) · recherche lexicale (texte + variantes orthographiques) · sémantique inactive : aucun service de vectorisation des requêtes
           </p>
         )}
       </div>
