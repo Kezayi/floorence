@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { PROMO_REASON_LABELS, isObituaryPromoActive } from '@/lib/obituaryPromo';
 import { Loader2, Save, ExternalLink, Info, Bell, CreditCard, Flame, Flower2 } from 'lucide-react';
 
 const FREQUENCY_OPTIONS = [
@@ -40,6 +41,12 @@ const Settings = () => {
   const [memorialPriceFuture, setMemorialPriceFuture] = useState(0);
   const [memorialPricePast, setMemorialPricePast] = useState(0);
 
+  // PROMO-01 — free obituary publication campaign
+  const [promoActive, setPromoActive] = useState(false);
+  const [promoStart, setPromoStart] = useState('');
+  const [promoDays, setPromoDays] = useState(30);
+  const [promoReason, setPromoReason] = useState('campagne_inaugurale');
+
   useEffect(() => {
     if (settings) {
       setContributionUrl(settings.contribution_link_template.url);
@@ -49,6 +56,11 @@ const Settings = () => {
       setNotifEndDay(settings.notification_window.end_day);
       setMemorialPriceFuture(settings.memorial_price_future.amount);
       setMemorialPricePast(settings.memorial_price_past.amount);
+      const p = settings.obituary_free_campaign;
+      setPromoActive(p.active);
+      setPromoStart(p.starts_at ? p.starts_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
+      if (p.starts_at && p.ends_at) setPromoDays(Math.max(1, Math.round((Date.parse(p.ends_at) - Date.parse(p.starts_at)) / 86400000)));
+      if (p.reason) setPromoReason(p.reason);
     }
   }, [settings]);
 
@@ -104,6 +116,30 @@ const Settings = () => {
       await updateSetting.mutateAsync({ key: 'memorial_price_future', value: { amount: memorialPriceFuture, currency: 'XAF' } });
       await updateSetting.mutateAsync({ key: 'memorial_price_past', value: { amount: memorialPricePast, currency: 'XAF' } });
       toast.success('Paramètres de monétisation mis à jour');
+    } catch (error: any) {
+      toast.error(error?.message || 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const promoEnd = promoStart ? new Date(Date.parse(`${promoStart}T00:00:00Z`) + promoDays * 86400000) : null;
+
+  const handleSavePromo = async () => {
+    if (!promoStart || promoDays < 1 || !promoEnd) {
+      toast.error('Date de début et durée (≥ 1 jour) requises');
+      return;
+    }
+    try {
+      await updateSetting.mutateAsync({
+        key: 'obituary_free_campaign',
+        value: {
+          active: promoActive,
+          starts_at: `${promoStart}T00:00:00Z`,
+          ends_at: promoEnd.toISOString(),
+          reason: promoReason,
+          scope: 'worldwide',
+        },
+      });
+      toast.success(promoActive ? 'Campagne enregistrée' : 'Campagne désactivée');
     } catch (error: any) {
       toast.error(error?.message || 'Erreur lors de la mise à jour');
     }
@@ -217,6 +253,58 @@ const Settings = () => {
                 <Save className="w-4 h-4 mr-2" />
               )}
               Enregistrer la monétisation
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* PROMO-01 — Free obituary publication campaign */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Campagne : avis de décès offerts</CardTitle>
+            <CardDescription>
+              Publication gratuite des avis de décès, portée mondiale. Les cierges et fleurs restent toujours payants.
+              Chaque modification est tracée dans le Journal d'audit.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{promoActive ? 'Campagne activée' : 'Campagne désactivée'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {settings && isObituaryPromoActive(settings.obituary_free_campaign)
+                    ? 'En cours : les nouveaux avis sont publiés à 0 XAF'
+                    : 'Aucune gratuité en cours'}
+                </p>
+              </div>
+              <Switch checked={promoActive} onCheckedChange={setPromoActive} aria-label="Activer la campagne" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="promo-start">Date de début</Label>
+                <Input id="promo-start" type="date" value={promoStart} onChange={(e) => setPromoStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="promo-days">Durée (jours)</Label>
+                <Input id="promo-days" type="number" min={1} value={promoDays} onChange={(e) => setPromoDays(parseInt(e.target.value) || 1)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Date de fin : {promoEnd ? promoEnd.toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—'} (exclue)
+            </p>
+            <div className="space-y-1">
+              <Label>Motif</Label>
+              <RadioGroup value={promoReason} onValueChange={setPromoReason}>
+                {Object.entries(PROMO_REASON_LABELS).map(([v, l]) => (
+                  <div key={v} className="flex items-center space-x-2">
+                    <RadioGroupItem value={v} id={`promo-${v}`} />
+                    <Label htmlFor={`promo-${v}`} className="cursor-pointer font-normal">{l}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+            <Button onClick={handleSavePromo} disabled={updateSetting.isPending}>
+              {updateSetting.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Enregistrer la campagne
             </Button>
           </CardContent>
         </Card>

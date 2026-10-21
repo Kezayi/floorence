@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { PROMO_SETTING_KEY, validatePromo } from "../_shared/obituaryPromo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,7 @@ const settingLabels: Record<string, string> = {
   donation_enabled: "Donations activées",
   notification_frequency: "Fréquence des notifications",
   notification_window: "Fenêtre mensuelle des notifications",
+  obituary_free_campaign: "Campagne avis de décès offerts",
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -95,15 +97,30 @@ const handler = async (req: Request): Promise<Response> => {
 
     const oldValue = currentSetting?.value;
 
-    // Update the setting
-    const { error: updateError } = await supabaseAdmin
-      .from("system_settings")
-      .update({ 
-        value: value as any, 
-        updated_at: new Date().toISOString(),
-        updated_by: user.id 
-      })
-      .eq("key", key);
+    let finalValue: unknown = value;
+    let updateError: unknown = null;
+    if (key === PROMO_SETTING_KEY) {
+      // PROMO-01: strictly validated, upserted (row may not exist yet).
+      const v = validatePromo(value);
+      if (!v.ok) {
+        return new Response(JSON.stringify({ error: v.error }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+      finalValue = v.value;
+      ({ error: updateError } = await supabaseAdmin.from("system_settings").upsert({
+        key, value: finalValue as any, description: "Campagne de publication gratuite des avis de décès",
+        updated_at: new Date().toISOString(), updated_by: user.id,
+      }, { onConflict: "key" }));
+    } else {
+      ({ error: updateError } = await supabaseAdmin
+        .from("system_settings")
+        .update({
+          value: value as any,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id
+        })
+        .eq("key", key));
+    }
 
     if (updateError) {
       console.error("Update error:", updateError);
@@ -120,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
         setting_key: key,
         setting_label: settingLabel,
         old_value: oldValue,
-        new_value: value,
+        new_value: finalValue,
       },
     });
 

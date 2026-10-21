@@ -1,3 +1,4 @@
+import { isObituaryPromoActive } from "@/lib/obituaryPromo";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
@@ -57,7 +58,8 @@ const CreateMemorial = () => {
   const displayPrice = systemSettings && displayCategory
     ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
     : null;
-  const requiresPaymentDisplay = !!monetization?.isMonetized && (displayPrice ?? 0) > 0;
+  const promoDisplay = displayCategory === "future" && !!systemSettings && isObituaryPromoActive(systemSettings.obituary_free_campaign);
+  const requiresPaymentDisplay = !!monetization?.isMonetized && !promoDisplay && (displayPrice ?? 0) > 0;
 
 
 
@@ -841,7 +843,9 @@ const CreateMemorial = () => {
                              ? "Tarif en cours de chargement…"
                              : requiresPaymentDisplay
                                ? `${displayPrice.toLocaleString("fr-FR")} XAF`
-                               : "Publication offerte"}
+                               : promoDisplay
+                                 ? `0 XAF — publication de l'avis offerte (au lieu de ${(displayPrice ?? 0).toLocaleString("fr-FR")} XAF). Cierges et fleurs restent payants.`
+                                 : "Publication offerte"}
                          </p>
                       </div>
                      </div>
