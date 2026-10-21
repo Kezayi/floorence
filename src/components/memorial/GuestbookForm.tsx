@@ -41,7 +41,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { isAdminOrMod } = useAdminRole();
   const { data: monetization } = useMonetization();
-  const isMonetized = monetization?.isMonetized ?? false;
+  const globalPaidMode = monetization?.isMonetized ?? false;
   const priceCierge = monetization?.prices?.cierge ?? 500;
   const priceFleur = monetization?.prices?.fleur ?? 500;
   const [messageContent, setMessageContent] = useState("");
@@ -56,6 +56,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
   const [flowerCount, setFlowerCount] = useState(0);
+  // PROMO-01-FIX1: any candle/flower forces the payment path; the global switch only governs written tributes.
+  const isMonetized = globalPaidMode || candleCount > 0 || flowerCount > 0;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const relationRef = useRef<HTMLDivElement>(null);

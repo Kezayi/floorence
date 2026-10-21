@@ -41,7 +41,8 @@ const GesteRituelModal = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Fallback: use loaded price or 500 FCFA if still loading
-  const isMonetized = monetization?.isMonetized ?? false;
+  // PROMO-01-FIX1: gestures are always paid, whatever the global switch.
+  const isMonetized = true;
   const price = monetization?.prices?.[itemType] ?? FALLBACK_PRICE;
 
   // Use external total if provided (basket mode), otherwise single-item price
@@ -130,7 +131,7 @@ const GesteRituelModal = ({
     setSubmitting(true);
     try {
       const { data: fresh } = await refetch();
-      const currentlyMonetized = fresh?.isMonetized ?? false;
+      const currentlyMonetized = true; void fresh;
       const currentPrice = fresh?.prices?.[itemType] ?? FALLBACK_PRICE;
 
       console.log("[GesteRituelModal] After refetch", { currentlyMonetized, currentPrice });
