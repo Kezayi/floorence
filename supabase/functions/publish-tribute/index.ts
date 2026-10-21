@@ -131,7 +131,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
      // Try to get display name from profiles table
      const { data: profile } = await supabase
        .from('profiles')
-       .select('display_name')
+       .select('display_name, avatar_url')
        .eq('user_id', userId)
        .maybeSingle()
      
@@ -193,6 +193,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
           memorial_id: memorialId,
           user_id: userId,
           author_name: authorName,
+          // Public author portrait comes from the verified account, never the request body.
+          author_photo_url: profile?.avatar_url || null,
           relation_category: relationCategory,
           relation_link: relationLink || null,
           content: content,
