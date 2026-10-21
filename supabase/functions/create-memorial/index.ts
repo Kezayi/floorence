@@ -186,14 +186,16 @@ serve(async (req) => {
     // PROMO-01: obituary (future category) free campaign, evaluated server-side now.
     let promoApplied = false
     let promoValue: unknown = null
-    if (category === 'future' && isMonetized && price > 0) {
+    if (category === 'future' && price > 0) {
       const { data: promoRow } = await supabaseAdmin
         .from('system_settings').select('value').eq('key', PROMO_SETTING_KEY).maybeSingle()
       promoValue = promoRow?.value ?? null
       promoApplied = isPromoActive(promoValue)
     }
     const appliedPrice = promoApplied ? 0 : price
-    const requiresPayment = isMonetized && appliedPrice > 0
+    // PROMO-01-FIX1: the global switch (isMonetized) no longer waives the obituary price.
+    void isMonetized
+    const requiresPayment = appliedPrice > 0
 
     const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
 

@@ -166,7 +166,7 @@ const Settings = () => {
               Monétisation
             </CardTitle>
             <CardDescription>
-              Basculez entre le mode gratuit (bêta) et le mode payant (eBilling DigitechAfrica).
+              L'interrupteur ne concerne que les hommages écrits sans geste. Cierges, fleurs et avis de décès sont toujours facturés à leur prix actif (sauf campagne d'avis offerts).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -175,8 +175,8 @@ const Settings = () => {
                 <p className="font-medium">{isMonetized ? 'Mode Payant' : 'Mode Gratuit'}</p>
                 <p className="text-sm text-muted-foreground">
                   {isMonetized
-                    ? 'Les gestes rituels sont facturés via eBilling'
-                    : 'Tous les gestes rituels sont offerts (bêta)'}
+                    ? 'Hommages écrits soumis au paiement'
+                    : 'Hommages écrits sans geste publiés gratuitement'}
                 </p>
               </div>
               <Switch
@@ -185,7 +185,7 @@ const Settings = () => {
               />
             </div>
 
-            <div className={`space-y-4 transition-opacity ${isMonetized ? 'opacity-100' : 'opacity-50'}`}>
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="candle-price" className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-gesture-candle" />

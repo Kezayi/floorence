@@ -27,7 +27,8 @@ const GestureSummary = ({
   onFlowerClick,
 }: GestureSummaryProps) => {
   const { data: monetization, isLoading: isLoadingSettings } = useMonetization();
-  const isMonetized = monetization?.isMonetized ?? false;
+  // PROMO-01-FIX1: gestures are always paid.
+  const isMonetized = true;
   const candlePrice = monetization?.prices?.['cierge'] ?? 500;
   const flowerPrice = monetization?.prices?.['fleur'] ?? 500;
   

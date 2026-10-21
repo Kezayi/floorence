@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
+import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -414,7 +415,13 @@ const handler = async (req: Request): Promise<Response> => {
       if (memorialPrice === null) {
         return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
       }
-      if (!isMonetized || memorialPrice === 0) {
+      // PROMO-01-FIX1: the global switch no longer makes obituaries free; only price 0 or an active campaign does.
+      let promoActiveNow = false;
+      if (cls.category === "future" && memorialPrice > 0) {
+        const { data: promoRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", PROMO_SETTING_KEY).maybeSingle();
+        promoActiveNow = isPromoActive(promoRow?.value ?? null);
+      }
+      if (memorialPrice === 0 || promoActiveNow) {
         return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
       }
       // G1-FIX9: resolve stale attempts (>30 min) before deciding; never invent an operator status.
@@ -464,59 +471,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
-    // ── FREE MODE ──
-    if (!isMonetized) {
-      const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
-        user_id: user.id,
-        memorial_id,
-        amount: 0,
-        currency: "XAF",
-        payment_type: item_type,
-        status: "success",
-        ebilling_reference: ebillingRef,
-        payer_phone: phone || null,
-        deceased_name_snapshot: resolvedDeceasedName,
-        candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
-        flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
-        metadata: { mode: "gratuit", quantity, unit_price: 0 },
-      });
-
-      if (txError) {
-        console.error("[ebilling] Transaction insert error:", txError);
-        throw txError;
-      }
-
-      // Update guestbook post gesture count
-      if (post_id) {
-        const column = item_type === "cierge" ? "candle_count" : "flower_count";
-        const { data: currentPost } = await supabaseAdmin
-          .from("guestbook_posts")
-          .select(column)
-          .eq("id", post_id)
-          .single();
-
-        if (currentPost) {
-          const currentCount = (currentPost as any)[column] ?? 0;
-          await supabaseAdmin
-            .from("guestbook_posts")
-            .update({ [column]: currentCount + quantity })
-            .eq("id", post_id);
-        }
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          mode: "gratuit",
-          reference: ebillingRef,
-          amount: 0,
-          unit_price: 0,
-          requires_phone: false,
-          message: "Geste offert avec succès",
-        }),
-        { status: 200, headers: jsonHeaders }
-      );
-    }
+    // PROMO-01-FIX1: no free branch — candles, flowers and obituaries are always billed at their active price.
 
     // ── PAID MODE ──
     if (!phone) {

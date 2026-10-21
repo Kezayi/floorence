@@ -59,7 +59,7 @@ const CreateMemorial = () => {
     ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
     : null;
   const promoDisplay = displayCategory === "future" && !!systemSettings && isObituaryPromoActive(systemSettings.obituary_free_campaign);
-  const requiresPaymentDisplay = !!monetization?.isMonetized && !promoDisplay && (displayPrice ?? 0) > 0;
+  const requiresPaymentDisplay = !promoDisplay && (displayPrice ?? 0) > 0;
 
 
 

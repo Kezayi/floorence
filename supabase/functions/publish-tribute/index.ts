@@ -181,6 +181,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
         .maybeSingle()
 
       const isMonetized = monetizationSetting?.value_bool ?? false
+      // PROMO-01-FIX1: a tribute carrying candles/flowers stays hidden until its payment is confirmed.
+      const mustStayHidden = isMonetized || candleCount > 0 || flowerCount > 0
 
       console.log('[publish-tribute] Publishing tribute:', { memorialId, userId, authorName, isMonetized, is_hidden: isMonetized })
   
@@ -201,7 +203,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
           photos: photos,
           candle_count: candleCount,
           flower_count: flowerCount,
-          is_hidden: isMonetized,
+          is_hidden: mustStayHidden,
           payment_reference: null,
         })
         .select()
