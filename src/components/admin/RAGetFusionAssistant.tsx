@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ADMIN_PREFIX } from '@/lib/adminRoutes';
 import { compareFusion, type FusionRelation, type FusionSubject, type Finding } from '@/lib/ragetFusionComparator';
 import { CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
+import GeoProvenancePanel from './GeoProvenancePanel';
 
 const FIELDS = 'id, slug, first_name, last_name, birth_date, death_date, biography';
 
@@ -91,6 +92,7 @@ export default function RAGetFusionAssistant({ sourceId, targetId }: { sourceId:
           </ul>
         </div>
       ))}
+      <GeoProvenancePanel sourceId={sourceId} masterId={targetId} />
       <p className="text-xs text-muted-foreground border-t border-border pt-2">
         Avis consultatif. RAGet prépare le dossier ; l’administrateur décide. Aucun rapprochement ne vaut confirmation d’identité ni ne remplace la confirmation familiale.
       </p>

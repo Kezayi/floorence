@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ADMIN_PREFIX } from '@/lib/adminRoutes';
+import GeoProvenancePanel from '@/components/admin/GeoProvenancePanel';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -477,6 +478,7 @@ const MemorialDetail = () => {
               </div>
             </CardContent>
           </Card>
+          {id && <GeoProvenancePanel masterId={id} />}
         </TabsContent>
 
         {/* Tab 2: Lineages & Relations */}
