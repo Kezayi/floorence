@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { PROMO_SETTING_KEY, validatePromo } from "../_shared/obituaryPromo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,7 @@ const settingLabels: Record<string, string> = {
   donation_enabled: "Donations activées",
   notification_frequency: "Fréquence des notifications",
   notification_window: "Fenêtre mensuelle des notifications",
+  obituary_free_campaign: "Campagne avis de décès offerts",
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -135,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
         setting_key: key,
         setting_label: settingLabel,
         old_value: oldValue,
-        new_value: value,
+        new_value: finalValue,
       },
     });
 
