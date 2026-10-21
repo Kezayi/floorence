@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
-import { checkTributeGestures, GESTURE_QUOTA_KEY, readQuota } from '../_shared/gestureRules.ts'
+import { checkTributeGestures } from '../_shared/gestureRules.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,8 +57,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
    photos: z.array(z.string().url().or(z.string().startsWith('data:image/')))
      .max(3, 'Maximum 3 photos allowed')
      .default([]),
-   candleCount: z.number().int().min(0).max(100).default(0),
-   flowerCount: z.number().int().min(0).max(100).default(0),
+   candleCount: z.number().int().min(0).max(1_000_000).default(0),
+   flowerCount: z.number().int().min(0).max(1_000_000).default(0),
    // GEO-02: country declared at deposit + explicit public consent (default: not shown).
    countryCode: z.string().regex(/^[A-Z]{2}$/).nullable().optional().default(null),
    countryPublic: z.boolean().optional().default(false),
@@ -189,10 +189,9 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
         .maybeSingle()
 
       const isMonetized = monetizationSetting?.value_bool ?? false
-      // GEST-01: gestures declared on a tribute respect the server quota (one type only).
+      // GESTURES-UNLIMITED: any quantity, one type per payment (amount ceiling checked in ebilling).
       if (candleCount > 0 || flowerCount > 0) {
-        const { data: quotaRow } = await supabase.from('system_settings').select('value').eq('key', GESTURE_QUOTA_KEY).maybeSingle()
-        const gestureCheck = checkTributeGestures(candleCount, flowerCount, readQuota(quotaRow?.value ?? null))
+        const gestureCheck = checkTributeGestures(candleCount, flowerCount)
         if (!gestureCheck.ok) {
           return new Response(JSON.stringify({ error: gestureCheck.error }),
             { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })

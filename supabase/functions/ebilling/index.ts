@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
-import { checkGestureOrder, checkTributeGestures, GESTURE_QUOTA_KEY, readQuota } from "../_shared/gestureRules.ts";
+import { checkGestureOrder } from "../_shared/gestureRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -524,26 +524,21 @@ const handler = async (req: Request): Promise<Response> => {
       if (!(typeof unitPrice === "number" && unitPrice > 0)) {
         return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
       }
-      const { data: quotaRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", GESTURE_QUOTA_KEY).maybeSingle();
-      const maxGestures = readQuota(quotaRow?.value ?? null);
       const { data: gPost } = await supabaseAdmin.from("guestbook_posts")
         .select("is_hidden, candle_count, flower_count").eq("id", post_id).maybeSingle();
       const { data: inFlightTxs } = await supabaseAdmin.from("payment_transactions")
         .select("metadata").in("payment_type", ["cierge", "fleur"]).in("status", ["pending", "timeout"])
         .eq("metadata->>post_id", post_id);
-      const inFlight = (inFlightTxs ?? []).reduce((n: number, t: any) => n + (Number(t.metadata?.quantity) || 1), 0);
-      if (inFlight > 0) {
+      if ((inFlightTxs ?? []).length > 0) {
         return new Response(JSON.stringify({ error: "Un paiement de geste est déjà en cours pour cet hommage" }), { status: 409, headers: jsonHeaders });
       }
       const c = gPost?.candle_count ?? 0, f = gPost?.flower_count ?? 0;
-      const check = tributeLink
-        // Hidden tribute: its declared gestures must equal this order and respect the quota.
-        ? ((item_type === "cierge" ? c === quantity && f === 0 : f === quantity && c === 0)
-            ? checkTributeGestures(c, f, maxGestures)
-            : { ok: false as const, error: "Gestes non conformes à l'hommage" })
-        : checkGestureOrder(0, 0, quantity, maxGestures) // GEST-01-CHECK: quota bounds each later order, not a lifetime ceiling;
+      // GESTURES-UNLIMITED: no business quantity limit; only the operator ceiling per payment.
+      const check = tributeLink && !(item_type === "cierge" ? c === quantity && f === 0 : f === quantity && c === 0)
+        ? { ok: false as const, error: "Gestes non conformes à l'hommage" }
+        : checkGestureOrder(quantity, unitPrice);
       if (!check.ok) {
-        return new Response(JSON.stringify({ error: check.error, max_gestures: maxGestures }), { status: 409, headers: jsonHeaders });
+        return new Response(JSON.stringify({ error: check.error }), { status: 409, headers: jsonHeaders });
       }
     }
 
