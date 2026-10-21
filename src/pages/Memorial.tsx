@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { resolveContributorPhotos } from "@/lib/contributorPhotos";
 import { attachTributeCountries } from "@/lib/tributeCountries";
+import TributeGeography from "@/components/memorial/TributeGeography";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -934,6 +935,8 @@ const MemorialInner = () => {
               <p className="text-xs mb-8 font-sans text-livreor-muted/70">
                 {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
+
+              <TributeGeography memorialId={memorialData?.id} refreshKey={guestbookPosts.length} />
 
               <div className="space-y-0">
                 {paginatedPosts.map((post, index) => (
