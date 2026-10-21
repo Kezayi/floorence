@@ -511,6 +511,7 @@ const MemorialInner = () => {
 
   const isOwner = user?.id === memorialData?.createdBy || false;
   const { prefetchTab } = useTabPrefetch(memorialData?.id || "");
+  const { data: memorialGeo } = useMemorialGeo(memorialData?.id);
 
   const handleMemorialUpdated = () => {
     window.location.reload();
@@ -1098,6 +1099,7 @@ const MemorialInner = () => {
                     }}
                     events={memorialEvents}
                   />
+                  {memorialGeo && <MemorialOrigins geo={memorialGeo} />}
                 </div>
               </div>
               <div className="max-w-2xl">
