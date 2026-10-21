@@ -35,18 +35,18 @@ const GeoLandsFields = ({ value, onChange, inputClassName = "w-full p-3 bg-secon
       <legend className="text-sm font-sans text-muted-foreground mb-1">Origines et dernier repos <span className="text-xs">(facultatif)</span></legend>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <p className="sm:col-span-2 font-serif text-base">Terre originelle</p>
-        <CountrySelect k="origin_country" id="geo-origin-country" label="Pays d'origine familiale" />
-        <Locality k="origin_locality" id="geo-origin-locality" label="Ville ou localité" />
+        {CountrySelect({ k: "origin_country", id: "geo-origin-country", label: "Pays d'origine familiale" })}
+        {Locality({ k: "origin_locality", id: "geo-origin-locality", label: "Ville ou localité" })}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <p className="sm:col-span-2 font-serif text-base">Terre de vie</p>
-        <CountrySelect k="residence_country" id="geo-res-country" label="Dernier pays de résidence" />
-        <Locality k="residence_locality" id="geo-res-locality" label="Ville ou localité" />
+        {CountrySelect({ k: "residence_country", id: "geo-res-country", label: "Dernier pays de résidence" })}
+        {Locality({ k: "residence_locality", id: "geo-res-locality", label: "Ville ou localité" })}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <p className="sm:col-span-2 font-serif text-base">Terre finale</p>
-        <CountrySelect k="burial_country" id="geo-burial-country" label="Pays d'inhumation" />
-        <Locality k="burial_locality" id="geo-burial-locality" label="Ville ou localité" />
+        {CountrySelect({ k: "burial_country", id: "geo-burial-country", label: "Pays d'inhumation" })}
+        {Locality({ k: "burial_locality", id: "geo-burial-locality", label: "Ville ou localité" })}
         <div className="sm:col-span-2">
           <label htmlFor="geo-burial-status" className="block text-xs font-sans text-muted-foreground mb-1">Statut de l'inhumation</label>
           <select id="geo-burial-status" value={value.burial_status ?? NONE}
