@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
-import { checkGestureOrder, checkTributeGestures, GESTURE_QUOTA_KEY, readQuota } from "../_shared/gestureRules.ts";
+import { checkGestureOrder } from "../_shared/gestureRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

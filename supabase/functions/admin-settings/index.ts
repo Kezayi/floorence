@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { PROMO_SETTING_KEY, validatePromo } from "../_shared/obituaryPromo.ts";
-import { GESTURE_QUOTA_KEY, validateGesturePrice, validateGestureQuota } from "../_shared/gestureRules.ts";
+import { validateGesturePrice } from "../_shared/gestureRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
