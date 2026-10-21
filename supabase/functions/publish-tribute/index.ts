@@ -189,10 +189,9 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
         .maybeSingle()
 
       const isMonetized = monetizationSetting?.value_bool ?? false
-      // GEST-01: gestures declared on a tribute respect the server quota (one type only).
+      // GESTURES-UNLIMITED: any quantity, one type per payment (amount ceiling checked in ebilling).
       if (candleCount > 0 || flowerCount > 0) {
-        const { data: quotaRow } = await supabase.from('system_settings').select('value').eq('key', GESTURE_QUOTA_KEY).maybeSingle()
-        const gestureCheck = checkTributeGestures(candleCount, flowerCount, readQuota(quotaRow?.value ?? null))
+        const gestureCheck = checkTributeGestures(candleCount, flowerCount)
         if (!gestureCheck.ok) {
           return new Response(JSON.stringify({ error: gestureCheck.error }),
             { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })

@@ -1,10 +1,9 @@
-// GEST-01: server rules for memorial gestures (candles/flowers). Always paid, quota per tribute.
-export const GESTURE_QUOTA_KEY = "gesture_max_per_tribute";
-export const GESTURE_QUOTA_DEFAULT = 1;
-export const GESTURE_QUOTA_MIN = 1;
-export const GESTURE_QUOTA_MAX = 10;
+// GESTURES-UNLIMITED: candles/flowers are always paid and have NO business quantity limit.
+// The only bound is technical: one payment cannot exceed what the mobile-money operator accepts.
 export const GESTURE_PRICE_MIN = 500;
 export const GESTURE_PRICE_MAX = 1_000_000;
+/** Mobile-money ceiling for a single payment (Airtel/Moov). Not a business quota. */
+export const GESTURE_ORDER_MAX_XAF = 1_000_000;
 
 export type Check<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -19,30 +18,20 @@ export function validateGesturePrice(value: unknown): Check<{ amount: number; cu
   return { ok: true, value: { amount, currency: "XAF" } };
 }
 
-export function validateGestureQuota(value: unknown): Check<{ max: number }> {
-  const max = (value as { max?: unknown } | null)?.max;
-  if (typeof max !== "number" || !Number.isInteger(max) || max < GESTURE_QUOTA_MIN || max > GESTURE_QUOTA_MAX) {
-    return { ok: false, error: `Limite entière entre ${GESTURE_QUOTA_MIN} et ${GESTURE_QUOTA_MAX}` };
-  }
-  return { ok: true, value: { max } };
-}
+const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
-/** Active quota; a missing or corrupt setting falls back to the strict initial rule (1). */
-export function readQuota(value: unknown): number {
-  const v = validateGestureQuota(value);
-  return v.ok ? v.value.max : GESTURE_QUOTA_DEFAULT;
-}
-
-/** Gestures declared when a tribute is created: one type only, total within quota. */
-export function checkTributeGestures(candles: number, flowers: number, max: number): Check<null> {
-  if (candles > 0 && flowers > 0) return { ok: false, error: "Un seul type de geste par hommage" };
-  if (candles + flowers > max) return { ok: false, error: `Maximum ${max} geste(s) par hommage` };
+/** Gestures declared when a tribute is created: one type per payment, any quantity. */
+export function checkTributeGestures(candles: number, flowers: number): Check<null> {
+  if (!isCount(candles) || !isCount(flowers)) return { ok: false, error: "Quantité invalide" };
+  if (candles > 0 && flowers > 0) return { ok: false, error: "Un type de geste par paiement : ajoutez l'autre ensuite" };
   return { ok: true, value: null };
 }
 
-/** New order on a tribute: already delivered + in-flight orders + requested must stay within quota. */
-export function checkGestureOrder(delivered: number, inFlight: number, requested: number, max: number): Check<null> {
-  if (!Number.isInteger(requested) || requested < 1) return { ok: false, error: "Quantité invalide" };
-  if (delivered + inFlight + requested > max) return { ok: false, error: `Maximum ${max} geste(s) par hommage atteint` };
+/** One payment order: positive integer quantity, total within the operator ceiling. */
+export function checkGestureOrder(quantity: number, unitPrice: number): Check<null> {
+  if (!Number.isInteger(quantity) || quantity < 1) return { ok: false, error: "Quantité invalide" };
+  if (quantity * unitPrice > GESTURE_ORDER_MAX_XAF) {
+    return { ok: false, error: `Montant maximal par paiement : ${GESTURE_ORDER_MAX_XAF.toLocaleString("fr-FR")} XAF. Répartissez en plusieurs paiements.` };
+  }
   return { ok: true, value: null };
 }
