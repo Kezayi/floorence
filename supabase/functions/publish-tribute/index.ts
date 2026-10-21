@@ -57,8 +57,8 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
    photos: z.array(z.string().url().or(z.string().startsWith('data:image/')))
      .max(3, 'Maximum 3 photos allowed')
      .default([]),
-   candleCount: z.number().int().min(0).max(100).default(0),
-   flowerCount: z.number().int().min(0).max(100).default(0),
+   candleCount: z.number().int().min(0).max(1_000_000).default(0),
+   flowerCount: z.number().int().min(0).max(1_000_000).default(0),
    // GEO-02: country declared at deposit + explicit public consent (default: not shown).
    countryCode: z.string().regex(/^[A-Z]{2}$/).nullable().optional().default(null),
    countryPublic: z.boolean().optional().default(false),

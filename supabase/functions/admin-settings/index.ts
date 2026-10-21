@@ -110,17 +110,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
       finalValue = v.value;
     }
-    if (key === GESTURE_QUOTA_KEY) {
-      const v = validateGestureQuota(value);
-      if (!v.ok) {
-        return new Response(JSON.stringify({ error: v.error }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
-      }
-      finalValue = v.value;
-      ({ error: updateError } = await supabaseAdmin.from("system_settings").upsert({
-        key, value: finalValue as any, description: "Maximum de gestes mémoriels par hommage",
-        updated_at: new Date().toISOString(), updated_by: user.id,
-      }, { onConflict: "key" }));
+    if (key === "gesture_max_per_tribute") {
+      // GESTURES-UNLIMITED: the per-tribute quota no longer exists.
+      return new Response(JSON.stringify({ error: "Aucune limite de gestes : réglage supprimé" }),
+        { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } });
     } else
     if (key === PROMO_SETTING_KEY) {
       // PROMO-01: strictly validated, upserted (row may not exist yet).
