@@ -85,7 +85,7 @@ export default function GeoProvenancePanel({ masterId, sourceId }: { masterId: s
         </div>
       ))}
       <p className="text-xs text-muted-foreground border-t border-border pt-2">
-        Faits observables uniquement. Une différence peut refléter des périodes de vie ou des déclarations familiales distinctes ; aucune valeur n'est recopiée ni résolue automatiquement. Historique des modifications : Journal d'audit (memorial_geo).
+        Faits observables uniquement. Une différence peut refléter des périodes de vie ou des déclarations familiales distinctes ; aucune valeur n'est recopiée ni résolue automatiquement. Historique des modifications : Journal d'audit (memorial_geo_update).
       </p>
     </section>
   );
