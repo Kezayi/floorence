@@ -540,7 +540,7 @@ const handler = async (req: Request): Promise<Response> => {
         ? ((item_type === "cierge" ? c === quantity && f === 0 : f === quantity && c === 0)
             ? checkTributeGestures(c, f, maxGestures)
             : { ok: false as const, error: "Gestes non conformes à l'hommage" })
-        : checkGestureOrder(c + f, 0, quantity, maxGestures);
+        : checkGestureOrder(0, 0, quantity, maxGestures) // GEST-01-CHECK: quota bounds each later order, not a lifetime ceiling;
       if (!check.ok) {
         return new Response(JSON.stringify({ error: check.error, max_gestures: maxGestures }), { status: 409, headers: jsonHeaders });
       }

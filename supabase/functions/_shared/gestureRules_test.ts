@@ -16,3 +16,4 @@ Deno.test("written tribute without gesture ok", () => assertEquals(checkTributeG
 Deno.test("second order beyond quota refused", () => assertEquals(checkGestureOrder(1, 0, 1, 1).ok, false));
 Deno.test("repeat while pending refused", () => assertEquals(checkGestureOrder(0, 1, 1, 1).ok, false));
 Deno.test("raised quota 3 allows second", () => assertEquals(checkGestureOrder(1, 0, 1, 3).ok, true));
+Deno.test("later order on existing tribute bounded per order", () => assertEquals(checkGestureOrder(0, 0, 1, 1).ok, true));
