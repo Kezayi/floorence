@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
+import { resolveContributorPhotos } from "@/lib/contributorPhotos";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -330,12 +331,11 @@ const MemorialInner = () => {
         setGuestbookPosts([]);
       } else {
         const isDemo = memorialData?.isDemo === true;
-        const posts: GuestbookPostData[] = (data || []).map((post: any) => {
-          // For real memorials (12th+), use the actual author_photo_url from profiles
-          // For demo memorials (first 11), use deterministic demo avatars
-          const avatarUrl = isDemo
-            ? (post.author_name ? getDemoAvatarUrl(post.author_name) : null)
-            : (post.author_photo_url || null);
+        const resolvedPosts = await resolveContributorPhotos(data || []);
+        const posts: GuestbookPostData[] = resolvedPosts.map((post) => {
+          // Actual account portraits take priority, including on demo memorials.
+          const avatarUrl = post.author_photo_url ||
+            (isDemo && !post.user_id && post.author_name ? getDemoAvatarUrl(post.author_name) : null);
 
           return {
             id: post.id,
@@ -387,14 +387,14 @@ const MemorialInner = () => {
         return [];
       }
       const isDemo = memorialData?.isDemo === true;
-      return (data || []).map((post: any) => ({
+      const resolvedPosts = await resolveContributorPhotos(data || []);
+      return resolvedPosts.map((post) => ({
         authorId: post.user_id
           ? `author-${post.user_id}`
           : (post.author_name ? `author-${post.author_name.trim().toLowerCase().replace(/\s+/g, "-")}` : `anon-${post.id}`),
         authorName: post.author_name || "Anonyme",
-        authorAvatarUrl: isDemo
-          ? (post.author_name ? getDemoAvatarUrl(post.author_name) : null)
-          : (post.author_photo_url || null),
+        authorAvatarUrl: post.author_photo_url ||
+          (isDemo && !post.user_id && post.author_name ? getDemoAvatarUrl(post.author_name) : null),
         relationCategory: post.relation_category || "autre",
         relationLink: post.relation_link || null,
       }));
@@ -440,8 +440,12 @@ const MemorialInner = () => {
             table: 'guestbook_posts',
             filter: `memorial_id=eq.${memorialData.id}`,
           },
-          (payload) => {
+          async (payload) => {
             const newPost = payload.new as any;
+            const [resolvedPost] = await resolveContributorPhotos([{
+              user_id: newPost?.user_id || null,
+              author_photo_url: newPost?.author_photo_url || null,
+            }]);
            
            setGuestbookPosts((prev) => {
              if (prev.some((p) => p.id === newPost?.id)) return prev;
@@ -455,9 +459,8 @@ const MemorialInner = () => {
                      : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
                    authorUserId: newPost?.user_id || null,
                    authorName: newPost?.author_name || 'Anonyme',
-                  authorAvatarUrl: isDemo
-                    ? (newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null)
-                    : (newPost?.author_photo_url || null),
+                  authorAvatarUrl: resolvedPost?.author_photo_url ||
+                    (isDemo && !newPost?.user_id && newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null),
                   relationCategory: newPost?.relation_category || 'autre',
                   relationLink: newPost?.relation_link || null,
                   content: newPost?.content || '',

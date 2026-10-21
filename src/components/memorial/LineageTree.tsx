@@ -9,6 +9,7 @@ import { getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipIn
 import { inferGender } from "@/lib/genderInference";
 import { Skeleton } from "@/components/ui/skeleton";
 import { reservePortrait } from "@/lib/demoAvatars";
+import { resolveContributorPhotos } from "@/lib/contributorPhotos";
 
 import { classifyRelation, type ViewFilter } from "./lineage/lineageConstants";
 import Photo from "@/components/ui/Photo";
@@ -87,7 +88,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
     queryFn: async () => {
       const { data } = await supabase
         .rpc("get_public_guestbook_posts_consolidated", { p_master_id: memorialId, p_limit: 500, p_offset: 0 });
-      return data || [];
+      return resolveContributorPhotos(data || []);
     },
   });
 
@@ -120,7 +121,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
       id: `tribute-${post.id}`,
       name: post.author_name,
       firstName: post.author_name.split(" ")[0],
-      photo: (post as any).author_photo_url || null,
+      photo: post.author_photo_url || null,
       shareToken: null as string | null,
       relation: post.relation_link || post.relation_category,
       createdBy: "",
