@@ -182,7 +182,17 @@ serve(async (req) => {
     const { data: monetization } = await supabaseAdmin
       .from('global_settings').select('value_bool').eq('key', 'is_monetized').maybeSingle()
     const isMonetized = monetization?.value_bool ?? false
-    const requiresPayment = isMonetized && price > 0
+    // PROMO-01: obituary (future category) free campaign, evaluated server-side now.
+    let promoApplied = false
+    let promoValue: unknown = null
+    if (category === 'future' && isMonetized && price > 0) {
+      const { data: promoRow } = await supabaseAdmin
+        .from('system_settings').select('value').eq('key', PROMO_SETTING_KEY).maybeSingle()
+      promoValue = promoRow?.value ?? null
+      promoApplied = isPromoActive(promoValue)
+    }
+    const appliedPrice = promoApplied ? 0 : price
+    const requiresPayment = isMonetized && appliedPrice > 0
 
     const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
 
