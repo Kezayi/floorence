@@ -414,7 +414,13 @@ const handler = async (req: Request): Promise<Response> => {
       if (memorialPrice === null) {
         return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
       }
-      if (!isMonetized || memorialPrice === 0) {
+      // PROMO-01-FIX1: the global switch no longer makes obituaries free; only price 0 or an active campaign does.
+      let promoActiveNow = false;
+      if (cls.category === "future" && memorialPrice > 0) {
+        const { data: promoRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", PROMO_SETTING_KEY).maybeSingle();
+        promoActiveNow = isPromoActive(promoRow?.value ?? null);
+      }
+      if (memorialPrice === 0 || promoActiveNow) {
         return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
       }
       // G1-FIX9: resolve stale attempts (>30 min) before deciding; never invent an operator status.
@@ -464,8 +470,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
-    // ── FREE MODE ──
-    if (!isMonetized) {
+    // ── PROMO-01-FIX1: no free mode for any paid item — gestures and obituaries always go to the operator ──
+    if (false) {
       const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
         user_id: user.id,
         memorial_id,
