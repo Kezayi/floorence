@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
+import { checkGestureOrder, checkTributeGestures, GESTURE_QUOTA_KEY, readQuota } from "../_shared/gestureRules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -494,7 +495,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (post_id) {
       const { data: post, error: postErr } = await supabaseAdmin
         .from("guestbook_posts")
-        .select("id, memorial_id, user_id, is_hidden, payment_reference, deleted_at")
+        .select("id, memorial_id, user_id, is_hidden, payment_reference, deleted_at, candle_count, flower_count")
         .eq("id", post_id)
         .maybeSingle();
       if (postErr || !post || post.deleted_at) {
@@ -511,6 +512,37 @@ const handler = async (req: Request): Promise<Response> => {
           return new Response(JSON.stringify({ error: "Hommage déjà associé à une transaction" }), { status: 409, headers: jsonHeaders });
         }
         tributeLink = post.id;
+      }
+    }
+
+    // ── GEST-01: gestures always paid, bound to a tribute, within the server quota ──
+    if (!isMemorialPayment) {
+      if (!post_id) {
+        return new Response(JSON.stringify({ error: "Hommage requis pour un geste" }), { status: 400, headers: jsonHeaders });
+      }
+      if (!(typeof unitPrice === "number" && unitPrice > 0)) {
+        return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
+      }
+      const { data: quotaRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", GESTURE_QUOTA_KEY).maybeSingle();
+      const maxGestures = readQuota(quotaRow?.value ?? null);
+      const { data: gPost } = await supabaseAdmin.from("guestbook_posts")
+        .select("is_hidden, candle_count, flower_count").eq("id", post_id).maybeSingle();
+      const { data: inFlightTxs } = await supabaseAdmin.from("payment_transactions")
+        .select("metadata").in("payment_type", ["cierge", "fleur"]).in("status", ["pending", "timeout"])
+        .eq("metadata->>post_id", post_id);
+      const inFlight = (inFlightTxs ?? []).reduce((n: number, t: any) => n + (Number(t.metadata?.quantity) || 1), 0);
+      if (inFlight > 0) {
+        return new Response(JSON.stringify({ error: "Un paiement de geste est déjà en cours pour cet hommage" }), { status: 409, headers: jsonHeaders });
+      }
+      const c = gPost?.candle_count ?? 0, f = gPost?.flower_count ?? 0;
+      const check = tributeLink
+        // Hidden tribute: its declared gestures must equal this order and respect the quota.
+        ? ((item_type === "cierge" ? c === quantity && f === 0 : f === quantity && c === 0)
+            ? checkTributeGestures(c, f, maxGestures)
+            : { ok: false as const, error: "Gestes non conformes à l'hommage" })
+        : checkGestureOrder(c + f, 0, quantity, maxGestures);
+      if (!check.ok) {
+        return new Response(JSON.stringify({ error: check.error, max_gestures: maxGestures }), { status: 409, headers: jsonHeaders });
       }
     }
 
@@ -574,8 +606,8 @@ const handler = async (req: Request): Promise<Response> => {
         ebilling_reference: ebillingRef,
         payer_phone: phone,
         deceased_name_snapshot: resolvedDeceasedName,
-        candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
-        flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
+        candle_count: item_type === "cierge" ? quantity : 0,
+        flower_count: item_type === "fleur" ? quantity : 0,
         last_api_response: rawBillText.substring(0, 500),
         metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
       });
@@ -689,8 +721,8 @@ const handler = async (req: Request): Promise<Response> => {
       ebilling_transaction_id: billId,
       payer_phone: phone,
       deceased_name_snapshot: resolvedDeceasedName,
-      candle_count: candle_count ?? (item_type === "cierge" ? quantity : 0),
-      flower_count: flower_count ?? (item_type === "fleur" ? quantity : 0),
+      candle_count: item_type === "cierge" ? quantity : 0,
+      flower_count: item_type === "fleur" ? quantity : 0,
       last_api_response: JSON.stringify({ bill: billData, ussd: ussdData }),
       metadata: {
         ...memorialMeta,
