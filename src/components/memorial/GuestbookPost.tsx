@@ -9,6 +9,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
 import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import AuthorAvatar from "./AuthorAvatar";
+import CountryFlag from "./CountryFlag";
+import { countryName } from "@/lib/geoLands";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import ContributorRelationalSheet, { useRelationalEligibility } from "./ContributorRelationalSheet";
 
 export interface GuestbookPostData {
@@ -27,6 +31,8 @@ export interface GuestbookPostData {
   createdAt: string;
   candleCount: number;
   flowerCount: number;
+  /** GEO-02: country shown only with the author's explicit public consent */
+  authorCountryCode?: string | null;
 }
 
 interface GuestbookPostProps {
@@ -55,6 +61,14 @@ const GuestbookPost = ({
   const [candlePulse, setCandlePulse] = useState(false);
   const [flowerPulse, setFlowerPulse] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [countryCode, setCountryCode] = useState<string | null>(post.authorCountryCode ?? null);
+  const withdrawCountry = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc as any)("withdraw_tribute_country", { p_post_id: post.id });
+    if (error || !data) { toast.error("Le pays n'a pas pu être retiré"); return; }
+    setCountryCode(null);
+    toast.success("Le pays n'est plus affiché avec cet hommage");
+  };
   const { data: canViewProfile } = useRelationalEligibility(post.memorialId);
 
   const openLightbox = (index: number) => {
@@ -133,7 +147,19 @@ const GuestbookPost = ({
             </AuthorTooltip>
             <span className="block mt-0.5 text-[11px] font-sans italic text-livreor-muted">
               {formatRelationLabel(post.relationLink || post.relationCategory, deceasedGender)}
+              <span className="sr-only"> (lien déclaré par l'auteur)</span>
             </span>
+            {countryCode && (
+              <span className="mt-1 flex items-center gap-1.5 text-[11px] font-sans text-livreor-muted">
+                <CountryFlag code={countryCode} size="md" fallback />
+                <span>{countryName(countryCode)}</span>
+                {isOwner && (
+                  <button type="button" onClick={withdrawCountry} className="ml-1 underline underline-offset-2 hover:text-livreor-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm">
+                    Retirer
+                  </button>
+                )}
+              </span>
+            )}
           </div>
         </div>
         <time className="text-xs text-livreor-muted font-sans">

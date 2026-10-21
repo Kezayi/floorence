@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { resolveContributorPhotos } from "@/lib/contributorPhotos";
+import { attachTributeCountries } from "@/lib/tributeCountries";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -333,7 +334,7 @@ const MemorialInner = () => {
         setGuestbookPosts([]);
       } else {
         const isDemo = memorialData?.isDemo === true;
-        const resolvedPosts = await resolveContributorPhotos(data || []);
+        const resolvedPosts = await attachTributeCountries(await resolveContributorPhotos(data || []));
         const posts: GuestbookPostData[] = resolvedPosts.map((post) => {
           // Actual account portraits take priority, including on demo memorials.
           const avatarUrl = post.author_photo_url ||
@@ -355,6 +356,7 @@ const MemorialInner = () => {
             createdAt: post.created_at,
             candleCount: post.candle_count ?? 0,
             flowerCount: post.flower_count ?? 0,
+            authorCountryCode: post.author_country_code,
           };
         });
         setGuestbookPosts(posts);
@@ -696,6 +698,8 @@ const MemorialInner = () => {
     photos: string[];
     candleCount: number;
     flowerCount: number;
+    countryCode?: string | null;
+    countryPublic?: boolean;
   }) => {
     if (!memorialData?.id || !user) {
       toast.error("Erreur: Vous devez être connecté pour publier");
@@ -737,6 +741,8 @@ const MemorialInner = () => {
           photos: data.photos,
           candleCount: data.candleCount,
           flowerCount: data.flowerCount,
+          countryCode: data.countryCode ?? null,
+          countryPublic: data.countryPublic === true,
         },
       });
 
