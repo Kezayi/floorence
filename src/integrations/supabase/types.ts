@@ -1617,6 +1617,10 @@ export type Database = {
           count: number
         }[]
       }
+      get_memorial_tribute_geography: {
+        Args: { p_memorial_id: string }
+        Returns: Json
+      }
       get_paginated_memorials: {
         Args: { p_limit?: number; p_offset?: number; p_search_query?: string }
         Returns: {
