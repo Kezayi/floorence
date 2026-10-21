@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
+import { resolveContributorPhotos } from "@/lib/contributorPhotos";
 
 /**
  * Prefetches tab data on hover so content is instant on click.
@@ -44,7 +45,7 @@ export const useTabPrefetch = (memorialId: string) => {
             queryFn: async () => {
               const { data } = await supabase
                 .rpc("get_public_guestbook_posts_consolidated", { p_master_id: memorialId, p_limit: 500, p_offset: 0 });
-              return data || [];
+              return resolveContributorPhotos(data || []);
             },
             staleTime: 2 * 60_000,
           });
