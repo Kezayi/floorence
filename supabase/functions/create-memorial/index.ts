@@ -208,9 +208,8 @@ serve(async (req) => {
       promoValue = promoRow?.value ?? null
       promoApplied = isPromoActive(promoValue)
     }
-    const appliedPrice = promoApplied ? 0 : price
-    // PROMO-01-FIX1: the global switch (isMonetized) no longer waives the obituary price.
-    void isMonetized
+    // MON-02: free mode (is_monetized=false) waives memorial publication; gestures are never waived.
+    const appliedPrice = (promoApplied || !isMonetized) ? 0 : price
     const requiresPayment = appliedPrice > 0
 
     const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
