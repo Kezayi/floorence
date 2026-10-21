@@ -1,3 +1,4 @@
+import ResidenceCountrySelect from "@/components/memorial/ResidenceCountrySelect";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
@@ -63,6 +64,7 @@ const Account = () => {
   // Form states
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
+  const [residenceCountry, setResidenceCountry] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   // Data states
@@ -93,6 +95,7 @@ const Account = () => {
     if (profile) {
       setDisplayName(profile.display_name || "");
       setPhone(profile.phone || "");
+      setResidenceCountry(profile.residence_country_code ?? null);
     }
   }, [profile]);
 
@@ -222,6 +225,7 @@ const Account = () => {
     const result = await updateProfile({
       display_name: displayName.trim(),
       phone: phone.trim() || undefined,
+      residence_country_code: residenceCountry,
     });
     setIsSaving(false);
 
@@ -421,6 +425,7 @@ const Account = () => {
                               className="w-full p-3 bg-secondary border-0 font-sans focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                           </div>
+                          <ResidenceCountrySelect id="profile-residence-country" label="Pays de résidence (facultatif, privé)" value={residenceCountry} onChange={setResidenceCountry} />
                           <Button 
                             onClick={handleUpdateProfile} 
                             disabled={isSaving}

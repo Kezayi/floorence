@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import GesteRituelModal from "./GesteRituelModal";
+import ResidenceCountrySelect from "./ResidenceCountrySelect";
 import RelationSelect, { type RelationSelection } from "./RelationSelect";
 import { Button } from "@/components/ui/button";
 import TemplateSelector from "./TemplateSelector";
@@ -30,6 +31,8 @@ interface GuestbookFormProps {
     photos: string[];
     candleCount: number;
     flowerCount: number;
+    countryCode?: string | null;
+    countryPublic?: boolean;
   }) => void | Promise<void | { success: boolean; postId?: string }>;
   lockedRelation?: { link: string; category: string };
 }
@@ -55,6 +58,10 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string; totalAmount: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candleCount, setCandleCount] = useState(0);
+  // GEO-02: country proposed from the profile, correctable; public display needs explicit consent.
+  const [tributeCountry, setTributeCountry] = useState<string | null | undefined>(undefined);
+  const effectiveCountry = tributeCountry === undefined ? (profile?.residence_country_code ?? null) : tributeCountry;
+  const [countryPublic, setCountryPublic] = useState(false);
   const [flowerCount, setFlowerCount] = useState(0);
   // PROMO-01-FIX1: any candle/flower forces the payment path; the global switch only governs written tributes.
   const isMonetized = globalPaidMode || candleCount > 0 || flowerCount > 0;
@@ -196,6 +203,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         photos,
         candleCount,
         flowerCount,
+        countryCode: effectiveCountry,
+        countryPublic: countryPublic && !!effectiveCountry,
       });
 
       setLastSubmittedData(snapshot);
@@ -233,6 +242,8 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         photos,
         candleCount,
         flowerCount,
+        countryCode: effectiveCountry,
+        countryPublic: countryPublic && !!effectiveCountry,
       });
       const createdPostId = submitResult && typeof submitResult === 'object' ? submitResult.postId : undefined;
       if (submitResult && typeof submitResult === 'object' && submitResult.success === false) {
@@ -357,6 +368,19 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   </p>
                 )}
               </>
+            )}
+          </div>
+
+          {/* GEO-02: pays de résidence au moment du dépôt (facultatif) */}
+          <div className="space-y-2">
+            <ResidenceCountrySelect id="tribute-country" label="Pays de résidence (facultatif)" value={effectiveCountry}
+              onChange={(c) => { setTributeCountry(c); if (!c) setCountryPublic(false); }}
+              className="w-full p-3 bg-secondary border-0 font-sans text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            {effectiveCountry && (
+              <label className="flex items-start gap-2 text-xs font-sans text-muted-foreground cursor-pointer">
+                <input type="checkbox" checked={countryPublic} onChange={(e) => setCountryPublic(e.target.checked)} className="mt-0.5 accent-[hsl(var(--primary))]" />
+                <span>Afficher publiquement ce pays et son drapeau avec mon hommage. Sans cette case, le pays n'est pas conservé avec l'hommage.</span>
+              </label>
             )}
           </div>
 

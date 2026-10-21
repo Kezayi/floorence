@@ -8,6 +8,7 @@ export interface Profile {
   display_name: string | null;
   phone: string | null;
   avatar_url: string | null;
+  residence_country_code?: string | null;
   profile_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -17,6 +18,7 @@ export interface ProfileUpdateData {
   display_name?: string;
   phone?: string;
   avatar_url?: string;
+  residence_country_code?: string | null;
   profile_completed?: boolean;
 }
 

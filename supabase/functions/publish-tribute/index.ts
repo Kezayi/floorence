@@ -58,6 +58,9 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
      .default([]),
    candleCount: z.number().int().min(0).max(100).default(0),
    flowerCount: z.number().int().min(0).max(100).default(0),
+   // GEO-02: country declared at deposit + explicit public consent (default: not shown).
+   countryCode: z.string().regex(/^[A-Z]{2}$/).nullable().optional().default(null),
+   countryPublic: z.boolean().optional().default(false),
  })
  
  serve(async (req) => {
@@ -170,8 +173,12 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
        relationLink,
        photos, 
        candleCount, 
-       flowerCount 
+       flowerCount,
+       countryCode,
+       countryPublic
      } = validationResult.data
+     // GEO-02: the country is stored on the tribute only with explicit public consent.
+     const authorCountryCode = countryPublic && countryCode ? countryCode : null
  
       // Check server-side monetization mode
       const { data: monetizationSetting } = await supabase
@@ -203,6 +210,7 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
           photos: photos,
           candle_count: candleCount,
           flower_count: flowerCount,
+          author_country_code: authorCountryCode,
           is_hidden: mustStayHidden,
           payment_reference: null,
         })
