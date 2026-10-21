@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+import { checkTributeGestures, GESTURE_QUOTA_KEY, readQuota } from '../_shared/gestureRules.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -188,6 +189,15 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
         .maybeSingle()
 
       const isMonetized = monetizationSetting?.value_bool ?? false
+      // GEST-01: gestures declared on a tribute respect the server quota (one type only).
+      if (candleCount > 0 || flowerCount > 0) {
+        const { data: quotaRow } = await supabase.from('system_settings').select('value').eq('key', GESTURE_QUOTA_KEY).maybeSingle()
+        const gestureCheck = checkTributeGestures(candleCount, flowerCount, readQuota(quotaRow?.value ?? null))
+        if (!gestureCheck.ok) {
+          return new Response(JSON.stringify({ error: gestureCheck.error }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+      }
       // PROMO-01-FIX1: a tribute carrying candles/flowers stays hidden until its payment is confirmed.
       const mustStayHidden = isMonetized || candleCount > 0 || flowerCount > 0
 
