@@ -1,3 +1,5 @@
+import MemorialOrigins from "@/components/memorial/MemorialOrigins";
+import { useMemorialGeo } from "@/hooks/useMemorialGeo";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
