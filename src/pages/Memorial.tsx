@@ -651,7 +651,8 @@ const MemorialInner = () => {
     if (!post) return;
 
     const countKey = itemType === "cierge" ? "candleCount" : "flowerCount";
-    if ((post[countKey] ?? 0) >= 10) return;
+    // GEST-01: indicative only; the server enforces the active quota.
+    if ((post.candleCount ?? 0) + (post.flowerCount ?? 0) >= 10) return;
 
     const prevCount = post[countKey] ?? 0;
 
