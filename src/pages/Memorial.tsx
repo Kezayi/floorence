@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getDemoAvatarUrl } from "@/lib/demoAvatars";
 import { resolveContributorPhotos } from "@/lib/contributorPhotos";
 import { attachTributeCountries } from "@/lib/tributeCountries";
+import TributeGeography from "@/components/memorial/TributeGeography";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
