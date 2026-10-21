@@ -55,7 +55,7 @@ interface Memorial {
 const Account = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading, completeProfile, updateProfile, isProfileComplete } = useProfile();
+  const { profile, loading: profileLoading, completeProfile, updateProfile, isProfileComplete, refetch: refetchProfile } = useProfile();
   
   const [activeTab, setActiveTab] = useState("profil");
   const [showCompleteProfileDialog, setShowCompleteProfileDialog] = useState(false);
@@ -377,9 +377,7 @@ const Account = () => {
                               userId={user.id}
                               currentAvatarUrl={profile?.avatar_url || null}
                               displayName={profile?.display_name || null}
-                              onAvatarUpdated={(url) => {
-                                // Profile will auto-refresh via useProfile
-                              }}
+                              onAvatarUpdated={() => { void refetchProfile(); }}
                             />
                           )}
 
@@ -717,9 +715,7 @@ const Account = () => {
                   userId={user.id}
                   currentAvatarUrl={profile?.avatar_url || null}
                   displayName={displayName || profile?.display_name || null}
-                  onAvatarUpdated={() => {
-                    // Profile will auto-refresh
-                  }}
+                  onAvatarUpdated={() => { void refetchProfile(); }}
                 />
                 {!profile?.avatar_url && (
                   <p className="text-xs text-destructive mt-1 font-sans">

@@ -56,12 +56,14 @@ const AvatarUpload = ({ userId, currentAvatarUrl, displayName, onAvatarUpdated }
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
       // Update profile
-      const { error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("id");
 
       if (updateError) throw updateError;
+      if (!updated || updated.length === 0) throw new Error("Profil introuvable : photo non enregistrée");
 
       onAvatarUpdated(publicUrl);
       toast.success("Photo de profil mise à jour");
