@@ -514,11 +514,20 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   >
                     <Minus className="w-3.5 h-3.5 text-foreground" />
                   </button>
-                  <span className="w-8 text-center font-semibold text-foreground tabular-nums">{candleCount}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    aria-label="Nombre de cierges"
+                    value={candleCount}
+                    disabled={flowerCount > 0}
+                    onChange={(e) => setCandleCount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                    className="w-16 h-8 text-center font-semibold text-foreground tabular-nums border border-border rounded-sm bg-background disabled:opacity-60"
+                  />
                   <button
                     type="button"
                     onClick={() => setCandleCount(candleCount + 1)}
-                    disabled={flowerCount > 0 || candleCount + flowerCount >= maxGestures}
+                    disabled={flowerCount > 0}
                     className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />
@@ -541,11 +550,20 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   >
                     <Minus className="w-3.5 h-3.5 text-foreground" />
                   </button>
-                  <span className="w-8 text-center font-semibold text-foreground tabular-nums">{flowerCount}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    aria-label="Nombre de fleurs"
+                    value={flowerCount}
+                    disabled={candleCount > 0}
+                    onChange={(e) => setFlowerCount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                    className="w-16 h-8 text-center font-semibold text-foreground tabular-nums border border-border rounded-sm bg-background disabled:opacity-60"
+                  />
                   <button
                     type="button"
                     onClick={() => setFlowerCount(flowerCount + 1)}
-                    disabled={candleCount > 0 || candleCount + flowerCount >= maxGestures}
+                    disabled={candleCount > 0}
                     className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />

@@ -25,9 +25,6 @@ const Settings = () => {
   const { data: monetization, isLoading: monetizationLoading } = useMonetization();
   const updateMonetization = useUpdateMonetization();
   const updateRitualPrice = useUpdateRitualPrice();
-  const { data: activeQuota } = useGestureQuota();
-  const [gestureQuota, setGestureQuota] = useState(1);
-  useEffect(() => { if (activeQuota) setGestureQuota(activeQuota); }, [activeQuota]);
 
   // Contribution link
   const [contributionUrl, setContributionUrl] = useState('');
@@ -105,10 +102,6 @@ const Settings = () => {
   };
 
   const handleSaveMonetization = async () => {
-    if (!Number.isInteger(gestureQuota) || gestureQuota < 1 || gestureQuota > 10) {
-      toast.error('Maximum de gestes : entier entre 1 et 10');
-      return;
-    }
     if (candlePrice < 500 || flowerPrice < 500) {
       toast.error('Le prix minimum est de 500 FCFA');
       return;
@@ -121,7 +114,6 @@ const Settings = () => {
       await updateMonetization.mutateAsync({ isMonetized });
       await updateRitualPrice.mutateAsync({ itemType: 'cierge', unitPrice: candlePrice });
       await updateRitualPrice.mutateAsync({ itemType: 'fleur', unitPrice: flowerPrice });
-      if (gestureQuota !== activeQuota) await updateSetting.mutateAsync({ key: GESTURE_QUOTA_KEY, value: { max: gestureQuota } });
       await updateSetting.mutateAsync({ key: 'memorial_price_future', value: { amount: memorialPriceFuture, currency: 'XAF' } });
       await updateSetting.mutateAsync({ key: 'memorial_price_past', value: { amount: memorialPricePast, currency: 'XAF' } });
       toast.success('Paramètres de monétisation mis à jour');
@@ -265,18 +257,7 @@ const Settings = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="gesture-quota">Maximum de gestes par hommage</Label>
-                <Input
-                  id="gesture-quota"
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={gestureQuota}
-                  onChange={(e) => setGestureQuota(parseInt(e.target.value) || 1)}
-                />
-                <p className="text-xs text-muted-foreground">Un seul type de geste (cierge ou fleur) par hommage. Contrôlé par le serveur, entre 1 et 10.</p>
-              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2">Aucune limite de quantité : chacun offre autant de gestes qu'il peut payer. Seul plafond : 1 000 000 FCFA par paiement (limite des opérateurs Mobile Money).</p>
             </section>
 
             <Button
