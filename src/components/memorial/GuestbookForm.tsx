@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useGestureQuota } from '@/hooks/useGestureQuota';
 import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import GesteRituelModal from "./GesteRituelModal";
@@ -57,6 +58,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [pendingPostId, setPendingPostId] = useState<string>("");
   const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string; totalAmount: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: maxGestures = 1 } = useGestureQuota();
   const [candleCount, setCandleCount] = useState(0);
   // GEO-02: country proposed from the profile, correctable; public display needs explicit consent.
   const [tributeCountry, setTributeCountry] = useState<string | null | undefined>(undefined);
@@ -437,7 +439,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               </p>
               <button
                 type="button"
-                onClick={() => setFlowerCount(1)}
+                onClick={() => { setCandleCount(0); setFlowerCount(1); }}
                 className="flex-shrink-0 px-3 py-1 text-xs font-sans bg-[hsl(340,30%,92%)] text-[hsl(340,60%,45%)] rounded-sm hover:bg-[hsl(340,30%,88%)] transition-colors"
               >
                 + 1 Fleur
@@ -514,7 +516,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   <button
                     type="button"
                     onClick={() => setCandleCount(candleCount + 1)}
-                    disabled={candleCount >= 10}
+                    disabled={flowerCount > 0 || candleCount + flowerCount >= maxGestures}
                     className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />
@@ -541,7 +543,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
                   <button
                     type="button"
                     onClick={() => setFlowerCount(flowerCount + 1)}
-                    disabled={flowerCount >= 10}
+                    disabled={candleCount > 0 || candleCount + flowerCount >= maxGestures}
                     className="w-8 h-8 flex items-center justify-center rounded-sm border border-[hsl(0,0%,75%)] bg-white hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 text-foreground" />
