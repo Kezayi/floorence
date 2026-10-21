@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSystemSettings, useUpdateSetting } from '@/hooks/useSystemSettings';
-import { useGestureQuota, GESTURE_QUOTA_KEY } from '@/hooks/useGestureQuota';
 import { useMonetization, useUpdateMonetization, useUpdateRitualPrice } from '@/hooks/useMonetization';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

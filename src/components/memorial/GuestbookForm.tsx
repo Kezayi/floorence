@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { useGestureQuota } from '@/hooks/useGestureQuota';
 import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
 import GesteRituelModal from "./GesteRituelModal";
@@ -58,7 +57,6 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [pendingPostId, setPendingPostId] = useState<string>("");
   const [lastSubmittedData, setLastSubmittedData] = useState<{ candleCount: number; flowerCount: number; relation: string; totalAmount: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: maxGestures = 1 } = useGestureQuota();
   const [candleCount, setCandleCount] = useState(0);
   // GEO-02: country proposed from the profile, correctable; public display needs explicit consent.
   const [tributeCountry, setTributeCountry] = useState<string | null | undefined>(undefined);
