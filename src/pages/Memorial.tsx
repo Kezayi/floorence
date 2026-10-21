@@ -935,6 +935,8 @@ const MemorialInner = () => {
                 {guestbookPosts.length} hommage{guestbookPosts.length > 1 ? "s" : ""}
               </p>
 
+              <TributeGeography memorialId={memorialData?.id} refreshKey={guestbookPosts.length} />
+
               <div className="space-y-0">
                 {paginatedPosts.map((post, index) => (
                   <div key={post.id}>
