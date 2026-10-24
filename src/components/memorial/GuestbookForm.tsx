@@ -1,3 +1,5 @@
+import Photo from "@/components/ui/Photo";
+import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2, AlertCircle, CheckCircle, Flame, Flower2, Plus, Minus, Lock, Sparkles } from "lucide-react";
@@ -122,20 +124,28 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     );
   }
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const remainingSlots = MAX_PHOTOS - photos.length;
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
-    filesToProcess.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setPhotos((prev) => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const filesToProcess = Array.from(files).slice(0, MAX_PHOTOS - photos.length);
+    for (const file of filesToProcess) {
+      if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+        toast.error("Image requise, de 5 Mo maximum");
+        continue;
+      }
+      try {
+        const prepared = await preparePhotoUpload(file);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Lecture impossible"));
+          reader.onerror = () => reject(new Error("Lecture impossible"));
+          reader.readAsDataURL(prepared);
+        });
+        setPhotos(prev => [...prev, dataUrl].slice(0, MAX_PHOTOS));
+      } catch {
+        toast.error("La photo n'a pas pu être chargée");
+      }
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -478,7 +488,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               <div className="flex gap-2 flex-wrap">
                 {photos.map((photo, index) => (
                   <div key={index} className="relative w-20 h-20 overflow-hidden rounded-sm group">
-                    <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                    <Photo src={photo} alt={`Photo ${index + 1}`} targetWidth={80} />
                     <button
                       type="button"
                       onClick={() => removePhoto(index)}
