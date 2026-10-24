@@ -138,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // SEC-06: certificates only for confirmed gesture/tribute payments.
-    if (tx.status !== "success" || tx.payment_type === "memorial_creation") {
+    if (tx.status !== "success" || tx.payment_type === "memorial") {
       return new Response(
         JSON.stringify({ error: "Transaction not eligible" }),
         { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
