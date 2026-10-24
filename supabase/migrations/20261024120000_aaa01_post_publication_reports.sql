@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS public.guestbook_reports (
 GRANT SELECT ON public.guestbook_reports TO authenticated;
 GRANT ALL ON public.guestbook_reports TO service_role;
 ALTER TABLE public.guestbook_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS reports_own_read ON public.guestbook_reports;
 CREATE POLICY reports_own_read ON public.guestbook_reports FOR SELECT TO authenticated USING(reporter_id=auth.uid());
+DROP POLICY IF EXISTS reports_admin_read ON public.guestbook_reports;
 CREATE POLICY reports_admin_read ON public.guestbook_reports FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
 CREATE UNIQUE INDEX IF NOT EXISTS guestbook_reports_one_open ON public.guestbook_reports(post_id,reporter_id) WHERE status='open';
 CREATE INDEX IF NOT EXISTS guestbook_reports_queue ON public.guestbook_reports(status,created_at);
@@ -34,7 +36,7 @@ BEGIN
  ELSE
   IF (NEW.editorial_hidden,NEW.editorial_reason,NEW.editorial_by,NEW.editorial_at) IS DISTINCT FROM
      (OLD.editorial_hidden,OLD.editorial_reason,OLD.editorial_by,OLD.editorial_at)
-     AND NOT (public.has_role(auth.uid(),'admin') AND current_setting('app.aaa01_editorial',true)='on') THEN
+     AND NOT coalesce(public.has_role(auth.uid(),'admin') AND current_setting('app.aaa01_editorial',true)='on',false) THEN
    RAISE EXCEPTION 'editorial_fields_protected' USING ERRCODE='42501';
   END IF;
   -- Preserve pre-existing disciplinary hiding even when a legacy payment clears is_hidden.
@@ -49,6 +51,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS aaa01_editorial_guard ON public.guestbook_posts;
 CREATE TRIGGER aaa01_editorial_guard BEFORE INSERT OR UPDATE ON public.guestbook_posts FOR EACH ROW EXECUTE FUNCTION public.aaa01_guard_editorial();
 
 CREATE OR REPLACE FUNCTION public.report_guestbook_post(p_post_id uuid,p_reason text,p_detail text DEFAULT NULL) RETURNS jsonb
@@ -120,10 +123,9 @@ END $$;
 REVOKE ALL ON FUNCTION public.list_guestbook_reports(text,integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.list_guestbook_reports(text,integer) TO authenticated;
 
-DROP POLICY "Public can view visible tributes" ON public.guestbook_posts;
+DROP POLICY IF EXISTS "Public can view visible tributes" ON public.guestbook_posts;
 CREATE POLICY "Public can view visible tributes" ON public.guestbook_posts FOR SELECT TO anon,authenticated
  USING(NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL);
--- Restrictive SELECT prevents owner/admin table reads from leaking hidden content via invoker public views.
 -- Owner/admin private reads remain supported by their existing policies; public views have explicit filters below.
 
 CREATE OR REPLACE FUNCTION public.get_memorial_gesture_stats(p_memorial_ids uuid[])
