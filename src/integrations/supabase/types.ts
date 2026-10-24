@@ -105,6 +105,10 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
+          editorial_at: string | null
+          editorial_by: string | null
+          editorial_hidden: boolean
+          editorial_reason: string | null
           flower_count: number
           hidden_at: string | null
           hidden_by: string | null
@@ -133,6 +137,10 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          editorial_at?: string | null
+          editorial_by?: string | null
+          editorial_hidden?: boolean
+          editorial_reason?: string | null
           flower_count?: number
           hidden_at?: string | null
           hidden_by?: string | null
@@ -161,6 +169,10 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          editorial_at?: string | null
+          editorial_by?: string | null
+          editorial_hidden?: boolean
+          editorial_reason?: string | null
           flower_count?: number
           hidden_at?: string | null
           hidden_by?: string | null
@@ -200,6 +212,63 @@ export type Database = {
             columns: ["memorial_id"]
             isOneToOne: false
             referencedRelation: "v_public_memorials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guestbook_reports: {
+        Row: {
+          created_at: string
+          decision: string | null
+          decision_reason: string | null
+          detail: string | null
+          id: string
+          post_id: string
+          reason: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          detail?: string | null
+          id?: string
+          post_id: string
+          reason: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          detail?: string | null
+          id?: string
+          post_id?: string
+          reason?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guestbook_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "guestbook_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guestbook_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "public_guestbook"
             referencedColumns: ["id"]
           },
         ]
@@ -1757,6 +1826,10 @@ export type Database = {
         Args: { p_funeral_date: string }
         Returns: boolean
       }
+      list_guestbook_reports: {
+        Args: { p_offset?: number; p_status?: string }
+        Returns: Json
+      }
       match_documents: {
         Args: {
           match_count: number
@@ -1773,6 +1846,15 @@ export type Database = {
       migrate_to_secure_slugs: { Args: never; Returns: undefined }
       moderate_guestbook_post: {
         Args: { p_decision: string; p_post_id: string }
+        Returns: undefined
+      }
+      moderate_tribute_editorial: {
+        Args: {
+          p_action: string
+          p_post_id: string
+          p_reason?: string
+          p_report_id?: string
+        }
         Returns: undefined
       }
       normalize_relation_type: { Args: { relation: string }; Returns: string }
@@ -1814,6 +1896,10 @@ export type Database = {
         Returns: boolean
       }
       rel_p1_is_eligible: { Args: { p_user: string }; Returns: boolean }
+      report_guestbook_post: {
+        Args: { p_detail?: string; p_post_id: string; p_reason: string }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       transfer_memorial_ownership: {

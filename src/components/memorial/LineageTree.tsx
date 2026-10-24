@@ -83,6 +83,7 @@ const LineageTree = memo(({ memorialId, deceasedName, deceasedPhoto, isOwner }: 
   const { data: rawTributes, isLoading: loadingTributes } = useQuery({
     queryKey: ["lineage-tree-tributes-raw", memorialId],
     enabled: isValidUUID,
+    refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
