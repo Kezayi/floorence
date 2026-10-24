@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthorTooltip from "./AuthorTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayName } from "@/lib/privacyUtils";
-import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
+import Photo from "@/components/ui/Photo";
 import AuthorAvatar from "./AuthorAvatar";
 import CountryFlag from "./CountryFlag";
 import { countryName } from "@/lib/geoLands";
@@ -185,15 +185,11 @@ const GuestbookPost = ({
               onClick={() => openLightbox(index)}
               className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-livreor-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-livreor-foreground/30 transition-all"
             >
-              <img
-                src={getOptimizedImageUrl(photo, { width: 64, height: 64 })}
-                srcSet={getOptimizedSrcSet(photo, { width: 64, height: 64 })}
+              <Photo
+                src={photo}
                 alt={`Photo ${index + 1}`}
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
+                targetWidth={64}
+                targetHeight={64}
               />
             </button>
           ))}
@@ -271,8 +267,8 @@ const GuestbookPost = ({
 
       {/* Photo Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="bg-black/95 border-none p-0 max-w-[95vw] max-h-[95vh] sm:max-w-4xl">
-          <div className="relative flex items-center justify-center min-h-[50vh] sm:min-h-[70vh]">
+        <DialogContent className="bg-scene-ink border-none p-0 max-w-[95vw] max-h-[95svh] sm:max-w-4xl">
+          <div className="relative flex items-center justify-center h-[70svh]">
             <button
               onClick={() => setLightboxOpen(false)}
               className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -291,10 +287,12 @@ const GuestbookPost = ({
               </button>
             )}
 
-            <img
+            <Photo
               src={post.photos[lightboxPhotoIndex]}
               alt={`Photo ${lightboxPhotoIndex + 1}`}
-              className="max-w-full max-h-[80vh] object-contain px-12 sm:px-16"
+              className="px-12 sm:px-16"
+              targetWidth={1200}
+              priority
             />
 
             {post.photos.length > 1 && (
