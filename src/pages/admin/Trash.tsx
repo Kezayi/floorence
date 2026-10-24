@@ -107,7 +107,7 @@ const AdminTrash = () => {
       } else if (kind === 'guestbook_posts') {
         const { error } = await supabase
           .from('guestbook_posts')
-          .update({ deleted_at: null, deleted_by: null, is_hidden: false })
+          .update({ deleted_at: null, deleted_by: null })
           .eq('id', id);
         if (error) throw error;
       } else {

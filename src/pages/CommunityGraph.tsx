@@ -900,7 +900,7 @@ const CommunityGraph = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'guestbook_posts' },
+        { event: '*', schema: 'public', table: 'guestbook_posts' },
         () => {
           queryClient.invalidateQueries({ queryKey: ["community-graph-posts"] });
         }
