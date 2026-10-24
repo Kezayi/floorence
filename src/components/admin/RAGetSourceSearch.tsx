@@ -38,7 +38,12 @@ export function RAGetSourceSearch() {
       p_query: q.trim(), p_limit: 15, p_source_types: type ? [type] : undefined,
     });
     setLoading(false);
-    if (error) { setError("Recherche impossible : accès refusé ou service indisponible."); setHits(null); return; }
+    if (error) {
+      setError(error.code === "42501"
+        ? "Erreur de requête : accès refusé (rôle administrateur ou modérateur requis)."
+        : "Erreur de requête : service de recherche indisponible, réessayez.");
+      setHits(null); return;
+    }
     setHits((data ?? []) as Hit[]);
   };
 
