@@ -1,6 +1,5 @@
 -- AAA-CHANTIER-01: post-publication moderation, independent of financial visibility.
 -- No historical row rewrite, no payment mutation, no family authority inferred.
-BEGIN;
 SET LOCAL lock_timeout = '5s';
 ALTER TABLE public.guestbook_posts ADD COLUMN IF NOT EXISTS editorial_hidden boolean NOT NULL DEFAULT false;
 ALTER TABLE public.guestbook_posts ADD COLUMN IF NOT EXISTS editorial_reason text;
@@ -128,225 +127,28 @@ CREATE POLICY "Public can view visible tributes" ON public.guestbook_posts FOR S
  USING(NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL);
 -- Owner/admin private reads remain supported by their existing policies; public views have explicit filters below.
 
-CREATE OR REPLACE FUNCTION public.get_memorial_gesture_stats(p_memorial_ids uuid[])
- RETURNS TABLE(memorial_id uuid, post_count bigint, total_candles bigint, total_flowers bigint)
- LANGUAGE plpgsql
- STABLE
- SET search_path TO 'public'
-AS $function$
+-- Exact audited live definitions are retained; only public visibility predicates change.
+DO $upgrade$
+DECLARE n text; d text;
 BEGIN
-  RETURN QUERY
-  SELECT gp.memorial_id, COUNT(*)::bigint, COALESCE(SUM(gp.candle_count), 0)::bigint, COALESCE(SUM(gp.flower_count), 0)::bigint
-  FROM public.guestbook_posts gp
-  WHERE gp.memorial_id = ANY(p_memorial_ids) AND gp.is_hidden = false AND gp.editorial_hidden = false AND gp.deleted_at IS NULL
-  GROUP BY gp.memorial_id;
-END;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_contributor_profile(p_post_id uuid, p_limit integer DEFAULT 5, p_offset integer DEFAULT 0)
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_viewer uuid := auth.uid();
-  v_contrib uuid; v_memorial uuid;
-  v_lim int := least(greatest(coalesce(p_limit,5),1),20);
-  v_off int := greatest(coalesce(p_offset,0),0);
-  v_result jsonb;
-BEGIN
-  IF v_viewer IS NULL THEN RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '28000'; END IF;
-
-  SELECT gp.user_id, gp.memorial_id INTO v_contrib, v_memorial
-  FROM public.guestbook_posts gp
-  JOIN public.memorials m ON m.id = gp.memorial_id
-  WHERE gp.id = p_post_id AND gp.deleted_at IS NULL AND gp.is_hidden = false AND gp.editorial_hidden = false
-    AND m.is_published AND m.deleted_at IS NULL;
-
-  IF NOT public.rel_p1_can_view(v_viewer, v_memorial) THEN RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501'; END IF;
-  IF v_memorial IS NULL THEN RAISE EXCEPTION 'not_found' USING ERRCODE = 'P0002'; END IF;
-  IF v_contrib IS NULL THEN RETURN jsonb_build_object('resolved', false); END IF;
-
-  WITH vis AS (
-    SELECT gp.memorial_id, gp.user_id, gp.created_at, gp.id, gp.content, gp.candle_count, gp.flower_count,
-           gp.author_name, gp.author_photo_url, gp.relation_category, nullif(gp.relation_link,'') AS relation_link,
-           coalesce(nullif(gp.relation_link,''), gp.relation_category) AS rel
-    FROM public.guestbook_posts gp JOIN public.memorials m ON m.id = gp.memorial_id
-    WHERE gp.deleted_at IS NULL AND gp.is_hidden = false AND gp.editorial_hidden = false AND m.is_published AND m.deleted_at IS NULL
-      AND gp.user_id IN (v_viewer, v_contrib)
-  ),
-  here AS (SELECT * FROM vis WHERE user_id = v_contrib AND memorial_id = v_memorial),
-  shared AS (
-    SELECT m.first_name || ' ' || m.last_name AS name, m.slug,
-      (SELECT string_agg(DISTINCT a.rel, ', ') FROM vis a WHERE a.memorial_id = m.id AND a.user_id = v_viewer) AS my_rel,
-      (SELECT string_agg(DISTINCT b.rel, ', ') FROM vis b WHERE b.memorial_id = m.id AND b.user_id = v_contrib) AS their_rel
-    FROM public.memorials m
-    WHERE v_viewer <> v_contrib
-      AND m.id IN (SELECT memorial_id FROM vis WHERE user_id = v_viewer)
-      AND m.id IN (SELECT memorial_id FROM vis WHERE user_id = v_contrib)
-    LIMIT 10
-  )
-  SELECT jsonb_build_object(
-    'resolved', true,
-    'is_self', v_viewer = v_contrib,
-    'author_name', coalesce((SELECT display_name FROM public.profiles WHERE user_id = v_contrib LIMIT 1),
-                            (SELECT author_name FROM here ORDER BY created_at DESC LIMIT 1)),
-    'author_photo_url', (SELECT author_photo_url FROM here WHERE author_photo_url IS NOT NULL ORDER BY created_at DESC LIMIT 1),
-    'totals', jsonb_build_object('posts', (SELECT count(*) FROM here),
-                                 'candles', (SELECT coalesce(sum(candle_count),0) FROM here),
-                                 'flowers', (SELECT coalesce(sum(flower_count),0) FROM here)),
-    'interactions', coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'created_at', s.created_at, 'content', s.content,
-                               'candles', s.candle_count, 'flowers', s.flower_count) ORDER BY s.created_at DESC)
-                              FROM (SELECT * FROM here ORDER BY created_at DESC LIMIT v_lim OFFSET v_off) s), '[]'::jsonb),
-    'relation', (SELECT jsonb_build_object('category', relation_category, 'link', relation_link, 'status', 'declared')
-                 FROM here ORDER BY created_at DESC LIMIT 1),
-    'shared_anchors', coalesce((SELECT jsonb_agg(jsonb_build_object('name', name, 'slug', slug, 'my_relation', my_rel, 'their_relation', their_rel)) FROM shared), '[]'::jsonb)
-  ) INTO v_result;
-  RETURN v_result;
-END;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_memorial_gesture_stats_consolidated(p_master_id uuid)
- RETURNS TABLE(memorial_id uuid, is_total boolean, post_count bigint, total_candles bigint, total_flowers bigint)
- LANGUAGE sql
- STABLE
- SET search_path TO 'public'
-AS $function$
-  WITH fam AS (
-    SELECT DISTINCT f AS mid FROM public.get_memorial_family_ids(p_master_id) f
-  ), per AS (
-    SELECT fam.mid,
-           COUNT(gp.id)::bigint AS pc,
-           COALESCE(SUM(gp.candle_count), 0)::bigint AS tc,
-           COALESCE(SUM(gp.flower_count), 0)::bigint AS tf
-    FROM fam
-    LEFT JOIN public.guestbook_posts gp
-      ON gp.memorial_id = fam.mid AND gp.is_hidden = false AND gp.editorial_hidden = false AND gp.deleted_at IS NULL
-    GROUP BY fam.mid
-  )
-  SELECT NULL::uuid, true, COALESCE(SUM(pc),0)::bigint, COALESCE(SUM(tc),0)::bigint, COALESCE(SUM(tf),0)::bigint FROM per
-  UNION ALL
-  SELECT mid, false, pc, tc, tf FROM per
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_public_guestbook_posts(p_memorial_id uuid DEFAULT NULL::uuid, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
- RETURNS TABLE(id uuid, memorial_id uuid, author_name text, relation_category text, relation_link text, content text, photos text[], candle_count integer, flower_count integer, created_at timestamp with time zone, updated_at timestamp with time zone, author_photo_url text, user_id uuid)
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  SELECT gp.id, gp.memorial_id, gp.author_name, gp.relation_category, gp.relation_link,
-         gp.content, gp.photos, gp.candle_count, gp.flower_count, gp.created_at,
-         gp.updated_at, gp.author_photo_url, gp.user_id
-  FROM public.guestbook_posts gp
-  WHERE (p_memorial_id IS NULL OR gp.memorial_id = p_memorial_id)
-    AND gp.is_hidden = false AND gp.editorial_hidden = false
-    AND gp.deleted_at IS NULL
-  ORDER BY gp.created_at DESC, gp.id DESC
-  LIMIT LEAST(p_limit, 200)
-  OFFSET p_offset
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_public_guestbook_posts_consolidated(p_master_id uuid, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
- RETURNS TABLE(id uuid, memorial_id uuid, author_name text, relation_category text, relation_link text, content text, photos text[], candle_count integer, flower_count integer, created_at timestamp with time zone, updated_at timestamp with time zone, author_photo_url text, user_id uuid)
- LANGUAGE sql
- STABLE
- SET search_path TO 'public'
-AS $function$
-  SELECT gp.id, gp.memorial_id, gp.author_name, gp.relation_category, gp.relation_link,
-         gp.content, gp.photos, gp.candle_count, gp.flower_count, gp.created_at,
-         gp.updated_at, gp.author_photo_url, gp.user_id
-  FROM public.guestbook_posts gp
-  WHERE gp.memorial_id IN (SELECT f FROM public.get_memorial_family_ids(p_master_id) f)
-    AND gp.is_hidden = false AND gp.editorial_hidden = false
-    AND gp.deleted_at IS NULL
-  ORDER BY gp.created_at DESC, gp.id DESC
-  LIMIT LEAST(p_limit, 200)
-  OFFSET p_offset
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_public_tribute_countries(p_post_ids uuid[])
- RETURNS TABLE(id uuid, country_code text)
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  SELECT g.id, g.author_country_code FROM public.guestbook_posts g
-  WHERE g.id = ANY(p_post_ids[1:200]) AND g.is_hidden = false AND g.editorial_hidden = false AND g.deleted_at IS NULL
-    AND g.author_country_code IS NOT NULL;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_memorial_tribute_geography(p_memorial_id uuid)
- RETURNS jsonb
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  WITH base AS (
-    SELECT gp.author_country_code AS c,
-           COALESCE(gp.user_id::text, 'post:' || gp.id::text) AS a
-    FROM public.guestbook_posts gp
-    JOIN public.memorials m ON m.id = gp.memorial_id
-    WHERE gp.memorial_id = p_memorial_id
-      AND gp.is_hidden = false AND gp.editorial_hidden = false AND gp.deleted_at IS NULL
-      AND gp.author_country_code IS NOT NULL
-      AND m.is_published = true AND m.deleted_at IS NULL
-  ), per AS (
-    SELECT c, count(DISTINCT a) AS contributors, count(*) AS tributes FROM base GROUP BY c
-  )
-  SELECT jsonb_build_object(
-    'countries', (SELECT count(*) FROM per),
-    'contributors', (SELECT count(DISTINCT a) FROM base),
-    'tributes', (SELECT count(*) FROM base),
-    'by_country', COALESCE((SELECT jsonb_agg(jsonb_build_object('code', c, 'contributors', contributors, 'tributes', tributes)
-                     ORDER BY contributors DESC, c) FROM per), '[]'::jsonb)
-  );
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.get_memorial_social_stats(target_memorial_id uuid)
- RETURNS TABLE(category text, count bigint)
- LANGUAGE plpgsql
- STABLE
- SET search_path TO 'public'
-AS $function$
-BEGIN
-    RETURN QUERY
-    SELECT relation_category, COUNT(*)
-    FROM public.guestbook_posts
-    WHERE memorial_id = target_memorial_id AND NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL
-    GROUP BY relation_category;
-END;
-$function$
-;
-
-CREATE OR REPLACE VIEW public.public_guestbook WITH (security_invoker=true) AS  SELECT id,
-    memorial_id,
-    author_name,
-    author_photo_url,
-    content,
-    created_at,
-    relation_category,
-    relation_link
-   FROM guestbook_posts WHERE NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL;
-
-CREATE OR REPLACE VIEW public.v_social_inferences WITH (security_invoker=true) AS  SELECT user_id,
-    ( SELECT profiles.display_name
-           FROM profiles
-          WHERE (profiles.user_id = gp.user_id)
-         LIMIT 1) AS author_name,
-    count(DISTINCT memorial_id) AS total_memorials,
-    jsonb_agg(DISTINCT jsonb_build_object('memorial_id', memorial_id, 'relation', relation_category)) AS detail_liens,
-    NULL::jsonb AS connexions_suggerees
-   FROM guestbook_posts gp
-  WHERE (user_id IS NOT NULL) AND NOT gp.is_hidden AND NOT gp.editorial_hidden AND gp.deleted_at IS NULL
-  GROUP BY user_id;
-
-COMMIT;
+ FOREACH n IN ARRAY ARRAY['get_memorial_gesture_stats','get_memorial_gesture_stats_consolidated','get_public_guestbook_posts','get_public_guestbook_posts_consolidated','get_contributor_profile','get_public_tribute_countries','get_memorial_tribute_geography','get_memorial_social_stats'] LOOP
+  SELECT pg_get_functiondef(p.oid) INTO STRICT d FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace WHERE ns.nspname='public' AND p.proname=n;
+  IF position('editorial_hidden' in d)=0 THEN
+   d:=replace(d,'gp.is_hidden = false','gp.is_hidden = false AND gp.editorial_hidden = false');
+   d:=replace(d,'g.is_hidden = false','g.is_hidden = false AND g.editorial_hidden = false');
+   IF n='get_memorial_gesture_stats' THEN d:=replace(d,'AND gp.editorial_hidden = false','AND gp.editorial_hidden = false AND gp.deleted_at IS NULL'); END IF;
+   IF n='get_memorial_social_stats' THEN d:=replace(d,'WHERE memorial_id = target_memorial_id','WHERE memorial_id = target_memorial_id AND NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL'); END IF;
+   IF position('editorial_hidden' in d)=0 THEN RAISE EXCEPTION 'unrecognized public function %',n; END IF;
+   EXECUTE d;
+  END IF;
+ END LOOP;
+END $upgrade$;
+CREATE OR REPLACE VIEW public.public_guestbook WITH (security_invoker=true) AS
+ SELECT id,memorial_id,author_name,author_photo_url,content,created_at,relation_category,relation_link
+ FROM public.guestbook_posts WHERE NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL;
+CREATE OR REPLACE VIEW public.v_social_inferences WITH (security_invoker=true) AS
+ SELECT user_id,(SELECT profiles.display_name FROM public.profiles WHERE profiles.user_id=gp.user_id LIMIT 1) AS author_name,
+ count(DISTINCT memorial_id) AS total_memorials,
+ jsonb_agg(DISTINCT jsonb_build_object('memorial_id',memorial_id,'relation',relation_category)) AS detail_liens,
+ NULL::jsonb AS connexions_suggerees
+ FROM public.guestbook_posts gp WHERE user_id IS NOT NULL AND NOT is_hidden AND NOT editorial_hidden AND deleted_at IS NULL GROUP BY user_id;
