@@ -289,7 +289,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
               )}
               <Sparkles className="w-5 h-5 text-primary" />
               <span className="text-sm font-semibold text-foreground">
-                {showHistory ? "Historique des recherches" : selectedEntry ? "Résultat archivé" : "Intelligence Sociale — Maillage RAG"}
+                {showHistory ? "Historique des recherches" : selectedEntry ? "Résultat archivé" : "RIBENGA — Maillage RAG"}
               </span>
             </div>
             {!showHistory && !selectedEntry && (

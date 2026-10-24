@@ -349,7 +349,7 @@ const SocialIntelligence = () => {
         <div>
           <h1 className="text-2xl font-serif font-bold text-foreground flex items-center gap-3">
             <Brain className="w-7 h-7 text-primary" />
-            Intelligence Sociale
+            RIBENGA
           </h1>
           <p className="text-xs text-muted-foreground mt-1 tracking-wide">
             Moteur de recherche RAG · Maillage social

@@ -46,7 +46,7 @@ export const ADMIN_NAV: AdminNavPole[] = [
     items: [
       { to: `${ADMIN_PREFIX}/audit-suggestions`, icon: Sparkles, label: 'Suggestions relationnelles', adminOnly: true, badgeKey: 'suggestions' },
       { to: `${ADMIN_PREFIX}/pont-intermediaires`, icon: Route, label: 'Pont des Vivants', adminOnly: true },
-      { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'Exploration RAGet', adminOnly: true },
+      { to: `${ADMIN_PREFIX}/intelligence-sociale`, icon: Brain, label: 'RIBENGA', adminOnly: true },
     ],
   },
   {
