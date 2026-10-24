@@ -382,6 +382,7 @@ const MemorialInner = () => {
   const { data: maillagePosts } = useQuery({
     queryKey: ["maillage-posts-consolidated", memorialIdForMaillage],
     enabled: isMaillageUUID,
+    refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
