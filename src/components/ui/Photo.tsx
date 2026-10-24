@@ -78,10 +78,12 @@ const Photo = memo(
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
+    const originalAttempted = useRef(false);
 
     useEffect(() => {
       setLoaded(false);
       setFailed(false);
+      originalAttempted.current = false;
       if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) setLoaded(true);
     }, [src]);
 
@@ -93,14 +95,15 @@ const Photo = memo(
     const handleError = useCallback(
       (e: React.SyntheticEvent<HTMLImageElement>) => {
         const img = e.currentTarget;
-        if (src && img.src !== src) {
+        if (src && !originalAttempted.current && optimizedSrc !== src) {
+          originalAttempted.current = true;
           img.srcset = "";
           img.src = src;
         } else {
           setFailed(true);
         }
       },
-      [src]
+      [src, optimizedSrc]
     );
 
     const safeAlt = alt.trim() || (fallbackName ? `Portrait de ${fallbackName}` : "Photographie");
@@ -125,16 +128,17 @@ const Photo = memo(
               sizes={sizes}
               alt={safeAlt}
               loading={priority ? "eager" : "lazy"}
-              {...(lcp ? { fetchpriority: "high" } : {})}
+              fetchPriority={lcp ? "high" : "auto"}
               decoding="async"
               onLoad={() => setLoaded(true)}
               onError={handleError}
               className={cn(
-                "w-full h-full object-contain transition-opacity duration-700",
+                "w-full h-full object-contain transition-opacity duration-700 motion-reduce:transition-none",
                 loaded ? "opacity-100" : "opacity-0",
                 tone === "memorial" && "photo-memorial",
                 imgClassName
               )}
+              style={{ objectFit: "contain" }}
             />
           </>
         ) : (

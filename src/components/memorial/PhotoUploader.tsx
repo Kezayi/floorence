@@ -3,6 +3,8 @@ import { Upload, X, Star, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import Photo from "@/components/ui/Photo";
+import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 
 interface PhotoUploaderProps {
   photos: string[];
@@ -28,13 +30,14 @@ interface PhotoUploaderProps {
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null);
  
   const uploadPhoto = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split(".").pop();
+    const prepared = await preparePhotoUpload(file);
+    const fileExt = prepared.name.split(".").pop();
     const fileName = `${memorialId || "new"}-${Date.now()}.${fileExt}`;
     const filePath = `${userId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("memorial-photos")
-      .upload(filePath, file);
+      .upload(filePath, prepared);
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
@@ -46,54 +49,6 @@ interface PhotoUploaderProps {
       .getPublicUrl(filePath);
 
     return data.publicUrl;
-  };
-
-  const autoEnhancePhoto = async (photoUrl: string): Promise<string> => {
-    try {
-      const { data, error } = await supabase.functions.invoke("enhance-photo", {
-        body: { imageUrl: photoUrl },
-      });
-
-      if (error || data.error) {
-        console.warn("Auto-enhance failed, keeping original:", error || data.error);
-        return photoUrl;
-      }
-
-      if (data.enhancedImageUrl) {
-        // Upload the enhanced image to storage
-        const base64Data = data.enhancedImageUrl.split(",")[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: "image/png" });
-
-        const fileName = `${memorialId || "new"}-enhanced-${Date.now()}.png`;
-        const filePath = `${userId}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("memorial-photos")
-          .upload(filePath, blob);
-
-        if (uploadError) {
-          console.warn("Enhanced upload failed, keeping original:", uploadError);
-          return photoUrl;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from("memorial-photos")
-          .getPublicUrl(filePath);
-
-        return urlData.publicUrl;
-      }
-
-      return photoUrl;
-    } catch (err) {
-      console.warn("Auto-enhance error, keeping original:", err);
-      return photoUrl;
-    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,14 +80,7 @@ interface PhotoUploaderProps {
 
         const url = await uploadPhoto(file);
         if (url) {
-          // Auto-enhance the photo immediately after upload
-          toast.info("Amélioration automatique en cours...");
-          const enhancedUrl = await autoEnhancePhoto(url);
-          uploadedUrls.push(enhancedUrl);
-          
-          if (enhancedUrl !== url) {
-            toast.success("Photo améliorée avec succès !");
-          }
+          uploadedUrls.push(url);
         }
       }
 
@@ -245,10 +193,10 @@ interface PhotoUploaderProps {
               index === defaultPhotoIndex ? "ring-2 ring-primary" : ""
             }`}
           >
-            <img
+            <Photo
               src={photo}
               alt={`Photo ${index + 1}`}
-              className="w-full h-full object-cover"
+              targetWidth={200}
             />
             {/* Enhancing overlay */}
             {enhancingIndex === index && (
@@ -308,11 +256,12 @@ interface PhotoUploaderProps {
 
         {/* Add photo button */}
         {photos.length < maxPhotos && (
-          <button
+          <Button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || uploading}
-            className="aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
+            variant="outline"
+            className="h-auto aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
           >
             {uploading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -322,7 +271,7 @@ interface PhotoUploaderProps {
                 <span className="text-xs font-sans">Ajouter</span>
               </>
             )}
-          </button>
+          </Button>
         )}
       </div>
 

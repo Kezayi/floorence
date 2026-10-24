@@ -1,3 +1,5 @@
+import Photo from "@/components/ui/Photo";
+import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 import GeoLandsFields from "@/components/memorial/GeoLandsFields";
 import { EMPTY_GEO, normalizeGeo, type GeoLands } from "@/lib/geoLands";
 import { isObituaryPromoActive } from "@/lib/obituaryPromo";
@@ -275,13 +277,14 @@ const CreateMemorial = () => {
   const uploadPhotoToStorage = async (file: File): Promise<string | null> => {
     if (!user?.id) return null;
     
-    const fileExt = file.name.split(".").pop();
+    const prepared = await preparePhotoUpload(file);
+    const fileExt = prepared.name.split(".").pop();
     const fileName = `new-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
     const filePath = `${user.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("memorial-photos")
-      .upload(filePath, file);
+      .upload(filePath, prepared);
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
@@ -712,10 +715,10 @@ const CreateMemorial = () => {
                       >
                         {formData.photos[index] ? (
                           <>
-                            <img
+                            <Photo
                               src={formData.photos[index]}
-                              alt=""
-                              className="w-full h-full object-cover"
+                              alt={`Portrait de ${formData.name || "la personne défunte"}`}
+                              targetWidth={300}
                             />
                             <button
                               onClick={() => removePhoto(index)}
@@ -793,10 +796,10 @@ const CreateMemorial = () => {
                     <div className="flex items-start gap-6">
                       {formData.photos[0] && (
                         <div className="w-24 h-32 flex-shrink-0">
-                          <img
+                          <Photo
                             src={formData.photos[0]}
-                            alt=""
-                            className="w-full h-full object-cover grayscale"
+                            alt={`Portrait de ${formData.name || "la personne défunte"}`}
+                            tone="memorial" targetWidth={200}
                           />
                         </div>
                       )}
@@ -826,10 +829,10 @@ const CreateMemorial = () => {
                       <div className="mt-4 flex gap-2">
                         {formData.photos.slice(1).map((photo, index) => (
                           <div key={index} className="w-12 h-16">
-                            <img
+                            <Photo
                               src={photo}
-                              alt=""
-                              className="w-full h-full object-cover grayscale"
+                              alt={`Portrait de ${formData.name || "la personne défunte"}`}
+                              tone="memorial" targetWidth={200}
                             />
                           </div>
                         ))}

@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
 import { Camera, Loader2, X } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import Photo from "@/components/ui/Photo";
+import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 
 interface AvatarUploadProps {
   userId: string;
@@ -14,13 +16,6 @@ interface AvatarUploadProps {
 const AvatarUpload = ({ userId, currentAvatarUrl, displayName, onAvatarUpdated }: AvatarUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const initials = (displayName || "U")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,13 +33,14 @@ const AvatarUpload = ({ userId, currentAvatarUrl, displayName, onAvatarUpdated }
 
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const prepared = await preparePhotoUpload(file);
+      const ext = prepared.name.split(".").pop() || "jpg";
       const filePath = `${userId}/avatar.${ext}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, prepared, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -110,12 +106,7 @@ const AvatarUpload = ({ userId, currentAvatarUrl, displayName, onAvatarUpdated }
     <div className="flex items-center gap-6">
       <div className="relative group">
         <Avatar className="w-20 h-20 border-2 border-border">
-          {currentAvatarUrl ? (
-            <AvatarImage src={currentAvatarUrl} alt={displayName || "Avatar"} className="object-cover" />
-          ) : null}
-          <AvatarFallback className="bg-muted text-muted-foreground text-xl font-serif">
-            {initials}
-          </AvatarFallback>
+          <Photo src={currentAvatarUrl} alt={`Portrait de ${displayName || "l’utilisateur"}`} fallbackName={displayName || "Utilisateur"} variant="node" targetWidth={80} />
         </Avatar>
 
         {/* Upload overlay */}

@@ -97,11 +97,11 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                   }`}
                 >
                   <Photo
-                    src={photo}
+                    src={index === currentPhotoIndex ? photo : null}
                     alt={`Portrait de ${memorial.name}`}
                     variant="portrait"
                     fallbackName={memorial.name}
-                    targetWidth={800}
+                    targetWidth={600}
                     imgClassName="memorial-photo-grayscale"
                     priority={index === 0}
                     lcp={index === 0}

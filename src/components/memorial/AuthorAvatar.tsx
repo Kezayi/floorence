@@ -1,5 +1,6 @@
+import Photo from "@/components/ui/Photo";
 import { memo } from "react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { getRelationCategory } from "@/lib/relationCategoryUtils";
 
 /** Palette sobre pour les initiales d'avatar (gris, bordeaux, or) */
@@ -30,19 +31,10 @@ interface AuthorAvatarProps {
  * Fixed dimensions to prevent CLS.
  */
 const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm" }: AuthorAvatarProps) => {
-  const initials = authorName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
   const category = getRelationCategory(relationCategory);
   const isFamilleDirecte = category === "Famille directe";
 
   const sizeClass = size === "sm" ? "w-8 h-8" : "w-10 h-10";
-  const textSize = size === "sm" ? "text-[10px]" : "text-xs";
-
   return (
     <Avatar
       className={`${sizeClass} shrink-0 ${
@@ -51,20 +43,14 @@ const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm
           : ""
       }`}
     >
-      {avatarUrl ? (
-        <AvatarImage
-          src={avatarUrl}
-          alt={authorName}
-          className="object-cover grayscale-[30%]"
-          width={size === "sm" ? 32 : 40}
-          height={size === "sm" ? 32 : 40}
-        />
-      ) : null}
-      <AvatarFallback
-        className={`${getFallbackColor(authorName)} ${textSize} font-sans`}
-      >
-        {initials}
-      </AvatarFallback>
+      <Photo
+        src={avatarUrl}
+        alt={`Portrait de ${authorName}`}
+        fallbackName={authorName}
+        variant="node"
+        targetWidth={size === "sm" ? 32 : 40}
+        imgClassName="grayscale-[30%]"
+      />
     </Avatar>
   );
 });
