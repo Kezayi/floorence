@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,16 @@ const BLOCKED_PATTERNS = [
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // SEC-06: AI cost protection — only verified signed-in users may generate.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const { data: claimsData, error: claimsError } = token
+    ? await createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getClaims(token)
+    : { data: null, error: true };
+  if (claimsError || !claimsData?.claims?.sub || claimsData.claims.role !== "authenticated") {
+    return new Response(JSON.stringify({ error: "Connexion requise." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   try {
