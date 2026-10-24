@@ -31,19 +31,10 @@ interface AuthorAvatarProps {
  * Fixed dimensions to prevent CLS.
  */
 const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm" }: AuthorAvatarProps) => {
-  const initials = authorName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
   const category = getRelationCategory(relationCategory);
   const isFamilleDirecte = category === "Famille directe";
 
   const sizeClass = size === "sm" ? "w-8 h-8" : "w-10 h-10";
-  const textSize = size === "sm" ? "text-[10px]" : "text-xs";
-
   return (
     <Avatar
       className={`${sizeClass} shrink-0 ${

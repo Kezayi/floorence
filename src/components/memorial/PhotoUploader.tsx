@@ -256,11 +256,12 @@ interface PhotoUploaderProps {
 
         {/* Add photo button */}
         {photos.length < maxPhotos && (
-          <button
+          <Button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || uploading}
-            className="aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
+            variant="outline"
+            className="h-auto aspect-[3/4] border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground"
           >
             {uploading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -270,7 +271,7 @@ interface PhotoUploaderProps {
                 <span className="text-xs font-sans">Ajouter</span>
               </>
             )}
-          </button>
+          </Button>
         )}
       </div>
 

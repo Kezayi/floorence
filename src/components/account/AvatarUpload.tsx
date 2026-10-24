@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Camera, Loader2, X } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Photo from "@/components/ui/Photo";
@@ -16,13 +16,6 @@ interface AvatarUploadProps {
 const AvatarUpload = ({ userId, currentAvatarUrl, displayName, onAvatarUpdated }: AvatarUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const initials = (displayName || "U")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
