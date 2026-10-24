@@ -38,7 +38,12 @@ export function RAGetSourceSearch() {
       p_query: q.trim(), p_limit: 15, p_source_types: type ? [type] : undefined,
     });
     setLoading(false);
-    if (error) { setError("Recherche impossible : accès refusé ou service indisponible."); setHits(null); return; }
+    if (error) {
+      setError(error.code === "42501"
+        ? "Erreur de requête : accès refusé (rôle administrateur ou modérateur requis)."
+        : "Erreur de requête : service de recherche indisponible, réessayez.");
+      setHits(null); return;
+    }
     setHits((data ?? []) as Hit[]);
   };
 
@@ -48,7 +53,7 @@ export function RAGetSourceSearch() {
         <h2 className="font-serif text-lg text-foreground">Recherche dans les sources</h2>
         {stats && (
           <p className="text-[11px] text-muted-foreground">
-            {stats.chunks} passages indexés ({stats.embedded} vectorisés) · recherche lexicale (texte + variantes orthographiques) · sémantique inactive : aucun service de vectorisation des requêtes
+            {stats.chunks} passages indexés · recherche lexicale (mots exacts puis mots significatifs et variantes orthographiques) · recherche sémantique inactive
           </p>
         )}
       </div>
@@ -67,8 +72,12 @@ export function RAGetSourceSearch() {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Chercher
         </button>
       </form>
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-      {hits && hits.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Information non trouvée dans les sources Floorence.</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+      {hits && hits.length === 0 && (
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
+          Aucun passage pertinent dans les sources Floorence. Essayez un nom, un lieu ou deux ou trois mots clés.
+        </p>
+      )}
       {hits && hits.length > 0 && (
         <ol className="mt-4 space-y-3">
           {hits.map((h, i) => (

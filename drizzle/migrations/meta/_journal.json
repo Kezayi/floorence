@@ -295,6 +295,13 @@
       "when": 1792841827183,
       "tag": "0041_aaa01_post_publication_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792851232880,
+      "tag": "0042_ribenga_rag_hybrid_search_lexical_fallback",
+      "breakpoints": true
     }
   ]
 }
