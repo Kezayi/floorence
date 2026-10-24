@@ -7,6 +7,7 @@
 - [ ] 3. Stabilité mobile : unités svh et compression des images téléversées.
 - [ ] 4. Fil d’Ariane Front-Office : mémoriaux et parcours transactionnels.
 - [ ] 5. Observabilité : mesures réelles LCP/INP/CLS, consultation et alertes.
+- [ ] AAA-CHANTIER-03 RIBENGA : recherche lexicale multi-mots, exclusion editorial_hidden, libellés RIBENGA (aperçu seul).
 
 Le mandat Chantier 2 inclut la compression et les svh ciblés ; RIBENGA/RAGet et les autres travaux restent hors périmètre.
 
