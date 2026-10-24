@@ -121,7 +121,7 @@
            Modifier
          </Button>
        </DialogTrigger>
-       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+       <DialogContent className="max-w-lg max-h-[90svh] overflow-y-auto">
          <DialogHeader>
            <DialogTitle>Modifier l'avis de décès</DialogTitle>
            <DialogDescription>
