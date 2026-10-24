@@ -302,6 +302,13 @@
       "when": 1792851232880,
       "tag": "0042_ribenga_rag_hybrid_search_lexical_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792864532711,
+      "tag": "0043_sec04_memorial_photos_insert_owner_folder",
+      "breakpoints": true
     }
   ]
 }
