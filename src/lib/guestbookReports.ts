@@ -25,7 +25,7 @@ export type GuestbookReport = z.infer<typeof queueSchema>['items'][number];
 
 // The generated Cloud client types are refreshed after schema activation.
 // Validate new RPC payloads at the boundary; never pass unverified data to views.
-const rpc = supabase.rpc as unknown as (name: string, args: Record<string, string | number | null>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+const rpc = (name: 'report_guestbook_post' | 'list_guestbook_reports' | 'moderate_tribute_editorial', args: Record<string, string | number | null>) => supabase.rpc(name, args);
 
 export async function reportTribute(postId: string, reason: ReportReason, detail: string) {
   const { data, error } = await rpc('report_guestbook_post', { p_post_id: postId, p_reason: reason, p_detail: detail.trim() || null });
