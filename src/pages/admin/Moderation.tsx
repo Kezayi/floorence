@@ -40,6 +40,8 @@ import ExportCSVButton from '@/components/admin/ExportCSVButton';
 import { logAuditAction } from '@/lib/auditLogger';
 import RelationCategoryBadge from '@/components/admin/RelationCategoryBadge';
 import { getDemoAvatarUrl } from '@/lib/demoAvatars';
+import GuestbookReportsQueue from '@/components/admin/GuestbookReportsQueue';
+import { decideTribute } from '@/lib/guestbookReports';
 
 interface GuestbookPost {
   id: string;
@@ -47,6 +49,7 @@ interface GuestbookPost {
   content: string;
   relation_category: string;
   is_hidden: boolean;
+  editorial_hidden: boolean;
   hidden_reason: string | null;
   created_at: string;
   memorial_id: string;
@@ -111,7 +114,7 @@ const Moderation = () => {
       const { data, error } = await supabase
         .from('guestbook_posts')
         .select(`
-          id, author_name, content, relation_category, is_hidden, hidden_reason, 
+          id, author_name, content, relation_category, is_hidden, editorial_hidden, hidden_reason, 
           created_at, memorial_id, candle_count, flower_count, photos, user_id,
           memorial:memorials!guestbook_posts_memorial_fk(first_name, last_name, slug)
         `)
@@ -186,25 +189,7 @@ const Moderation = () => {
 
   const hideMutation = useMutation({
     mutationFn: async ({ postId, reason }: { postId: string; reason: string }) => {
-      const { error } = await supabase
-        .from('guestbook_posts')
-        .update({
-          is_hidden: true,
-          hidden_at: new Date().toISOString(),
-          hidden_by: user?.id,
-          hidden_reason: reason,
-        })
-        .eq('id', postId);
-
-      if (error) throw error;
-
-      // Log audit
-      await logAuditAction(
-        'guestbook_post_hidden',
-        user?.id || '',
-        user?.email || null,
-        { guestbook_post_id: postId, reason }
-      );
+      await decideTribute(postId, 'hide', reason);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -220,25 +205,7 @@ const Moderation = () => {
 
   const restoreMutation = useMutation({
     mutationFn: async (postId: string) => {
-      const { error } = await supabase
-        .from('guestbook_posts')
-        .update({
-          is_hidden: false,
-          hidden_at: null,
-          hidden_by: null,
-          hidden_reason: null,
-        })
-        .eq('id', postId);
-
-      if (error) throw error;
-
-      // Log audit
-      await logAuditAction(
-        'guestbook_post_restored',
-        user?.id || '',
-        user?.email || null,
-        { guestbook_post_id: postId }
-      );
+      await decideTribute(postId, 'restore');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -293,20 +260,7 @@ const Moderation = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('guestbook_posts')
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null, is_hidden: true })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Log audit
-      await logAuditAction(
-        'guestbook_post_soft_deleted',
-        user?.id || '',
-        user?.email || null,
-        { guestbook_post_id: id, author_name: selectedPost?.author_name || '' }
-      );
+      await decideTribute(id, 'trash', 'Placement en corbeille depuis la modération');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-guestbook-posts'] });
@@ -446,6 +400,8 @@ const Moderation = () => {
         />
       </div>
 
+      <GuestbookReportsQueue />
+
       <AdminSearchHeader
         placeholder="Rechercher par auteur, défunt ou contenu…"
         showSocialGroup
@@ -558,15 +514,17 @@ const Moderation = () => {
                     {format(new Date(post.created_at), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>
                   <TableCell>
-                    {post.is_hidden ? (
-                      <Badge variant="destructive">Masqué</Badge>
+                    {post.editorial_hidden ? (
+                      <Badge variant="destructive">Masqué par modération</Badge>
+                    ) : post.is_hidden ? (
+                      <Badge variant="secondary">Visibilité verrouillée</Badge>
                     ) : (
                       <Badge variant="outline" className="text-primary border-primary/30">Visible</Badge>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {post.is_hidden ? (
+                      {post.editorial_hidden ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -739,7 +697,7 @@ const Moderation = () => {
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer l'hommage de{' '}
               <strong>{selectedPost?.author_name}</strong> ?
-              Cette action est irréversible.
+              L’hommage restera restaurable depuis la corbeille.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -751,7 +709,7 @@ const Moderation = () => {
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
             >
-              Supprimer définitivement
+              Placer dans la corbeille
             </Button>
           </DialogFooter>
         </DialogContent>

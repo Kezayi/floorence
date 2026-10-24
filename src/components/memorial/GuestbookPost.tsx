@@ -14,6 +14,7 @@ import { countryName } from "@/lib/geoLands";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ContributorRelationalSheet, { useRelationalEligibility } from "./ContributorRelationalSheet";
+import ReportTributeAction from "./ReportTributeAction";
 
 export interface GuestbookPostData {
   id: string;
@@ -33,6 +34,8 @@ export interface GuestbookPostData {
   flowerCount: number;
   /** GEO-02: country shown only with the author's explicit public consent */
   authorCountryCode?: string | null;
+  isHidden?: boolean;
+  editorialHidden?: boolean;
 }
 
 interface GuestbookPostProps {
@@ -162,9 +165,10 @@ const GuestbookPost = ({
             )}
           </div>
         </div>
-        <time className="text-xs text-livreor-muted font-sans">
-          {formattedDate}
-        </time>
+        <div className="flex items-center gap-1 shrink-0">
+          <time className="text-xs text-livreor-muted font-sans">{formattedDate}</time>
+          <ReportTributeAction postId={post.id} hidden={post.isHidden || post.editorialHidden} />
+        </div>
       </div>
 
       {/* Message content */}
