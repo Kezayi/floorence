@@ -440,51 +440,27 @@ const MemorialInner = () => {
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'guestbook_posts',
             filter: `memorial_id=eq.${memorialData.id}`,
           },
-          async (payload) => {
-            const newPost = payload.new as any;
-            const [resolvedPost] = await resolveContributorPhotos([{
-              user_id: newPost?.user_id || null,
-              author_photo_url: newPost?.author_photo_url || null,
-            }]);
-           
-           setGuestbookPosts((prev) => {
-             if (prev.some((p) => p.id === newPost?.id)) return prev;
-             
-              const isDemo = memorialData?.isDemo === true;
-              return [
-                {
-                   id: newPost?.id,
-                   authorId: newPost?.user_id
-                     ? `author-${newPost.user_id}`
-                     : (newPost?.author_name ? `author-${newPost.author_name.trim().toLowerCase().replace(/\s+/g, '-')}` : `anon-${newPost?.id}`),
-                   authorUserId: newPost?.user_id || null,
-                   authorName: newPost?.author_name || 'Anonyme',
-                  authorAvatarUrl: resolvedPost?.author_photo_url ||
-                    (isDemo && !newPost?.user_id && newPost?.author_name ? getDemoAvatarUrl(newPost.author_name) : null),
-                  relationCategory: newPost?.relation_category || 'autre',
-                  relationLink: newPost?.relation_link || null,
-                  content: newPost?.content || '',
-                  photos: newPost?.photos || [],
-                  createdAt: newPost?.created_at,
-                  candleCount: newPost?.candle_count ?? 0,
-                  flowerCount: newPost?.flower_count ?? 0,
-                },
-               ...prev,
-             ];
-           });
-         }
+          () => { void fetchGuestbookPosts(); }
        )
        .subscribe();
  
       return () => {
         supabase.removeChannel(channel);
       };
-   }, [memorialData?.id]);
+   }, [memorialData?.id, fetchGuestbookPosts]);
+
+  // RLS may suppress updates that make a row invisible; periodically re-read the public RPC.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void fetchGuestbookPosts(); };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [fetchGuestbookPosts]);
 
   // Reset page when memorial changes
   useEffect(() => {
