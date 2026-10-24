@@ -99,6 +99,12 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // SEC-06: internal-only — the sole legitimate caller (_shared/paymentSuccess.ts) sends the service-role key.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
+  }
+
   try {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -128,6 +134,14 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Transaction not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // SEC-06: certificates only for confirmed gesture/tribute payments.
+    if (tx.status !== "success" || tx.payment_type === "memorial_creation") {
+      return new Response(
+        JSON.stringify({ error: "Transaction not eligible" }),
+        { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

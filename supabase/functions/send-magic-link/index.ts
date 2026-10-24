@@ -198,11 +198,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const magicLink = linkData.properties.action_link;
 
-    // Diagnostic: log the full action_link structure
-    console.log(`[MAGIC LINK DEBUG] action_link: ${magicLink}`);
-    console.log(`[MAGIC LINK DEBUG] redirect_to used: ${finalRedirect}`);
-    console.log(`[MAGIC LINK DEBUG] hashed_token present: ${!!linkData.properties.hashed_token}`);
-
     // Send email via Resend (no test mode bypass — always send real emails)
     console.log(`Sending magic link to ${normalizedEmail}, isNewUser: ${isNewUser}`);
 
@@ -216,7 +211,7 @@ const handler = async (req: Request): Promise<Response> => {
       html: generateEmailHtml(magicLink, isNewUser),
     });
 
-    console.log("Magic link email sent:", emailResponse);
+    console.log("Magic link email sent, id:", (emailResponse as any)?.data?.id ?? null);
 
     // If Resend returns an error, bubble it up
     if ((emailResponse as any)?.error) {
