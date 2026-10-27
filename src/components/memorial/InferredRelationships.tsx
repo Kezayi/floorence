@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { inferAllRelationships, InferredRelationship, getRelationWithDeceased } from "@/lib/relationshipInference";
+import { inferAllRelationships, InferredRelationship, getRelationWithDeceased, INFERENCE_DISCLAIMER } from "@/lib/relationshipInference";
 import { Users, Link2 } from "lucide-react";
 
 interface InferredRelationshipsProps {
@@ -42,7 +42,7 @@ const InferredRelationships = ({ messages, deceasedGender }: InferredRelationshi
         </h4>
       </div>
       <p className="text-sm text-memorial-dark-muted mb-4 font-sans">
-        Relations déduites à partir des liens avec {deceasedGender === 'female' ? 'la défunte' : 'le défunt'}
+        {INFERENCE_DISCLAIMER} — relations calculées à partir des liens avec {deceasedGender === 'female' ? 'la défunte' : 'le défunt'}, non vérifiées.
       </p>
       
       <div className="space-y-3">
@@ -70,8 +70,8 @@ const RelationshipCard = ({ relationship, deceasedGender }: { relationship: Infe
       
       <div className="flex items-center gap-2 shrink-0">
         <Link2 className="w-4 h-4 text-memorial-dark-muted" />
-        <span className={`text-xs px-2 py-1 rounded border font-sans ${confidenceColors[relationship.confidence]}`}>
-          {relationship.inferredLink}
+        <span title={INFERENCE_DISCLAIMER} className={`text-xs px-2 py-1 rounded border font-sans ${confidenceColors[relationship.confidence]}`}>
+          <span className="sr-only">{INFERENCE_DISCLAIMER} : </span>{relationship.inferredLink} <span className="opacity-70">(hypothèse)</span>
         </span>
         <Link2 className="w-4 h-4 text-memorial-dark-muted" />
       </div>

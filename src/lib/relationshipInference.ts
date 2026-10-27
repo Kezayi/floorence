@@ -160,6 +160,13 @@ const resolveRelationVector = (relation: string): RelationVector | null => {
 // INTERFACE D'INFÉRENCE
 // ============================================================================
 
+/**
+ * RIBENGA-01: `confidence` = internal coherence of the computation on DECLARED
+ * links only. It is never factual proof of kinship; every visible output must
+ * carry INFERENCE_DISCLAIMER.
+ */
+export const INFERENCE_DISCLAIMER = "Hypothèse fondée sur les liens déclarés";
+
 export interface InferredRelationship {
   fromAuthor: string;
   fromRelation: string;

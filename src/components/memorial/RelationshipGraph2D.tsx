@@ -14,6 +14,7 @@ interface InterMemorialLink {
 interface RelationshipGraph2DProps {
   deceasedName: string;
   posts: Array<{
+    id?: string;
     authorId: string;
     authorName: string;
     relationCategory: string;
@@ -139,13 +140,18 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Portraits par nœud (même clé de dédup que les nœuds) — rendu uniquement, topologie inchangée
+  // RIBENGA-01: one key per author — UUID if known, else the stable post id
+  // (or list index). A shared name never merges two contributors.
+  const authorKeyOf = (post: any, index: number): string =>
+    post.authorId && post.authorId.length > 0
+      ? post.authorId
+      : `anon::${post.id ?? index}`;
+
+  // Portraits par nœud (même clé que les nœuds) — rendu uniquement, topologie inchangée
   const avatarById = useMemo(() => {
     const map = new Map<string, string>();
-    posts.forEach((post) => {
-      const key = post.authorId && post.authorId.length > 0
-        ? post.authorId
-        : `name::${post.authorName.trim().toLowerCase()}`;
+    posts.forEach((post, index) => {
+      const key = authorKeyOf(post, index);
       if (!map.has(key) && post.authorAvatarUrl && !post.authorAvatarUrl.startsWith("data:")) {
         const url = getOptimizedImageUrl(post.authorAvatarUrl, { width: 48, height: 48 });
         if (url) map.set(key, url);
@@ -155,24 +161,11 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   }, [posts]);
 
   const nodes = useMemo(() => {
-    // ═══ DEDUP by UUID — one node per unique author ═══
-    // For authors without UUID (anonymous), deduplicate by normalized name
+    // ═══ DEDUP by UUID only — anonymous authors stay distinct ═══
     const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null }>();
-    
-    // Also collect names of inter-memorial linked deceased to avoid duplicating them as author nodes
-    const interMemorialNames = new Set(
-      (interMemorialLinks || []).map(l => l.name.trim().toLowerCase())
-    );
-    
-    posts.forEach((post) => {
-      // Build a stable dedup key: prefer UUID, fallback to normalized name
-      const dedupKey = post.authorId && post.authorId.length > 0
-        ? post.authorId
-        : `name::${post.authorName.trim().toLowerCase()}`;
-      
-      // Skip if this author is already an inter-memorial linked deceased node
-      if (interMemorialNames.has(post.authorName.trim().toLowerCase())) return;
-      
+
+    posts.forEach((post, index) => {
+      const dedupKey = authorKeyOf(post, index);
       if (!uniqueAuthors.has(dedupKey)) {
         const effectiveCategory = post.relationLink || post.relationCategory;
         uniqueAuthors.set(dedupKey, { name: post.authorName, category: effectiveCategory, relationLink: post.relationLink || null });
