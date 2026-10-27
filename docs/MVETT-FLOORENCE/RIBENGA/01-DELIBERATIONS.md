@@ -116,6 +116,23 @@ Procède a sa creation dans GitHub. Consignes-y toute la discussion relative a R
 
 **DÉCISION AUTORISANT LA PRÉSENTE ACTION DOCUMENTAIRE :** nom officiel **MVETT FLOORENCE**, premier chantier permanent **RIBENGA**, création immédiate dans GitHub et consignation rétrospective des débats, requête GO diagnostic et rapport d'audit. **Aucune autorisation de BUILD de RIBENGA.**
 
+## M. Précisions du promoteur sur MVETT — 27 octobre 2026 (VERBATIM)
+
+**SOURCE :** intervention directe du promoteur dans le Conseil, après lecture du dossier MVETT publié sur GitHub.
+
+> « J'ai lu MVETT FLOORENCE: C'est bien.
+>
+> Juste quelque PRECISIONS IMPORTANTES
+> . Le promoteur s'appelle Michel NGWA AYI aka Kezayi ( pas nécessaire de toujours le rappeler. Mais il faut le préciser a tout début
+> **. Référentiel :** « Savoir d'où tu viens pour parfaire où tu vas, à partir d'où tu es. »
+>      . Savoir d'ou l'on vient = Historique du projet. Toutes les discusions et arbitrage qui ont precedé chaque Go Build
+>      . Où tu vas = Nouvelle requete dans le chantier
+>      . Où tu es = Audit, etat des lieux à date.
+>
+> Procède aux mises à jour necessaires dans le dossier permanent MVETT FLOORENCE »
+
+**ARBITRAGE EXPLICITE :** identifier une fois le promoteur **Michel NGWA AYI, dit Kezayi**, au début du registre ; définir opérationnellement la triade **historique intégral des discussions/arbitrages avant chaque GO BUILD / nouvelle requête / audit daté de la situation réelle**. Maintenir la consignation fidèle de l'histoire et ne pas traiter une demande comme un GO BUILD. Mises à jour documentaires autorisées ; **aucun BUILD applicatif**.
+
 ## À compléter lors de la synchronisation documentaire
 1. Exports **intégraux** des réponses de ChatGPT aux débats de sections A–L (plusieurs réponses sont ici synthétisées).
 2. Tout antécédent RIBENGA non visible dans les conversations accessibles, avec dates exactes.
