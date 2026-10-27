@@ -19,6 +19,32 @@
 
 À **chaque nouvelle demande RIBENGA**, ajouter sa formulation originale (objectif), rappeler l'historique des arbitrages pertinents (origine), puis actualiser l'audit de l'état réel (présent). Ce cycle doit se répéter sans jamais clôturer définitivement le chantier.
 
+## Interdépendances et impacts — appréciation initiale (27 octobre 2026)
+**Référentiel MVETT :** [analyse transversale obligatoire dans la charte](../README.md). **Nature du relevé : identification initiale et hypothèses à confirmer** : le rapport RIBENGA-00 n'est pas un audit exhaustif des impacts inter-chantiers et n'atteste pas les conditions de production.
+
+| Chantier ou domaine connexe | Lien et impact DIRECT possible | Impact INDIRECT possible | Appréciation / statut |
+|---|---|---|---|
+| **Maillage / Lignage** | Les relations, leurs statuts et les graphes partagent des mécanismes avec RIBENGA. | Erreur d'identité, d'inférence ou d'affichage répercutée sur les parcours relationnels. | **Majeur potentiel**, lien technique observé dans RIBENGA-00 ; conséquences exactes à auditer. |
+| **Gestion des mémoriaux / fusion de doublons** | RIBENGA consomme des relations et des identifiants de mémoriaux, dont des projections de familles fusionnées. | Incohérences possibles en cas de fusion, révocation ou suppression d'une relation. | **Modérée à majeure, à confirmer** ; ne pas confondre confirmation communautaire et confirmation de fusion. |
+| **Livre d'or, Cierges et Fleurs / paiements** | Les contributions sont des sources envisageables d'analyse de constance. | Incitations artificielles, mauvaise interprétation des dépenses ou risque de qualification erronée. | **Indéterminée**, aucune mesure de portée n'est implémentée/attestée à cette date. |
+| **Recherche, RAG, modération et confidentialité** | `social-search` et le RAG manipulent des hommages et relations documentées. | Exposition potentielle de données masquées ou inférence sur des personnes sans droit d'accès. | **Majeur potentiel**, écart de filtre relevé dans le code ; impact réel non vérifié. |
+| **Authentification, profils, photos, Voir+** | Toute confirmation communautaire dépend de l'identification des comptes, des permissions et de l'accès aux portraits. | Confirmations artificielles, homonymies, exposition de profils ou liens privés. | **Majeur potentiel**, contrôle des politiques réelles encore non achevé. |
+| **Terres / géographie** | L'analyse sociologique pourrait réutiliser la géographie des personnes et des hommages. | Réidentification, exposition de la localisation, biais de portée géographique. | **À vérifier** ; dépendance conceptuelle, non attestée comme implémentée. |
+
+**Important :** ces lignes ne créent pas de nouveaux chantiers GitHub et n'affirment pas qu'ils disposent déjà d'une Issue permanente. Quand des dossiers seront ouverts, établir des **renvois réciproques**. La mesure précise doit être actualisée avant un BUILD.
+
+### Prérequis essentiels à vérifier avant toute future intervention RIBENGA dépendante
+| Prérequis | Preuve nécessaire | Statut au 27/10/2026 |
+|---|---|---|
+| **GO BUILD explicite, délimité** | Décision du promoteur inscrite dans le chantier | **Non donné** pour RIBENGA-01 |
+| **Droits d'accès applicables (profils/photos/relations)** | Vérification code + règles RLS effectives selon le changement | **Non vérifié intégralement** |
+| **Qualité des identifiants / liens** | Définition et test de non-fusion des homonymes + provenance | **Écarts observés** |
+| **Filtres de visibilité recherche / RAG** | Vérification/correction puis tests sur sources visibles et masquées | **Écart code identifié ; effet déployé non attesté** |
+| **Schéma/permissions d'une confirmation communautaire** | Spécification + validations de sécurité et de non-régression | **Absent ou non vérifié selon fonction**, à concevoir |
+| **Tests des parcours partagés** | Résultats de recette inter-chantiers enregistrés | **Non exécutés dans RIBENGA-00** |
+
+**Interprétation :** ces statuts **ne suspendent pas toute la MVP Premium** ; ils conditionnent uniquement l'exécution des interventions qui en dépendent. La base Supabase partagée est acceptée pendant la MVP, la séparation DEV/PROD reste un jalon **avant GoLive**.
+
 ## Situation initiale
 - RIBENGA : moteur de recherche et d'inférence existant ; projet d'évolution en intelligence relationnelle explicable, fondée exclusivement sur les données autorisées de Floorence.
 - **RIBENGA-00** : mandat d'audit approuvé et exécuté en lecture seule ; **aucun GO BUILD** pour les évolutions proposées.
