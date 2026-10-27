@@ -17,7 +17,8 @@ export default function RelationConfirmation({ relationId }: { relationId: strin
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_relation_confirmation_counts", { p_relation_ids: [relationId] });
       if (error) throw error;
-      return Number(data?.[0]?.confirmations ?? 0);
+      const row = data?.find((r) => r.relation_id === relationId);
+      return row ? Number(row.confirmations) : null;
     },
     staleTime: 60_000,
   });
@@ -77,9 +78,10 @@ export default function RelationConfirmation({ relationId }: { relationId: strin
 
   const count = countQ.data;
   const busy = confirm.isPending || revoke.isPending;
-  const label = countQ.isError
+  const eligible = countQ.isSuccess && count !== null && count !== undefined;
+  const label = countQ.isError || (countQ.isSuccess && count === null)
     ? "Lien déclaré · statut indisponible"
-    : count === undefined
+    : !eligible
       ? "Lien déclaré"
       : count > 0
         ? `Confirmé par ${count} membre${count > 1 ? "s" : ""}`
@@ -88,21 +90,23 @@ export default function RelationConfirmation({ relationId }: { relationId: strin
   return (
     <div className="ml-5 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-sans text-muted-foreground">
       <span aria-live="polite">{label}</span>
-      {user && mineQ.isSuccess && (
+      {user && eligible && mineQ.isSuccess && (
         mineQ.data ? (
           <button
             type="button"
-            onClick={() => revoke.mutate(mineQ.data as string)}
-            className={`underline underline-offset-2 hover:text-foreground ${busy ? "opacity-60 pointer-events-none" : ""}`}
+            disabled={busy}
+            onClick={() => { if (!busy) revoke.mutate(mineQ.data as string); }}
+            className={`underline underline-offset-2 hover:text-foreground disabled:opacity-60 disabled:cursor-wait`}
           >
             Retirer ma confirmation
           </button>
         ) : (
           <button
             type="button"
-            onClick={() => confirm.mutate()}
+            disabled={busy}
+            onClick={() => { if (!busy) confirm.mutate(); }}
             title="Témoignage personnel : ne prouve ni l'identité, ni la filiation."
-            className={`underline underline-offset-2 hover:text-foreground ${busy ? "opacity-60 pointer-events-none" : ""}`}
+            className={`underline underline-offset-2 hover:text-foreground disabled:opacity-60 disabled:cursor-wait`}
           >
             Je confirme ce lien
           </button>
