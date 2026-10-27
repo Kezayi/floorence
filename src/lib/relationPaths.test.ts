@@ -77,14 +77,18 @@ describe("findRelationPaths", () => {
   });
 
   it("ne boucle pas et ne répète aucun nœud", () => {
+    // Cycle A-B-C-A présent : les chemins trouvés restent simples, le plus court d'abord
     const paths = findRelationPaths(
       [edge(A, B), edge(B, C), edge(C, A), edge(C, D)],
       A,
       D,
     );
-    expect(paths).toHaveLength(1);
-    expect(paths[0].nodeIds).toEqual([A, B, C, D]);
-    expect(new Set(paths[0].nodeIds).size).toBe(paths[0].nodeIds.length);
+    expect(paths).toHaveLength(2);
+    expect(paths[0].nodeIds).toEqual([A, C, D]);
+    expect(paths[1].nodeIds).toEqual([A, B, C, D]);
+    for (const p of paths) {
+      expect(new Set(p.nodeIds).size).toBe(p.nodeIds.length);
+    }
   });
 
   it("ne duplique pas un parcours malgré des arêtes déclarées en double", () => {
