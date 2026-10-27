@@ -906,7 +906,7 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                     <span className={`text-sm font-sans ${getRelationColorClass(member.relation)}`}>
                       {getRelationWithDeceased(member.relation, inferGender(group.deceasedName.split(" ")[0]))}
                     </span>
-                    <span className="text-xs text-muted-foreground font-sans">· lien déclaré sur ce mémorial</span>
+                    <span className="text-xs text-muted-foreground font-sans">· Lien déclaré · Non confirmé</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground font-sans">
                     {member.isCreator && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">Créateur</span>}
