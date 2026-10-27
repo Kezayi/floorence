@@ -115,7 +115,6 @@ serve(async (req) => {
       .eq("is_active", true)
       .eq("is_published", true)
       .is("deleted_at", null)
-      .is("merged_into", null)
       .limit(200);
 
     const { data: postsRaw, error: postErr } = await supabase
