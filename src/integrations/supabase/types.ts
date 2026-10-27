@@ -946,6 +946,38 @@ export type Database = {
         }
         Relationships: []
       }
+      relation_confirmations: {
+        Row: {
+          confirmer_id: string
+          created_at: string
+          id: string
+          relation_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          confirmer_id: string
+          created_at?: string
+          id?: string
+          relation_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          confirmer_id?: string
+          created_at?: string
+          id?: string
+          relation_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relation_confirmations_relation_id_fkey"
+            columns: ["relation_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_relations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ritual_prices: {
         Row: {
           created_at: string
@@ -1761,6 +1793,13 @@ export type Database = {
         Returns: {
           country_code: string
           id: string
+        }[]
+      }
+      get_relation_confirmation_counts: {
+        Args: { p_relation_ids: string[] }
+        Returns: {
+          confirmations: number
+          relation_id: string
         }[]
       }
       get_resolved_memorial_lineage: {
