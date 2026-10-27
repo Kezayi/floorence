@@ -906,6 +906,7 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                     <span className={`text-sm font-sans ${getRelationColorClass(member.relation)}`}>
                       {getRelationWithDeceased(member.relation, inferGender(group.deceasedName.split(" ")[0]))}
                     </span>
+                    <span className="text-xs text-muted-foreground font-sans">· lien déclaré sur ce mémorial</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground font-sans">
                     {member.isCreator && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">Créateur</span>}
@@ -919,6 +920,9 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                     <span className={`font-semibold font-sans ${member.userConnection.colorClass || 'text-foreground'}`}>
                       Hypothèse (liens déclarés) : {member.userConnection.label}
                     </span>
+                    <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                      Calculée à partir des liens déclarés sur le mémorial de {group.deceasedName} — non confirmée.
+                    </p>
                   </div>
                 )}
 
@@ -928,7 +932,10 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                     {member.crossLinks.slice(0, 3).map((link, idx) => (
                       <p key={idx} className="text-xs">
                         <span className={link.confidence === "high" ? "text-foreground" : "text-muted-foreground"}>
-                          {link.label}
+                          Hypothèse : {link.label}
+                        </span>
+                        <span className="block text-muted-foreground">
+                          Parcours : {member.displayName} ({getCleanRelationName(member.relation)}) → {group.deceasedName} → {link.targetName}
                         </span>
                       </p>
                     ))}
@@ -988,7 +995,7 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
               <p className={`font-semibold font-sans mt-1 ${profile.bestUserConnection.colorClass || 'text-foreground'}`}>
                 Hypothèse (liens déclarés) : {profile.bestUserConnection.label}
                 <span className="text-xs text-muted-foreground ml-2">
-                  (via {profile.bestUserConnection.memorialName})
+                  ({profile.bestUserConnection.memorialName ? `calculée via le mémorial de ${profile.bestUserConnection.memorialName}` : "source non disponible"})
                 </span>
               </p>
             )}
