@@ -22,6 +22,26 @@ Ce référentiel est une méthode pratique, et non une simple formule littérair
 
 Un audit constitue un **instantané daté**, pas une vérité éternelle. Une nouvelle requête ne réécrit jamais le passé et n'efface pas les constats antérieurs. Un chantier reste ouvert et évolutif, même si l'une de ses interventions est achevée.
 
+## Principe transversal obligatoire — interdépendances, impacts et prérequis
+**Décision expresse du promoteur du 27 octobre 2026 :** tout chantier Floorence peut **impliquer, dépendre de ou impacter** un ou plusieurs autres chantiers, y compris indirectement. Cela doit être recherché et consigné à **chaque nouvelle requête**, puis réévalué en cas de changement de périmètre.
+
+### Analyse obligatoire avant décision d'exécution
+1. **Relever explicitement les chantiers reliés** : dépendances entrantes (ce dont le chantier a besoin), sortantes (ce que d'autres utilisent), composants et données partagés ; ajouter des **liens GitHub réciproques** entre dossiers permanents dès qu'ils existent. Mentionner **« Aucun impact identifié à date »** seulement après examen, jamais par omission.
+2. **Distinguer et apprécier les impacts** :
+   - **Directs** : code, schéma/RLS, interfaces, API, règles métier, données, autorisations ou parcours directement affectés ;
+   - **Indirects** : effets en chaîne sur d'autres chantiers, confidentialité, paiements, recherche, performances, coûts, intégrité, expérience utilisateur, compatibilité ou mise en production.
+   Pour chaque impact : **chantier concerné, cause, conséquence, ampleur** (`faible / modérée / majeure / indéterminée`), **probabilité ou incertitude**, et **preuve/source**. Une estimation est qualifiée comme telle ; ne pas annoncer de mesure chiffrée non étayée.
+3. **Lister les prérequis d'exécution** : décisions/GO, schémas et permissions, compatibilité, sauvegardes et plan de retour si nécessaire, correctifs dépendants, tests, contraintes de confidentialité et ressources. Pour chaque prérequis : **responsable**, **mode de vérification**, **preuve datée**, **statut** (`vérifié / non vérifié / non satisfait / sans objet`).
+4. **Vérifier effectivement les prérequis AVANT l'opération qu'ils conditionnent** : un prérequis prévu, annoncé ou supposé n'est **pas** un prérequis vérifié. Sans preuve, marquer **non vérifié**. S'il est indispensable et non satisfait / non vérifié, **ne pas exécuter l'action dépendante** ; signaler le point de blocage et les alternatives. Cela ne bloque pas arbitrairement les autres travaux indépendants de la MVP.
+5. **Synchroniser les conséquences** : informer les dossiers des chantiers impactés, rattacher leurs décisions et mises en œuvre au chantier d'origine, puis revérifier les impacts après les tests. Conserver les liens historiques même après achèvement d'un cycle.
+
+### Grille minimale à joindre à chaque cycle
+| Chantier lié / composant | Dépendance ou impact direct | Impact indirect / propagation | Ampleur et incertitude | Prérequis d'exécution | Preuve de vérification, date et statut | Action / responsable |
+|---|---|---|---|---|---|---|
+| À renseigner après examen | À renseigner | À renseigner ou « aucun identifié » | Faible / modérée / majeure / indéterminée ; source | Condition exigible | Vérifié / non vérifié / non satisfait / sans objet | Qui contrôle et avant quelle étape |
+
+**Règle de décision :** **pas d'exécution d'une action dépendante sans prérequis essentiels réellement vérifiés et GO correspondant.** Toute exception de périmètre ou acceptation de risque relève du promoteur, sans pouvoir tenir lieu de preuve technique ni contourner une exigence de sécurité impérative.
+
 ## Règles permanentes
 1. **Un chantier est permanent et évolutif.** On peut terminer une intervention ou une version, jamais considérer sa mémoire définitivement close.
 2. **Documenter AVANT le GO BUILD**, dès la première formulation. Toutes discussions utiles, propositions, objections, avis contradictoires, hésitations et arbitrages ont leur place.
