@@ -264,9 +264,9 @@ const RelationshipGraphSearch = ({
       {/* Parcours de preuve (données déjà affichées) */}
       <ol className="mt-3 space-y-1 text-xs text-muted-foreground font-sans" aria-label="Parcours du lien">
         {userRelation && (
-          <li>1. {userName} — {getCleanRelationName(userRelation)} de {deceasedName} · Lien déclaré · Non confirmé</li>
+          <li>1. {userName} — {getCleanRelationName(userRelation)} de {deceasedName} · lien déclaré dans un hommage</li>
         )}
-        <li>{userRelation ? "2. " : ""}{personName} — {getCleanRelationName(personRelation)} de {deceasedName} · Lien déclaré · Non confirmé</li>
+        <li>{userRelation ? "2. " : ""}{personName} — {getCleanRelationName(personRelation)} de {deceasedName} · lien déclaré dans un hommage</li>
         {inferredRelation && (
           <li>{userRelation ? "3. " : ""}Lien entre vous : hypothèse calculée à partir des liens déclarés, non confirmée</li>
         )}
