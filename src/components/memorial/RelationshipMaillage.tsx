@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import Photo from "@/components/ui/Photo";
 import RelationConfirmation from "./RelationConfirmation";
+import RelationPathsPanel from "./RelationPathsPanel";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -159,6 +160,11 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
                 Une confirmation est un témoignage personnel et facultatif ; elle ne prouve ni l'identité, ni la filiation.
               </p>
             </div>
+          )}
+
+          {/* RIBENGA-06: chemins relationnels multi-sauts (liens déclarés/acceptés uniquement) */}
+          {memorialId && isValidUUID && (
+            <RelationPathsPanel memorialId={memorialId} deceasedName={deceasedName} />
           )}
 
           {/* Relations directes */}

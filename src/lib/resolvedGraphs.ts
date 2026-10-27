@@ -77,3 +77,69 @@ export async function fetchResolvedGraph(
     : { data: [] };
   return { edges, memorials: (mems || []) as ResolvedGraphRaw["memorials"] };
 }
+
+/**
+ * RIBENGA-06 — Graphe famille COMPLET (toutes les arêtes résolues, pas seulement
+ * celles qui touchent le Master), pour les chemins relationnels multi-sauts.
+ * Même RPC serveur que fetchResolvedGraph : la visibilité (RLS) reste l'autorité.
+ * Une arête dont une extrémité n'est pas lisible par l'appelant est écartée :
+ * on ne traverse jamais un mémorial non accessible.
+ */
+export interface FamilyGraphEdgeRaw {
+  aId: string;
+  bId: string;
+  relationIds: string[];
+  label: string;
+}
+
+export interface FamilyGraphMemorial {
+  id: string;
+  first_name: string;
+  last_name: string;
+  slug: string;
+  share_token: string | null;
+  photo_url: string | null;
+  photos: string[] | null;
+  default_photo_index: number | null;
+}
+
+export interface FamilyGraphRaw {
+  edges: FamilyGraphEdgeRaw[];
+  memorials: FamilyGraphMemorial[];
+}
+
+export async function fetchFamilyRelationGraph(masterId: string): Promise<FamilyGraphRaw> {
+  const { data: rows, error } = await supabase.rpc("get_resolved_memorial_relations", {
+    p_master_id: masterId,
+  });
+  if (error) throw error;
+
+  const kept = (rows || []).filter(
+    (r) => r.status === "accepted" && !r.is_conflict && r.endpoint_a && r.endpoint_b && r.endpoint_a !== r.endpoint_b,
+  );
+  if (kept.length === 0) return { edges: [], memorials: [] };
+
+  const endpointIds = new Set<string>();
+  for (const r of kept) {
+    endpointIds.add(r.endpoint_a);
+    endpointIds.add(r.endpoint_b);
+  }
+
+  const { data: mems } = await supabase
+    .from("memorials")
+    .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index")
+    .in("id", Array.from(endpointIds));
+  const memorials = (mems || []) as FamilyGraphMemorial[];
+  const visibleIds = new Set(memorials.map((m) => m.id));
+
+  const edges: FamilyGraphEdgeRaw[] = kept
+    .filter((r) => visibleIds.has(r.endpoint_a) && visibleIds.has(r.endpoint_b))
+    .map((r) => ({
+      aId: r.endpoint_a,
+      bId: r.endpoint_b,
+      relationIds: r.relation_ids || [],
+      label: r.relation_labels?.[0] || r.normalized_type || "Lien déclaré",
+    }));
+
+  return { edges, memorials };
+}
