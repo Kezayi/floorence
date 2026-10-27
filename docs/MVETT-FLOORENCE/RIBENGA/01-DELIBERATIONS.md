@@ -133,6 +133,17 @@ Procède a sa creation dans GitHub. Consignes-y toute la discussion relative a R
 
 **ARBITRAGE EXPLICITE :** identifier une fois le promoteur **Michel NGWA AYI, dit Kezayi**, au début du registre ; définir opérationnellement la triade **historique intégral des discussions/arbitrages avant chaque GO BUILD / nouvelle requête / audit daté de la situation réelle**. Maintenir la consignation fidèle de l'histoire et ne pas traiter une demande comme un GO BUILD. Mises à jour documentaires autorisées ; **aucun BUILD applicatif**.
 
+## N. Règle transversale inter-chantiers — 27 octobre 2026 (VERBATIM PROMOTEUR)
+
+> « Tout chantier peut impliquer ou impacter d'autre chantier. 
+Dans ce cas, 
+. il faut explicitement le relever, 
+. Il faut mesurer l'impact direct et indirect
+. Signaler les prerequis d'execution et veiller verifier le respect effectif de leur mise en place.
+C'est un minimis certes mais je prefere le preciser afin que cela soit definitivement acté »
+
+**ARBITRAGE :** règle générale et permanente, applicable à tous les chantiers MVETT : identification des chantiers interdépendants, analyse de la portée directe et indirecte, prérequis documentés et **contrôle effectif** avant exécution de l'opération concernée. Ce verbatim est consigné ici parce que RIBENGA est le premier chantier ouvert ; l'autorité normative est portée dans la charte générale MVETT. **Aucun GO BUILD** n'est donné par cette précision.
+
 ## À compléter lors de la synchronisation documentaire
 1. Exports **intégraux** des réponses de ChatGPT aux débats de sections A–L (plusieurs réponses sont ici synthétisées).
 2. Tout antécédent RIBENGA non visible dans les conversations accessibles, avec dates exactes.
