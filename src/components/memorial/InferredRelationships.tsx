@@ -70,8 +70,8 @@ const RelationshipCard = ({ relationship, deceasedGender }: { relationship: Infe
       
       <div className="flex items-center gap-2 shrink-0">
         <Link2 className="w-4 h-4 text-memorial-dark-muted" />
-        <span className={`text-xs px-2 py-1 rounded border font-sans ${confidenceColors[relationship.confidence]}`}>
-          {relationship.inferredLink}
+        <span title={INFERENCE_DISCLAIMER} className={`text-xs px-2 py-1 rounded border font-sans ${confidenceColors[relationship.confidence]}`}>
+          <span className="sr-only">{INFERENCE_DISCLAIMER} : </span>{relationship.inferredLink} <span className="opacity-70">(hypothèse)</span>
         </span>
         <Link2 className="w-4 h-4 text-memorial-dark-muted" />
       </div>
