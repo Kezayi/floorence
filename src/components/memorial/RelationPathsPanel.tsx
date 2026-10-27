@@ -53,7 +53,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
   );
 
   const allRelationIds = useMemo(
-    () => Array.from(new Set(edges.flatMap((e) => e.relationIds))),
+    () => edges.map((e) => e.relationId),
     [edges],
   );
 
@@ -72,9 +72,11 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
     staleTime: 60_000,
   });
 
-  const edgeConfirmations = (e: VerifiedRelationEdge): number => {
-    if (!countsQ.data) return 0;
-    return e.relationIds.reduce((sum, id) => sum + (countsQ.data.get(id) ?? 0), 0);
+  // Compteur de CETTE relation seule — jamais additionné avec une autre.
+  // null = indisponible (RPC en erreur ou en chargement) : aucun faux 0 affiché.
+  const edgeConfirmations = (e: VerifiedRelationEdge): number | null => {
+    if (!countsQ.data) return null;
+    return countsQ.data.get(e.relationId) ?? 0;
   };
 
   const memorialById = useMemo(
@@ -142,9 +144,14 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
         <span className="text-[10px] font-sans px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground">
           Lien déclaré
         </span>
-        {confirmations > 0 && (
+        {confirmations !== null && confirmations > 0 && (
           <span className="text-[10px] font-sans px-1.5 py-0.5 rounded-sm border border-ai-gold/30 bg-ai-gold/10 text-ai-gold-foreground">
             Confirmé par {confirmations} membre{confirmations > 1 ? "s" : ""}
+          </span>
+        )}
+        {confirmations === null && (
+          <span className="text-[10px] font-sans px-1.5 py-0.5 rounded-sm border border-dashed border-border text-muted-foreground/70">
+            Confirmations indisponibles
           </span>
         )}
         <span className="w-4 h-px bg-border shrink-0" aria-hidden="true" />
@@ -158,7 +165,8 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
     if (first) parts.push(fullName(first));
     for (const step of p.steps) {
       const m = memorialById.get(step.toId);
-      parts.push(`lien déclaré (${step.edge.label})`);
+      const labels = step.edges.map((e) => e.label).join(" / ");
+      parts.push(`lien déclaré (${labels})`);
       if (m) parts.push(fullName(m));
     }
     return `Chemin : ${parts.join(" — ")}.`;
@@ -200,7 +208,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
                     <li className="min-w-0">{renderNode(p.nodeIds[0])}</li>
                     {p.steps.map((step, sIdx) => (
                       <li key={`${step.fromId}-${step.toId}-${sIdx}`} className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                        {renderEdge(step.edge, `e-${sIdx}`)}
+                        {step.edges.map((e) => renderEdge(e, `e-${sIdx}-${e.relationId}`))}
                         {renderNode(step.toId)}
                       </li>
                     ))}
