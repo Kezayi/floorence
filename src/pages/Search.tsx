@@ -917,7 +917,7 @@ const FamilyGroupCard = ({ group, isLoggedIn }: FamilyGroupCardProps) => {
                 {member.userConnection && isLoggedIn && (
                   <div className="mb-2">
                     <span className={`font-semibold font-sans ${member.userConnection.colorClass || 'text-foreground'}`}>
-                      {member.userConnection.label}
+                      Hypothèse (liens déclarés) : {member.userConnection.label}
                     </span>
                   </div>
                 )}
@@ -986,7 +986,7 @@ const MultiMemorialCard = ({ profile, isLoggedIn }: MultiMemorialCardProps) => {
             {/* Meilleur lien avec l'utilisateur */}
             {profile.bestUserConnection && isLoggedIn && (
               <p className={`font-semibold font-sans mt-1 ${profile.bestUserConnection.colorClass || 'text-foreground'}`}>
-                {profile.bestUserConnection.label}
+                Hypothèse (liens déclarés) : {profile.bestUserConnection.label}
                 <span className="text-xs text-muted-foreground ml-2">
                   (via {profile.bestUserConnection.memorialName})
                 </span>

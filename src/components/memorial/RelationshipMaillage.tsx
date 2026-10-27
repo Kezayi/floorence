@@ -77,12 +77,12 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
   }, [interMemorialRaw, deceasedName]);
   const directRelations = useMemo(() => {
     // ═══ DEDUP by UUID — one entry per unique author ═══
-    // Fallback to normalized name for anonymous authors (no UUID)
+    // RIBENGA-02: no merge on name equality — authors without UUID stay distinct (index key)
     const uniqueAuthors = new Map<string, { name: string; category: string; relationLink: string | null; avatarUrl: string | null }>();
-    posts.forEach((post) => {
+    posts.forEach((post, idx) => {
       const dedupKey = post.authorId && post.authorId.length > 0
-        ? post.authorId
-        : `name::${post.authorName.trim().toLowerCase()}`;
+        ? `uid::${post.authorId}`
+        : `anon::${idx}`;
       if (!uniqueAuthors.has(dedupKey)) {
         uniqueAuthors.set(dedupKey, {
           name: post.authorName,
