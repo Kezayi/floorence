@@ -3,6 +3,7 @@ import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from
 import Photo from "@/components/ui/Photo";
 import RelationConfirmation from "./RelationConfirmation";
 import RelationPathsPanel from "./RelationPathsPanel";
+import RelationalScopePanel from "./RelationalScopePanel";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -167,6 +168,11 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
           {/* RIBENGA-06: chemins relationnels multi-sauts (liens déclarés/acceptés uniquement) */}
           {memorialId && isValidUUID && (
             <RelationPathsPanel memorialId={memorialId} deceasedName={deceasedName} />
+          )}
+
+          {/* RIBENGA-08: portée relationnelle (Lignage × Maillage × Terres, sources admissibles) */}
+          {memorialId && isValidUUID && (
+            <RelationalScopePanel memorialId={memorialId} deceasedName={deceasedName} />
           )}
 
           {/* Relations directes */}
