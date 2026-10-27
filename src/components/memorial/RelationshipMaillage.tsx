@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Users, Link2, GitBranch, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import Photo from "@/components/ui/Photo";
+import RelationConfirmation from "./RelationConfirmation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResolvedGraph } from "@/lib/resolvedGraphs";
 import { inferAllRelationships, InferredRelationship, getCleanRelationName, getRelationWithDeceased, getGenderAwareRelation, getInverseRelation } from "@/lib/relationshipInference";
@@ -63,7 +64,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
     const nameMap = new Map(interMemorialRaw.memorials.map(m => [m.id, `${m.first_name} ${m.last_name}`]));
     const currentFirstName = deceasedName.split(' ')[0];
     const seen = new Set<string>();
-    const out: Array<{ name: string; relationType: string }> = [];
+    const out: Array<{ name: string; relationType: string; relationId: string }> = [];
     for (const e of interMemorialRaw.edges) {
       const relationType = e.masterIsSource
         ? getGenderAwareRelation(e.relationType, currentFirstName)
@@ -71,7 +72,7 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
       const key = `${e.linkedId}|${relationType}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ name: nameMap.get(e.linkedId) || 'Inconnu', relationType });
+      out.push({ name: nameMap.get(e.linkedId) || 'Inconnu', relationType, relationId: e.relationId });
     }
     return out;
   }, [interMemorialRaw, deceasedName]);
@@ -143,14 +144,20 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
               </div>
               <div className="space-y-2">
                 {interMemorialLinks.map((link, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
+                  <div key={link.relationId}>
+                  <div className="flex items-center gap-2 text-sm">
                     <div className="w-3 h-0.5 bg-ai-gold rounded-full" />
                     <span className="font-serif">
                       {deceasedName.split(" ")[0]} — <span className="text-ai-gold">{link.relationType}</span> de {displayName(link.name, isAuthenticated)}
                     </span>
                   </div>
+                  <RelationConfirmation relationId={link.relationId} />
+                  </div>
                 ))}
               </div>
+              <p className="mt-3 text-xs text-muted-foreground font-sans">
+                Une confirmation est un témoignage personnel et facultatif ; elle ne prouve ni l'identité, ni la filiation.
+              </p>
             </div>
           )}
 
