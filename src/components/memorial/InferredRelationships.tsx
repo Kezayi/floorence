@@ -42,7 +42,7 @@ const InferredRelationships = ({ messages, deceasedGender }: InferredRelationshi
         </h4>
       </div>
       <p className="text-sm text-memorial-dark-muted mb-4 font-sans">
-        Relations déduites à partir des liens avec {deceasedGender === 'female' ? 'la défunte' : 'le défunt'}
+        {INFERENCE_DISCLAIMER} — relations calculées à partir des liens avec {deceasedGender === 'female' ? 'la défunte' : 'le défunt'}, non vérifiées.
       </p>
       
       <div className="space-y-3">

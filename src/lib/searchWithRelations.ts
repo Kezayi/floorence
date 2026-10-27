@@ -242,18 +242,9 @@ export const inferSearchRelationships = (
           });
         }
       } else {
-        // Different memorials - check for indirect connections
-        // Could be same author appearing on multiple memorials
-        if (r1.name === r2.name && r1.type === "author" && r2.type === "author") {
-          seen.add(pairKey);
-          relationships.push({
-            from: r1,
-            to: r2,
-            relationshipType: "shared_circle",
-            label: "Même personne, différents mémoriaux",
-            confidence: "medium",
-          });
-        }
+        // RIBENGA-01: a shared name never proves a shared identity.
+        // No verified canonical identifier is available on search results,
+        // so no "same person" link is inferred across memorials.
       }
     }
   }

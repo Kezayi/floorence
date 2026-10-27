@@ -108,24 +108,44 @@ serve(async (req) => {
 
     // ── Gather social context (no PII: no user_id, no heir_email) ──
 
-    const { data: memorials } = await supabase
+    // RIBENGA-01: service role bypasses RLS → visibility enforced here, fail-closed.
+    const { data: memorialsRaw, error: memErr } = await supabase
       .from("memorials")
       .select("id, first_name, last_name, birth_date, death_date, is_demo, total_posts, total_candles, total_flowers, biography, photo_url, photos, default_photo_index, slug")
       .eq("is_active", true)
       .eq("is_published", true)
+      .is("deleted_at", null)
+      .is("merged_into", null)
       .limit(200);
 
-    const { data: posts } = await supabase
+    const { data: postsRaw, error: postErr } = await supabase
       .from("guestbook_posts")
       .select("id, memorial_id, author_name, relation_category, relation_group, candle_count, flower_count, content, is_demo")
       .eq("is_hidden", false)
+      .eq("editorial_hidden", false)
+      .is("deleted_at", null)
       .limit(500);
 
-    const { data: relations } = await supabase
+    const { data: relationsRaw, error: relErr } = await supabase
       .from("memorial_relations")
       .select("memorial_id_1, memorial_id_2, relation_type, status")
       .eq("status", "accepted")
       .limit(500);
+
+    if (memErr || postErr || relErr) {
+      console.error("social-search context query failed", { mem: !!memErr, post: !!postErr, rel: !!relErr });
+      return new Response(JSON.stringify({ error: "Contexte indisponible" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const memorials = memorialsRaw || [];
+    const allowedIds = new Set(memorials.map((m: any) => m.id));
+    const posts = (postsRaw || []).filter((p: any) => allowedIds.has(p.memorial_id));
+    const relations = (relationsRaw || []).filter(
+      (r: any) => allowedIds.has(r.memorial_id_1) && allowedIds.has(r.memorial_id_2)
+    );
 
     // ── Build context for LLM (sanitized: no user_id, no emails) ──
 
