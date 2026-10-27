@@ -14,6 +14,7 @@ interface InterMemorialLink {
 interface RelationshipGraph2DProps {
   deceasedName: string;
   posts: Array<{
+    id?: string;
     authorId: string;
     authorName: string;
     relationCategory: string;

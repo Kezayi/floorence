@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { inferAllRelationships, InferredRelationship, getRelationWithDeceased } from "@/lib/relationshipInference";
+import { inferAllRelationships, InferredRelationship, getRelationWithDeceased, INFERENCE_DISCLAIMER } from "@/lib/relationshipInference";
 import { Users, Link2 } from "lucide-react";
 
 interface InferredRelationshipsProps {
