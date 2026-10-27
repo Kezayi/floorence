@@ -9,26 +9,35 @@ const D = "00000000-0000-4000-8000-00000000000d";
 const E = "00000000-0000-4000-8000-00000000000e";
 const F = "00000000-0000-4000-8000-00000000000f";
 
-const edge = (aId: string, bId: string, label = "Frère", relationIds = [`r-${aId.slice(-1)}${bId.slice(-1)}`]): VerifiedRelationEdge => ({
-  aId, bId, relationIds, label,
+let rid = 0;
+const edge = (aId: string, bId: string, label = "Frère", relationId = `r${++rid}`): VerifiedRelationEdge => ({
+  aId, bId, relationId, label,
 });
 
 describe("buildVerifiedEdges", () => {
-  it("fusionne les déclarations multiples sur une même paire sans dupliquer l'arête", () => {
+  it("garde DISTINCTES deux relations acceptées avec deux relation_id vers le même mémorial", () => {
     const edges = buildVerifiedEdges([
-      { aId: A, bId: B, relationIds: ["r1"], label: "Frère" },
-      { aId: B, bId: A, relationIds: ["r2"], label: "Sœur" },
+      { aId: A, bId: B, relationId: "r1", label: "Frère" },
+      { aId: B, bId: A, relationId: "r2", label: "Frère" },
     ]);
-    expect(edges).toHaveLength(1);
-    expect(edges[0].relationIds.sort()).toEqual(["r1", "r2"]);
-    expect(edges[0].label).toBe("Frère"); // première déclaration conservée
+    expect(edges).toHaveLength(2);
+    expect(edges.map((e) => e.relationId).sort()).toEqual(["r1", "r2"]);
   });
 
-  it("ignore les boucles et les extrémités vides", () => {
+  it("déduplique uniquement le MÊME relation_id listé deux fois", () => {
     const edges = buildVerifiedEdges([
-      { aId: A, bId: A, relationIds: ["r1"], label: "X" },
-      { aId: "", bId: B, relationIds: ["r2"], label: "Y" },
-      { aId: A, bId: B, relationIds: ["r3"], label: "Frère" },
+      { aId: A, bId: B, relationId: "r1", label: "Frère" },
+      { aId: B, bId: A, relationId: "r1", label: "Frère" },
+    ]);
+    expect(edges).toHaveLength(1);
+  });
+
+  it("ignore les boucles, extrémités vides et relation_id manquant", () => {
+    const edges = buildVerifiedEdges([
+      { aId: A, bId: A, relationId: "r1", label: "X" },
+      { aId: "", bId: B, relationId: "r2", label: "Y" },
+      { aId: A, bId: B, relationId: "", label: "Z" },
+      { aId: A, bId: B, relationId: "r3", label: "Frère" },
     ]);
     expect(edges).toHaveLength(1);
   });
@@ -91,13 +100,12 @@ describe("findRelationPaths", () => {
     }
   });
 
-  it("ne duplique pas un parcours malgré des arêtes déclarées en double", () => {
-    const paths = findRelationPaths(
-      [edge(A, B, "Frère", ["r1"]), edge(A, B, "Frère", ["r2"]), edge(B, C)],
-      A,
-      C,
-    );
+  it("des relations parallèles distinctes enrichissent l'étape sans multiplier les parcours", () => {
+    const e1 = edge(A, B, "Frère", "r-par-1");
+    const e2 = edge(A, B, "Cousin", "r-par-2");
+    const paths = findRelationPaths([e1, e2, edge(B, C)], A, C);
     expect(paths).toHaveLength(1);
+    expect(paths[0].steps[0].edges.map((e) => e.relationId).sort()).toEqual(["r-par-1", "r-par-2"]);
   });
 
   it("refuse fromId === toId et les extrémités absentes du graphe", () => {
