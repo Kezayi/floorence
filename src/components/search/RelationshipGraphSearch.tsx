@@ -151,7 +151,7 @@ const RelationshipGraphSearch = ({
               fill={getLineColor(inferredRelation.confidence)}
               textAnchor="middle"
             >
-              {inferredRelation.label.replace("Votre ", "")}
+              {inferredRelation.label.replace("Votre ", "")} (hypothèse)
             </text>
           </g>
         )}

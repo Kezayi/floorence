@@ -164,10 +164,19 @@ serve(async (req) => {
       };
     }
 
+    // RIBENGA-02: redact emails/phones from free text before sending to the AI gateway.
+    // Limits: common formats only (obfuscated "a [at] b" or spelled-out numbers are not caught).
+    // Dates (12/03/1950, 1950-2020) are kept to avoid masking biographical facts.
+    const DATE_LIKE = /^(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|\d{4}\s*[\-–]\s*\d{4})$/;
+    const redact = (t: string | null | undefined): string =>
+      (t || "")
+        .replace(/[A-Z0-9._%+-]+\s*@\s*[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[e-mail masqué]")
+        .replace(/(?:\+|00)?\d[\d\s().\-\/]{6,}\d/g, (m) =>
+          m.replace(/\D/g, "").length >= 8 && !DATE_LIKE.test(m.trim()) ? "[téléphone masqué]" : m);
     const contextLines: string[] = [];
 
     for (const m of memorials || []) {
-      const bio = m.biography ? ` | Biographie: ${m.biography.slice(0, 300)}` : "";
+      const bio = m.biography ? ` | Biographie: ${redact(m.biography.slice(0, 300))}` : "";
       contextLines.push(
         `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
       );
@@ -181,9 +190,9 @@ serve(async (req) => {
 
     for (const p of posts || []) {
       const mName = memorialMap.get(p.memorial_id) || "?";
-      const contentPreview = p.content ? p.content.slice(0, 200) : "";
+      const contentPreview = p.content ? redact(p.content.slice(0, 200)) : "";
       contextLines.push(
-        `HOMMAGE: ${p.author_name} → ${mName} | Lien: ${p.relation_category} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
+        `HOMMAGE: ${redact(p.author_name)} → ${mName} | Lien: ${redact(p.relation_category)} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
       );
     }
 

@@ -629,7 +629,7 @@ const PathDisplay = ({
               <div className="flex items-center gap-2">
                 <Crown className="w-4 h-4 text-ai-gold" />
                 <span className="font-serif text-sm font-semibold text-foreground">
-                  {kinship.label}
+                  Hypothèse (liens déclarés) : {kinship.label}
                 </span>
               </div>
               <Badge className="bg-ai-gold/15 text-ai-gold border-ai-gold/30 text-[10px]">
