@@ -104,6 +104,13 @@ export interface FamilyGraphMemorial {
   photo_url: string | null;
   photos: string[] | null;
   default_photo_index: number | null;
+  // RIBENGA-08: terres déclarées (ISO alpha-2 + localité libre), jamais déduites
+  origin_country: string | null;
+  origin_locality: string | null;
+  residence_country: string | null;
+  residence_locality: string | null;
+  burial_country: string | null;
+  burial_locality: string | null;
 }
 
 export interface FamilyGraphRaw {
@@ -130,7 +137,7 @@ export async function fetchFamilyRelationGraph(masterId: string): Promise<Family
 
   const { data: mems } = await supabase
     .from("memorials")
-    .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index")
+    .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index, origin_country, origin_locality, residence_country, residence_locality, burial_country, burial_locality")
     .in("id", Array.from(endpointIds));
   const memorials = (mems || []) as FamilyGraphMemorial[];
   const visibleIds = new Set(memorials.map((m) => m.id));
