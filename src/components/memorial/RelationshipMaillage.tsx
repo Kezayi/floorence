@@ -70,7 +70,9 @@ const RelationshipMaillage = ({ deceasedName, memorialId, posts, section = "grap
       const relationType = e.masterIsSource
         ? getGenderAwareRelation(e.relationType, currentFirstName)
         : getInverseRelation(e.relationType, currentFirstName);
-      const key = `${e.linkedId}|${relationType}`;
+      // RIBENGA-07: dédup par relation_id canonique — deux relations distinctes
+      // acceptées vers le même mémorial restent distinctes, confirmations comprises.
+      const key = e.relationId;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({ name: nameMap.get(e.linkedId) || 'Inconnu', relationType, relationId: e.relationId });

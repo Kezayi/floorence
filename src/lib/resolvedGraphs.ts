@@ -58,8 +58,10 @@ export async function fetchResolvedGraph(
       if (!o) continue;
       // Orientation: Master family (Master + direct sources) on memorial_id_1 => Master is source.
       const masterIsSource = !!o.memorial_id_1 && family.has(o.memorial_id_1);
-      const key = `${linkedId}|${o.relation_type}|${masterIsSource}|${r.status}`;
-      if (seen.has(key)) continue; // dedup identical declarations (no doubled edge)
+      // RIBENGA-07: dédup par relation_id canonique UNIQUEMENT — deux relations
+      // distinctes acceptées vers le même mémorial restent distinctes.
+      const key = rid;
+      if (seen.has(key)) continue; // même déclaration listée deux fois
       seen.add(key);
       edges.push({
         linkedId, relationType: o.relation_type, masterIsSource,
@@ -88,7 +90,8 @@ export async function fetchResolvedGraph(
 export interface FamilyGraphEdgeRaw {
   aId: string;
   bId: string;
-  relationIds: string[];
+  /** Identifiant canonique memorial_relations.id — une arête par relation */
+  relationId: string;
   label: string;
 }
 
@@ -132,14 +135,18 @@ export async function fetchFamilyRelationGraph(masterId: string): Promise<Family
   const memorials = (mems || []) as FamilyGraphMemorial[];
   const visibleIds = new Set(memorials.map((m) => m.id));
 
+  // RIBENGA-07: une arête par relation_id canonique — jamais de fusion de
+  // relations distinctes, jamais d'addition de leurs confirmations.
   const edges: FamilyGraphEdgeRaw[] = kept
     .filter((r) => visibleIds.has(r.endpoint_a) && visibleIds.has(r.endpoint_b))
-    .map((r) => ({
-      aId: r.endpoint_a,
-      bId: r.endpoint_b,
-      relationIds: r.relation_ids || [],
-      label: r.relation_labels?.[0] || r.normalized_type || "Lien déclaré",
-    }));
+    .flatMap((r) =>
+      (r.relation_ids || []).map((rid, idx) => ({
+        aId: r.endpoint_a,
+        bId: r.endpoint_b,
+        relationId: rid,
+        label: r.relation_labels?.[idx] || r.relation_labels?.[0] || r.normalized_type || "Lien déclaré",
+      })),
+    );
 
   return { edges, memorials };
 }
