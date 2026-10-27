@@ -26,6 +26,10 @@
 | Documentation GitHub | **DÉCISION EXPLICITE** | Discussions, objections et raisons **dès ouverture** de chaque chantier ; pas seulement le code |
 | Pérennité | **DÉCISION EXPLICITE** | Aucune clôture définitive d'un chantier ; cycles terminés ≠ dossier clos |
 | Registre | **DÉCISION EXPLICITE** | Nom **MVETT FLOORENCE**, RIBENGA premier chantier permanent ; création autorisée |
+| Identité du promoteur | **PRÉCISION EXPLICITE — 27/10/2026** | **Michel NGWA AYI, dit Kezayi** ; mention dès l'ouverture de MVETT, pas de répétition systématique |
+| Référentiel MVETT — D'où l'on vient | **DÉFINITION VALIDÉE — 27/10/2026** | Historique du projet, **toutes les discussions et tous les arbitrages précédant chaque GO BUILD** ; conserver sources et options écartées |
+| Référentiel MVETT — Où tu vas | **DÉFINITION VALIDÉE — 27/10/2026** | **Nouvelle requête du chantier** ; enregistrer l'objectif sans l'assimiler à un GO BUILD |
+| Référentiel MVETT — Où tu es | **DÉFINITION VALIDÉE — 27/10/2026** | **Audit et état des lieux à date** ; différencier code, déploiement, tests et inconnues |
 | **GO BUILD d'évolution** | **NON DONNÉ dans les débats archivés** | Aucune opération applicative autorisée par ce dépôt documentaire |
 
 ## Différencier les interventions
