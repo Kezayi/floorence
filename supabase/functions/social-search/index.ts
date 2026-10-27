@@ -166,11 +166,13 @@ serve(async (req) => {
 
     // RIBENGA-02: redact emails/phones from free text before sending to the AI gateway.
     // Limits: common formats only (obfuscated "a [at] b" or spelled-out numbers are not caught).
+    // Dates (12/03/1950, 1950-2020) are kept to avoid masking biographical facts.
+    const DATE_LIKE = /^(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|\d{4}\s*[\-–]\s*\d{4})$/;
     const redact = (t: string | null | undefined): string =>
       (t || "")
         .replace(/[A-Z0-9._%+-]+\s*@\s*[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[e-mail masqué]")
         .replace(/(?:\+|00)?\d[\d\s().\-\/]{6,}\d/g, (m) =>
-          m.replace(/\D/g, "").length >= 8 ? "[téléphone masqué]" : m);
+          m.replace(/\D/g, "").length >= 8 && !DATE_LIKE.test(m.trim()) ? "[téléphone masqué]" : m);
     const contextLines: string[] = [];
 
     for (const m of memorials || []) {
