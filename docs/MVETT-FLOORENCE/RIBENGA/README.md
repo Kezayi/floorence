@@ -6,6 +6,7 @@
 2. [02 — Registre des décisions et des limites d'autorisation](02-DECISIONS.md)
 3. [03 — Requête intégrale du GO DIAGNOSTIC RIBENGA-00](03-MANDAT-RIBENGA-00.md)
 4. [04 — Restitution intégrale du rapport RIBENGA-00](04-RAPPORT-RIBENGA-00.md)
+5. [05 — RIBENGA-01 : exécution, commit, impacts et recette partielle](05-RIBENGA-01-EXECUTION.md)
 
 ## Référentiel appliqué au premier chantier
 
