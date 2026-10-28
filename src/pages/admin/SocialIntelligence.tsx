@@ -19,6 +19,7 @@ async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onContext: (context: AdminMemorialContext[]) => void,
+  onSources: (ids: string[]) => void,
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -72,8 +73,14 @@ async function streamQuestion(
       if (!line.startsWith("data: ")) continue;
       const jsonStr = line.slice(6).trim();
       if (jsonStr === "[DONE]") return;
+      let parsed;
+      try { parsed = JSON.parse(jsonStr); } catch { continue; }
+      if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
+      if (parsed.type === "relation_sources") {
+        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : []);
+        continue;
+      }
       try {
-        const parsed = JSON.parse(jsonStr);
         if (parsed.type === "memorial_meta") {
           onContext(readAdminMemorialContext(parsed.memorials));
           continue;
@@ -145,6 +152,7 @@ function StyledAnswer({ content, isStreaming }: { content: string; isStreaming: 
 const SocialIntelligence = () => {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
+  const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -173,13 +181,14 @@ const SocialIntelligence = () => {
     setAnswer("");
     setError(null);
     setContext([]);
+    setSourceIds([]);
     abortRef.current?.abort();
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setContext, controller.signal);
+      await streamQuestion(q, setAnswer, setContext, setSourceIds, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
@@ -300,7 +309,7 @@ const SocialIntelligence = () => {
             ) : (
               <p className="text-xs text-muted-foreground italic">Réponse non enregistrée</p>
             )}
-            <AdminRelationExplanation key={selectedEntry.id} candidates={[]} answer={selectedEntry.answer ?? ""} />
+            <AdminRelationExplanation key={selectedEntry.id} candidates={[]} sourceIds={[]} />
             <button
               onClick={() => {
                 const q = selectedEntry.question;
@@ -335,7 +344,7 @@ const SocialIntelligence = () => {
             {(answer || isLoading) && (
               <div>
                 <StyledAnswer content={stripCitations(answer)} isStreaming={isLoading} />
-                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} answer={answer} />}
+                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} sourceIds={sourceIds} />}
               </div>
             )}
 
@@ -364,7 +373,7 @@ const SocialIntelligence = () => {
           </>
         )}
       <details className="mt-10 border-t border-border pt-4">
-        <summary className="cursor-pointer text-xs text-muted-foreground">Outils complémentaires</summary>
+        <summary className="cursor-pointer text-xs text-muted-foreground">Recherche dans les sources</summary>
         <div className="mt-4"><RAGetSourceSearch /></div>
       </details>
       </div>

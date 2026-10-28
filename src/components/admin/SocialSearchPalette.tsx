@@ -26,6 +26,7 @@ async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onMeta: (meta: AdminMemorialContext[]) => void,
+  onSources: (ids: string[]) => void,
   onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
@@ -77,8 +78,14 @@ async function streamQuestion(
       if (!line.startsWith("data: ")) continue;
       const jsonStr = line.slice(6).trim();
       if (jsonStr === "[DONE]") return;
+      let parsed;
+      try { parsed = JSON.parse(jsonStr); } catch { continue; }
+      if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
+      if (parsed.type === "relation_sources") {
+        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : []);
+        continue;
+      }
       try {
-        const parsed = JSON.parse(jsonStr);
         if (parsed.type === "memorial_meta" && parsed.memorials) {
           onMeta(readAdminMemorialContext(parsed.memorials));
           continue;
@@ -129,6 +136,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const setOpen = onExternalOpenChange ?? setInternalOpen;
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
+  const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -169,6 +177,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setShowHistory(false);
     setSelectedEntry(null);
     setMemorialMeta([]);
+    setSourceIds([]);
     setUsage(null);
     abortRef.current?.abort();
   }, []);
@@ -189,13 +198,14 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setAnswer("");
     setError(null);
     setMemorialMeta([]);
+    setSourceIds([]);
     setUsage(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setMemorialMeta, setUsage, controller.signal);
+      await streamQuestion(q, setAnswer, setMemorialMeta, setSourceIds, setUsage, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
@@ -309,7 +319,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 ) : (
                   <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
                 )}
-                <AdminRelationExplanation key={selectedEntry.id} candidates={[]} answer={selectedEntry.answer ?? ""} />
+                <AdminRelationExplanation key={selectedEntry.id} candidates={[]} sourceIds={[]} />
                 <button
                   onClick={() => {
                     setSelectedEntry(null);
@@ -369,7 +379,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} answer={answer} />}
+                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} sourceIds={sourceIds} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (
