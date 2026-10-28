@@ -19,7 +19,7 @@ async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onContext: (context: AdminMemorialContext[]) => void,
-  onSources: (ids: string[]) => void,
+  onSources: (ids: string[], tributeLinks?: unknown) => void,
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -77,7 +77,7 @@ async function streamQuestion(
       try { parsed = JSON.parse(jsonStr); } catch { continue; }
       if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
       if (parsed.type === "relation_sources") {
-        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : []);
+        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : [], parsed.valid === true ? parsed.tribute_links : []);
         continue;
       }
       try {
@@ -154,7 +154,9 @@ const SocialIntelligence = () => {
   /** Question actually submitted (the input may be edited afterwards). */
   const [asked, setAsked] = useState("");
   const [answer, setAnswer] = useState("");
-  const [sourceIds, setSourceIds] = useState<string[]>([]);
+  const [sourceIds, setSourceIdsRaw] = useState<string[]>([]);
+  const [tributeLinks, setTributeLinks] = useState<unknown>([]);
+  const setSourceIds = (ids: string[], t: unknown = []) => { setSourceIdsRaw(ids); setTributeLinks(t); };
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -347,7 +349,7 @@ const SocialIntelligence = () => {
             {(answer || isLoading) && (
               <div>
                 <StyledAnswer content={answer} isStreaming={isLoading} candidates={context} sourceIds={sourceIds} />
-                {answer && !isLoading && <AdminRelationExplanation key={asked} candidates={context} sourceIds={sourceIds} question={asked} />}
+                {answer && !isLoading && <AdminRelationExplanation key={asked} candidates={context} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
               </div>
             )}
 

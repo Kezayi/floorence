@@ -26,7 +26,7 @@ async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
   onMeta: (meta: AdminMemorialContext[]) => void,
-  onSources: (ids: string[]) => void,
+  onSources: (ids: string[], tributeLinks?: unknown) => void,
   onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
@@ -82,7 +82,7 @@ async function streamQuestion(
       try { parsed = JSON.parse(jsonStr); } catch { continue; }
       if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
       if (parsed.type === "relation_sources") {
-        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : []);
+        onSources(parsed.valid === true && Array.isArray(parsed.memorial_ids) ? parsed.memorial_ids : [], parsed.valid === true ? parsed.tribute_links : []);
         continue;
       }
       try {
@@ -138,7 +138,9 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   /** Question actually submitted (the input may be edited afterwards). */
   const [asked, setAsked] = useState("");
   const [answer, setAnswer] = useState("");
-  const [sourceIds, setSourceIds] = useState<string[]>([]);
+  const [sourceIds, setSourceIdsRaw] = useState<string[]>([]);
+  const [tributeLinks, setTributeLinks] = useState<unknown>([]);
+  const setSourceIds = (ids: string[], t: unknown = []) => { setSourceIdsRaw(ids); setTributeLinks(t); };
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -382,7 +384,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={asked} candidates={memorialMeta} sourceIds={sourceIds} question={asked} />}
+                    {!isLoading && <AdminRelationExplanation key={asked} candidates={memorialMeta} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (

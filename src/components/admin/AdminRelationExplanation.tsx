@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type AdminMemorialContext, readRelationSourceIds, citedPairs, MAX_CITED_FOR_PATHS } from "@/lib/adminRelationContext";
 import RelationPathsPanel from "@/components/memorial/RelationPathsPanel";
+import { readTributeLinks, resolvePersonDeceasedPair, contributorRole, reverseTributeRole } from "@/lib/tributeRelation";
 import { describeDeclared, declaredParticiple, resolveQuestionPair, withArticle, isPairQuestion } from "@/lib/relationDirection";
 
 /** Direct accepted declarations between A and B, worded in both directions from stored orientation. */
@@ -53,9 +54,36 @@ interface Props {
   extraTools?: ReactNode;
   /** Free question as asked; only used to orient a pair of already-cited canonical memorials. */
   question?: string;
+  /** Server-validated contributor declarations on the cited memorials (tribute relation_link). */
+  tributeLinks?: unknown;
 }
 
-export function AdminRelationExplanation({ candidates, sourceIds = [], extraTools, question = "" }: Props) {
+/** Person ↔ deceased declaration from the memorial itself, oriented as asked. Never a proof. */
+function TributeDeclared({ pair, nameOf }: { pair: Extract<ReturnType<typeof resolvePersonDeceasedPair>, { kind: "ok" }>; nameOf: (id: string) => string }) {
+  const { tribute, memorialId, order } = pair;
+  const deceased = nameOf(memorialId);
+  return (
+    <div aria-label="Relation déclarée dans le mémorial" className="space-y-1 border-l-2 border-border pl-3">
+      <p className="text-xs font-medium text-foreground">Relation déclarée au sein du mémorial de {deceased}</p>
+      {tribute.links.length > 1 && <p role="status" className="text-xs text-muted-foreground">Libellés différents déclarés par ce contributeur ; aucun n'est retenu à la place des autres.</p>}
+      <ul className="text-sm text-foreground space-y-1">
+        {tribute.links.map((label) => {
+          const rev = reverseTributeRole(label);
+          return (
+            <li key={label}>
+              {order === "person-first" || !rev
+                ? <>Selon sa déclaration, {tribute.author} est {contributorRole(label)} de {deceased} (« {label} »).</>
+                : <>Selon la déclaration de {tribute.author}, {deceased} est {rev} de {tribute.author} (« {label} »).</>}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-muted-foreground">Statut : déclaré, non certifié · Source : hommage de {tribute.author}. Le libellé du Lignage issu de cet hommage est la même source, pas un témoignage indépendant.</p>
+    </div>
+  );
+}
+
+export function AdminRelationExplanation({ candidates, sourceIds = [], extraTools, question = "", tributeLinks }: Props) {
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const ids = candidates.map((m) => m.id).sort();
@@ -82,6 +110,8 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
   const citedVisible = cited.filter((id) => byId.has(id));
   const hidden = cited.length - citedVisible.length;
   const pairs = citedPairs(citedVisible);
+  const tributes = readTributeLinks(tributeLinks, citedVisible);
+  const personPair = resolvePersonDeceasedPair(question, citedVisible.map((id) => byId.get(id)!), tributes);
   const asked = resolveQuestionPair(question, citedVisible.map((id) => byId.get(id)!));
   const nameOf = (id: string) => { const m = byId.get(id); return m ? `${m.first_name} ${m.last_name}` : "Source non disponible"; };
 
@@ -123,7 +153,10 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
   return (
     <section aria-label="Sources et chemins relationnels" className="mt-5 border-t border-border pt-4 space-y-3">
       <h3 className="font-serif text-lg text-foreground">Chemins relationnels de cette réponse</h3>
-      {automatic}
+      {!visibleQ.isLoading && personPair?.kind === "ok" && <TributeDeclared pair={personPair} nameOf={nameOf} />}
+      {!visibleQ.isLoading && personPair?.kind === "ambiguous" && status("Plusieurs contributeurs ou comptes portent ce nom sur ce mémorial : relation déclarée non attribuée.")}
+      {!visibleQ.isLoading && personPair?.kind === "none" && status("Aucune relation déclarée par cette personne n'a été trouvée dans les hommages de ce mémorial.")}
+      {personPair?.kind !== "ok" && automatic}
       {hidden > 0 && status(`${hidden} mémorial(aux) identifié(s) non accessible(s), exclu(s) des parcours.`)}
 
       <details className="border-t border-border pt-3">
