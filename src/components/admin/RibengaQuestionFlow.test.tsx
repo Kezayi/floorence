@@ -87,5 +87,14 @@ describe.each(["page", "palette"])("Question libre %s — services entièrement 
     expect(paths.compareDocumentPosition(manual) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(manual.closest("details")).not.toHaveAttribute("open");
     if (surface === "page") expect(manual.compareDocumentPosition(screen.getByText("Recherche dans les sources")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    if (surface === "page") {
+      const header = screen.getByRole("heading", { name: "RIBENGA" });
+      const input = screen.getByPlaceholderText("Posez une question sur le maillage social…");
+      const search = screen.getByText("Recherche dans les sources");
+      expect(header.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(input.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.closest("details")).not.toHaveAttribute("open");
+      expect(search.closest("details")?.parentElement).toBe(header.closest('[aria-label="RIBENGA"]'));
+    }
   });
 });

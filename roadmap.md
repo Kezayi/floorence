@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] Correctif visuel strict RIBENGA : moteur avant sources dans le DOM ; rendu partagé des marqueurs internes, liens uniquement vers sources canoniques visibles ; 41 tests PASS, compilation aperçu OK, rendu desktop/mobile isolé vérifié. Recette connectée et contrôle TypeScript séparé non vérifiés.
+
 - [x] Correctif strict RIBENGA BO : sources pertinentes structurées et validées, parcours automatiques avant exploration manuelle ; 47 tests isolés PASS sans données réelles. Contrat du fournisseur et usage connecté non vérifiés, aucune publication manuelle.
 
 - [x] Correctif BO RIBENGA : page et palette raccordées aux parcours canoniques ; 29 tests isolés PASS et montage desktop/mobile vérifié avec réseau intercepté. Recette réelle et sécurité déployée non vérifiées ; citations IA canoniques indisponibles.

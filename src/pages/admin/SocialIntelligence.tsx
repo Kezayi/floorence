@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { Search, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { RibengaAnswer } from "@/components/admin/RibengaAnswer";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
-import { readAdminMemorialContext, stripCitations, type AdminMemorialContext } from "@/lib/adminRelationContext";
+import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
 import { RAGetSourceSearch } from "@/components/admin/RAGetSourceSearch";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
@@ -118,7 +118,7 @@ const SUGGESTIONS = [
 
 /* ── Styled markdown prose ──────────────────────────────────────── */
 
-function StyledAnswer({ content, isStreaming }: { content: string; isStreaming: boolean }) {
+function StyledAnswer({ content, isStreaming, candidates = [], sourceIds = [] }: { content: string; isStreaming: boolean; candidates?: AdminMemorialContext[]; sourceIds?: string[] }) {
   return (
     <div className="relative">
       <article
@@ -138,7 +138,7 @@ function StyledAnswer({ content, isStreaming }: { content: string; isStreaming: 
           [&_code]:text-xs [&_code]:bg-muted/60 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
         "
       >
-        <ReactMarkdown>{content}</ReactMarkdown>
+        <RibengaAnswer content={content} candidates={candidates} sourceIds={sourceIds} />
       </article>
       {isStreaming && (
         <span className="inline-block w-1.5 h-5 bg-primary/50 animate-pulse rounded-full ml-0.5 -mb-1" />
@@ -203,7 +203,7 @@ const SocialIntelligence = () => {
   }, [loadHistory]);
 
   return (
-    <div>
+    <div className="flex flex-col" aria-label="RIBENGA">
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -305,7 +305,7 @@ const SocialIntelligence = () => {
             </div>
 
             {selectedEntry.answer ? (
-              <StyledAnswer content={stripCitations(selectedEntry.answer)} isStreaming={false} />
+              <StyledAnswer content={selectedEntry.answer} isStreaming={false} />
             ) : (
               <p className="text-xs text-muted-foreground italic">Réponse non enregistrée</p>
             )}
@@ -343,7 +343,7 @@ const SocialIntelligence = () => {
 
             {(answer || isLoading) && (
               <div>
-                <StyledAnswer content={stripCitations(answer)} isStreaming={isLoading} />
+                <StyledAnswer content={answer} isStreaming={isLoading} candidates={context} sourceIds={sourceIds} />
                 {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} sourceIds={sourceIds} />}
               </div>
             )}
@@ -372,11 +372,11 @@ const SocialIntelligence = () => {
             )}
           </>
         )}
+      </div>
       <details className="mt-10 border-t border-border pt-4">
         <summary className="cursor-pointer text-xs text-muted-foreground">Recherche dans les sources</summary>
         <div className="mt-4"><RAGetSourceSearch /></div>
       </details>
-      </div>
     </div>
   );
 };
