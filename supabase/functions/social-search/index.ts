@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { relationResponseFormat, readRelationResponse } from "./responseContract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,25 +175,29 @@ serve(async (req) => {
         .replace(/(?:\+|00)?\d[\d\s().\-\/]{6,}\d/g, (m) =>
           m.replace(/\D/g, "").length >= 8 && !DATE_LIKE.test(m.trim()) ? "[téléphone masqué]" : m);
     const contextLines: string[] = [];
+    const sourceIds = new Map<string, string[]>();
 
     for (const m of memorials || []) {
+      sourceIds.set(`memorial:${m.id}`, [m.id]);
       const bio = m.biography ? ` | Biographie: ${redact(m.biography.slice(0, 300))}` : "";
       contextLines.push(
-        `MÉMORIAL [[mem:${m.id}]]: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
+        `SOURCE memorial:${m.id} | MÉMORIAL [[mem:${m.id}]]: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
-    for (const r of relations || []) {
+    for (const [index, r] of relations.entries()) {
+      sourceIds.set(`relation:${index}`, [r.memorial_id_1, r.memorial_id_2]);
       const n1 = memorialMap.get(r.memorial_id_1) || "?";
       const n2 = memorialMap.get(r.memorial_id_2) || "?";
-      contextLines.push(`LIEN: ${n1} ↔ ${n2} (${r.relation_type})`);
+      contextLines.push(`SOURCE relation:${index} | LIEN: ${n1} ↔ ${n2} (${r.relation_type})`);
     }
 
     for (const p of posts || []) {
+      sourceIds.set(`tribute:${p.id}`, [p.memorial_id]);
       const mName = memorialMap.get(p.memorial_id) || "?";
       const contentPreview = p.content ? redact(p.content.slice(0, 200)) : "";
       contextLines.push(
-        `HOMMAGE: ${redact(p.author_name)} → ${mName} | Lien: ${redact(p.relation_category)} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
+        `SOURCE tribute:${p.id} | HOMMAGE: ${redact(p.author_name)} → ${mName} | Lien: ${redact(p.relation_category)} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -224,6 +229,12 @@ RÈGLES D'ANALYSE :
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
 7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.
 
+CONTRAT DE RÉPONSE :
+Retourne uniquement un objet JSON {"answer": "réponse française structurée", "source_refs": ["référence SOURCE exacte"]}.
+source_refs contient uniquement les lignes SOURCE effectivement pertinentes pour répondre à la question, pas tout le corpus.
+Copie les références SOURCE sans les reconstruire depuis des noms. Sans source pertinente, retourne [].
+Une référence à un hommage ne confirme pas une relation. Un lien accepté reste une déclaration, pas une preuve.
+
 CONTEXTE SOCIAL ACTUEL (${contextLines.length} entrées) :
 ${contextLines.join("\n")}`;
 
@@ -244,6 +255,7 @@ ${contextLines.join("\n")}`;
             { role: "user", content: `<user_query>${question}</user_query>` },
           ],
           stream: true,
+          response_format: relationResponseFormat,
           temperature: 0.3,
         }),
       }
@@ -270,94 +282,61 @@ ${contextLines.join("\n")}`;
       );
     }
 
-    // ── Tee the stream: one for client, one for capturing answer ───────
-
-    const [clientStream, captureStream] = aiResponse.body!.tee();
-
-    // Background task: capture full answer, extract usage, save to DB
-    let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
-
-    const savePromise = (async () => {
-      try {
-        const reader = captureStream.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullAnswer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          let idx: number;
-          while ((idx = buffer.indexOf("\n")) !== -1) {
-            let line = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 1);
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (!line.startsWith("data: ")) continue;
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") break;
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) fullAnswer += content;
-              // Capture usage from the last chunk (OpenAI/Gemini pattern)
-              if (parsed.usage) {
-                usageData = parsed.usage;
-              }
-            } catch { /* partial chunk */ }
-          }
-        }
-
-        // Save to history
-        await supabase.from("social_search_history").insert({
-          user_id: userId,
-          question,
-          answer: fullAnswer || null,
-          model: "google/gemini-3-flash-preview",
-          tokens_context: contextLines.length,
-        });
-
-        // Log AI usage
-        if (usageData) {
-          await supabase.from("ai_usage_logs").insert({
-            user_id: userId,
-            model_name: "google/gemini-3-flash-preview",
-            prompt_tokens: usageData.prompt_tokens || null,
-            completion_tokens: usageData.completion_tokens || null,
-          });
-        }
-      } catch (e) {
-        console.error("Failed to save search history:", e);
-      }
-    })();
-
-    savePromise.catch(() => {});
-
-    // ── Prepend memorial metadata as first SSE event, then pipe AI stream ──
+    if (!aiResponse.body) throw new Error("Réponse du moteur indisponible");
+    // Keep the upstream leg streaming, but publish only the validated answer contract.
+    // No raw JSON/prose citations drive paths; unknown references fail closed.
     const encoder = new TextEncoder();
-    const metaEvent = `data: ${JSON.stringify({ type: "memorial_meta", memorials: memorialMeta })}\n\n`;
-
     const combinedStream = new ReadableStream({
       async start(controller) {
-        // Send metadata first
-        controller.enqueue(encoder.encode(metaEvent));
-
-        // Then pipe the AI stream
-        const reader = clientStream.getReader();
+        const send = (event: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        send({ type: "memorial_meta", memorials: memorialMeta });
+        const reader = aiResponse.body?.getReader();
+        if (!reader) { controller.close(); return; }
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let rawAnswer = "";
+        let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            controller.enqueue(value);
+            buffer += decoder.decode(value, { stream: true });
+            let index: number;
+            while ((index = buffer.indexOf("\n")) !== -1) {
+              const line = buffer.slice(0, index).trimEnd();
+              buffer = buffer.slice(index + 1);
+              if (!line.startsWith("data: ") || line.slice(6).trim() === "[DONE]") continue;
+              try {
+                const chunk = JSON.parse(line.slice(6));
+                if (typeof chunk.choices?.[0]?.delta?.content === "string") rawAnswer += chunk.choices[0].delta.content;
+                if (chunk.usage) usageData = chunk.usage;
+              } catch { /* malformed provider chunk cannot grant source eligibility */ }
+            }
           }
-        } finally {
-          // Wait briefly for usage data to be captured, then send usage event
-          await savePromise.catch(() => {});
+          const result = readRelationResponse(rawAnswer, sourceIds, allowedIds);
+          if (!result) {
+            send({ type: "error", error: "Réponse structurée indisponible. Aucun chemin n'a été déduit." });
+          } else {
+            send({ type: "relation_sources", memorial_ids: result.memorialIds, valid: result.validSources });
+            send({ choices: [{ delta: { content: result.answer } }] });
+            // Existing history stores answer only; archived entries cannot reconstruct source metadata.
+            const { error } = await supabase.from("social_search_history").insert({
+              user_id: userId, question, answer: result.answer,
+              model: "google/gemini-3-flash-preview", tokens_context: contextLines.length,
+            });
+            if (error) console.error("Failed to save search history");
+          }
           if (usageData) {
-            const usageEvent = `data: ${JSON.stringify({ type: "usage", usage: usageData })}\n\n`;
-            controller.enqueue(encoder.encode(usageEvent));
+            send({ type: "usage", usage: usageData });
+            await supabase.from("ai_usage_logs").insert({
+              user_id: userId, model_name: "google/gemini-3-flash-preview",
+              prompt_tokens: usageData.prompt_tokens || null,
+              completion_tokens: usageData.completion_tokens || null,
+            });
           }
+        } catch {
+          send({ type: "error", error: "Réponse ou sources indisponibles. Aucun chemin n'a été déduit." });
+        } finally {
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
