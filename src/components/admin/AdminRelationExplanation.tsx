@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type AdminMemorialContext, readRelationSourceIds, citedPairs, MAX_CITED_FOR_PATHS } from "@/lib/adminRelationContext";
 import RelationPathsPanel from "@/components/memorial/RelationPathsPanel";
-import { describeDeclared, declaredParticiple, resolveQuestionPair } from "@/lib/relationDirection";
+import { describeDeclared, declaredParticiple, resolveQuestionPair, withArticle } from "@/lib/relationDirection";
 
 /** Direct accepted declarations between A and B, worded in both directions from stored orientation. */
 function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; b: string; nameA: string; nameB: string; oriented?: boolean }) {
@@ -34,7 +34,7 @@ function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; 
         const n = counts?.get(s.relationId);
         return (
           <li key={s.relationId}>
-            {oriented ? <>{nameA} est {s.part} {s.aToB} de {nameB}.</>
+            {oriented ? <>Selon le lien déclaré, {nameA} est {withArticle(s.aToB)} de {nameB}.</>
               : <>Selon le lien déclaré : {nameA} est {s.aToB} de {nameB} · {nameB} est {s.bToA} de {nameA}.</>}{" "}
             <span className="text-xs text-muted-foreground">Statut : déclaré · {counts === null ? "confirmations indisponibles" : n ? `confirmé par ${n} membre${n > 1 ? "s" : ""} (sans certification)` : "non confirmé"}</span>
           </li>
