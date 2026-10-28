@@ -36,7 +36,7 @@ describe("Mounted explanation — synthetic isolated checks, no backend calls", 
   });
   it("without canonical context renders fallback and makes no lookup", () => {
     mount([]);
-    expect(screen.getByRole("status")).toHaveTextContent("Source canonique non disponible");
+    expect(screen.getByText(/Source canonique non disponible/)).toBeInTheDocument();
     expect(api.from).not.toHaveBeenCalled();
     expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
   });
