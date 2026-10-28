@@ -178,7 +178,7 @@ serve(async (req) => {
     for (const m of memorials || []) {
       const bio = m.biography ? ` | Biographie: ${redact(m.biography.slice(0, 300))}` : "";
       contextLines.push(
-        `MÉMORIAL: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
+        `MÉMORIAL [[mem:${m.id}]]: ${m.first_name} ${m.last_name} (${m.birth_date || "?"} – ${m.death_date || "?"}) | ${m.total_posts || 0} hommages, ${m.total_candles || 0} cierges, ${m.total_flowers || 0} fleurs${bio} ${m.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -222,7 +222,7 @@ RÈGLES D'ANALYSE :
 4. L'implication émotionnelle se mesure par : nombre de cierges + fleurs + longueur de l'hommage.
 5. Réponds toujours en français, de manière structurée et avec empathie.
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
-7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte.
+7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.
 
 CONTEXTE SOCIAL ACTUEL (${contextLines.length} entrées) :
 ${contextLines.join("\n")}`;
