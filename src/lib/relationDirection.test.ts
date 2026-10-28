@@ -41,3 +41,14 @@ describe("resolveQuestionPair", () => {
     expect(declaredParticiple(row, "j")).toBe("déclaré(e)");
   });
 });
+
+import { withArticle } from "./relationDirection";
+describe("withArticle", () => {
+  it("article selon le rôle, neutre si sexe inconnu", () => {
+    expect(withArticle("père")).toBe("le père");
+    expect(withArticle("mère")).toBe("la mère");
+    expect(withArticle("enfant")).toBe("l'enfant");
+    expect(withArticle("parent")).toBe("le parent");
+    expect(withArticle("frère ou sœur")).toBe("frère ou sœur");
+  });
+});

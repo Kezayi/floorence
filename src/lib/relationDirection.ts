@@ -73,3 +73,11 @@ export function resolveQuestionPair(question: string, candidates: NamedMemorial[
   const a = pick(m[1]); const b = pick(m[2]);
   return a && b && a !== b ? [a, b] : null;
 }
+
+const FEM_ROLE = new Set(["mère", "fille", "sœur", "épouse", "grand-mère", "petite-fille"]);
+/** French definite article for a role wording ("le père", "la mère", "l'enfant"); neutral wordings kept as is. */
+export function withArticle(role: string): string {
+  if (/^(lié|frère ou sœur|conjoint\(e\)|cadet\(te\))/.test(role)) return role === "frère ou sœur" ? "frère ou sœur" : role;
+  if (/^[aeiouyéèêh]/i.test(role)) return `l'${role}`;
+  return `${FEM_ROLE.has(role) ? "la" : "le"} ${role}`;
+}

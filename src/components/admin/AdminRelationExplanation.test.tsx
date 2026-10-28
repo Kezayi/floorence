@@ -144,19 +144,19 @@ describe("Question-oriented declared relation — synthetic", () => {
     setup(mems, [rel("Fils", P, J)]);
     ask("Quel lien entre Paul Test et Jacques Test ?");
     const b = await box();
-    expect(await within(b).findByText(/Paul Test est déclaré fils de Jacques Test\./)).toBeInTheDocument();
+    expect(await within(b).findByText(/Selon le lien déclaré, Paul Test est le fils de Jacques Test\./)).toBeInTheDocument();
     expect(within(b).queryByText(/père/)).toBeNull();
     expect(within(b).getByText(/confirmé par 3 membres \(sans certification\)/)).toBeInTheDocument();
   });
   it("B puis A : Jacques est déclaré(e) parent de Paul (sexe non stocké)", async () => {
     setup(mems, [rel("Fils", P, J)]);
     ask("Quel lien entre Jacques Test et Paul Test ?");
-    expect(await within(await box()).findByText(/Jacques Test est déclaré\(e\) parent de Paul Test\./)).toBeInTheDocument();
+    expect(await within(await box()).findByText(/Selon le lien déclaré, Jacques Test est le parent de Paul Test\./)).toBeInTheDocument();
   });
   it("Père stocké : Jacques est déclaré père de Paul", async () => {
     setup(mems, [rel("Père", J, P)]);
     ask("quelle relation entre Jacques Test et Paul Test");
-    expect(await within(await box()).findByText(/Jacques Test est déclaré père de Paul Test\./)).toBeInTheDocument();
+    expect(await within(await box()).findByText(/Selon le lien déclaré, Jacques Test est le père de Paul Test\./)).toBeInTheDocument();
   });
   it("homonymes : aucune réponse orientée", async () => {
     setup([...mems, memorial(H, "Paul")], [rel("Fils", P, J)]);
@@ -174,7 +174,7 @@ describe("Question-oriented declared relation — synthetic", () => {
     ask("Quel lien entre Paul Test et Jacques Test ?");
     const b = await box();
     expect(await within(b).findByText(/Plusieurs liens déclarés coexistent/)).toBeInTheDocument();
-    expect(within(b).getByText(/déclaré fils de/)).toBeInTheDocument();
-    expect(within(b).getByText(/déclaré frère de/)).toBeInTheDocument();
+    expect(within(b).getByText(/est le fils de/)).toBeInTheDocument();
+    expect(within(b).getByText(/est le frère de/)).toBeInTheDocument();
   });
 });
