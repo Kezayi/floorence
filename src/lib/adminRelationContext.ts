@@ -9,6 +9,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CITATION = /\[\[mem:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]\]/gi;
 export const MAX_CITED_FOR_PATHS = 4;
 
+/** Separate server-validated retrieval references. Never extract these from answer prose. */
+export function readRelationSourceIds(value: unknown, candidates: AdminMemorialContext[]): string[] {
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string" || !UUID.test(id))) return [];
+  const allowed = new Set(candidates.map((m) => m.id.toLowerCase()));
+  return [...new Set(value.map((id: string) => id.toLowerCase()))].filter((id) => allowed.has(id));
+}
+
 export function readAdminMemorialContext(value: unknown): AdminMemorialContext[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return Object.entries(value).flatMap(([id, entry]) => {
