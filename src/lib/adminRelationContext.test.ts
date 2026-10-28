@@ -51,3 +51,15 @@ describe("Admin graph visibility", () => {
     await expect(fetchAdminContextRelationGraph(A, B, [A, B])).rejects.toThrow("permission denied");
   });
 });
+import { extractCitedMemorialIds, stripCitations, citedPairs } from "./adminRelationContext";
+describe("answer citations", () => {
+  const A = "00000000-0000-4000-8000-00000000000a", B = "00000000-0000-4000-8000-00000000000b";
+  it("keeps only authorized exact UUIDs, ordered and unique", () => {
+    expect(extractCitedMemorialIds(`[[mem:${B}]] x [[mem:${A}]] [[mem:${B}]]`, [A, B])).toEqual([B, A]);
+    expect(extractCitedMemorialIds(`[[mem:${A}]]`, [B])).toEqual([]);
+  });
+  it("strips tokens and builds all pairs", () => {
+    expect(stripCitations(`Alpha [[mem:${A}]] ok`)).toBe("Alpha ok");
+    expect(citedPairs(["a", "b", "c"])).toEqual([["a", "b"], ["a", "c"], ["b", "c"]]);
+  });
+});
