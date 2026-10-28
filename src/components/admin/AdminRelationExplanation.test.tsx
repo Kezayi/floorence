@@ -177,4 +177,21 @@ describe("Question-oriented declared relation — synthetic", () => {
     expect(within(b).getByText(/est le fils de/)).toBeInTheDocument();
     expect(within(b).getByText(/est le frère de/)).toBeInTheDocument();
   });
+  it("un seul sens affiché, pas de formulation bidirectionnelle", async () => {
+    setup(mems, [rel("Fils", P, J)]);
+    ask("Quel lien entre Jacques Test et Paul Test ?");
+    await within(await box()).findByText(/Jacques Test est le parent de Paul Test/);
+    expect(screen.queryByText(/·\s*Paul Test est fils de/)).toBeNull();
+    expect(screen.queryByText(/Selon le lien déclaré :/)).toBeNull();
+  });
+  it("homonymes : impossible d'établir le sens, dit explicitement", async () => {
+    setup([...mems, memorial(H, "Paul")], [rel("Fils", P, J)]);
+    ask("Quel lien entre Paul Test et Jacques Test ?", [P, J, H]);
+    expect(await screen.findByText(/Impossible d'établir le sens du lien/)).toBeInTheDocument();
+  });
+  it("noms composés et accents", async () => {
+    setup([memorial(P, "Jean-Éric"), memorial(J, "Marie Ève")], [rel("Fils", P, J)]);
+    ask("quel LIEN entre jean eric test et Marie Eve Test ?");
+    expect(await within(await box()).findByText(/Jean-Éric Test est le fils de Marie Ève Test/)).toBeInTheDocument();
+  });
 });
