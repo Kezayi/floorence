@@ -59,6 +59,11 @@ const norm = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").to
  * "lien/relation … entre A et B" → [A, B] in the asked order, ONLY when each side matches exactly
  * one candidate full name (first + last) and the two are distinct. Otherwise null (no guess).
  */
+/** True when the question asks for the link "entre A et B" (orientation expected). */
+export function isPairQuestion(question: string): boolean {
+  return /\b(?:lien|liens|relation|relations|parente)\b.*?\bentre\s+.+?\s+et\s+.+$/.test(norm(question));
+}
+
 export function resolveQuestionPair(question: string, candidates: NamedMemorial[]): [string, string] | null {
   const m = norm(question).match(/\b(?:lien|liens|relation|relations|parente)\b.*?\bentre\s+(.+?)\s+et\s+(.+)$/);
   if (!m) return null;
