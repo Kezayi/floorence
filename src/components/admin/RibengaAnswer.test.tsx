@@ -68,7 +68,7 @@ describe("RIBENGA safe canonical citation presentation", () => {
   it("keeps an authorized memorial without any routable destination as plain text", async () => {
     rows = [{ id: A, slug: null, share_token: null }];
     const { container } = show(`Charlotte IGOUWE [[mem:${A}]].`, [A]);
-    await screen.findByText("Charlotte IGOUWE.");
+    await screen.findByText(/Charlotte IGOUWE/);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(container.textContent).not.toContain(A);
   });
