@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AdminRelationExplanation } from "./AdminRelationExplanation";
@@ -19,7 +19,7 @@ const mount = (candidates: Array<{ id: string; name: string }>) => render(
   </QueryClientProvider></MemoryRouter>
 );
 const choose = async () => {
-  await waitFor(() => expect(screen.getByRole("option", { name: /Alpha Test/ })).toBeInTheDocument());
+  await waitFor(() => expect(within(screen.getByLabelText("Depuis le mémorial")).getByRole("option", { name: /Alpha Test/ })).toBeInTheDocument());
   fireEvent.change(screen.getByLabelText("Depuis le mémorial"), { target: { value: A } });
   fireEvent.change(screen.getByLabelText("Vers le mémorial"), { target: { value: B } });
 };
