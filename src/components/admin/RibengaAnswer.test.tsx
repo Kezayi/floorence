@@ -93,4 +93,12 @@ describe("RIBENGA safe canonical citation presentation", () => {
     expect(container.textContent).not.toContain("mem:");
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+  it("cas réel : **Charlotte Igouwe** en gras, casse différente, cliquable ; marqueur en cours de flux masqué", async () => {
+    const { container } = show(`Selon **Charlotte Igouwe** [[mem:${A}]] et Paul TEST [[mem:${B.slice(0, 6)}`);
+    const link = await screen.findByRole("link", { name: "Charlotte Igouwe" });
+    expect(link).toHaveAttribute("href", "/memorial/charlotte");
+    expect(link.querySelector("strong")).not.toBeNull();
+    expect(container.textContent).not.toContain("[[");
+    expect(container.textContent).not.toContain(B.slice(0, 6));
+  });
 });
