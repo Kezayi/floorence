@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type AdminMemorialContext, readRelationSourceIds, citedPairs, MAX_CITED_FOR_PATHS } from "@/lib/adminRelationContext";
 import RelationPathsPanel from "@/components/memorial/RelationPathsPanel";
-import { describeDeclared, declaredParticiple, resolveQuestionPair, withArticle } from "@/lib/relationDirection";
+import { describeDeclared, declaredParticiple, resolveQuestionPair, withArticle, isPairQuestion } from "@/lib/relationDirection";
 
 /** Direct accepted declarations between A and B, worded in both directions from stored orientation. */
 function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; b: string; nameA: string; nameB: string; oriented?: boolean }) {
@@ -107,11 +107,12 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
           <p className="text-xs text-muted-foreground">Seule cette ligne provient des liens acceptés stockés ; le texte de l'IA ci-dessus n'est pas vérifié.</p>
         </div>
       )}
+      {!asked && isPairQuestion(question) && status("Impossible d'établir le sens du lien : les deux personnes de la question ne correspondent pas chacune à un seul mémorial source identifié.")}
       {citedVisible.length > MAX_CITED_FOR_PATHS && status(`Seuls les ${MAX_CITED_FOR_PATHS} premiers mémoriaux identifiés sont comparés.`)}
       {pairs.map(([a, b]) => (
         <div key={`${a}:${b}`} className="space-y-1">
           <p className="text-xs font-medium text-foreground">{nameOf(a)} → {nameOf(b)}</p>
-          <DeclaredBetween a={a} b={b} nameA={nameOf(a)} nameB={nameOf(b)} />
+          {!(asked && new Set([a, b, ...asked]).size === 2) && <DeclaredBetween a={a} b={b} nameA={nameOf(a)} nameB={nameOf(b)} />}
           <RelationPathsPanel memorialId={a} deceasedName={nameOf(a)}
             targetMemorialId={b} allowedMemorialIds={allowedIds} />
         </div>
