@@ -3,7 +3,7 @@ import { Search, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-r
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
-import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
+import { readAdminMemorialContext, stripCitations, type AdminMemorialContext } from "@/lib/adminRelationContext";
 import { RAGetSourceSearch } from "@/components/admin/RAGetSourceSearch";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
@@ -195,7 +195,6 @@ const SocialIntelligence = () => {
 
   return (
     <div>
-      <RAGetSourceSearch />
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -296,13 +295,12 @@ const SocialIntelligence = () => {
               <p className="text-[10px] text-muted-foreground/50 mt-2">{timeAgo(selectedEntry.created_at)}</p>
             </div>
 
-            <AdminRelationExplanation key={selectedEntry.id} candidates={[]} />
-
             {selectedEntry.answer ? (
-              <StyledAnswer content={selectedEntry.answer} isStreaming={false} />
+              <StyledAnswer content={stripCitations(selectedEntry.answer)} isStreaming={false} />
             ) : (
               <p className="text-xs text-muted-foreground italic">Réponse non enregistrée</p>
             )}
+            <AdminRelationExplanation key={selectedEntry.id} candidates={[]} answer={selectedEntry.answer ?? ""} />
             <button
               onClick={() => {
                 const q = selectedEntry.question;
@@ -336,8 +334,8 @@ const SocialIntelligence = () => {
 
             {(answer || isLoading) && (
               <div>
-                <StyledAnswer content={answer} isStreaming={isLoading} />
-                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} />}
+                <StyledAnswer content={stripCitations(answer)} isStreaming={isLoading} />
+                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} answer={answer} />}
               </div>
             )}
 
@@ -365,6 +363,10 @@ const SocialIntelligence = () => {
             )}
           </>
         )}
+      <details className="mt-10 border-t border-border pt-4">
+        <summary className="cursor-pointer text-xs text-muted-foreground">Outils complémentaires</summary>
+        <div className="mt-4"><RAGetSourceSearch /></div>
+      </details>
       </div>
     </div>
   );

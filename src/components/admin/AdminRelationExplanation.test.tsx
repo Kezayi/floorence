@@ -36,7 +36,7 @@ describe("Mounted explanation — synthetic isolated checks, no backend calls", 
   });
   it("without canonical context renders fallback and makes no lookup", () => {
     mount([]);
-    expect(screen.getByRole("status")).toHaveTextContent("Source canonique non disponible");
+    expect(screen.getByText(/Source canonique non disponible/)).toBeInTheDocument();
     expect(api.from).not.toHaveBeenCalled();
     expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
   });
@@ -62,5 +62,58 @@ describe("Mounted explanation — synthetic isolated checks, no backend calls", 
     await choose();
     expect(await screen.findByText(/Chemin non étayé entre les deux sources/)).toBeInTheDocument();
     expect(api.rpc).not.toHaveBeenCalled();
+  });
+});
+describe("Automatic paths from exact answer citations — synthetic", () => {
+  const C = "00000000-0000-4000-8000-00000000000c";
+  const setVisible = (rows: unknown[]) => {
+    const chain = { select: vi.fn(), in: vi.fn(), eq: vi.fn(), is: vi.fn(), then: vi.fn() };
+    for (const m of ["select", "in", "eq", "is"] as const) chain[m].mockReturnValue(chain);
+    chain.then.mockImplementation((resolve) => resolve({ data: rows, error: null }));
+    api.from.mockReturnValue(chain);
+  };
+  const mountA = (candidates: Array<{ id: string; name: string }>, answer: string) => render(
+    <MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <AdminRelationExplanation candidates={candidates} answer={answer} />
+    </QueryClientProvider></MemoryRouter>);
+  beforeEach(() => {
+    cleanup(); vi.clearAllMocks();
+    setVisible([memorial(A, "Alpha"), memorial(B, "Beta")]);
+    graphs.fetchAdminContextRelationGraph.mockResolvedValue({ memorials: [memorial(A, "Alpha"), memorial(B, "Beta")], edges: [{ aId: A, bId: B, relationId: R, label: "Frère" }] });
+    api.rpc.mockResolvedValue({ data: [{ relation_id: R, confirmations: 2 }], error: null });
+  });
+  const ctx = [{ id: A, name: "x" }, { id: B, name: "y" }, { id: C, name: "z" }];
+  it("2 cited authorized UUIDs → path loaded automatically, no selection", async () => {
+    mountA(ctx, `Alpha [[mem:${A}]] et Beta [[mem:${B}]] sont liés.`);
+    expect(await screen.findByText("Confirmé par 2 membres")).toBeInTheDocument();
+    expect(graphs.fetchAdminContextRelationGraph).toHaveBeenCalledWith(A, B, [A, B]);
+    expect(screen.getByText(/ne prouvent pas les affirmations/)).toBeInTheDocument();
+  });
+  it("1 cited UUID → no path, explicit message", async () => {
+    mountA(ctx, `Alpha [[mem:${A}]] seul.`);
+    expect(await screen.findByText(/Un seul mémorial cité/)).toBeInTheDocument();
+    expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
+  });
+  it("0 UUID (names only) → aucun chemin étayé, no name join", () => {
+    mountA(ctx, "Alpha Test et Beta Test sont frères.");
+    expect(screen.getByText(/aucun chemin étayé/)).toBeInTheDocument();
+    expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
+  });
+  it("UUID not in server context is ignored", () => {
+    mountA([{ id: A, name: "x" }], `[[mem:${A}]] [[mem:${B}]]`);
+    expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
+  });
+  it("cited but inaccessible memorial is excluded from paths", async () => {
+    mountA(ctx, `[[mem:${A}]] [[mem:${C}]]`);
+    expect(await screen.findByText(/Un seul mémorial cité et accessible/)).toBeInTheDocument();
+    expect(screen.getByText(/1 mémorial\(aux\) cité\(s\) non accessible/)).toBeInTheDocument();
+    expect(graphs.fetchAdminContextRelationGraph).not.toHaveBeenCalled();
+  });
+  it("secondary tools are placed after the automatic result, collapsed", async () => {
+    mountA(ctx, `[[mem:${A}]] [[mem:${B}]]`);
+    const summary = screen.getByText("Outils complémentaires");
+    const auto = screen.getByText("Chemins relationnels de cette réponse");
+    expect(auto.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(summary.closest("details")).not.toHaveAttribute("open");
   });
 });

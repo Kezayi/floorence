@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Sparkles, X, Loader2, History, Clock, ChevronLeft, Users } from "lucide-react";
 import { CommandDialog } from "@/components/ui/command";
 import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
-import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
+import { readAdminMemorialContext, stripCitations, type AdminMemorialContext } from "@/lib/adminRelationContext";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -304,12 +304,12 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 </div>
                 {selectedEntry.answer ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{selectedEntry.answer}</ReactMarkdown>
+                    <ReactMarkdown>{stripCitations(selectedEntry.answer)}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
                 )}
-                <AdminRelationExplanation key={selectedEntry.id} candidates={[]} />
+                <AdminRelationExplanation key={selectedEntry.id} candidates={[]} answer={selectedEntry.answer ?? ""} />
                 <button
                   onClick={() => {
                     setSelectedEntry(null);
@@ -363,13 +363,13 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                   <div>
 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{answer}</ReactMarkdown>
+                      <ReactMarkdown>{stripCitations(answer)}</ReactMarkdown>
                       {isLoading && (
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} />}
+                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} answer={answer} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (
