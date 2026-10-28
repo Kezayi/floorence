@@ -379,7 +379,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} sourceIds={sourceIds} />}
+                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} sourceIds={sourceIds} question={query} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (
