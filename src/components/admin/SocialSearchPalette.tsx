@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Sparkles, X, Loader2, History, Clock, ChevronLeft, Users } from "lucide-react";
 import { CommandDialog } from "@/components/ui/command";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
+import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 // Hard-coded URL pour bypasser tout problème de variable d'environnement
 const CHAT_URL = "https://vxuueidrzrnfglfilmnh.supabase.co/functions/v1/social-search";
@@ -17,12 +16,6 @@ interface HistoryEntry {
   created_at: string;
 }
 
-interface MemorialMeta {
-  name: string;
-  photo: string | null;
-  slug: string | null;
-}
-
 interface UsageData {
   prompt_tokens?: number;
   completion_tokens?: number;
@@ -32,7 +25,7 @@ interface UsageData {
 async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
-  onMeta: (meta: Record<string, MemorialMeta>) => void,
+  onMeta: (meta: AdminMemorialContext[]) => void,
   onUsage: (usage: UsageData) => void,
   signal: AbortSignal
 ) {
@@ -87,7 +80,7 @@ async function streamQuestion(
       try {
         const parsed = JSON.parse(jsonStr);
         if (parsed.type === "memorial_meta" && parsed.memorials) {
-          onMeta(parsed.memorials);
+          onMeta(readAdminMemorialContext(parsed.memorials));
           continue;
         }
         if (parsed.type === "usage" && parsed.usage) {
@@ -125,67 +118,12 @@ const SUGGESTIONS = [
   "Résume le cercle social du défunt le plus actif",
 ];
 
-/** Extract mentioned memorial names from the answer to display their photos */
-function findMentionedMemorials(
-  answer: string,
-  meta: Record<string, MemorialMeta>
-): MemorialMeta[] {
-  const found: MemorialMeta[] = [];
-  const seen = new Set<string>();
-  for (const [id, m] of Object.entries(meta)) {
-    if (!seen.has(m.name) && answer.includes(m.name)) {
-      found.push(m);
-      seen.add(m.name);
-    }
-  }
-  return found.slice(0, 8); // max 8 portraits
-}
-
-/** Memorial portrait strip shown above the answer */
-const MemorialStrip = ({ memorials, onNavigate }: { memorials: MemorialMeta[]; onNavigate: (slug: string) => void }) => {
-  if (memorials.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-border/50">
-      {memorials.map((m) => (
-        <Tooltip key={m.name}>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => m.slug && onNavigate(`/memorial/${m.slug}`)}
-              className="flex items-center gap-1.5 bg-muted/50 rounded-full pl-0.5 pr-2.5 py-0.5 hover:ring-2 hover:ring-primary transition-all cursor-pointer group"
-            >
-              <Avatar className="w-6 h-6">
-                {m.photo && (
-                  <AvatarImage
-                    src={m.photo}
-                    alt={m.name}
-                    className="object-cover grayscale group-hover:grayscale-0 transition-[filter] duration-600 animate-in fade-in duration-500"
-                  />
-                )}
-                <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-serif">
-                  {m.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-[11px] font-serif text-foreground/80 truncate max-w-[100px]">
-                {m.name}
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {m.name}
-          </TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
-  );
-};
-
 interface SocialSearchPaletteProps {
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
 }
 
 const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearchPaletteProps = {}) => {
-  const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen ?? internalOpen;
   const setOpen = onExternalOpenChange ?? setInternalOpen;
@@ -197,7 +135,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
-  const [memorialMeta, setMemorialMeta] = useState<Record<string, MemorialMeta>>({});
+  const [memorialMeta, setMemorialMeta] = useState<AdminMemorialContext[]>([]);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -230,7 +168,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setIsLoading(false);
     setShowHistory(false);
     setSelectedEntry(null);
-    setMemorialMeta({});
+    setMemorialMeta([]);
     setUsage(null);
     abortRef.current?.abort();
   }, []);
@@ -250,7 +188,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setIsLoading(true);
     setAnswer("");
     setError(null);
-    setMemorialMeta({});
+    setMemorialMeta([]);
     setUsage(null);
 
     const controller = new AbortController();
@@ -271,11 +209,10 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     loadHistory();
   }, [loadHistory]);
 
-  const mentionedMemorials = answer ? findMentionedMemorials(answer, memorialMeta) : [];
 
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
-        <div className="flex flex-col max-h-[80vh]">
+        <div className="flex flex-col max-h-[80svh]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <div className="flex items-center gap-2">
@@ -328,7 +265,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
           )}
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto p-4 max-h-[60vh]">
+          <div className="flex-1 overflow-y-auto p-4 max-h-[60svh]">
             {/* ── History list ── */}
             {showHistory && !selectedEntry && (
               <div className="space-y-1">
@@ -372,6 +309,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 ) : (
                   <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
                 )}
+                <AdminRelationExplanation key={selectedEntry.id} candidates={[]} />
                 <button
                   onClick={() => {
                     setSelectedEntry(null);
@@ -423,8 +361,6 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
 
                 {answer && (
                   <div>
-                    {/* Memorial portrait strip */}
-                    <MemorialStrip memorials={mentionedMemorials} onNavigate={(path) => { handleOpenChange(false); navigate(path); }} />
 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{answer}</ReactMarkdown>
@@ -432,6 +368,8 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
                       )}
                     </div>
+
+                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (

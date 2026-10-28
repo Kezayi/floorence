@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, Loader2, History, Clock, ChevronLeft, X, Brain, User } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Search, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateAge } from "@/lib/dateUtils";
+import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
+import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
 import { RAGetSourceSearch } from "@/components/admin/RAGetSourceSearch";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/social-search`;
@@ -14,20 +15,10 @@ interface HistoryEntry {
   created_at: string;
 }
 
-interface MemorialPerson {
-  id: string;
-  first_name: string;
-  last_name: string;
-  photo_url: string | null;
-  birth_date: string | null;
-  death_date: string | null;
-  is_demo: boolean | null;
-  total_posts: number | null;
-}
-
 async function streamQuestion(
   question: string,
   onDelta: (text: string) => void,
+  onContext: (context: AdminMemorialContext[]) => void,
   signal: AbortSignal
 ) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -83,6 +74,10 @@ async function streamQuestion(
       if (jsonStr === "[DONE]") return;
       try {
         const parsed = JSON.parse(jsonStr);
+        if (parsed.type === "memorial_meta") {
+          onContext(readAdminMemorialContext(parsed.memorials));
+          continue;
+        }
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) {
           fullText += content;
@@ -113,135 +108,6 @@ const SUGGESTIONS = [
   "Quels sont les relais de confiance dans le maillage ?",
   "Résume le cercle social du défunt le plus actif",
 ];
-
-/* ── Memorial portrait strip ────────────────────────────────────── */
-
-function PersonCard({ person }: { person: MemorialPerson }) {
-  const age =
-    person.birth_date && person.death_date
-      ? calculateAge(person.birth_date, person.death_date)
-      : null;
-
-  return (
-    <div className="flex flex-col items-center gap-1.5 min-w-[72px] max-w-[80px]">
-      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-muted border border-border/60 shadow-sm">
-        {person.photo_url ? (
-          <img
-            src={person.photo_url}
-            alt={`${person.first_name} ${person.last_name}`}
-            className="w-full h-full object-cover grayscale-[30%]"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-            <User className="w-5 h-5" />
-          </div>
-        )}
-        {person.is_demo && (
-          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-accent border border-background" title="Démo" />
-        )}
-      </div>
-      <div className="text-center leading-tight">
-        <p className="text-[11px] font-medium text-foreground truncate w-full">
-          {person.first_name}
-        </p>
-        <p className="text-[10px] text-muted-foreground truncate w-full">
-          {person.last_name}
-        </p>
-        {age !== null && (
-          <p className="text-[10px] text-muted-foreground/70">{age} ans</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Filter memorials to only those mentioned by name in the text */
-function filterMentioned(people: MemorialPerson[], text: string): MemorialPerson[] {
-  if (!text) return [];
-  const lower = text.toLowerCase();
-  return people.filter((p) => {
-    const full = `${p.first_name} ${p.last_name}`.toLowerCase();
-    const last = p.last_name.toLowerCase();
-    return lower.includes(full) || lower.includes(last);
-  });
-}
-
-/** Check if there are ambiguous matches (multiple people sharing a first name) */
-function findAmbiguities(people: MemorialPerson[], text: string): Map<string, MemorialPerson[]> {
-  if (!text) return new Map();
-  const lower = text.toLowerCase();
-  const mentioned = people.filter((p) => {
-    const full = `${p.first_name} ${p.last_name}`.toLowerCase();
-    const last = p.last_name.toLowerCase();
-    return lower.includes(full) || lower.includes(last);
-  });
-
-  // Group by first name to detect ambiguities
-  const byFirst = new Map<string, MemorialPerson[]>();
-  for (const p of mentioned) {
-    const key = p.first_name.toLowerCase();
-    byFirst.set(key, [...(byFirst.get(key) || []), p]);
-  }
-  // Only keep groups with 2+ people
-  const ambiguous = new Map<string, MemorialPerson[]>();
-  for (const [k, v] of byFirst) {
-    if (v.length > 1) ambiguous.set(k, v);
-  }
-  return ambiguous;
-}
-
-function DisambiguationStrip({
-  ambiguities,
-  onConfirm,
-}: {
-  ambiguities: Map<string, MemorialPerson[]>;
-  onConfirm: () => void;
-}) {
-  if (!ambiguities.size) return null;
-  return (
-    <div className="mb-6 rounded-lg border border-primary/15 bg-card p-5 shadow-sm">
-      <p className="text-[10px] uppercase tracking-[0.15em] text-primary/60 font-medium mb-4">
-        Précision requise
-      </p>
-      {Array.from(ambiguities.entries()).map(([firstName, persons]) => (
-        <div key={firstName} className="mb-4 last:mb-0">
-          <p className="text-xs text-muted-foreground mb-3">
-            Plusieurs <span className="font-semibold text-foreground capitalize">{firstName}</span> identifiés :
-          </p>
-          <div className="flex gap-5 overflow-x-auto pb-2 scrollbar-none">
-            {persons.map((p) => (
-              <PersonCard key={p.id} person={p} />
-            ))}
-          </div>
-        </div>
-      ))}
-      <button
-        onClick={onConfirm}
-        className="mt-4 text-[11px] font-medium text-primary/70 hover:text-primary transition-colors underline underline-offset-2"
-      >
-        Confirmer et poursuivre l'analyse →
-      </button>
-    </div>
-  );
-}
-
-function MemorialStrip({ people, answerText }: { people: MemorialPerson[]; answerText?: string }) {
-  const visible = answerText ? filterMentioned(people, answerText) : [];
-  if (!visible.length) return null;
-  return (
-    <div className="mb-6">
-      <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium mb-3">
-        {visible.length} personne{visible.length > 1 ? "s" : ""} mentionnée{visible.length > 1 ? "s" : ""}
-      </p>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
-        {visible.map((p) => (
-          <PersonCard key={p.id} person={p} />
-        ))}
-      </div>
-      <div className="mt-3 border-b border-border/30" />
-    </div>
-  );
-}
 
 /* ── Styled markdown prose ──────────────────────────────────────── */
 
@@ -285,23 +151,8 @@ const SocialIntelligence = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
-  const [memorials, setMemorials] = useState<MemorialPerson[]>([]);
-  const [disambiguated, setDisambiguated] = useState(false);
+  const [context, setContext] = useState<AdminMemorialContext[]>([]);
   const abortRef = useRef<AbortController | null>(null);
-
-  // Fetch memorial people on mount
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("memorials")
-        .select("id, first_name, last_name, photo_url, birth_date, death_date, is_demo, total_posts")
-        .eq("is_active", true)
-        .eq("is_published", true)
-        .order("total_posts", { ascending: false, nullsFirst: false })
-        .limit(30);
-      if (data) setMemorials(data as MemorialPerson[]);
-    })();
-  }, []);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -321,13 +172,14 @@ const SocialIntelligence = () => {
     setIsLoading(true);
     setAnswer("");
     setError(null);
-    setDisambiguated(false);
+    setContext([]);
+    abortRef.current?.abort();
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, controller.signal);
+      await streamQuestion(q, setAnswer, setContext, controller.signal);
     } catch (e: any) {
       if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
     } finally {
@@ -444,7 +296,7 @@ const SocialIntelligence = () => {
               <p className="text-[10px] text-muted-foreground/50 mt-2">{timeAgo(selectedEntry.created_at)}</p>
             </div>
 
-            <MemorialStrip people={memorials} answerText={selectedEntry.answer || undefined} />
+            <AdminRelationExplanation key={selectedEntry.id} candidates={[]} />
 
             {selectedEntry.answer ? (
               <StyledAnswer content={selectedEntry.answer} isStreaming={false} />
@@ -482,25 +334,12 @@ const SocialIntelligence = () => {
               </div>
             )}
 
-            {(answer || isLoading) && (() => {
-              const ambiguities = findAmbiguities(memorials, answer);
-              const hasAmbiguity = ambiguities.size > 0 && !disambiguated;
-              return (
-                <div className="space-y-0">
-                  {hasAmbiguity ? (
-                    <DisambiguationStrip
-                      ambiguities={ambiguities}
-                      onConfirm={() => setDisambiguated(true)}
-                    />
-                  ) : (
-                    <>
-                      <MemorialStrip people={memorials} answerText={answer} />
-                      <StyledAnswer content={answer} isStreaming={isLoading} />
-                    </>
-                  )}
-                </div>
-              );
-            })()}
+            {(answer || isLoading) && (
+              <div>
+                <StyledAnswer content={answer} isStreaming={isLoading} />
+                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} />}
+              </div>
+            )}
 
             {!answer && !isLoading && !error && (
               <div className="space-y-6">

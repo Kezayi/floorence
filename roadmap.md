@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] Correctif BO RIBENGA : page et palette raccordées aux parcours canoniques ; 29 tests isolés PASS et montage desktop/mobile vérifié avec réseau intercepté. Recette réelle et sécurité déployée non vérifiées ; citations IA canoniques indisponibles.
+
 - [x] 1. Modération a posteriori : signalements, file admin, RPC/RLS et séparation éditoriale/financière implémentés ; tests SQL isolés et aperçu vérifiés.
 - [ ] 1. Réserve de validation : cycle complet sur signalement réel, aucune donnée test autorisée dans la base partagée ; projections RAGet hors mandat inchangées.
 - [x] 2. AAA-CHANTIER-02 implémenté dans l’aperçu : Photo, nouveaux uploads optimisés et svh ciblés ; verdict PARTIAL, rapport AAA-CHANTIER-02-RAPPORT.md.
