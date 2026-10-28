@@ -121,7 +121,7 @@ serve(async (req) => {
 
     const { data: postsRaw, error: postErr } = await supabase
       .from("guestbook_posts")
-      .select("id, memorial_id, user_id, author_name, relation_category, relation_group, relation_link, candle_count, flower_count, content, is_demo")
+      .select("id, created_at, memorial_id, user_id, author_name, relation_category, relation_group, relation_link, candle_count, flower_count, content, is_demo")
       .eq("is_hidden", false)
       .eq("editorial_hidden", false)
       .is("deleted_at", null)
