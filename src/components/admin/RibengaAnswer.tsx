@@ -58,7 +58,7 @@ function citationPlugin(destinations: Map<string, Destination>) {
           cursor = (match.index ?? 0) + match[0].length;
         }
         // Streaming: an unfinished marker at the end is never shown to the reader.
-        const tail = text.slice(cursor).replace(/\[\[?\s*(m(e(m(\s*:[^\]\r\n]*)?)?)?)?$/i, "");
+        const tail = text.slice(cursor).replace(/\[\[\s*(m(e(m(\s*:[^\]\r\n]*)?)?)?)?$/i, "");
         if (tail) output.push({ type: "text", value: tail });
       }
       if (parent.children) parent.children = output;
