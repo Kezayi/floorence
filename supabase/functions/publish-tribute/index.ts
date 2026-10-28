@@ -228,6 +228,13 @@ const RATE_LIMIT_MS = 30_000 // 30 seconds between tributes per user
  
      if (insertError) {
        console.error('Error inserting post:', insertError)
+       // DB guard: first explicit relation_link per (memorial, account) is immutable.
+       if (String(insertError.message ?? '').includes('RELATION_LINK_LOCKED')) {
+         return new Response(
+           JSON.stringify({ error: 'Votre lien avec le défunt est déjà déclaré sur ce mémorial et ne peut pas être changé.' }),
+           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+         )
+       }
        return new Response(
          JSON.stringify({ error: 'Failed to publish tribute' }),
          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

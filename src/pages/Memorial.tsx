@@ -419,7 +419,10 @@ const MemorialInner = () => {
         .select('relation_category, relation_link')
         .eq('memorial_id', memorialData.id)
         .eq('user_id', user.id)
+        // Canonical = first EXPLICIT link (same order as the DB guard: created_at, id).
+        .not('relation_link', 'is', null)
         .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
         .limit(1)
         .maybeSingle();
       
