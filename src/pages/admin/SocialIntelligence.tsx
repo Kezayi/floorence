@@ -344,7 +344,7 @@ const SocialIntelligence = () => {
             {(answer || isLoading) && (
               <div>
                 <StyledAnswer content={answer} isStreaming={isLoading} candidates={context} sourceIds={sourceIds} />
-                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} sourceIds={sourceIds} />}
+                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} sourceIds={sourceIds} question={query} />}
               </div>
             )}
 

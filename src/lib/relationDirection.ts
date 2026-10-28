@@ -39,3 +39,37 @@ export function describeDeclared(rows: DeclaredRelationRow[], a: string, b: stri
   }
   return out;
 }
+
+const FEM = new Set(["Mère", "Fille", "Sœur", "Épouse", "Grand-mère", "Petite-fille"]);
+const MASC = new Set(["Père", "Fils", "Frère", "Grand Frère", "Époux", "Grand-père", "Petit-fils"]);
+
+/** Participle agreement only when the stored type itself carries the gender of `from`. */
+export function declaredParticiple(row: DeclaredRelationRow, from: string): string {
+  const type = row.relation_type?.trim();
+  if (row.memorial_id_1 !== from || !type) return "déclaré(e)";
+  return FEM.has(type) ? "déclarée" : MASC.has(type) ? "déclaré" : "déclaré(e)";
+}
+
+export interface NamedMemorial { id: string; first_name: string | null; last_name: string | null }
+
+const norm = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr")
+  .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * "lien/relation … entre A et B" → [A, B] in the asked order, ONLY when each side matches exactly
+ * one candidate full name (first + last) and the two are distinct. Otherwise null (no guess).
+ */
+export function resolveQuestionPair(question: string, candidates: NamedMemorial[]): [string, string] | null {
+  const m = norm(question).match(/\b(?:lien|liens|relation|relations|parente)\b.*?\bentre\s+(.+?)\s+et\s+(.+)$/);
+  if (!m) return null;
+  const full = candidates.map((c) => ({ id: c.id, name: norm(`${c.first_name ?? ""} ${c.last_name ?? ""}`) }))
+    .filter((c) => c.name.includes(" "));
+  const pick = (segment: string) => {
+    const s = ` ${segment} `;
+    const hits = full.filter((c) => s.includes(` ${c.name} `));
+    const ids = new Set(hits.map((h) => h.id));
+    return ids.size === 1 ? hits[0].id : null;
+  };
+  const a = pick(m[1]); const b = pick(m[2]);
+  return a && b && a !== b ? [a, b] : null;
+}

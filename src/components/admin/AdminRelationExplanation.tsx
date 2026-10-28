@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type AdminMemorialContext, readRelationSourceIds, citedPairs, MAX_CITED_FOR_PATHS } from "@/lib/adminRelationContext";
 import RelationPathsPanel from "@/components/memorial/RelationPathsPanel";
-import { describeDeclared } from "@/lib/relationDirection";
+import { describeDeclared, declaredParticiple, resolveQuestionPair } from "@/lib/relationDirection";
 
 /** Direct accepted declarations between A and B, worded in both directions from stored orientation. */
-function DeclaredBetween({ a, b, nameA, nameB }: { a: string; b: string; nameA: string; nameB: string }) {
+function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; b: string; nameA: string; nameB: string; oriented?: boolean }) {
   const q = useQuery({
     queryKey: ["ribenga-declared-between", a, b],
     queryFn: async () => {
@@ -14,7 +14,8 @@ function DeclaredBetween({ a, b, nameA, nameB }: { a: string; b: string; nameA: 
         .select("id, relation_type, memorial_id_1, memorial_id_2, status").eq("status", "accepted")
         .or(`and(memorial_id_1.eq.${a},memorial_id_2.eq.${b}),and(memorial_id_1.eq.${b},memorial_id_2.eq.${a})`);
       if (error) throw error;
-      const statements = describeDeclared(data ?? [], a, b);
+      const rows = data ?? [];
+      const statements = describeDeclared(rows, a, b).map((s) => ({ ...s, part: declaredParticiple(rows.find((r) => r.id === s.relationId)!, a) }));
       if (!statements.length) return { statements, counts: new Map<string, number>() };
       const { data: c, error: ce } = await supabase.rpc("get_relation_confirmation_counts", { p_relation_ids: statements.map((s) => s.relationId) });
       return { statements, counts: ce ? null : new Map((c ?? []).map((r) => [r.relation_id, Number(r.confirmations)])) };
@@ -26,17 +27,21 @@ function DeclaredBetween({ a, b, nameA, nameB }: { a: string; b: string; nameA: 
   const { statements, counts } = q.data!;
   if (!statements.length) return <p className="text-xs text-muted-foreground">Aucun lien direct déclaré entre {nameA} et {nameB}.</p>;
   return (
+    <>
+    {oriented && statements.length > 1 && <p role="status" className="text-xs text-muted-foreground">Plusieurs liens déclarés coexistent ; aucun n'est retenu à la place des autres.</p>}
     <ul className="text-sm text-foreground space-y-1" aria-label="Liens directs déclarés">
       {statements.map((s) => {
         const n = counts?.get(s.relationId);
         return (
           <li key={s.relationId}>
-            Selon le lien déclaré : {nameA} est {s.aToB} de {nameB} · {nameB} est {s.bToA} de {nameA}.{" "}
+            {oriented ? <>{nameA} est {s.part} {s.aToB} de {nameB}.</>
+              : <>Selon le lien déclaré : {nameA} est {s.aToB} de {nameB} · {nameB} est {s.bToA} de {nameA}.</>}{" "}
             <span className="text-xs text-muted-foreground">Statut : déclaré · {counts === null ? "confirmations indisponibles" : n ? `confirmé par ${n} membre${n > 1 ? "s" : ""} (sans certification)` : "non confirmé"}</span>
           </li>
         );
       })}
     </ul>
+    </>
   );
 }
 
@@ -46,9 +51,11 @@ interface Props {
   sourceIds?: string[];
   /** Extra secondary tools placed inside the "Explorer une relation précise" section. */
   extraTools?: ReactNode;
+  /** Free question as asked; only used to orient a pair of already-cited canonical memorials. */
+  question?: string;
 }
 
-export function AdminRelationExplanation({ candidates, sourceIds = [], extraTools }: Props) {
+export function AdminRelationExplanation({ candidates, sourceIds = [], extraTools, question = "" }: Props) {
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const ids = candidates.map((m) => m.id).sort();
@@ -75,6 +82,7 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
   const citedVisible = cited.filter((id) => byId.has(id));
   const hidden = cited.length - citedVisible.length;
   const pairs = citedPairs(citedVisible);
+  const asked = resolveQuestionPair(question, citedVisible.map((id) => byId.get(id)!));
   const nameOf = (id: string) => { const m = byId.get(id); return m ? `${m.first_name} ${m.last_name}` : "Source non disponible"; };
 
   const status = (text: string) => <p role="status" className="text-sm text-muted-foreground">{text}</p>;
@@ -92,6 +100,13 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
       <p className="text-xs text-muted-foreground">
         Chemins reconstitués à partir des seuls liens acceptés entre les sources identifiées par le moteur. Ils ne prouvent pas les affirmations de l'IA.
       </p>
+      {asked && (
+        <div aria-label="Réponse orientée selon la question" className="space-y-1 border-l-2 border-border pl-3">
+          <p className="text-xs font-medium text-foreground">Lien direct stocké, dans le sens de la question</p>
+          <DeclaredBetween a={asked[0]} b={asked[1]} nameA={nameOf(asked[0])} nameB={nameOf(asked[1])} oriented />
+          <p className="text-xs text-muted-foreground">Seule cette ligne provient des liens acceptés stockés ; le texte de l'IA ci-dessus n'est pas vérifié.</p>
+        </div>
+      )}
       {citedVisible.length > MAX_CITED_FOR_PATHS && status(`Seuls les ${MAX_CITED_FOR_PATHS} premiers mémoriaux identifiés sont comparés.`)}
       {pairs.map(([a, b]) => (
         <div key={`${a}:${b}`} className="space-y-1">

@@ -21,3 +21,23 @@ describe("relationDirection", () => {
     expect(describeDeclared([row("Parrain", J, P)], P, J)[0].aToB).toContain("sans équivalent sûr");
   });
 });
+
+import { resolveQuestionPair, declaredParticiple } from "./relationDirection";
+describe("resolveQuestionPair", () => {
+  const P = { id: "p", first_name: "Paul", last_name: "MBA" };
+  const J = { id: "j", first_name: "Jacques", last_name: "MBA" };
+  it("keeps asked order", () => {
+    expect(resolveQuestionPair("Quel lien entre Paul Mba et Jacques MBA ?", [P, J])).toEqual(["p", "j"]);
+    expect(resolveQuestionPair("Quelle relation entre Jacques Mba et Paul Mba ?", [P, J])).toEqual(["j", "p"]);
+  });
+  it("refuses homonyms, first-name-only and non-relation questions", () => {
+    expect(resolveQuestionPair("Quel lien entre Paul Mba et Jacques Mba ?", [P, J, { ...P, id: "p2" }])).toBeNull();
+    expect(resolveQuestionPair("Quel lien entre Paul et Jacques ?", [P, J])).toBeNull();
+    expect(resolveQuestionPair("Qui est Paul Mba ?", [P, J])).toBeNull();
+  });
+  it("participle from stored type only", () => {
+    const row = { id: "r", relation_type: "Fils", memorial_id_1: "p", memorial_id_2: "j", status: "accepted" };
+    expect(declaredParticiple(row, "p")).toBe("déclaré");
+    expect(declaredParticiple(row, "j")).toBe("déclaré(e)");
+  });
+});

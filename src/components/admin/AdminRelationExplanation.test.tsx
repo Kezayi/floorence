@@ -117,3 +117,64 @@ describe("Automatic paths from structured server sources — synthetic", () => {
     expect(summary.closest("details")).not.toHaveAttribute("open");
   });
 });
+
+describe("Question-oriented declared relation — synthetic", () => {
+  const P = "00000000-0000-4000-8000-0000000000aa", J = "00000000-0000-4000-8000-0000000000bb", H = "00000000-0000-4000-8000-0000000000cc";
+  const setup = (mems: unknown[], rels: unknown[]) => {
+    api.from.mockImplementation((table: string) => {
+      const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const m of ["select", "in", "eq", "is", "or"]) chain[m] = vi.fn(() => chain);
+      chain.then = vi.fn((resolve) => resolve({ data: table === "memorials" ? mems : rels, error: null }));
+      return chain;
+    });
+  };
+  const rel = (type: string, a: string, b: string, id = R) => ({ id, relation_type: type, memorial_id_1: a, memorial_id_2: b, status: "accepted" });
+  const ask = (question: string, ids = [P, J]) => render(
+    <MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <AdminRelationExplanation candidates={ids.map((id) => ({ id, name: "x" }))} sourceIds={ids} question={question} />
+    </QueryClientProvider></MemoryRouter>);
+  const box = () => screen.findByLabelText("Réponse orientée selon la question");
+  beforeEach(() => {
+    cleanup(); vi.clearAllMocks();
+    graphs.fetchAdminContextRelationGraph.mockResolvedValue({ memorials: [], edges: [] });
+    api.rpc.mockResolvedValue({ data: [{ relation_id: R, confirmations: 3 }], error: null });
+  });
+  const mems = [memorial(P, "Paul"), memorial(J, "Jacques")];
+  it("A puis B : Paul est déclaré fils de Jacques, confirmations distinctes", async () => {
+    setup(mems, [rel("Fils", P, J)]);
+    ask("Quel lien entre Paul Test et Jacques Test ?");
+    const b = await box();
+    expect(await within(b).findByText(/Paul Test est déclaré fils de Jacques Test\./)).toBeInTheDocument();
+    expect(within(b).queryByText(/père/)).toBeNull();
+    expect(within(b).getByText(/confirmé par 3 membres \(sans certification\)/)).toBeInTheDocument();
+  });
+  it("B puis A : Jacques est déclaré(e) parent de Paul (sexe non stocké)", async () => {
+    setup(mems, [rel("Fils", P, J)]);
+    ask("Quel lien entre Jacques Test et Paul Test ?");
+    expect(await within(await box()).findByText(/Jacques Test est déclaré\(e\) parent de Paul Test\./)).toBeInTheDocument();
+  });
+  it("Père stocké : Jacques est déclaré père de Paul", async () => {
+    setup(mems, [rel("Père", J, P)]);
+    ask("quelle relation entre Jacques Test et Paul Test");
+    expect(await within(await box()).findByText(/Jacques Test est déclaré père de Paul Test\./)).toBeInTheDocument();
+  });
+  it("homonymes : aucune réponse orientée", async () => {
+    setup([...mems, memorial(H, "Paul")], [rel("Fils", P, J)]);
+    ask("Quel lien entre Paul Test et Jacques Test ?", [P, J, H]);
+    await screen.findAllByText(/Paul Test/);
+    expect(screen.queryByLabelText("Réponse orientée selon la question")).toBeNull();
+  });
+  it("aucun lien / non accepté : état neutre", async () => {
+    setup(mems, [{ ...rel("Fils", P, J), status: "pending" }]);
+    ask("Quel lien entre Paul Test et Jacques Test ?");
+    expect(await within(await box()).findByText(/Aucun lien direct déclaré entre Paul Test et Jacques Test/)).toBeInTheDocument();
+  });
+  it("contradiction : les deux liens restent affichés, signalés", async () => {
+    setup(mems, [rel("Fils", P, J), rel("Frère", P, J, "00000000-0000-4000-8000-000000000002")]);
+    ask("Quel lien entre Paul Test et Jacques Test ?");
+    const b = await box();
+    expect(await within(b).findByText(/Plusieurs liens déclarés coexistent/)).toBeInTheDocument();
+    expect(within(b).getByText(/déclaré fils de/)).toBeInTheDocument();
+    expect(within(b).getByText(/déclaré frère de/)).toBeInTheDocument();
+  });
+});
