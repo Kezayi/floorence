@@ -1,3 +1,4 @@
+import { tributeLinks } from "./tributeLinks.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { relationResponseFormat, readRelationResponse } from "./responseContract.ts";
@@ -120,7 +121,7 @@ serve(async (req) => {
 
     const { data: postsRaw, error: postErr } = await supabase
       .from("guestbook_posts")
-      .select("id, memorial_id, author_name, relation_category, relation_group, candle_count, flower_count, content, is_demo")
+      .select("id, memorial_id, user_id, author_name, relation_category, relation_group, relation_link, candle_count, flower_count, content, is_demo")
       .eq("is_hidden", false)
       .eq("editorial_hidden", false)
       .is("deleted_at", null)
@@ -197,7 +198,7 @@ serve(async (req) => {
       const mName = memorialMap.get(p.memorial_id) || "?";
       const contentPreview = p.content ? redact(p.content.slice(0, 200)) : "";
       contextLines.push(
-        `SOURCE tribute:${p.id} | HOMMAGE: ${redact(p.author_name)} → ${mName} | Lien: ${redact(p.relation_category)} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
+        `SOURCE tribute:${p.id} | HOMMAGE: ${redact(p.author_name)} → ${mName} | Lien déclaré: ${p.relation_link ? redact(p.relation_link) : "non précisé"} | Catégorie: ${redact(p.relation_category)} (${p.relation_group || "non classé"}) | Cierges: ${p.candle_count}, Fleurs: ${p.flower_count} | Extrait: "${contentPreview}" ${p.is_demo ? "[DÉMO]" : ""}`
       );
     }
 
@@ -224,6 +225,7 @@ RÈGLES D'ANALYSE :
    - Alliés (alliances matrimoniales) → confiance forte
    - Famille élargie → confiance moyenne
    - Autres → confiance faible
+3bis. Pour la relation entre un contributeur et le défunt, lis D'ABORD le champ "Lien déclaré" de son hommage (ex. « Petit-fils de la Défunte ») et restitue-le tel quel comme déclaration, jamais comme certitude ; n'utilise ni catégorie, ni cierges/fleurs pour deviner la nature du lien. Si plusieurs libellés diffèrent, cite-les tous sans trancher.
 4. L'implication émotionnelle se mesure par : nombre de cierges + fleurs + longueur de l'hommage.
 5. Réponds toujours en français, de manière structurée et avec empathie.
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
@@ -317,7 +319,8 @@ ${contextLines.join("\n")}`;
           if (!result) {
             send({ type: "error", error: "Réponse structurée indisponible. Aucun chemin n'a été déduit." });
           } else {
-            send({ type: "relation_sources", memorial_ids: result.memorialIds, valid: result.validSources });
+            send({ type: "relation_sources", memorial_ids: result.memorialIds, valid: result.validSources,
+              tribute_links: result.validSources ? tributeLinks(posts, result.memorialIds) : [] });
             send({ choices: [{ delta: { content: result.answer } }] });
             // Existing history stores answer only; archived entries cannot reconstruct source metadata.
             const { error } = await supabase.from("social_search_history").insert({
