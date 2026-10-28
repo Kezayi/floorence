@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Sparkles, X, Loader2, History, Clock, ChevronLeft, Users } from "lucide-react";
 import { CommandDialog } from "@/components/ui/command";
 import { AdminRelationExplanation } from "@/components/admin/AdminRelationExplanation";
-import { readAdminMemorialContext, stripCitations, type AdminMemorialContext } from "@/lib/adminRelationContext";
-import ReactMarkdown from "react-markdown";
+import { readAdminMemorialContext, type AdminMemorialContext } from "@/lib/adminRelationContext";
+import { RibengaAnswer } from "@/components/admin/RibengaAnswer";
 import { supabase } from "@/integrations/supabase/client";
 
 // Hard-coded URL pour bypasser tout problème de variable d'environnement
@@ -314,7 +314,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                 </div>
                 {selectedEntry.answer ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{stripCitations(selectedEntry.answer)}</ReactMarkdown>
+                    <RibengaAnswer content={selectedEntry.answer} />
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">Réponse non enregistrée</p>
@@ -373,7 +373,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                   <div>
 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{stripCitations(answer)}</ReactMarkdown>
+                      <RibengaAnswer content={answer} candidates={memorialMeta} sourceIds={sourceIds} />
                       {isLoading && (
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse rounded-sm ml-0.5" />
                       )}
