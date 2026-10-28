@@ -151,6 +151,8 @@ function StyledAnswer({ content, isStreaming, candidates = [], sourceIds = [] }:
 
 const SocialIntelligence = () => {
   const [query, setQuery] = useState("");
+  /** Question actually submitted (the input may be edited afterwards). */
+  const [asked, setAsked] = useState("");
   const [answer, setAnswer] = useState("");
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,6 +177,7 @@ const SocialIntelligence = () => {
 
   const submitQuestion = useCallback(async (q: string) => {
     if (q.trim().length < 3) return;
+    setAsked(q);
     setShowHistory(false);
     setSelectedEntry(null);
     setIsLoading(true);
@@ -344,7 +347,7 @@ const SocialIntelligence = () => {
             {(answer || isLoading) && (
               <div>
                 <StyledAnswer content={answer} isStreaming={isLoading} candidates={context} sourceIds={sourceIds} />
-                {answer && !isLoading && <AdminRelationExplanation key={query} candidates={context} sourceIds={sourceIds} question={query} />}
+                {answer && !isLoading && <AdminRelationExplanation key={asked} candidates={context} sourceIds={sourceIds} question={asked} />}
               </div>
             )}
 

@@ -135,6 +135,8 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const open = externalOpen ?? internalOpen;
   const setOpen = onExternalOpenChange ?? setInternalOpen;
   const [query, setQuery] = useState("");
+  /** Question actually submitted (the input may be edited afterwards). */
+  const [asked, setAsked] = useState("");
   const [answer, setAnswer] = useState("");
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -192,6 +194,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
 
   const submitQuestion = useCallback(async (q: string) => {
     if (q.trim().length < 3) return;
+    setAsked(q);
     setShowHistory(false);
     setSelectedEntry(null);
     setIsLoading(true);
@@ -379,7 +382,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={query} candidates={memorialMeta} sourceIds={sourceIds} question={query} />}
+                    {!isLoading && <AdminRelationExplanation key={asked} candidates={memorialMeta} sourceIds={sourceIds} question={asked} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (
