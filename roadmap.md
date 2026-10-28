@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [ ] Correctif BO RIBENGA : raccorder les métadonnées canoniques aux parcours existants sur la page et la palette ; vérifier sans données personnelles.
+
 - [x] 1. Modération a posteriori : signalements, file admin, RPC/RLS et séparation éditoriale/financière implémentés ; tests SQL isolés et aperçu vérifiés.
 - [ ] 1. Réserve de validation : cycle complet sur signalement réel, aucune donnée test autorisée dans la base partagée ; projections RAGet hors mandat inchangées.
 - [x] 2. AAA-CHANTIER-02 implémenté dans l’aperçu : Photo, nouveaux uploads optimisés et svh ciblés ; verdict PARTIAL, rapport AAA-CHANTIER-02-RAPPORT.md.

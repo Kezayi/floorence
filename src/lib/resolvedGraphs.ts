@@ -118,7 +118,7 @@ export interface FamilyGraphRaw {
   memorials: FamilyGraphMemorial[];
 }
 
-export async function fetchFamilyRelationGraph(masterId: string): Promise<FamilyGraphRaw> {
+export async function fetchFamilyRelationGraph(masterId: string, allowedPublicIds?: string[]): Promise<FamilyGraphRaw> {
   const { data: rows, error } = await supabase.rpc("get_resolved_memorial_relations", {
     p_master_id: masterId,
   });
@@ -135,25 +135,51 @@ export async function fetchFamilyRelationGraph(masterId: string): Promise<Family
     endpointIds.add(r.endpoint_b);
   }
 
-  const { data: mems } = await supabase
+  const scopedIds = Array.from(endpointIds).filter((id) => !allowedPublicIds || allowedPublicIds.includes(id));
+  if (scopedIds.length === 0) return { edges: [], memorials: [] };
+  let memorialQuery = supabase
     .from("memorials")
     .select("id, first_name, last_name, slug, share_token, photo_url, photos, default_photo_index, origin_country, origin_locality, residence_country, residence_locality, burial_country, burial_locality")
-    .in("id", Array.from(endpointIds));
+    .in("id", scopedIds);
+  if (allowedPublicIds) memorialQuery = memorialQuery.eq("is_active", true).eq("is_published", true).is("deleted_at", null);
+  const { data: mems, error: memError } = await memorialQuery;
+  if (memError) throw memError;
   const memorials = (mems || []) as FamilyGraphMemorial[];
   const visibleIds = new Set(memorials.map((m) => m.id));
 
   // RIBENGA-07: une arête par relation_id canonique — jamais de fusion de
   // relations distinctes, jamais d'addition de leurs confirmations.
+  // The RPC aggregates labels and IDs independently: array indexes do not pair them.
+  // Recover each original accepted declaration through the caller's RLS instead.
+  const relationIds = Array.from(new Set(kept.filter((r) => visibleIds.has(r.endpoint_a) && visibleIds.has(r.endpoint_b))
+    .flatMap((r) => r.relation_ids || [])));
+  if (relationIds.length === 0) return { edges: [], memorials };
+  const { data: originals, error: originalError } = await supabase.from("memorial_relations")
+    .select("id, relation_type").in("id", relationIds).eq("status", "accepted");
+  if (originalError) throw originalError;
+  const labels = new Map((originals ?? []).map((r) => [r.id, r.relation_type]));
   const edges: FamilyGraphEdgeRaw[] = kept
     .filter((r) => visibleIds.has(r.endpoint_a) && visibleIds.has(r.endpoint_b))
     .flatMap((r) =>
-      (r.relation_ids || []).map((rid, idx) => ({
+      (r.relation_ids || []).filter((rid) => labels.has(rid)).map((rid) => ({
         aId: r.endpoint_a,
         bId: r.endpoint_b,
         relationId: rid,
-        label: r.relation_labels?.[idx] || r.relation_labels?.[0] || r.normalized_type || "Lien déclaré",
+        label: labels.get(rid) || "Lien déclaré",
       })),
     );
 
   return { edges, memorials };
+}
+
+/** Two existing local projections, bounded to the server context and public endpoints. */
+export async function fetchAdminContextRelationGraph(fromId: string, toId: string, allowedIds: string[]): Promise<FamilyGraphRaw> {
+  if (!allowedIds.includes(fromId) || !allowedIds.includes(toId) || fromId === toId) {
+    return { edges: [], memorials: [] };
+  }
+  const graphs = await Promise.all([fromId, toId].map((id) => fetchFamilyRelationGraph(id, allowedIds)));
+  return {
+    edges: Array.from(new Map(graphs.flatMap((g) => g.edges).map((e) => [e.relationId, e])).values()),
+    memorials: Array.from(new Map(graphs.flatMap((g) => g.memorials).map((m) => [m.id, m])).values()),
+  };
 }

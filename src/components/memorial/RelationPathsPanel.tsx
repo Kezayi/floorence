@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchFamilyRelationGraph, type FamilyGraphMemorial } from "@/lib/resolvedGraphs";
+import { fetchFamilyRelationGraph, fetchAdminContextRelationGraph, type FamilyGraphMemorial } from "@/lib/resolvedGraphs";
 import { buildVerifiedEdges, findRelationPaths, type RelationPath, type VerifiedRelationEdge } from "@/lib/relationPaths";
 import Photo from "@/components/ui/Photo";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,8 @@ const MAX_TARGETS = 6;
 interface RelationPathsPanelProps {
   memorialId: string;
   deceasedName: string;
+  targetMemorialId?: string;
+  allowedMemorialIds?: string[];
 }
 
 const pickMemorialPhoto = (m: FamilyGraphMemorial): string | null => {
@@ -36,13 +38,15 @@ const memorialUrl = (m: FamilyGraphMemorial): string =>
 
 const fullName = (m: FamilyGraphMemorial): string => `${m.first_name} ${m.last_name}`.trim();
 
-const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProps) => {
+const RelationPathsPanel = ({ memorialId, deceasedName, targetMemorialId, allowedMemorialIds }: RelationPathsPanelProps) => {
   const { user } = useAuth();
   const isAuthenticated = !!user;
 
   const graphQ = useQuery({
-    queryKey: ["family-relation-graph", memorialId],
-    queryFn: () => fetchFamilyRelationGraph(memorialId),
+    queryKey: targetMemorialId ? ["admin-context-relation-graph", memorialId, targetMemorialId, allowedMemorialIds] : ["family-relation-graph", memorialId],
+    queryFn: () => targetMemorialId
+      ? fetchAdminContextRelationGraph(memorialId, targetMemorialId, allowedMemorialIds ?? [])
+      : fetchFamilyRelationGraph(memorialId),
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -76,7 +80,8 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
   // null = indisponible (RPC en erreur ou en chargement) : aucun faux 0 affiché.
   const edgeConfirmations = (e: VerifiedRelationEdge): number | null => {
     if (!countsQ.data) return null;
-    return countsQ.data.get(e.relationId) ?? 0;
+    if (countsQ.isError) return null;
+    return countsQ.data.get(e.relationId) ?? null;
   };
 
   const memorialById = useMemo(
@@ -91,21 +96,24 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
     const out: Array<{ memorial: FamilyGraphMemorial; paths: RelationPath[] }> = [];
     for (const m of graphQ.data.memorials) {
       if (m.id === memorialId) continue;
+      if (targetMemorialId && m.id !== targetMemorialId) continue;
       const paths = findRelationPaths(edges, memorialId, m.id, {
         maxDepth: MAX_DEPTH,
         maxPaths: MAX_PATHS_PER_TARGET,
-      }).filter((p) => p.steps.length >= 2);
+      }).filter((p) => p.steps.length >= (targetMemorialId ? 1 : 2));
       if (paths.length > 0) out.push({ memorial: m, paths });
       if (out.length >= MAX_TARGETS) break;
     }
     return out;
-  }, [graphQ.data, edges, memorialId]);
+  }, [graphQ.data, edges, memorialId, targetMemorialId]);
 
   if (graphQ.isLoading) {
     return <Skeleton className="h-24 w-full rounded-sm" />;
   }
   // Erreur ou graphe insuffisant : on n'affiche rien plutôt qu'inventer.
-  if (graphQ.isError || !graphQ.data || edges.length < 2) return null;
+  if (graphQ.isError || !graphQ.data) return targetMemorialId
+    ? <p role="alert" className="text-sm text-muted-foreground">Sources ou chemins indisponibles.</p> : null;
+  if (!targetMemorialId && edges.length < 2) return null;
 
   const renderNode = (id: string) => {
     const m = memorialById.get(id);
@@ -142,7 +150,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
         <span className="w-4 h-px bg-border shrink-0" aria-hidden="true" />
         <span className="text-xs font-sans text-muted-foreground">{e.label}</span>
         <span className="text-[10px] font-sans px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground">
-          Lien déclaré
+          Lien déclaré · accepté
         </span>
         {confirmations !== null && confirmations > 0 && (
           <span className="text-[10px] font-sans px-1.5 py-0.5 rounded-sm border border-ai-gold/30 bg-ai-gold/10 text-ai-gold-foreground">
@@ -185,7 +193,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
 
       {targets.length === 0 ? (
         <p className="text-sm text-muted-foreground font-serif italic">
-          Chemin non étayé au-delà des liens directs pour {deceasedName}.
+          {targetMemorialId ? "Chemin non étayé entre les deux sources dans le contexte accessible." : `Chemin non étayé au-delà des liens directs pour ${deceasedName}.`}
         </p>
       ) : (
         <div className="space-y-4">
@@ -224,6 +232,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName }: RelationPathsPanelProp
       <p className="mt-4 text-xs text-muted-foreground font-sans">
         Une confirmation est un témoignage personnel et facultatif ; elle ne prouve ni l'identité, ni la filiation.
       </p>
+      {targetMemorialId && <p className="mt-2 text-xs text-muted-foreground">Chaque portrait ouvre sa source mémorial (Voir+). Les libellés sont des déclarations, pas une conclusion de filiation ; aucune hypothèse n'est confirmée par ce parcours.</p>}
     </div>
   );
 };
