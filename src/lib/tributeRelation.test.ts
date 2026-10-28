@@ -32,17 +32,29 @@ describe("relation personne ↔ défunt du même mémorial", () => {
     const out = tributeLinks([
       { memorial_id: MEM, user_id: "u1", author_name: "Michel Testo Ayi", relation_link: "Petit-fils de la Défunte" },
       { memorial_id: MEM, user_id: "u1", author_name: "Michel Testo Ayi", relation_link: "Petit-fils de la Défunte" },
-      { memorial_id: MEM, user_id: "u2", author_name: "Jean Conflit", relation_link: "Fils" },
-      { memorial_id: MEM, user_id: "u2", author_name: "Jean Conflit", relation_link: "Neveu" },
+      { id: "b", created_at: "2026-02-01", memorial_id: MEM, user_id: "u2", author_name: "Jean Conflit", relation_link: "Neveu" },
+      { id: "a", created_at: "2026-01-01", memorial_id: MEM, user_id: "u2", author_name: "Jean Conflit", relation_link: "Fils" },
       { memorial_id: MEM, user_id: "u3", author_name: "Ali Homo", relation_link: "Fils" },
       { memorial_id: MEM, user_id: "u4", author_name: "Ali Homo", relation_link: "Fils" },
       { memorial_id: "autre", user_id: "u5", author_name: "Hors Source", relation_link: "Fils" },
     ], [MEM]);
     expect(out.find((t) => t.author === "Michel Testo Ayi")).toEqual({ memorial_id: MEM, author: "Michel Testo Ayi", identity: "unique", links: ["Petit-fils de la Défunte"] });
-    expect(out.find((t) => t.author === "Jean Conflit")!.links).toEqual(["Fils", "Neveu"]);
+    expect(out.find((t) => t.author === "Jean Conflit")!.links).toEqual(["Fils"]); // premier lien explicite du compte seul retenu
     expect(out.find((t) => t.author === "Ali Homo")!.identity).toBe("ambiguous");
     expect(out.some((t) => t.author === "Hors Source")).toBe(false);
     expect(JSON.stringify(out)).not.toContain("u1");
     expect(readTributeLinks(out, [])).toEqual([]);
+  });
+  it("serveur : premier hommage sans lien puis lien explicite = canonique ; anonymes jamais fusionnés par nom", () => {
+    const out = tributeLinks([
+      { id: "1", created_at: "2026-01-01", memorial_id: MEM, user_id: "u9", author_name: "Paul Testo", relation_link: null },
+      { id: "2", created_at: "2026-01-02", memorial_id: MEM, user_id: "u9", author_name: "Paul Testo", relation_link: "Fils" },
+      { id: "3", created_at: "2026-01-01", memorial_id: MEM, user_id: null, author_name: "Anne Anon", relation_link: "Nièce" },
+      { id: "4", created_at: "2026-01-02", memorial_id: MEM, user_id: null, author_name: "Anne Anon", relation_link: "Amie" },
+    ], [MEM]);
+    expect(out.find((t) => t.author === "Paul Testo")!.links).toEqual(["Fils"]);
+    const anon = out.find((t) => t.author === "Anne Anon")!;
+    expect(anon.identity).toBe("ambiguous");
+    expect(anon.links).toEqual(["Nièce", "Amie"]);
   });
 });

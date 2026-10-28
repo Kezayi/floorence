@@ -216,6 +216,42 @@ export type Database = {
           },
         ]
       }
+      guestbook_relation_link_audit: {
+        Row: {
+          canonical_relation_link: string
+          created_at: string
+          id: string
+          memorial_id: string
+          post_created_at: string
+          post_id: string
+          previous_relation_link: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          canonical_relation_link: string
+          created_at?: string
+          id?: string
+          memorial_id: string
+          post_created_at: string
+          post_id: string
+          previous_relation_link: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          canonical_relation_link?: string
+          created_at?: string
+          id?: string
+          memorial_id?: string
+          post_created_at?: string
+          post_id?: string
+          previous_relation_link?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       guestbook_reports: {
         Row: {
           created_at: string
