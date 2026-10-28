@@ -3,6 +3,42 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type AdminMemorialContext, readRelationSourceIds, citedPairs, MAX_CITED_FOR_PATHS } from "@/lib/adminRelationContext";
 import RelationPathsPanel from "@/components/memorial/RelationPathsPanel";
+import { describeDeclared } from "@/lib/relationDirection";
+
+/** Direct accepted declarations between A and B, worded in both directions from stored orientation. */
+function DeclaredBetween({ a, b, nameA, nameB }: { a: string; b: string; nameA: string; nameB: string }) {
+  const q = useQuery({
+    queryKey: ["ribenga-declared-between", a, b],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("memorial_relations")
+        .select("id, relation_type, memorial_id_1, memorial_id_2, status").eq("status", "accepted")
+        .or(`and(memorial_id_1.eq.${a},memorial_id_2.eq.${b}),and(memorial_id_1.eq.${b},memorial_id_2.eq.${a})`);
+      if (error) throw error;
+      const statements = describeDeclared(data ?? [], a, b);
+      if (!statements.length) return { statements, counts: new Map<string, number>() };
+      const { data: c, error: ce } = await supabase.rpc("get_relation_confirmation_counts", { p_relation_ids: statements.map((s) => s.relationId) });
+      return { statements, counts: ce ? null : new Map((c ?? []).map((r) => [r.relation_id, Number(r.confirmations)])) };
+    },
+    staleTime: 60_000,
+  });
+  if (q.isLoading) return <p role="status" className="text-xs text-muted-foreground">Lecture des liens déclarés…</p>;
+  if (q.isError) return <p role="alert" className="text-xs text-destructive">Liens déclarés indisponibles.</p>;
+  const { statements, counts } = q.data!;
+  if (!statements.length) return <p className="text-xs text-muted-foreground">Aucun lien direct déclaré entre {nameA} et {nameB}.</p>;
+  return (
+    <ul className="text-sm text-foreground space-y-1" aria-label="Liens directs déclarés">
+      {statements.map((s) => {
+        const n = counts?.get(s.relationId);
+        return (
+          <li key={s.relationId}>
+            Selon le lien déclaré : {nameA} est {s.aToB} de {nameB} · {nameB} est {s.bToA} de {nameA}.{" "}
+            <span className="text-xs text-muted-foreground">Statut : déclaré · {counts === null ? "confirmations indisponibles" : n ? `confirmé par ${n} membre${n > 1 ? "s" : ""} (sans certification)` : "non confirmé"}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 interface Props {
   candidates: AdminMemorialContext[];
@@ -60,6 +96,7 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
       {pairs.map(([a, b]) => (
         <div key={`${a}:${b}`} className="space-y-1">
           <p className="text-xs font-medium text-foreground">{nameOf(a)} → {nameOf(b)}</p>
+          <DeclaredBetween a={a} b={b} nameA={nameOf(a)} nameB={nameOf(b)} />
           <RelationPathsPanel memorialId={a} deceasedName={nameOf(a)}
             targetMemorialId={b} allowedMemorialIds={allowedIds} />
         </div>
