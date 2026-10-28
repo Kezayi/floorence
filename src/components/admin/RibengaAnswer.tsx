@@ -44,11 +44,13 @@ function citationPlugin(destinations: Map<string, Destination>) {
                 previous.value = prefix;
                 output.push({ type: "link", url: destination.url, children: [{ type: "text", value: destination.name }] });
               }
-            } else if (previous.type === "text" && !previous.value?.trim()) {
-              const formatted = output.at(-2);
+            } else if ((previous.type === "text" && !previous.value?.trim()) ||
+              previous.type === "strong" || previous.type === "emphasis") {
+              const formattedIndex = previous.type === "text" ? output.length - 2 : output.length - 1;
+              const formatted = output[formattedIndex];
               if ((formatted?.type === "strong" || formatted?.type === "emphasis") &&
                 formatted.children?.length === 1 && formatted.children[0].value === destination.name) {
-                output.splice(output.length - 2, 1, { type: "link", url: destination.url, children: [formatted] });
+                output.splice(formattedIndex, 1, { type: "link", url: destination.url, children: [formatted] });
               }
             }
           }
