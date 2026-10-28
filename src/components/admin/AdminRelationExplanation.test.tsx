@@ -174,7 +174,7 @@ describe("Question-oriented declared relation — synthetic", () => {
     ask("Quel lien entre Paul Test et Jacques Test ?");
     const b = await box();
     expect(await within(b).findByText(/Plusieurs liens déclarés coexistent/)).toBeInTheDocument();
-    expect(within(b).getByText(/déclaré fils de/)).toBeInTheDocument();
-    expect(within(b).getByText(/déclaré frère de/)).toBeInTheDocument();
+    expect(within(b).getByText(/est le fils de/)).toBeInTheDocument();
+    expect(within(b).getByText(/est le frère de/)).toBeInTheDocument();
   });
 });
