@@ -1,4 +1,4 @@
-import { computeIspFacts, isIspQuestion } from "../_shared/isp.ts";
+import { computeIspFacts, formatIsp, isIspQuestion, summarizeIsp, targetIspMemorial } from "../_shared/isp.ts";
 import { tributeLinks } from "./tributeLinks.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -211,7 +211,19 @@ serve(async (req) => {
         const mName = memorialMap.get(f.memorial_id) || "?";
         contextLines.push(f.isp === null
           ? `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | ISP non calculable (${f.reason})`
-          : `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | Cercle: ${f.circle} (C=${f.C}, E=${f.E}) | G=${f.G} | T=${f.T} | ISP=${f.isp.toFixed(4)}${f.isp > 1 ? " (>1 : signal potentiel)" : ""}`);
+          : `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | Cercle: ${f.circle} (C=${f.C}, E=${f.E}) | G=${f.G} | T=${f.T} | ISP=${formatIsp(f.isp)}${f.isp > 1 ? " (>1 : signal potentiel)" : ""}`);
+      }
+      if (facts.length) {
+        const target = targetIspMemorial(question, facts, memorialMap);
+        if (target === null) {
+          contextLines.push("ISP_COMPARAISON | mémorial concerné ambigu : plusieurs mémoriaux, aucun désigné sans ambiguïté ; aucune comparaison entre mémoriaux différents, aucun maximum désigné");
+        } else {
+          const s = summarizeIsp(facts, target);
+          const mName = memorialMap.get(target) || "?";
+          contextLines.push(s.max === null
+            ? `ISP_COMPARAISON | ${mName} [[mem:${target}]] | évalués=${s.evaluated} | calculables=0 | non calculables=${s.non_calculable} | aucun maximum établi`
+            : `ISP_COMPARAISON | ${mName} [[mem:${target}]] | évalués=${s.evaluated} | calculables=${s.calculable} | non calculables=${s.non_calculable} | ISP maximum=${formatIsp(s.max)} | ${s.leaders.length > 1 ? "égalité" : "plus fort ISP"} : ${s.leaders.map((n) => redact(n)).join(" ; ")}`);
+        }
       }
     }
 
@@ -243,7 +255,8 @@ RÈGLES D'ANALYSE :
 5. Réponds toujours en français, de manière structurée et avec empathie.
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
 7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.${ispAsked ? `
-8. Indice de Sympathie Potentiel : utilise UNIQUEMENT les lignes ISP_FAIT, calculées par le serveur. Ne calcule, n'arrondis autrement ni n'invente aucune valeur ; si « non calculable », dis-le avec la raison. ISP > 1 est un signal de rayonnement potentiel, jamais une preuve d'influence ou d'ascendant. Les données actuelles sont fictives (test).` : ""}
+8. Indice de Sympathie Potentiel : utilise UNIQUEMENT les lignes ISP_FAIT, calculées par le serveur. Ne calcule, n'arrondis autrement ni n'invente aucune valeur ; si « non calculable », dis-le avec la raison. ISP > 1 est un signal de rayonnement potentiel, jamais une preuve d'influence ou d'ascendant. Les données actuelles sont fictives (test).
+9. Si une ligne ISP_FAIT ou ISP_COMPARAISON existe, N'UTILISE JAMAIS le message « Désolé, je ne trouve pas d'informations spécifiques dans les biographies… » : réponds d'abord avec ISP_COMPARAISON (plus fort ISP parmi les calculables seulement, égalité éventuelle, nombre évalués et non calculables, ou ambiguïté du mémorial sans choisir). Ne compare jamais des mémoriaux différents. Un ISP ≤ 1 n'est jamais une absence de sympathie ; « 0 » est une valeur exacte.` : ""}
 
 CONTRAT DE RÉPONSE :
 Retourne uniquement un objet JSON {"answer": "réponse française structurée", "source_refs": ["référence SOURCE exacte"]}.
