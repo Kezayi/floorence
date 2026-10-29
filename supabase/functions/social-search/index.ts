@@ -205,6 +205,7 @@ serve(async (req) => {
 
     // ISP: deterministic server-side facts, only for potential-sympathy/influence questions.
     const ispAsked = isIspQuestion(question);
+    let ispHasFacts = false;
     if (ispAsked) {
       const facts = computeIspFacts(posts, { truncated: (postsRaw || []).length >= 500 });
       for (const f of facts) {
@@ -213,6 +214,7 @@ serve(async (req) => {
           ? `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | ISP non calculable (${f.reason})`
           : `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | Cercle: ${f.circle} (C=${f.C}, E=${f.E}) | G=${f.G} | T=${f.T} | ISP=${formatIsp(f.isp)}${f.isp > 1 ? " (>1 : signal potentiel)" : ""}`);
       }
+      ispHasFacts = facts.length > 0;
       if (facts.length) {
         const target = targetIspMemorial(question, facts, memorialMap);
         if (target === null) {
@@ -241,9 +243,9 @@ DIRECTIVE DE SÉCURITÉ ABSOLUE :
 
 RÈGLES D'ANALYSE :
 1. CITE TOUJOURS tes sources : "Source : Hommage de [Auteur]" ou "Source : Lien certifié".
-2. Ne JAMAIS inventer de lien. Si tu ne trouves pas, dis-le clairement avec ce message exact :
+2. Ne JAMAIS inventer de lien.${ispHasFacts ? " Pour cette question ISP, les faits ISP_FAIT/ISP_COMPARAISON constituent la réponse." : ` Si tu ne trouves pas, dis-le clairement avec ce message exact :
    "Désolé, je ne trouve pas d'informations spécifiques dans les biographies pour répondre précisément, mais voici ce que je sais sur le défunt..."
-   Puis liste les faits disponibles (dates, nombre d'hommages, liens connus).
+   Puis liste les faits disponibles (dates, nombre d'hommages, liens connus).`}
 3. Priorise la fiabilité des liens dans cet ordre :
    - Famille directe (sang) → confiance maximale
    - Socio cœur (fraternité choisie) → confiance forte
