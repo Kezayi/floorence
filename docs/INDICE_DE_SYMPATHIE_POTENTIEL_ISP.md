@@ -3,7 +3,7 @@
 **Document de référence conceptuelle — RIBENGA**  
 **Auteur et titulaire revendiqué des droits : Michel NGWA AYI, promoteur de Floorence**  
 **Date de consignation : 29 octobre 2026**  
-**Statut : spécification conceptuelle validée ; intégration ISP codée dans RIBENGA, déploiement et recette de bout en bout non confirmés.**
+**Statut : social-search déployée le 29 octobre 2026 ; calcul et parcours Back-Office/palette validés sur fixtures synthétiques isolées. Un appel complet à la fonction hébergée reste non vérifié sans écriture d'historique.**
 
 > **Mention de propriété intellectuelle.** L'Indice de Sympathie Potentiel (ISP), dans sa définition, son articulation des cercles relationnels, sa méthode de calcul et son application à Floorence/RIBENGA, est revendiqué comme une création et une **propriété exclusive de Michel NGWA AYI, promoteur de Floorence**. © 2026 Michel NGWA AYI — Tous droits réservés sur les éléments susceptibles de protection. Toute utilisation, reproduction, adaptation ou exploitation par des tiers nécessite son autorisation, sous réserve du droit applicable. Cette mention consigne une revendication de titularité ; elle ne vaut pas, à elle seule, titre officiel, enregistrement ni constat juridique d'exclusivité sur une idée ou une formule mathématique.
 
@@ -109,3 +109,14 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 - Alias normalisés : `socio_coeur` et `Socio-cœur` = Socio-cœur ; catégorie inconnue = non calculable.
 - Non calculable : T = 0, auteur anonyme, homonyme ou ambigu, cercles multiples pour un compte, corpus tronqué.
 - Déclenchement : questions de sympathie, influence, rayonnement, mobilisation ou ascendant uniquement.
+
+### Validation du 29 octobre 2026
+
+- 34 tests ciblés réussis : modèle/documentation (13), contrat réponse (7), parcours question libre Back-Office/palette (14). La CI ISP exécute le modèle/documentation et les deux parcours.
+- Vérification Deno de `social-search/index.ts` réussie ; compilation automatique de l'aperçu réussie.
+- Déploiement de `social-search` confirmé par l'outil de déploiement. Empreinte du source soumis : `a5467152a5a52b996ea35a0c693b12dd339fd7529f8353b4ddaebe6a889417fd` ; cette empreinte n'est pas une lecture comparative du code hébergé.
+- Recette navigateur sur les deux écrans : question fictive envoyée, ISP synthétique `55.0000` affiché, nom du mémorial cliquable et UUID masqué ; toutes les requêtes externes interceptées, aucune erreur d'exécution au contrôle final.
+- Fonction hébergée : jeton fictif invalide refusé avec HTTP 401. Aucun appel IA réussi en ligne : la fonction écrit normalement un historique et une consommation, ce qui serait incompatible avec la consigne de ne modifier aucune donnée pendant cette recette.
+- Le calcul s'appuie sur les lignes distinctes de la requête simple `guestbook_posts` (pas de jointure multiplicative) ; aucun paiement n'est compté. Le seuil de 500 hommages entraîne prudemment « corpus tronqué ».
+- Les faits calculés sont transmis à la passerelle IA de Lovable dans le contexte autorisé existant ; l'usage interne désigne l'absence d'UI publique, pas l'absence de traitement IA. La restitution finale en ligne reste une synthèse IA encadrée, non une garantie déterministe de chaque formulation.
+- Aucune migration, modification des données/paiements ou publication du site lors de cette finalisation. L'exécution distante du workflow GitHub n'a pas été vérifiée ; son contrôle local a réussi.

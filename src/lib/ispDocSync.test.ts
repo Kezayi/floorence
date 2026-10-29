@@ -49,4 +49,25 @@ describe("ISP model", () => {
     expect(isIspQuestion("Quel lien entre Paul et Jacques ?")).toBe(false);
     expect(isIspQuestion("Combien de fleurs pour X ?")).toBe(false);
   });
+  it("sums distinct tributes once per account and isolates memorial totals", () => {
+    const facts = computeIspFacts([
+      p({ candle_count: 2, flower_count: 1 }),
+      p({ candle_count: 4, flower_count: 3 }),
+      p({ memorial_id: "other", candle_count: 100 }),
+    ]);
+    expect(facts.find((f) => f.memorial_id === "m")).toMatchObject({ G: 10, T: 10, C: 1, E: 0, isp: 1 });
+    expect(facts.find((f) => f.memorial_id === "other")).toMatchObject({ G: 100, T: 100, isp: 1 });
+  });
+  it("rejects multiple circles for one account", () => {
+    const [fact] = computeIspFacts([p({ candle_count: 1 }), p({ relation_category: "autres", flower_count: 1 })]);
+    expect(fact).toMatchObject({ isp: null, reason: "cercles multiples" });
+  });
+  it.each([-1, 1.5, null, Number.POSITIVE_INFINITY])("rejects unreliable gesture count %s", (candle_count) => {
+    const [fact] = computeIspFacts([p({ candle_count })]);
+    expect(fact).toMatchObject({ isp: null, reason: "gestes non fiables" });
+  });
+  it("does not calculate zero-total or truncated corpus", () => {
+    expect(computeIspFacts([p({})])[0]).toMatchObject({ isp: null, reason: "T = 0" });
+    expect(computeIspFacts([p({ candle_count: 10 })], { truncated: true })[0]).toMatchObject({ isp: null, T: null, reason: "corpus tronqué" });
+  });
 });

@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] ISP uniquement : 34 tests, contrôle Deno et compilation automatique OK ; social-search déployée ; recette navigateur BO/palette synthétique, réseau externe intercepté, noms cliquables/UUID masqués. Aucun changement de données ni paiements, aucune publication. Appel IA hébergé complet non vérifié : il écrit un historique, incompatible avec cette recette sans mutations ; exécution GitHub distante non vérifiée.
+
 - [x] Correctif visuel strict RIBENGA : moteur avant sources dans le DOM ; rendu partagé des marqueurs internes, liens uniquement vers sources canoniques visibles ; 41 tests PASS, compilation aperçu OK, rendu desktop/mobile isolé vérifié. Recette connectée et contrôle TypeScript séparé non vérifiés.
 
 - [x] Correctif strict RIBENGA BO : sources pertinentes structurées et validées, parcours automatiques avant exploration manuelle ; 47 tests isolés PASS sans données réelles. Contrat du fournisseur et usage connecté non vérifiés, aucune publication manuelle.
