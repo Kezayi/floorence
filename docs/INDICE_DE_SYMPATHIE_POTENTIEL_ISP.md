@@ -3,7 +3,7 @@
 **Document de référence conceptuelle — RIBENGA**  
 **Auteur et titulaire revendiqué des droits : Michel NGWA AYI, promoteur de Floorence**  
 **Date de consignation : 29 octobre 2026**  
-**Statut : spécification conceptuelle validée ; implémentation non autorisée par le présent document.**
+**Statut : spécification conceptuelle validée ; intégration ISP codée dans RIBENGA, déploiement et recette de bout en bout non confirmés.**
 
 > **Mention de propriété intellectuelle.** L'Indice de Sympathie Potentiel (ISP), dans sa définition, son articulation des cercles relationnels, sa méthode de calcul et son application à Floorence/RIBENGA, est revendiqué comme une création et une **propriété exclusive de Michel NGWA AYI, promoteur de Floorence**. © 2026 Michel NGWA AYI — Tous droits réservés sur les éléments susceptibles de protection. Toute utilisation, reproduction, adaptation ou exploitation par des tiers nécessite son autorisation, sous réserve du droit applicable. Cette mention consigne une revendication de titularité ; elle ne vaut pas, à elle seule, titre officiel, enregistrement ni constat juridique d'exclusivité sur une idée ou une formule mathématique.
 
