@@ -112,7 +112,7 @@ export function targetIspMemorial(question: string, facts: IspFact[], names: Map
   return named.length === 1 ? named[0] : null;
 }
 
-export interface IspSummary { memorial_id: string; evaluated: number; calculable: number; non_calculable: number; max: number | null; leaders: string[] }
+export interface IspSummary { memorial_id: string; evaluated: number; calculable: number; non_calculable: number; above_threshold: number; T: number | null; max: number | null; leaders: string[] }
 
 /** Deterministic maximum within ONE memorial (T shared, so exact integer numerators are compared — ties are exact). */
 export function summarizeIsp(facts: IspFact[], memorial_id: string): IspSummary {
@@ -124,5 +124,14 @@ export function summarizeIsp(facts: IspFact[], memorial_id: string): IspSummary 
     if (num > best) { best = num; leaders = [f.author_name]; } else if (num === best) leaders.push(f.author_name);
   }
   const max = calc.length ? calc.find((f) => f.G! * f.C! * (1 + f.E!) === best)!.isp : null;
-  return { memorial_id, evaluated: own.length, calculable: calc.length, non_calculable: own.length - calc.length, max, leaders };
+  const T = calc[0]?.T ?? null;
+  return { memorial_id, evaluated: own.length, calculable: calc.length, non_calculable: own.length - calc.length, above_threshold: calc.filter((f) => f.isp! > 1).length, T, max, leaders };
+}
+
+/** Semantically explicit comparison line: accounts (contributors) are never confused with tributes or gestures. */
+export function ispComparisonLine(s: IspSummary, memorialLabel: string, tributes: number, redact: (n: string) => string = (n) => n): string {
+  const head = `ISP_COMPARAISON | ${memorialLabel} [[mem:${s.memorial_id}]] | hommages visibles=${tributes} | contributeurs (comptes) évalués=${s.evaluated} | contributeurs ISP calculable=${s.calculable} | contributeurs ISP non calculable=${s.non_calculable}`;
+  if (s.max === null) return `${head} | gestes totaux T=${s.T ?? "non fiable"} | aucun maximum établi`;
+  const who = s.leaders.map(redact).join(" ; ");
+  return `${head} | gestes totaux T=${s.T} | contributeurs ISP>1=${s.above_threshold} | ISP maximum=${formatIsp(s.max)}${s.max > 1 ? " (>1 : signal potentiel)" : " (seuil >1 non franchi)"} | ${s.leaders.length > 1 ? "égalité" : "plus fort ISP"} : ${who}`;
 }
