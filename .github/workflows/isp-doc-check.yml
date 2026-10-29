@@ -26,4 +26,4 @@ jobs:
       - name: FIC-01 migration and owner RLS in disposable database
         env:
           PGPASSWORD: isolated-fixture-only
-        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/fic01_setup.sql -f drizzle/migrations/0046_fic01_profile_civility.sql -f supabase/tests/fic01_civility.sql
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/fic01_setup.sql -f drizzle/migrations/0046_fic01_profile_civility.sql -f supabase/tests/fic01_civility.sql -f supabase/tests/fic01_historical_profile.sql
