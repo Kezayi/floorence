@@ -221,10 +221,7 @@ serve(async (req) => {
           contextLines.push("ISP_COMPARAISON | mémorial concerné ambigu : plusieurs mémoriaux, aucun désigné sans ambiguïté ; aucune comparaison entre mémoriaux différents, aucun maximum désigné");
         } else {
           const s = summarizeIsp(facts, target);
-          const mName = memorialMap.get(target) || "?";
-          contextLines.push(s.max === null
-            ? `ISP_COMPARAISON | ${mName} [[mem:${target}]] | évalués=${s.evaluated} | calculables=0 | non calculables=${s.non_calculable} | aucun maximum établi`
-            : `ISP_COMPARAISON | ${mName} [[mem:${target}]] | évalués=${s.evaluated} | calculables=${s.calculable} | non calculables=${s.non_calculable} | ISP maximum=${formatIsp(s.max)} | ${s.leaders.length > 1 ? "égalité" : "plus fort ISP"} : ${s.leaders.map((n) => redact(n)).join(" ; ")}`);
+          contextLines.push(ispComparisonLine(s, memorialMap.get(target) || "?", posts.filter((p) => p.memorial_id === target).length, redact));
         }
       }
     }
