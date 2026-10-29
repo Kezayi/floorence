@@ -5,7 +5,8 @@
 - Valeurs canoniques : `M.` ; `Mme` ; `Mlle`.
 - `profiles.civility` est nullable et protégée par CHECK ; lecture/modification par titulaire via RLS existante, lecture administrateur existante.
 - Aucun changement d'identité ni reprise des données historiques. La vue publique ne contient pas la civilité.
-- Les profils créés après migration portent `civility_required=true`, fixé à l'insertion et non désactivable à la mise à jour. Leur validation `profile_completed=true` exige la civilité ; le profil provisoire créé par le lien magique reste possible.
+- Les comptes inscrits depuis la migration 0046 portent `civility_required=true`, fixé à l'insertion du profil et non désactivable à la mise à jour. Leur validation `profile_completed=true` exige la civilité ; le profil provisoire créé par le lien magique reste possible.
+- Correctif 0047 : un compte historique sans profil est reconnu uniquement par sa date canonique `auth.users.created_at`, antérieure au 29 octobre 2026 à 09:07:02.352 UTC (migration 0046). Son profil créé tardivement reste exempt de civilité obligatoire ; un compte inconnu ou inscrit à partir de cette borne reste soumis à l'obligation. Aucun profil existant n'est modifié. Tests SQL transactionnels sur base jetable, incluant borne exacte, tentative de désactivation et isolation titulaire.
 - Les profils historiques gardent `civility_required=false` et leur état de validation. Au retour sur `/compte` après connexion, une demande non bloquante s'affiche si la civilité manque ; mémoriaux, services et hommages antérieurs ne sont pas invalidés.
 - Le titulaire choisit/modifie la civilité dans son profil. Aucune inférence depuis prénom, genre, parenté ou texte d'hommage.
 

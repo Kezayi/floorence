@@ -4,22 +4,7 @@ CREATE TABLE auth.users(id uuid PRIMARY KEY, created_at timestamptz NOT NULL);
 INSERT INTO auth.users VALUES
  ('00000000-0000-4000-8000-000000000011','2026-10-29 09:07:02.351+00'),
  ('00000000-0000-4000-8000-000000000012','2026-10-29 09:07:02.352+00');
-CREATE OR REPLACE FUNCTION public.guard_profile_civility() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    NEW.civility_required := NOT EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = NEW.user_id
-      AND u.created_at < timestamptz '2026-10-29 09:07:02.352+00'
-    );
-  ELSE
-    NEW.civility_required := OLD.civility_required;
-  END IF;
-  IF NEW.civility_required AND NEW.profile_completed AND NEW.civility IS NULL THEN
-    RAISE EXCEPTION 'Civilité déclarée requise pour compléter un nouveau profil' USING ERRCODE = '23514';
-  END IF;
-  RETURN NEW;
-END;
-$$;
+\ir ../../drizzle/migrations/0047_fic01_historical_profile_guard.sql
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000011',true);
 INSERT INTO public.profiles(user_id,profile_completed,civility_required) VALUES('00000000-0000-4000-8000-000000000011',true,true);
