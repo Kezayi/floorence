@@ -82,7 +82,7 @@ describe("ISP model", () => {
   });
 });
 
-import { summarizeIsp, targetIspMemorial, formatIsp } from "../../supabase/functions/_shared/isp";
+import { summarizeIsp, targetIspMemorial, formatIsp, ispComparisonLine } from "../../supabase/functions/_shared/isp";
 import { readFileSync as rf } from "node:fs";
 describe("ISP comparison", () => {
   const posts = [
@@ -110,6 +110,22 @@ describe("ISP comparison", () => {
     expect(targetIspMemorial("Qui a le plus fort rayonnement ?", f, names)).toBeNull();
     expect(summarizeIsp(f, "m").leaders).not.toContain("Zoé");
     expect(targetIspMemorial("x", computeIspFacts(posts), names)).toBe("m");
+  });
+  it("comparison line separates tributes, contributors and gestures; threshold wording", () => {
+    const withAnon = [...posts, p({ user_id: null, author_name: "Anonyme", candle_count: 3 })];
+    const s = summarizeIsp(computeIspFacts(withAnon), "m");
+    const line = ispComparisonLine(s, "Marquise", withAnon.length);
+    expect(line).toContain("hommages visibles=5");
+    expect(line).toContain("contributeurs (comptes) évalués=4");
+    expect(line).toContain("contributeurs ISP calculable=3");
+    expect(line).toContain("gestes totaux T=9");
+    expect(line).toContain("contributeurs ISP>1=0");
+    expect(line).toContain("seuil >1 non franchi");
+    expect(line).not.toMatch(/aucune sympathie/);
+    expect(ispComparisonLine(summarizeIsp(computeIspFacts([posts[3]]), "m"), "M", 1)).toContain("aucun maximum établi");
+  });
+  it("truncated corpus => no ranking", () => {
+    expect(summarizeIsp(computeIspFacts(posts, { truncated: true }), "m")).toMatchObject({ calculable: 0, max: null, leaders: [] });
   });
   it("0 exact vs tiny value", () => {
     expect(formatIsp(0)).toBe("0");
