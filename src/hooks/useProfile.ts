@@ -87,6 +87,10 @@ export const useProfile = () => {
     if (!user || !profile) {
       return { success: false, error: new Error('No user or profile found') };
     }
+    if ((updates.civility !== undefined && !isCivility(updates.civility)) ||
+        (updates.profile_completed && !canCompleteIdentity(profile.civility_required, updates.civility ?? profile.civility))) {
+      return { success: false, error: new Error('Veuillez choisir votre civilité') };
+    }
 
     try {
       const { error: updateError } = await supabase
@@ -107,7 +111,7 @@ export const useProfile = () => {
     }
   };
 
-  const completeProfile = async (data: { display_name: string; phone?: string }): Promise<{ success: boolean; error?: Error }> => {
+  const completeProfile = async (data: { display_name: string; phone?: string; civility?: Civility }): Promise<{ success: boolean; error?: Error }> => {
     return updateProfile({
       ...data,
       profile_completed: true,
