@@ -115,6 +115,14 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 
 ### Validation du 29 octobre 2026
 
+### FIC-01 — Gouvernance identité
+
+- Valeurs canoniques : `M.` ; `Mme` ; `Mlle` ; source privée `profiles.civility`, déclarée et modifiable par titulaire, jamais inférée.
+- Hommes = M. ; femmes = Mme ou Mlle ; filtre avant maximum, égalités conservées, sans seuil ISP > 1 obligatoire. ISP général, formule, rangs et total T inchangés.
+- Civilité absente/ambiguë, profil dupliqué ou auteur anonyme : exclu du classement filtré, limites signalées. Questions de parenté non déclenchées.
+- Accès serveur admin/modérateur uniquement ; pas d'emails ni UUID de compte dans le contexte IA. Réponse filtrée déterministe dans le flux principal BO/palette. Aucun score public.
+- Les profils historiques sont invités à compléter sans perdre leurs accès ; la validation de nouveaux profils exige une civilité. Voir `FIC-01_IDENTITE_CIVILITE.md`.
+
 - 34 tests ciblés réussis : modèle/documentation (13), contrat réponse (7), parcours question libre Back-Office/palette (14). La CI ISP exécute le modèle/documentation et les deux parcours.
 - Vérification Deno de `social-search/index.ts` réussie ; compilation automatique de l'aperçu réussie.
 - Déploiement de `social-search` confirmé par l'outil de déploiement. Empreinte du source soumis : `a5467152a5a52b996ea35a0c693b12dd339fd7529f8353b4ddaebe6a889417fd` ; cette empreinte n'est pas une lecture comparative du code hébergé.
