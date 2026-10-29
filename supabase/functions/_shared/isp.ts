@@ -93,3 +93,36 @@ export function computeIspFacts(posts: IspPost[], opts: { truncated?: boolean } 
   }
   return out;
 }
+
+/** Exact display: 0 stays "0", tiny positive values never collapse to "0.0000". */
+export function formatIsp(v: number): string {
+  if (v === 0) return "0";
+  const fixed = v.toFixed(4);
+  return Number(fixed) === 0 ? v.toPrecision(4) : fixed;
+}
+
+const normText = (s: string) => normName(s).replace(/[^\p{L}\p{N} ]/gu, " ").replace(/\s+/g, " ").trim();
+
+/** Memorial concerned by the question: named uniquely, or the only one with facts; otherwise null (ambiguous). */
+export function targetIspMemorial(question: string, facts: IspFact[], names: Map<string, string>): string | null {
+  const ids = [...new Set(facts.map((f) => f.memorial_id))];
+  if (ids.length === 1) return ids[0];
+  const q = ` ${normText(question)} `;
+  const named = ids.filter((id) => { const n = normText(names.get(id) ?? ""); return n.length > 0 && q.includes(` ${n} `); });
+  return named.length === 1 ? named[0] : null;
+}
+
+export interface IspSummary { memorial_id: string; evaluated: number; calculable: number; non_calculable: number; max: number | null; leaders: string[] }
+
+/** Deterministic maximum within ONE memorial (T shared, so exact integer numerators are compared — ties are exact). */
+export function summarizeIsp(facts: IspFact[], memorial_id: string): IspSummary {
+  const own = facts.filter((f) => f.memorial_id === memorial_id);
+  const calc = own.filter((f) => f.isp !== null && f.G !== null && f.C !== null && f.E !== null);
+  let best = -1; let leaders: string[] = [];
+  for (const f of calc) {
+    const num = f.G! * f.C! * (1 + f.E!);
+    if (num > best) { best = num; leaders = [f.author_name]; } else if (num === best) leaders.push(f.author_name);
+  }
+  const max = calc.length ? calc.find((f) => f.G! * f.C! * (1 + f.E!) === best)!.isp : null;
+  return { memorial_id, evaluated: own.length, calculable: calc.length, non_calculable: own.length - calc.length, max, leaders };
+}
