@@ -1,6 +1,6 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] Prépublication FIC-01 : correctif 0047 appliqué sans modification de lignes existantes ; tests SQL isolés et régressions en validation, compilation/types gérés à confirmer ; publication par l'utilisateur uniquement.
+- [ ] Prépublication FIC-01 : correctif 0047 appliqué sans modification de lignes existantes ; SQL isolé + 114 tests Vitest + 5 simulations Edge et Deno réussis, compilation locale automatique OK ; attente preuve du typecheck frontend et compilation hébergée du nouveau commit. Publication par l'utilisateur uniquement.
 
 - [x] FIC-01 : migration 0046 appliquée, civilité privée déclarée, complétion nouveaux/historiques, filtre ISP avant maximum BO/palette ; 62 tests + 5 simulations Edge + SQL/RLS local réussis ; social-search déployée, contrôle hébergé 401. Aucune modification d'historiques/paiements.
 - [ ] FIC-01 publication du champ profil : bloquée par absence de vérification des autres changements inclus dans la version publiée ; aucune publication globale opportuniste. Recette compte réservé bloquée par absence de session disponible ; CI GitHub distante non vérifiée.
