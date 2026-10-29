@@ -1,5 +1,8 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] FIC-01 : migration 0046 appliquée, civilité privée déclarée, complétion nouveaux/historiques, filtre ISP avant maximum BO/palette ; 62 tests + 5 simulations Edge + SQL/RLS local réussis ; social-search déployée, contrôle hébergé 401. Aucune modification d'historiques/paiements.
+- [ ] FIC-01 publication du champ profil : bloquée par absence de vérification des autres changements inclus dans la version publiée ; aucune publication globale opportuniste. Recette compte réservé bloquée par absence de session disponible ; CI GitHub distante non vérifiée.
+
 - [x] ISP uniquement : identité absente/variable rendue non calculable ; 38 tests, contrôle Deno et compilation automatique OK ; social-search seule redéployée ; recette BO/palette synthétique sans erreur, noms cliquables/UUID masqués. Aucun changement de données ni paiements, aucune publication. Compte de recette réservé sans session disponible : appel IA hébergé complet non vérifié ; exécution GitHub distante non vérifiée.
 
 - [x] Correctif visuel strict RIBENGA : moteur avant sources dans le DOM ; rendu partagé des marqueurs internes, liens uniquement vers sources canoniques visibles ; 41 tests PASS, compilation aperçu OK, rendu desktop/mobile isolé vérifié. Recette connectée et contrôle TypeScript séparé non vérifiés.

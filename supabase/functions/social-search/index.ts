@@ -1,4 +1,5 @@
 import { computeIspFacts, formatIsp, ispComparisonLine, isIspQuestion, summarizeIsp, targetIspMemorial } from "../_shared/isp.ts";
+import { ispIdentityFilter, isCivility } from "../_shared/civility.ts";
 import { tributeLinks } from "./tributeLinks.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -206,21 +207,66 @@ serve(async (req) => {
     // ISP: deterministic server-side facts, only for potential-sympathy/influence questions.
     const ispAsked = isIspQuestion(question);
     let ispHasFacts = false;
+    let filteredIspAnswer: string | null = null;
+    let filteredIspTarget: string | null = null;
     if (ispAsked) {
-      const facts = computeIspFacts(posts, { truncated: (postsRaw || []).length >= 500 });
+      const identityFilter = ispIdentityFilter(question);
+      const civilities = new Map<string, unknown>();
+      // Role was validated above. Read only account UUID + declared civility, never public profiles or names.
+      if (identityFilter && identityFilter !== "ambiguous") {
+        const accountIds = [...new Set(posts.map((p) => p.user_id).filter((id): id is string => typeof id === "string"))];
+        if (accountIds.length) {
+          const { data: identities, error: identityError } = await supabase.from("profiles")
+            .select("user_id, civility").in("user_id", accountIds).limit(1000);
+          if (!identityError && identities && identities.length < 1000) {
+            const byAccount = new Map<string, unknown[]>();
+            for (const profile of identities) {
+              if (typeof profile.user_id !== "string") continue;
+              const values = byAccount.get(profile.user_id) ?? [];
+              values.push(profile.civility); byAccount.set(profile.user_id, values);
+            }
+            for (const [id, values] of byAccount) {
+              // Duplicate profiles cannot establish a unique identity even with equal values.
+              if (values.length === 1 && isCivility(values[0])) civilities.set(id, values[0]);
+            }
+          }
+        }
+      }
+      const facts = computeIspFacts(posts, { truncated: (postsRaw || []).length >= 500, identityFilter, civilities });
       for (const f of facts) {
+        if (identityFilter && f.identity_eligible !== true) continue;
         const mName = memorialMap.get(f.memorial_id) || "?";
         contextLines.push(f.isp === null
           ? `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | ISP non calculable (${f.reason})`
           : `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | Cercle: ${f.circle} (C=${f.C}, E=${f.E}) | G=${f.G} | T=${f.T} | ISP=${formatIsp(f.isp)}${f.isp > 1 ? " (>1 : signal potentiel)" : ""}`);
       }
       ispHasFacts = facts.length > 0;
+      if (identityFilter) {
+        const target = targetIspMemorial(question, facts, memorialMap);
+        filteredIspTarget = target;
+        if (identityFilter === "ambiguous" || target === null) {
+          filteredIspAnswer = "Impossible d'établir un maximum ISP filtré : demande hommes/femmes ou mémorial ambigu. Aucune civilité n'est inférée.";
+        } else {
+          const own = facts.filter((f) => f.memorial_id === target);
+          const eligible = own.filter((f) => f.identity_eligible === true);
+          const s = summarizeIsp(eligible, target);
+          const label = `${redact(memorialMap.get(target) || "?")} [[mem:${target}]]`;
+          const leaders = s.leaders.map(redact).join(" ; ");
+          const omitted = own.length - eligible.length;
+          const anonymous = posts.filter((p) => p.memorial_id === target && !p.user_id).length;
+          const total = own[0]?.T;
+          filteredIspAnswer = `Classement ISP ${identityFilter === "men" ? "hommes (M.)" : "femmes (Mme ou Mlle)"}, selon la civilité déclarée, pour ${label}.\n\n` +
+            (s.max === null ? "Aucun maximum calculable dans ce groupe." : `${s.leaders.length > 1 ? "Égalité au maximum" : "Plus fort ISP"} : ${leaders} — ISP = ${formatIsp(s.max)}. ${s.max > 1 ? "Signal potentiel, jamais preuve d'ascendant." : "Le seuil >1 n'est pas franchi ; cela ne prouve pas une absence de sympathie."}`) +
+            `\n\nContributeurs évalués dans le groupe : ${eligible.length} ; ISP calculables : ${s.calculable} ; non calculables : ${s.non_calculable}. ${omitted} compte(s) hors filtre ou sans civilité unique vérifiable, et ${anonymous} hommage(s) anonyme(s) exclus. Les identités ambiguës sont exclues. Gestes totaux T = ${total ?? "non fiable"}, tous hommages visibles du mémorial inclus. Aucun prénom ni lien de parenté n'est utilisé pour attribuer une civilité.`;
+        }
+        contextLines.push(`ISP_FILTRE_VALIDÉ | ${filteredIspAnswer}`);
+      }
       if (facts.length) {
         const target = targetIspMemorial(question, facts, memorialMap);
         if (target === null) {
           contextLines.push("ISP_COMPARAISON | mémorial concerné ambigu : plusieurs mémoriaux, aucun désigné sans ambiguïté ; aucune comparaison entre mémoriaux différents, aucun maximum désigné");
         } else {
-          const s = summarizeIsp(facts, target);
+          const s = summarizeIsp(identityFilter ? facts.filter((f) => f.identity_eligible === true) : facts, target);
           contextLines.push(ispComparisonLine(s, memorialMap.get(target) || "?", posts.filter((p) => p.memorial_id === target).length, redact));
         }
       }
@@ -256,6 +302,7 @@ RÈGLES D'ANALYSE :
 7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.${ispAsked ? `
 8. Indice de Sympathie Potentiel : utilise UNIQUEMENT les lignes ISP_FAIT, calculées par le serveur. Ne calcule, n'arrondis autrement ni n'invente aucune valeur ; si « non calculable », dis-le avec la raison. ISP > 1 est un signal de rayonnement potentiel, jamais une preuve d'influence ou d'ascendant. Les données actuelles sont fictives (test).
 9. Si une ligne ISP_FAIT ou ISP_COMPARAISON existe, N'UTILISE JAMAIS le message « Désolé, je ne trouve pas d'informations spécifiques dans les biographies… » : réponds d'abord avec ISP_COMPARAISON (plus fort ISP parmi les calculables seulement, égalité éventuelle, ou ambiguïté du mémorial sans choisir). Les nombres « contributeurs (comptes) » comptent des PERSONNES, jamais des hommages : ne dis jamais « X hommages dont Y calculables » ; cite séparément « hommages visibles », « contributeurs évalués » et « gestes totaux T ». Reproduis chaque valeur ISP telle quelle (« 0 » exact ; une petite valeur n'est pas 0). Ne compare jamais des mémoriaux différents. Un ISP ≤ 1 signifie seulement que le seuil > 1 n'est pas franchi, jamais une absence de sympathie.` : ""}
+${filteredIspAnswer ? "10. ISP filtré : reproduis uniquement ISP_FILTRE_VALIDÉ. Ne déduis jamais homme/femme d'un prénom, d'une parenté ou du texte libre. Les profils privés, emails et identifiants de compte ne font pas partie du contexte." : ""}
 
 CONTRAT DE RÉPONSE :
 Retourne uniquement un objet JSON {"answer": "réponse française structurée", "source_refs": ["référence SOURCE exacte"]}.
@@ -345,6 +392,11 @@ ${contextLines.join("\n")}`;
           if (!result) {
             send({ type: "error", error: "Réponse structurée indisponible. Aucun chemin n'a été déduit." });
           } else {
+            if (filteredIspAnswer !== null) {
+              result.answer = filteredIspAnswer;
+              result.memorialIds = filteredIspTarget ? [filteredIspTarget] : [];
+              result.validSources = filteredIspTarget !== null;
+            }
             send({ type: "relation_sources", memorial_ids: result.memorialIds, valid: result.validSources,
               tribute_links: result.validSources ? tributeLinks(posts, result.memorialIds) : [] });
             send({ choices: [{ delta: { content: result.answer } }] });

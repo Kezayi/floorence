@@ -868,6 +868,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          civility: string | null
+          civility_required: boolean
           created_at: string
           display_name: string | null
           first_name: string | null
@@ -881,6 +883,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          civility?: string | null
+          civility_required?: boolean
           created_at?: string
           display_name?: string | null
           first_name?: string | null
@@ -894,6 +898,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          civility?: string | null
+          civility_required?: boolean
           created_at?: string
           display_name?: string | null
           first_name?: string | null

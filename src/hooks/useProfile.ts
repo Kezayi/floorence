@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { canCompleteIdentity, isCivility, type Civility } from '../../supabase/functions/_shared/civility';
 
 export interface Profile {
   id: string;
@@ -9,6 +10,8 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   residence_country_code?: string | null;
+  civility: string | null;
+  civility_required: boolean;
   profile_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -19,6 +22,7 @@ export interface ProfileUpdateData {
   phone?: string;
   avatar_url?: string;
   residence_country_code?: string | null;
+  civility?: Civility;
   profile_completed?: boolean;
 }
 
@@ -83,6 +87,10 @@ export const useProfile = () => {
     if (!user || !profile) {
       return { success: false, error: new Error('No user or profile found') };
     }
+    if ((updates.civility !== undefined && !isCivility(updates.civility)) ||
+        (updates.profile_completed && !canCompleteIdentity(profile.civility_required, updates.civility ?? profile.civility))) {
+      return { success: false, error: new Error('Veuillez choisir votre civilité') };
+    }
 
     try {
       const { error: updateError } = await supabase
@@ -103,7 +111,7 @@ export const useProfile = () => {
     }
   };
 
-  const completeProfile = async (data: { display_name: string; phone?: string }): Promise<{ success: boolean; error?: Error }> => {
+  const completeProfile = async (data: { display_name: string; phone?: string; civility?: Civility }): Promise<{ success: boolean; error?: Error }> => {
     return updateProfile({
       ...data,
       profile_completed: true,

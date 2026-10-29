@@ -4,6 +4,8 @@
  * Propriété exclusive revendiquée de Michel NGWA AYI, promoteur de Floorence.
  */
 
+import { matchesCivility, type IspIdentityFilter } from "./civility.ts";
+
 /** Single ordered circle referential (closest first). Rank C = position + 1; no coefficient is stored. */
 export const ISP_CIRCLES: ReadonlyArray<{ key: string; label: string; aliases: readonly string[] }> = [
   { key: "famille_directe", label: "Famille proche", aliases: ["famille_directe", "Famille directe", "Famille proche"] },
@@ -32,12 +34,12 @@ export function ispValue(g: number, c: number | null, t: number): number | null 
   return (g * c * (1 + exceptionality(c))) / t;
 }
 
-const ISP_TRIGGER = /\b(sympathie|influen\w*|rayonn\w*|mobilis\w*|ascendant|isp)\b/i;
+const ISP_TRIGGER = /\b(sympath\w*|influen\w*|rayonn\w*|mobilis\w*|ascendant|isp)\b/i;
 /** Only questions about potential sympathy / influence / radiance / remarkable mobilization. */
 export const isIspQuestion = (q: string) => ISP_TRIGGER.test(q.normalize("NFC"));
 
 export interface IspPost { memorial_id: string; user_id: string | null; author_name: string | null; relation_category: string | null; candle_count: number | null; flower_count: number | null }
-export interface IspFact { memorial_id: string; author_name: string; circle: string | null; C: number | null; E: number | null; G: number | null; T: number | null; isp: number | null; reason?: string }
+export interface IspFact { memorial_id: string; author_name: string; circle: string | null; C: number | null; E: number | null; G: number | null; T: number | null; isp: number | null; reason?: string; identity_eligible?: boolean }
 
 const normName = (s: string | null) => (s ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr").replace(/\s+/g, " ").trim();
 const gestures = (p: IspPost) => {
@@ -47,7 +49,7 @@ const gestures = (p: IspPost) => {
 };
 
 /** Deterministic per-(account, memorial) facts from visible posts. user_id never appears in output. */
-export function computeIspFacts(posts: IspPost[], opts: { truncated?: boolean } = {}): IspFact[] {
+export function computeIspFacts(posts: IspPost[], opts: { truncated?: boolean; identityFilter?: IspIdentityFilter; civilities?: ReadonlyMap<string, unknown> } = {}): IspFact[] {
   const byMem = new Map<string, IspPost[]>();
   for (const p of posts) {
     const group = byMem.get(p.memorial_id) ?? [];
@@ -73,7 +75,8 @@ export function computeIspFacts(posts: IspPost[], opts: { truncated?: boolean } 
     }
     for (const own of byUser.values()) {
       const author_name = own[0]?.author_name ?? "?";
-      const base = { memorial_id, author_name, circle: null, C: null, E: null, G: null, T, isp: null } as IspFact;
+      const base = { memorial_id, author_name, circle: null, C: null, E: null, G: null, T, isp: null,
+        ...(opts.identityFilter ? { identity_eligible: matchesCivility(opts.civilities?.get(own[0]?.user_id ?? ""), opts.identityFilter) } : {}) } as IspFact;
       if (opts.truncated) { out.push({ ...base, T: null, reason: "corpus tronqué" }); continue; }
       const names = new Set(own.map((p) => normName(p.author_name)));
       if (names.has("") || names.size !== 1 || [...names].some((name) => (accountsByName.get(name)?.size ?? 0) > 1)) {
@@ -117,15 +120,16 @@ export interface IspSummary { memorial_id: string; evaluated: number; calculable
 /** Deterministic maximum within ONE memorial (T shared, so exact integer numerators are compared — ties are exact). */
 export function summarizeIsp(facts: IspFact[], memorial_id: string): IspSummary {
   const own = facts.filter((f) => f.memorial_id === memorial_id);
-  const calc = own.filter((f) => f.isp !== null && f.G !== null && f.C !== null && f.E !== null);
+  const calc = own.filter((f) => f.identity_eligible !== false && f.isp !== null && f.G !== null && f.C !== null && f.E !== null);
   let best = -1; let leaders: string[] = [];
   for (const f of calc) {
-    const num = f.G! * f.C! * (1 + f.E!);
+    if (f.G === null || f.C === null || f.E === null) continue;
+    const num = f.G * f.C * (1 + f.E);
     if (num > best) { best = num; leaders = [f.author_name]; } else if (num === best) leaders.push(f.author_name);
   }
-  const max = calc.length ? calc.find((f) => f.G! * f.C! * (1 + f.E!) === best)!.isp : null;
+  const max = calc.find((f) => f.G !== null && f.C !== null && f.E !== null && f.G * f.C * (1 + f.E) === best)?.isp ?? null;
   const T = calc[0]?.T ?? null;
-  return { memorial_id, evaluated: own.length, calculable: calc.length, non_calculable: own.length - calc.length, above_threshold: calc.filter((f) => f.isp! > 1).length, T, max, leaders };
+  return { memorial_id, evaluated: own.length, calculable: calc.length, non_calculable: own.length - calc.length, above_threshold: calc.filter((f) => f.isp !== null && f.isp > 1).length, T, max, leaders };
 }
 
 /** Semantically explicit comparison line: accounts (contributors) are never confused with tributes or gestures. */

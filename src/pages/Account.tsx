@@ -1,4 +1,6 @@
 import ResidenceCountrySelect from "@/components/memorial/ResidenceCountrySelect";
+import CivilitySelect from "@/components/account/CivilitySelect";
+import { canCompleteIdentity, isCivility, type Civility } from '../../supabase/functions/_shared/civility';
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getRelationWithDeceased } from "@/lib/relationshipInference";
@@ -64,6 +66,7 @@ const Account = () => {
   // Form states
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
+  const [civility, setCivility] = useState<Civility | null>(null);
   const [residenceCountry, setResidenceCountry] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -95,6 +98,7 @@ const Account = () => {
     if (profile) {
       setDisplayName(profile.display_name || "");
       setPhone(profile.phone || "");
+      setCivility(isCivility(profile.civility) ? profile.civility : null);
       setResidenceCountry(profile.residence_country_code ?? null);
     }
   }, [profile]);
@@ -188,6 +192,10 @@ const Account = () => {
   }, [user, reloadKey]);
 
   const handleCompleteProfile = async () => {
+    if (!canCompleteIdentity(profile?.civility_required ?? false, civility)) {
+      toast.error("Veuillez choisir votre civilité");
+      return;
+    }
     if (!profile?.avatar_url) {
       toast.error("Veuillez ajouter une photo de profil");
       return;
@@ -203,6 +211,7 @@ const Account = () => {
     const result = await completeProfile({
       display_name: displayName.trim(),
       phone: phone.trim() || undefined,
+      civility: civility ?? undefined,
     });
     setIsSaving(false);
 
@@ -226,6 +235,7 @@ const Account = () => {
       display_name: displayName.trim(),
       phone: phone.trim() || undefined,
       residence_country_code: residenceCountry,
+      civility: civility ?? undefined,
     });
     setIsSaving(false);
 
@@ -266,11 +276,19 @@ const Account = () => {
           <div className="container mx-auto">
             <div className="max-w-4xl mx-auto">
               <h1 className="text-3xl md:text-4xl mb-2">Mon compte</h1>
+              {isCivility(profile?.civility) && profile?.display_name && (
+                <p className="font-sans text-foreground mb-2">{profile.civility} {profile.display_name}</p>
+              )}
               <p className="font-sans text-muted-foreground mb-8">
                 Gérez vos espaces mémoriels et vos hommages
               </p>
 
               {/* Profile incomplete warning */}
+              {isProfileComplete && !isCivility(profile?.civility) && (
+                <div className="mb-6 border border-border p-4">
+                  <p>Veuillez renseigner votre civilité dans votre profil. Vos services restent accessibles.</p>
+                </div>
+              )}
               {!isProfileComplete && (
                 <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-sm flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -375,6 +393,7 @@ const Account = () => {
                       <div className="bg-card border border-border rounded-sm p-6">
                         <h3 className="mb-6">Informations personnelles</h3>
                         <div className="space-y-6">
+                          <CivilitySelect id="profile-civility" value={civility} onChange={setCivility} required={profile?.civility_required} />
                           {/* Avatar Upload */}
                           {user && (
                             <AvatarUpload
@@ -710,6 +729,7 @@ const Account = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            <CivilitySelect id="complete-civility" value={civility} onChange={setCivility} required={profile?.civility_required} />
             {/* Avatar Upload in dialog */}
             {user && (
               <div>
@@ -758,7 +778,7 @@ const Account = () => {
           <DialogFooter>
             <Button
               onClick={handleCompleteProfile}
-              disabled={isSaving || !displayName.trim() || !profile?.avatar_url}
+              disabled={isSaving || !displayName.trim() || !profile?.avatar_url || !canCompleteIdentity(profile?.civility_required ?? false, civility)}
               className="w-full sm:w-auto"
             >
               {isSaving ? (

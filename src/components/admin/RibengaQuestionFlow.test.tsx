@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import SocialIntelligence from "@/pages/admin/SocialIntelligence";
 import SocialSearchPalette from "./SocialSearchPalette";
-import { computeIspFacts } from "../../../supabase/functions/_shared/isp";
+import { computeIspFacts, summarizeIsp } from "../../../supabase/functions/_shared/isp";
+import { ispIdentityFilter } from "../../../supabase/functions/_shared/civility";
 
 const A = "00000000-0000-4000-8000-00000000000a";
 const B = "00000000-0000-4000-8000-00000000000b";
@@ -84,6 +85,34 @@ describe.each(["page", "palette"])("Question libre %s — services entièrement 
     expect(await screen.findByRole("link", { name: "Alpha Test" })).toHaveAttribute("href", `/memorial/${A}`);
     expect(document.body.textContent).not.toContain(A);
     expect(document.body.textContent).not.toContain("[[mem:");
+  });
+  it("filtered natural ISP question keeps submitted order and server winner through stream", async () => {
+    const question = "Quelle femme avec le plus fort ISP autour de Alpha Test ?";
+    const facts = computeIspFacts([
+      { memorial_id: A, user_id: "woman", author_name: "Iris Test", relation_category: "famille_directe", candle_count: 1, flower_count: 0 },
+      { memorial_id: A, user_id: "man", author_name: "Paul Test", relation_category: "autres", candle_count: 9, flower_count: 0 },
+    ], { identityFilter: ispIdentityFilter(question), civilities: new Map([["woman", "Mme"], ["man", "M."]]) });
+    const summary = summarizeIsp(facts, A);
+    expect(summary).toMatchObject({ leaders: ["Iris Test"], max: 0.1 });
+    const answer = `Plus fort ISP femmes : Iris Test — ISP = 0.1000. Alpha Test [[mem:${A}]]`;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(String(init.body))).toEqual({ question });
+      return new Response([
+        { type: "relation_sources", memorial_ids: [A], valid: true },
+        { choices: [{ delta: { content: answer.slice(0, 20) } }] },
+        { choices: [{ delta: { content: answer.slice(20) } }] },
+      ].map((e) => `data: ${JSON.stringify(e)}\n\n`).join("") + "data: [DONE]\n\n");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {surface === "page" ? <SocialIntelligence /> : <SocialSearchPalette externalOpen />}
+    </QueryClientProvider></MemoryRouter>);
+    const input = screen.getByPlaceholderText("Posez une question sur le maillage social…");
+    fireEvent.change(input, { target: { value: question } }); fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByText(/Iris Test — ISP = 0.1000/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain("Paul Test");
+    expect(document.body.textContent).not.toContain(A);
   });
   it("one UUID keeps answer and explains missing path", async () => {
     sourceIds = [A]; await ask();

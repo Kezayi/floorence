@@ -3,8 +3,27 @@ on: [push, pull_request]
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated-fixture-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile || bun install
-      - run: bunx vitest run src/lib/ispDocSync.test.ts src/components/admin/RibengaQuestionFlow.test.tsx
+      - run: bunx vitest run src/lib/ispDocSync.test.ts src/lib/fic01Civility.test.ts src/hooks/useProfile.fic01.test.tsx src/components/admin/RibengaQuestionFlow.test.tsx
+      - uses: denoland/setup-deno@v2
+      - run: deno check supabase/functions/social-search/index.ts
+      # Doubles deliberately differ from generated client types; production entrypoint is checked above.
+      - run: deno test --no-check --allow-env --import-map=supabase/tests/fic01-import-map.json supabase/tests/fic01_edge_test.ts
+      - name: FIC-01 migration and owner RLS in disposable database
+        env:
+          PGPASSWORD: isolated-fixture-only
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/fic01_setup.sql -f drizzle/migrations/0046_fic01_profile_civility.sql -f supabase/tests/fic01_civility.sql
