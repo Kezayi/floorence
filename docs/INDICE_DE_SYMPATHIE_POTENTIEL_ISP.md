@@ -110,6 +110,8 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 - Non calculable : T = 0, auteur anonyme, homonyme ou ambigu, cercles multiples pour un compte, corpus tronqué.
 - Identité : un nom absent ou plusieurs noms normalisés différents sur un même compte rendent l'ISP non calculable ; aucun score n'est attribué au premier nom arbitrairement.
 - Déclenchement : questions de sympathie, influence, rayonnement, mobilisation ou ascendant uniquement.
+- Comparaison : maximum par mémorial canonique unique (désigné dans la question ou seul concerné), calculé par le serveur parmi les ISP calculables ; égalités exactes listées ; nombres évalués / non calculables indiqués ; plusieurs mémoriaux sans désignation = ambigu, aucun maximum ni comparaison entre mémoriaux. ISP ≤ 1 n'est pas une absence de sympathie ; « 0 » est exact, une petite valeur n'est jamais arrondie à 0.0000.
+- Réponse : quand des faits ISP existent, le message de repli « Désolé… biographies » est retiré du prompt ; il reste inchangé pour les autres questions.
 
 ### Validation du 29 octobre 2026
 

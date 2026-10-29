@@ -81,3 +81,48 @@ describe("ISP model", () => {
     expect(computeIspFacts([p({ candle_count: 10 })], { truncated: true })[0]).toMatchObject({ isp: null, T: null, reason: "corpus tronqué" });
   });
 });
+
+import { summarizeIsp, targetIspMemorial, formatIsp } from "../../supabase/functions/_shared/isp";
+import { readFileSync as rf } from "node:fs";
+describe("ISP comparison", () => {
+  const posts = [
+    p({ user_id: "a", author_name: "Ana", candle_count: 2 }),
+    p({ user_id: "b", author_name: "Bea", candle_count: 2 }),
+    p({ user_id: "c", author_name: "Céo", candle_count: 1 }),
+    p({ user_id: "d", author_name: "Dan", relation_category: "inconnu", candle_count: 1 }),
+  ];
+  it("max among calculables, exact tie, counts", () => {
+    const s = summarizeIsp(computeIspFacts(posts), "m");
+    expect(s).toMatchObject({ evaluated: 4, calculable: 3, non_calculable: 1, leaders: ["Ana", "Bea"] });
+    expect(s.max).toBeCloseTo(2 / 6);
+  });
+  it("single winner", () => {
+    const s = summarizeIsp(computeIspFacts(posts.slice(1)), "m");
+    expect(s.leaders).toEqual(["Bea"]);
+  });
+  it("all non calculable => no max", () => {
+    expect(summarizeIsp(computeIspFacts([posts[3]]), "m")).toMatchObject({ max: null, leaders: [] });
+  });
+  it("memorial target: unique, named, ambiguous; never cross-memorial", () => {
+    const f = computeIspFacts([...posts, p({ memorial_id: "n", user_id: "z", author_name: "Zoé", candle_count: 9 })]);
+    const names = new Map([["m", "Marquise NKE MENGUE"], ["n", "Paul Test"]]);
+    expect(targetIspMemorial("Qui présente le plus fort ISP dans la communauté de Marquise NKÉ MENGUE ?", f, names)).toBe("m");
+    expect(targetIspMemorial("Qui a le plus fort rayonnement ?", f, names)).toBeNull();
+    expect(summarizeIsp(f, "m").leaders).not.toContain("Zoé");
+    expect(targetIspMemorial("x", computeIspFacts(posts), names)).toBe("m");
+  });
+  it("0 exact vs tiny value", () => {
+    expect(formatIsp(0)).toBe("0");
+    expect(formatIsp(0.00001234)).toBe("0.00001234");
+    expect(formatIsp(5.5)).toBe("5.5000");
+  });
+  it("biography fallback suppressed only when ISP facts exist; kinship keeps it", () => {
+    const src = rf("supabase/functions/social-search/index.ts", "utf8");
+    expect(src).toMatch(/ispHasFacts \? " Pour cette question ISP[\s\S]*Désolé, je ne trouve pas/);
+    expect(isIspQuestion("Qui présente le plus fort ISP dans la communauté de Marquise NKE MENGUE ?")).toBe(true);
+    expect(isIspQuestion("Quel lien entre Paul et Jacques ?")).toBe(false);
+  });
+  it("doc documents comparison", () => {
+    expect(doc).toContain("Comparaison : maximum par mémorial canonique unique");
+  });
+});
