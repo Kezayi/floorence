@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [ ] FIC-01 : civilité privée déclarée, complétion nouveaux/historiques, filtre ISP avant maximum BO/palette, tests/docs et déploiement Edge ciblé.
+
 - [x] ISP uniquement : identité absente/variable rendue non calculable ; 38 tests, contrôle Deno et compilation automatique OK ; social-search seule redéployée ; recette BO/palette synthétique sans erreur, noms cliquables/UUID masqués. Aucun changement de données ni paiements, aucune publication. Compte de recette réservé sans session disponible : appel IA hébergé complet non vérifié ; exécution GitHub distante non vérifiée.
 
 - [x] Correctif visuel strict RIBENGA : moteur avant sources dans le DOM ; rendu partagé des marqueurs internes, liens uniquement vers sources canoniques visibles ; 41 tests PASS, compilation aperçu OK, rendu desktop/mobile isolé vérifié. Recette connectée et contrôle TypeScript séparé non vérifiés.
