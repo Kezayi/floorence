@@ -22,3 +22,13 @@
 Migration additive `0046_fic01_profile_civility.sql`, types régénérés automatiquement. Contrôle modèle/documentation via `fic01Civility.test.ts` et CI ISP. Tests de migration/RLS sur base isolée uniquement, jamais de fixtures dans la base partagée.
 
 Le site publié n'est pas automatiquement mis à jour par le déploiement Edge : le champ de profil nécessite la publication de cette version frontend. Ne publier qu'après vérification de la portée des autres changements déjà présents dans le projet.
+
+### État vérifié le 29 octobre 2026
+
+- Migration 0046 réellement appliquée ; CHECK, trigger, droits propriétaire et absence de civilité dans la vue publique contrôlés en lecture seule.
+- 62 tests Vitest et 5 simulations du véritable point d'entrée Edge réussis. Les doubles Edge sont exécutés sans contrôle types ; le véritable point d'entrée est contrôlé séparément par Deno avec son client réel. Contrôle TypeScript et compilation automatique réussis.
+- Migration réelle + règles de validation et RLS titulaire testées en PostgreSQL jetable local. Aucun hommage/profil réel utilisé comme fixture.
+- Profil historique en navigateur : invitation non bloquante, choix Mme, sauvegarde et relecture ; toutes les requêtes de service interceptées.
+- Seule fonction social-search déployée, empreinte source soumise `cc540c6eb1f310670d8cd700395ad3de73fbb7c5b03b19d25fc8ec2bce67df9e` ; jeton fictif refusé en ligne (401). Pas de comparaison directe du code distant.
+- Pas de session disponible pour le compte réservé : recette authentifiée hébergée non exécutée, aucun mot de passe demandé. CI GitHub écrite mais exécution distante non vérifiée.
+- Le champ profil reste dans l'aperçu : publication du site non effectuée faute de vérification de la portée des autres changements déjà présents. Les filtres hébergés rendent prudemment non calculable une civilité absente.
