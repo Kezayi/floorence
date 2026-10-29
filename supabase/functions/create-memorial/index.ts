@@ -65,7 +65,8 @@ const cleanLocality = (v?: string | null) => {
 
 // Generate secure slug using initials + random ID format
 const generateSecureSlug = async (
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   firstName: string,
   lastName: string
 ): Promise<string> => {
