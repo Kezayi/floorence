@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] Complément FIC-01 : migration 0048 appliquée et trigger ALWAYS confirmé en base ; 71 tests UI/profil/ISP et SQL transactionnels jetables réussis ; recette navigateur fictive annulation/sauvegarde/lecture seule/édition autres champs réussie, compilation automatique OK. Aucune publication, Edge inchangées, données existantes/paiements intacts. CI distante non exécutée, recette hébergée réelle non effectuée.
+
 - [ ] Prépublication FIC-01 : correctif 0047 appliqué sans modification de lignes existantes ; SQL isolé + 114 tests Vitest + 5 simulations Edge et Deno réussis, compilation locale automatique OK ; attente preuve du typecheck frontend et compilation hébergée du nouveau commit. Publication par l'utilisateur uniquement.
 
 - [x] FIC-01 : migration 0046 appliquée, civilité privée déclarée, complétion nouveaux/historiques, filtre ISP avant maximum BO/palette ; 62 tests + 5 simulations Edge + SQL/RLS local réussis ; social-search déployée, contrôle hébergé 401. Aucune modification d'historiques/paiements.

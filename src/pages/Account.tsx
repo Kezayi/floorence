@@ -207,11 +207,12 @@ const Account = () => {
       return;
     }
 
+    if (profile?.civility == null && civility !== null && !window.confirm("Votre civilité ne pourra plus être modifiée après enregistrement. Confirmez-vous votre choix ?")) return;
     setIsSaving(true);
     const result = await completeProfile({
       display_name: displayName.trim(),
       phone: phone.trim() || undefined,
-      civility: civility ?? undefined,
+      ...(profile?.civility == null && civility !== null ? { civility } : {}),
     });
     setIsSaving(false);
 
@@ -230,12 +231,13 @@ const Account = () => {
       return;
     }
 
+    if (profile?.civility == null && civility !== null && !window.confirm("Votre civilité ne pourra plus être modifiée après enregistrement. Confirmez-vous votre choix ?")) return;
     setIsSaving(true);
     const result = await updateProfile({
       display_name: displayName.trim(),
       phone: phone.trim() || undefined,
       residence_country_code: residenceCountry,
-      civility: civility ?? undefined,
+      ...(profile?.civility == null && civility !== null ? { civility } : {}),
     });
     setIsSaving(false);
 
@@ -393,7 +395,7 @@ const Account = () => {
                       <div className="bg-card border border-border rounded-sm p-6">
                         <h3 className="mb-6">Informations personnelles</h3>
                         <div className="space-y-6">
-                          <CivilitySelect id="profile-civility" value={civility} onChange={setCivility} required={profile?.civility_required} />
+                          <CivilitySelect id="profile-civility" value={civility} onChange={setCivility} required={profile?.civility_required} readOnly={profile?.civility != null} />
                           {/* Avatar Upload */}
                           {user && (
                             <AvatarUpload
@@ -729,7 +731,7 @@ const Account = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <CivilitySelect id="complete-civility" value={civility} onChange={setCivility} required={profile?.civility_required} />
+            <CivilitySelect id="complete-civility" value={civility} onChange={setCivility} required={profile?.civility_required} readOnly={profile?.civility != null} />
             {/* Avatar Upload in dialog */}
             {user && (
               <div>

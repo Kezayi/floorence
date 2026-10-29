@@ -117,7 +117,7 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 
 ### FIC-01 — Gouvernance identité
 
-- Valeurs canoniques : `M.` ; `Mme` ; `Mlle` ; source privée `profiles.civility`, déclarée et modifiable par titulaire, jamais inférée.
+- Valeurs canoniques : `M.` ; `Mme` ; `Mlle` ; source privée `profiles.civility`, déclarée par titulaire et définitivement immutable après première sauvegarde non nulle avec confirmation explicite, jamais inférée. Les autres champs du profil restent modifiables ; absence historique autorisée.
 - Hommes = M. ; femmes = Mme ou Mlle ; filtre avant maximum, égalités conservées, sans seuil ISP > 1 obligatoire. ISP général, formule, rangs et total T inchangés.
 - Civilité absente/ambiguë, profil dupliqué ou auteur anonyme : exclu du classement filtré, limites signalées. Questions de parenté non déclenchées.
 - Accès serveur admin/modérateur uniquement ; pas d'emails ni UUID de compte dans le contexte IA. Réponse filtrée déterministe dans le flux principal BO/palette. Aucun score public.
