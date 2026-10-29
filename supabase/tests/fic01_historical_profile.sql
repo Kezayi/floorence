@@ -19,6 +19,7 @@ END $$;
 UPDATE public.profiles SET civility='M.',profile_completed=true;
 SELECT public.fic_assert((SELECT civility_required AND profile_completed AND civility='M.' FROM public.profiles));
 RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','',true);
 INSERT INTO public.profiles(user_id) VALUES('00000000-0000-4000-8000-000000000013');
 SELECT public.fic_assert((SELECT civility_required FROM public.profiles WHERE user_id='00000000-0000-4000-8000-000000000013'));
 SELECT public.fic_assert((SELECT NOT civility_required AND profile_completed AND civility IS NULL FROM public.profiles WHERE user_id='00000000-0000-4000-8000-000000000001'));
