@@ -22,6 +22,8 @@
 
 ## Vérification et exploitation
 
+Complément immutable : migration additive `0048_fic01_immutable_civility.sql` appliquée le 29 octobre 2026, trigger `guard_profile_civility_immutable` confirmé `tgenabled=A` (ALWAYS) par lecture de la base. 71 tests ciblés UI/profil/ISP/documentation réussis ; suites SQL 0046/0047 et immutable exécutées dans PostgreSQL jetable, fixtures et 0047/0048 sous transaction rollback. Refus autre valeur/NULL pour titulaire, service et SQL direct en mode replica, refus upsert ; même valeur/autres champs autorisés. Recette navigateur entièrement interceptée : annulation sans écriture, confirmation M., relecture seule, édition ultérieure sans civilité. Compilation automatique actuelle OK ; aucune fonction Edge modifiée ou redéployée, aucune publication. CI distante et recette authentifiée avec services réels non effectuées.
+
 Migration additive `0046_fic01_profile_civility.sql`, types régénérés automatiquement. Contrôle modèle/documentation via `fic01Civility.test.ts` et CI ISP. Tests de migration/RLS sur base isolée uniquement, jamais de fixtures dans la base partagée.
 
 Le site publié n'est pas automatiquement mis à jour par le déploiement Edge : le champ de profil nécessite la publication de cette version frontend. Ne publier qu'après vérification de la portée des autres changements déjà présents dans le projet.
