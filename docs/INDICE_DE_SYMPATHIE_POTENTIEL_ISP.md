@@ -108,6 +108,7 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 - Référentiel ordonné (rang = position) : Famille proche ; Famille élargie ; Alliés ; Socio-cœur ; Autres
 - Alias normalisés : `socio_coeur` et `Socio-cœur` = Socio-cœur ; catégorie inconnue = non calculable.
 - Non calculable : T = 0, auteur anonyme, homonyme ou ambigu, cercles multiples pour un compte, corpus tronqué.
+- Identité : un nom absent ou plusieurs noms normalisés différents sur un même compte rendent l'ISP non calculable ; aucun score n'est attribué au premier nom arbitrairement.
 - Déclenchement : questions de sympathie, influence, rayonnement, mobilisation ou ascendant uniquement.
 
 ### Validation du 29 octobre 2026
