@@ -91,19 +91,23 @@ export const useProfile = () => {
         (updates.profile_completed && !canCompleteIdentity(profile.civility_required, updates.civility ?? profile.civility))) {
       return { success: false, error: new Error('Veuillez choisir votre civilité') };
     }
+    if (profile.civility != null && updates.civility !== undefined && updates.civility !== profile.civility) {
+      return { success: false, error: new Error('La civilité enregistrée ne peut plus être modifiée') };
+    }
 
     try {
-      const { error: updateError } = await supabase
+      const { data: savedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select('*')
+        .single();
 
-      if (updateError) {
-        throw updateError;
+      if (updateError || !savedProfile) {
+        throw updateError ?? new Error('La sauvegarde du profil n’a pas été confirmée');
       }
 
-      // Refresh profile data
-      await fetchProfile();
+      setProfile(savedProfile);
       return { success: true };
     } catch (err) {
       console.error('Error updating profile:', err);

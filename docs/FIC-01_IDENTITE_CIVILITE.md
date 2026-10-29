@@ -3,12 +3,14 @@
 ## Source et droits
 
 - Valeurs canoniques : `M.` ; `Mme` ; `Mlle`.
-- `profiles.civility` est nullable et protégée par CHECK ; lecture/modification par titulaire via RLS existante, lecture administrateur existante.
+- `profiles.civility` est nullable et protégée par CHECK ; première déclaration par titulaire via RLS existante, lecture administrateur existante.
 - Aucun changement d'identité ni reprise des données historiques. La vue publique ne contient pas la civilité.
 - Les comptes inscrits depuis la migration 0046 portent `civility_required=true`, fixé à l'insertion du profil et non désactivable à la mise à jour. Leur validation `profile_completed=true` exige la civilité ; le profil provisoire créé par le lien magique reste possible.
 - Correctif 0047 : un compte historique sans profil est reconnu uniquement par sa date canonique `auth.users.created_at`, antérieure au 29 octobre 2026 à 09:07:02.352 UTC (migration 0046). Son profil créé tardivement reste exempt de civilité obligatoire ; un compte inconnu ou inscrit à partir de cette borne reste soumis à l'obligation. Aucun profil existant n'est modifié. Tests SQL transactionnels sur base jetable, incluant borne exacte, tentative de désactivation et isolation titulaire.
 - Les profils historiques gardent `civility_required=false` et leur état de validation. Au retour sur `/compte` après connexion, une demande non bloquante s'affiche si la civilité manque ; mémoriaux, services et hommages antérieurs ne sont pas invalidés.
-- Le titulaire choisit/modifie la civilité dans son profil. Aucune inférence depuis prénom, genre, parenté ou texte d'hommage.
+- Le titulaire choisit la civilité uniquement lorsqu'elle est absente. Après première sauvegarde non nulle, elle est définitivement immutable : ni autre valeur ni NULL, sans exception de rôle client/service/SQL. Un trigger UPDATE dédié, activé ALWAYS, refuse tout changement (y compris upsert) ; aucune civilité existante n'est modifiée. Les autres champs restent modifiables, M.→M. est permis. Le trigger ne protège pas contre un propriétaire de base qui désactive volontairement la règle par DDL.
+- Nouveaux et historiques : avant la première sauvegarde, confirmation native explicite « Votre civilité ne pourra plus être modifiée après enregistrement. Confirmez-vous votre choix ? ». Annulation = aucune écriture de profil ; succès seulement après retour positif avec ligne sauvegardée. Ensuite champ lecture seule, civilité omise des modifications ordinaires. Flux lien magique et exemption 0047 inchangés.
+- Aucune inférence depuis prénom, genre, parenté ou texte d'hommage. Tests SQL transactionnels sur base jetable et tests de confirmation/annulation/échec/lecture seule dans le parcours compte ; CI ciblée.
 
 ## RIBENGA principal — Back-Office et palette
 
