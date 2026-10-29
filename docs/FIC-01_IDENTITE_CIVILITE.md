@@ -12,7 +12,7 @@
 ## RIBENGA principal — Back-Office et palette
 
 - Seulement pour une question ISP/sympathie/influence : hommes = `M.` ; femmes = `Mme` ou `Mlle`.
-- Filtre déterministe avant maximum, égalités conservées, sans exiger ISP > 1. Formule dynamique, cercles, gestes et T général inchangés.
+- Classement : filtre avant maximum déterministe, égalités conservées, sans exiger ISP > 1. Formule dynamique, cercles, gestes et T général inchangés.
 - Une requête ambiguë hommes/femmes ne désigne pas de gagnant. Civilité manquante/invalide, plusieurs profils pour un compte, anonymat ou identité ambiguë : exclus du classement filtré, avec limites.
 - Lecture serveur après validation admin/modérateur : uniquement `user_id,civility`, pour les comptes d'hommages visibles sur mémoriaux autorisés. Ni profil complet ni email transmis à l'IA. UUID de compte jamais transmis. La civilité individuelle reste serveur ; seuls groupe, faits autorisés et synthèse calculée sont transmis.
 - Restitution filtrée remplacée par la réponse déterministe du serveur au moment de publier le contrat streamé ; pas de gagnant inventé par l'IA. ISP non filtré et questions de parenté inchangés.

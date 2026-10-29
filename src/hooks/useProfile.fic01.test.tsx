@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor, cleanup } from '@testing-library/react';
 import { useProfile } from './useProfile';
-const api = vi.hoisted(() => ({ from: vi.fn(), update: vi.fn(), current: { civility_required: true, civility: null as string | null, profile_completed: false } }));
-vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'fixture-owner' } }) }));
+const api = vi.hoisted(() => ({ user: { id: 'fixture-owner' }, from: vi.fn(), update: vi.fn(), current: { civility_required: true, civility: null as string | null, profile_completed: false } }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: api.user }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: api.from } }));
 describe('FIC-01 authenticated profile completion', () => {
   beforeEach(() => {
