@@ -98,3 +98,14 @@ Cet exemple est une **simulation pédagogique**, non une affirmation sur les ges
 **Licence à des tiers : aucune licence implicite accordée par ce document.**
 
 La protection juridique effective des éléments de cet indice et les éventuelles conditions de cession ou de licence devront être appréciées selon le droit applicable. Le dépôt de ce fichier dans GitHub permet de dater et de tracer l'évolution du texte au moyen de l'historique des commits, sans remplacer les formalités ou preuves juridiques éventuellement nécessaires.
+
+## 9. Implémentation RIBENGA (synchronisée)
+
+Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), calcul serveur `supabase/functions/_shared/isp.ts`. Le test `src/lib/ispDocSync.test.ts` échoue si cette section diverge du code.
+
+- Formule : `ISP = G × C × (1 + C(C−1)/2) / T`
+- Gestes : cierges + fleurs enregistrés sur les hommages visibles (non masqués, non masqués éditorialement, non supprimés), sans transactions de paiement ; chaque hommage compté une fois.
+- Référentiel ordonné (rang = position) : Famille proche ; Famille élargie ; Alliés ; Socio-cœur ; Autres
+- Alias normalisés : `socio_coeur` et `Socio-cœur` = Socio-cœur ; catégorie inconnue = non calculable.
+- Non calculable : T = 0, auteur anonyme, homonyme ou ambigu, cercles multiples pour un compte, corpus tronqué.
+- Déclenchement : questions de sympathie, influence, rayonnement, mobilisation ou ascendant uniquement.

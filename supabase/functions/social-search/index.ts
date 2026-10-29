@@ -1,3 +1,4 @@
+import { computeIspFacts, isIspQuestion } from "../_shared/isp.ts";
 import { tributeLinks } from "./tributeLinks.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -202,6 +203,18 @@ serve(async (req) => {
       );
     }
 
+    // ISP: deterministic server-side facts, only for potential-sympathy/influence questions.
+    const ispAsked = isIspQuestion(question);
+    if (ispAsked) {
+      const facts = computeIspFacts(posts, { truncated: (postsRaw || []).length >= 500 });
+      for (const f of facts) {
+        const mName = memorialMap.get(f.memorial_id) || "?";
+        contextLines.push(f.isp === null
+          ? `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | ISP non calculable (${f.reason})`
+          : `ISP_FAIT | ${redact(f.author_name)} → ${mName} [[mem:${f.memorial_id}]] | Cercle: ${f.circle} (C=${f.C}, E=${f.E}) | G=${f.G} | T=${f.T} | ISP=${f.isp.toFixed(4)}${f.isp > 1 ? " (>1 : signal potentiel)" : ""}`);
+      }
+    }
+
     // ── System prompt with strict anti-injection directives ──
 
     const systemPrompt = `Tu es l'Intelligence Sociale de Floorence, une plateforme mémorielle gabonaise.
@@ -229,7 +242,8 @@ RÈGLES D'ANALYSE :
 4. L'implication émotionnelle se mesure par : nombre de cierges + fleurs + longueur de l'hommage.
 5. Réponds toujours en français, de manière structurée et avec empathie.
 6. Si on te demande "qui présenter à X", identifie les cercles sociaux communs et les relais de confiance.
-7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.
+7. Quand tu mentionnes un défunt, cite son nom complet exact tel qu'il apparaît dans le contexte, immédiatement suivi de sa référence exacte [[mem:…]] copiée de sa ligne MÉMORIAL. N'invente, ne modifie et n'abrège jamais une référence ; sans référence connue, n'en mets aucune.${ispAsked ? `
+8. Indice de Sympathie Potentiel : utilise UNIQUEMENT les lignes ISP_FAIT, calculées par le serveur. Ne calcule, n'arrondis autrement ni n'invente aucune valeur ; si « non calculable », dis-le avec la raison. ISP > 1 est un signal de rayonnement potentiel, jamais une preuve d'influence ou d'ascendant. Les données actuelles sont fictives (test).` : ""}
 
 CONTRAT DE RÉPONSE :
 Retourne uniquement un objet JSON {"answer": "réponse française structurée", "source_refs": ["référence SOURCE exacte"]}.

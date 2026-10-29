@@ -1,0 +1,10 @@
+name: ISP doc sync
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile || bun install
+      - run: bunx vitest run src/lib/ispDocSync.test.ts
