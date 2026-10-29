@@ -1,3 +1,4 @@
+import { computeIspFacts, isIspQuestion } from "../_shared/isp.ts";
 import { tributeLinks } from "./tributeLinks.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
