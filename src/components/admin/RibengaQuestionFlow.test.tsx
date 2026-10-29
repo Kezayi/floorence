@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import SocialIntelligence from "@/pages/admin/SocialIntelligence";
 import SocialSearchPalette from "./SocialSearchPalette";
-import { computeIspFacts } from "../../../supabase/functions/_shared/isp";
+import { computeIspFacts, summarizeIsp } from "../../../supabase/functions/_shared/isp";
+import { ispIdentityFilter } from "../../../supabase/functions/_shared/civility";
 
 const A = "00000000-0000-4000-8000-00000000000a";
 const B = "00000000-0000-4000-8000-00000000000b";
