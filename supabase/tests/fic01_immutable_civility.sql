@@ -1,5 +1,6 @@
 -- Disposable database ONLY. Every fixture and migration below is rolled back.
 BEGIN;
+SELECT set_config('request.jwt.claim.sub','',true);
 CREATE TABLE auth.users(id uuid PRIMARY KEY, created_at timestamptz NOT NULL);
 INSERT INTO auth.users VALUES ('00000000-0000-4000-8000-000000000021','2020-01-01'), ('00000000-0000-4000-8000-000000000022','2026-10-30');
 \ir ../../drizzle/migrations/0047_fic01_historical_profile_guard.sql
