@@ -62,6 +62,16 @@ describe("ISP model", () => {
     const [fact] = computeIspFacts([p({ candle_count: 1 }), p({ relation_category: "autres", flower_count: 1 })]);
     expect(fact).toMatchObject({ isp: null, reason: "cercles multiples" });
   });
+  it.each([null, "", "   "])("does not attribute an ISP to an absent name %s", (author_name) => {
+    const [fact] = computeIspFacts([p({ author_name, candle_count: 1 })]);
+    expect(fact?.isp).toBeNull();
+    expect(fact?.reason).toMatch(/identité ambiguë/);
+  });
+  it("does not attribute combined gestures to one of multiple names on the same account", () => {
+    const [fact] = computeIspFacts([p({ author_name: "Alpha Test", candle_count: 1 }), p({ author_name: "Beta Test", candle_count: 1 })]);
+    expect(fact?.isp).toBeNull();
+    expect(fact?.reason).toMatch(/identité ambiguë/);
+  });
   it.each([-1, 1.5, null, Number.POSITIVE_INFINITY])("rejects unreliable gesture count %s", (candle_count) => {
     const [fact] = computeIspFacts([p({ candle_count })]);
     expect(fact).toMatchObject({ isp: null, reason: "gestes non fiables" });

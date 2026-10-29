@@ -108,6 +108,7 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 - Référentiel ordonné (rang = position) : Famille proche ; Famille élargie ; Alliés ; Socio-cœur ; Autres
 - Alias normalisés : `socio_coeur` et `Socio-cœur` = Socio-cœur ; catégorie inconnue = non calculable.
 - Non calculable : T = 0, auteur anonyme, homonyme ou ambigu, cercles multiples pour un compte, corpus tronqué.
+- Identité : un nom absent ou plusieurs noms normalisés différents sur un même compte rendent l'ISP non calculable ; aucun score n'est attribué au premier nom arbitrairement.
 - Déclenchement : questions de sympathie, influence, rayonnement, mobilisation ou ascendant uniquement.
 
 ### Validation du 29 octobre 2026
@@ -120,3 +121,11 @@ Statut : implémenté dans la question libre RIBENGA (Back-Office et palette), c
 - Le calcul s'appuie sur les lignes distinctes de la requête simple `guestbook_posts` (pas de jointure multiplicative) ; aucun paiement n'est compté. Le seuil de 500 hommages entraîne prudemment « corpus tronqué ».
 - Les faits calculés sont transmis à la passerelle IA de Lovable dans le contexte autorisé existant ; l'usage interne désigne l'absence d'UI publique, pas l'absence de traitement IA. La restitution finale en ligne reste une synthèse IA encadrée, non une garantie déterministe de chaque formulation.
 - Aucune migration, modification des données/paiements ou publication du site lors de cette finalisation. L'exécution distante du workflow GitHub n'a pas été vérifiée ; son contrôle local a réussi.
+
+### Contrôle chirurgical complémentaire
+
+- Faux résultat reproduit sur fixture : un compte avec un nom vide recevait ISP = 55. Corrigé : nom absent ou noms normalisés variables sur un même compte = non calculable. Les gestes restent inclus dans T, sans attribution arbitraire de G à une personne.
+- 38 tests ciblés réussis (17 modèle/documentation, 7 contrat, 14 parcours). Contrôle Deno et compilation automatique réussis ; non-déclenchement ISP sur question de parenté couvert par test.
+- Seule Edge `social-search` redéployée ; empreinte source soumise `9bfe024af0bb619f09322d966609e455b9cfd82a1683d7427a09096ff978df4b`. Contrôle hébergé non destructif : HTTP 401 avec jeton fictif invalide ; aucune comparaison des fichiers distants disponible.
+- Recette BO/palette synthétique répétée sans erreur, ISP = 55.0000 et citations cliquables/UUID masqués. Recette authentifiée du compte réservé non exécutée : aucune session disponible ; aucun mot de passe demandé ni nouveau compte/session créé.
+- Aucun fichier de paiement, autre fonction, UI ou données modifiés ; aucune publication du site. Workflow GitHub conservé et contrôles locaux réussis, exécution distante non vérifiée.

@@ -42,32 +42,50 @@ export interface IspFact { memorial_id: string; author_name: string; circle: str
 const normName = (s: string | null) => (s ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr").replace(/\s+/g, " ").trim();
 const gestures = (p: IspPost) => {
   const a = p.candle_count, b = p.flower_count;
-  return Number.isInteger(a) && Number.isInteger(b) && a! >= 0 && b! >= 0 ? a! + b! : null;
+  if (a === null || b === null || !Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) return null;
+  return a + b;
 };
 
 /** Deterministic per-(account, memorial) facts from visible posts. user_id never appears in output. */
 export function computeIspFacts(posts: IspPost[], opts: { truncated?: boolean } = {}): IspFact[] {
   const byMem = new Map<string, IspPost[]>();
-  for (const p of posts) (byMem.get(p.memorial_id) ?? byMem.set(p.memorial_id, []).get(p.memorial_id)!).push(p);
+  for (const p of posts) {
+    const group = byMem.get(p.memorial_id) ?? [];
+    group.push(p);
+    byMem.set(p.memorial_id, group);
+  }
   const out: IspFact[] = [];
   for (const [memorial_id, list] of byMem) {
     let T: number | null = 0;
     for (const p of list) { const g = gestures(p); T = g === null || T === null ? null : T + g; }
     const accountsByName = new Map<string, Set<string | null>>();
-    for (const p of list) { const n = normName(p.author_name); (accountsByName.get(n) ?? accountsByName.set(n, new Set()).get(n)!).add(p.user_id); }
+    for (const p of list) {
+      const n = normName(p.author_name);
+      const accounts = accountsByName.get(n) ?? new Set<string | null>();
+      accounts.add(p.user_id);
+      accountsByName.set(n, accounts);
+    }
     const byUser = new Map<string, IspPost[]>();
-    for (const p of list) if (p.user_id) (byUser.get(p.user_id) ?? byUser.set(p.user_id, []).get(p.user_id)!).push(p);
+    for (const p of list) if (p.user_id) {
+      const group = byUser.get(p.user_id) ?? [];
+      group.push(p);
+      byUser.set(p.user_id, group);
+    }
     for (const own of byUser.values()) {
-      const author_name = own[0].author_name ?? "?";
+      const author_name = own[0]?.author_name ?? "?";
       const base = { memorial_id, author_name, circle: null, C: null, E: null, G: null, T, isp: null } as IspFact;
       if (opts.truncated) { out.push({ ...base, T: null, reason: "corpus tronqué" }); continue; }
-      if ((accountsByName.get(normName(author_name))?.size ?? 0) > 1) { out.push({ ...base, reason: "identité ambiguë (homonyme ou hommage anonyme)" }); continue; }
+      const names = new Set(own.map((p) => normName(p.author_name)));
+      if (names.has("") || names.size !== 1 || [...names].some((name) => (accountsByName.get(name)?.size ?? 0) > 1)) {
+        out.push({ ...base, reason: "identité ambiguë (nom absent, variable, homonyme ou hommage anonyme)" }); continue;
+      }
       const ranks = new Set(own.map((p) => circleRank(p.relation_category)));
       if (ranks.size !== 1 || ranks.has(null)) { out.push({ ...base, reason: ranks.has(null) ? "cercle inconnu" : "cercles multiples" }); continue; }
-      const C = [...ranks][0]!;
+      const C = [...ranks][0];
+      if (C === null || C === undefined) { out.push({ ...base, reason: "cercle inconnu" }); continue; }
       let G: number | null = 0;
       for (const p of own) { const g = gestures(p); G = g === null || G === null ? null : G + g; }
-      const circle = ISP_CIRCLES[C - 1].label;
+      const circle = ISP_CIRCLES[C - 1]?.label ?? null;
       if (G === null || T === null) { out.push({ ...base, circle, C, E: exceptionality(C), reason: "gestes non fiables" }); continue; }
       const isp = ispValue(G, C, T);
       out.push({ ...base, circle, C, E: exceptionality(C), G, T, isp, reason: isp === null ? "T = 0" : undefined });
