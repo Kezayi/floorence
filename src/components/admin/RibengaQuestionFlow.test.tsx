@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import SocialIntelligence from "@/pages/admin/SocialIntelligence";
 import SocialSearchPalette from "./SocialSearchPalette";
+import { computeIspFacts } from "../../../supabase/functions/_shared/isp";
 
 const A = "00000000-0000-4000-8000-00000000000a";
 const B = "00000000-0000-4000-8000-00000000000b";
@@ -55,6 +56,34 @@ describe.each(["page", "palette"])("Question libre %s — services entièrement 
     expect(await screen.findByText("Confirmé par 2 membres")).toBeInTheDocument();
     expect(graphs.fetchAdminContextRelationGraph).toHaveBeenCalledWith(A, B, [A, B]);
     expect(screen.getByLabelText("Depuis le mémorial")).toHaveValue("");
+  });
+  it("submits the actual ISP question and renders server-calculated synthetic SSE facts", async () => {
+    const question = "Quelle sympathie potentielle pour Iris Test autour de Alpha Test ?";
+    const [fact] = computeIspFacts([{ memorial_id: A, user_id: "fictional-account", author_name: "Iris Test", relation_category: "autres", candle_count: 1, flower_count: 1 }]);
+    expect(fact).toMatchObject({ G: 2, T: 2, C: 5, E: 10, isp: 55 });
+    const answer = `Iris Test : ISP = ${fact.isp?.toFixed(4)}. Signal potentiel, non certifié. Alpha Test [[mem:${A}]]`;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(String(init.body))).toEqual({ question });
+      const events = [
+        { type: "memorial_meta", memorials: { [A]: { name: "Alpha Test" } } },
+        { type: "relation_sources", memorial_ids: [A], valid: true },
+        { choices: [{ delta: { content: answer.slice(0, 30) } }] },
+        { choices: [{ delta: { content: answer.slice(30) } }] },
+      ];
+      return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {surface === "page" ? <SocialIntelligence /> : <SocialSearchPalette externalOpen />}
+    </QueryClientProvider></MemoryRouter>);
+    const input = screen.getByPlaceholderText("Posez une question sur le maillage social…");
+    fireEvent.change(input, { target: { value: question } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByText(/ISP = 55\.0000/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("link", { name: "Alpha Test" })).toHaveAttribute("href", `/memorial/${A}`);
+    expect(document.body.textContent).not.toContain(A);
+    expect(document.body.textContent).not.toContain("[[mem:");
   });
   it("one UUID keeps answer and explains missing path", async () => {
     sourceIds = [A]; await ask();
