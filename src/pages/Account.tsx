@@ -276,6 +276,9 @@ const Account = () => {
           <div className="container mx-auto">
             <div className="max-w-4xl mx-auto">
               <h1 className="text-3xl md:text-4xl mb-2">Mon compte</h1>
+              {isCivility(profile?.civility) && profile?.display_name && (
+                <p className="font-sans text-foreground mb-2">{profile.civility} {profile.display_name}</p>
+              )}
               <p className="font-sans text-muted-foreground mb-8">
                 Gérez vos espaces mémoriels et vos hommages
               </p>

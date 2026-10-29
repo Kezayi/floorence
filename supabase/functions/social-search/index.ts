@@ -254,9 +254,10 @@ serve(async (req) => {
           const leaders = s.leaders.map(redact).join(" ; ");
           const omitted = own.length - eligible.length;
           const anonymous = posts.filter((p) => p.memorial_id === target && !p.user_id).length;
+          const total = own[0]?.T;
           filteredIspAnswer = `Classement ISP ${identityFilter === "men" ? "hommes (M.)" : "femmes (Mme ou Mlle)"}, selon la civilité déclarée, pour ${label}.\n\n` +
             (s.max === null ? "Aucun maximum calculable dans ce groupe." : `${s.leaders.length > 1 ? "Égalité au maximum" : "Plus fort ISP"} : ${leaders} — ISP = ${formatIsp(s.max)}. ${s.max > 1 ? "Signal potentiel, jamais preuve d'ascendant." : "Le seuil >1 n'est pas franchi ; cela ne prouve pas une absence de sympathie."}`) +
-            `\n\nContributeurs évalués dans le groupe : ${eligible.length} ; ISP calculables : ${s.calculable} ; non calculables : ${s.non_calculable}. ${omitted} compte(s) hors filtre ou sans civilité unique vérifiable, et ${anonymous} hommage(s) anonyme(s) exclus. Les identités ambiguës sont exclues. T reste le total des gestes de tous les hommages visibles du mémorial. Aucun prénom ni lien de parenté n'est utilisé pour attribuer une civilité.`;
+            `\n\nContributeurs évalués dans le groupe : ${eligible.length} ; ISP calculables : ${s.calculable} ; non calculables : ${s.non_calculable}. ${omitted} compte(s) hors filtre ou sans civilité unique vérifiable, et ${anonymous} hommage(s) anonyme(s) exclus. Les identités ambiguës sont exclues. Gestes totaux T = ${total ?? "non fiable"}, tous hommages visibles du mémorial inclus. Aucun prénom ni lien de parenté n'est utilisé pour attribuer une civilité.`;
         }
         contextLines.push(`ISP_FILTRE_VALIDÉ | ${filteredIspAnswer}`);
       }
