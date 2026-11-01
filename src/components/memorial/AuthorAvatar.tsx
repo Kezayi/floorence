@@ -37,9 +37,9 @@ const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm
   const sizeClass = size === "sm" ? "w-8 h-8" : "w-10 h-10";
   return (
     <Avatar
-      className={`${sizeClass} shrink-0 ${
+      className={`group ${sizeClass} shrink-0 ${
         isFamilleDirecte
-          ? "ring-2 ring-[#800000] ring-offset-1 ring-offset-memorial-dark"
+          ? "ring-1 ring-admin-burgundy ring-offset-1 ring-offset-memorial-dark"
           : ""
       }`}
     >
@@ -49,7 +49,7 @@ const AuthorAvatar = memo(({ avatarUrl, authorName, relationCategory, size = "sm
         fallbackName={authorName}
         variant="node"
         targetWidth={size === "sm" ? 32 : 40}
-        imgClassName="grayscale-[30%]"
+        imgClassName="grayscale-[30%] transition-[filter] duration-[800ms] group-hover:grayscale-0"
       />
     </Avatar>
   );

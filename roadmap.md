@@ -1,6 +1,6 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] Intégration sélective des archives Premium du 31/10 : comparer avec la version actuelle, conserver seulement les corrections compatibles, tester les parcours concernés ; aucune publication, aucun changement serveur ou paiement.
+- [ ] Fusion Premium : références SHA256 patch/ZIP validées ; fusion sélective des cinq composants, préserver RIBENGA-06 et les fonctions actuelles, vérifier zoom molette/pince et tests ; aucune publication, aucun changement serveur ou paiement.
 
 - [x] Complément FIC-01 : migration 0048 appliquée et trigger ALWAYS confirmé en base ; 71 tests UI/profil/ISP et SQL transactionnels jetables réussis ; recette navigateur fictive annulation/sauvegarde/lecture seule/édition autres champs réussie, compilation automatique OK. Aucune publication, Edge inchangées, données existantes/paiements intacts. CI distante non exécutée, recette hébergée réelle non effectuée.
 
