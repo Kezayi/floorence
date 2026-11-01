@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { getCleanRelationName, inferAllRelationships } from "@/lib/relationshipInference";
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatRelationLabel } from "@/lib/formatRelationLabel";
 import { inferGender } from "@/lib/genderInference";
@@ -139,6 +139,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   
   // RIBENGA-01: one key per author — UUID if known, else the stable post id
   // (or list index). A shared name never merges two contributors.
@@ -275,8 +276,6 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     return links;
   }, [nodes]);
 
-  const handleZoomIn = useCallback(() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP)), []);
-  const handleZoomOut = useCallback(() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP)), []);
   const handleResetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
   const handlePanStart = useCallback((clientX: number, clientY: number) => {
@@ -301,12 +300,30 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
   }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+      pinchStart.current = distance > 0 ? { distance, zoom } : null;
+      handlePanEnd();
+      return;
+    }
+    pinchStart.current = null;
     if (e.touches.length === 1) handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
-  }, [handlePanStart]);
+  }, [handlePanStart, handlePanEnd, zoom]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStart.current) {
+      const distance = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+      setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStart.current.zoom * distance / pinchStart.current.distance)));
+      return;
+    }
     if (e.touches.length === 1) handlePanMove(e.touches[0].clientX, e.touches[0].clientY);
   }, [handlePanMove]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    pinchStart.current = null;
+    handlePanEnd();
+    if (e.touches.length === 1) handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, [handlePanEnd, handlePanStart]);
 
   const labelFontSize = useMemo(() => {
     if (nodes.length > 15) return 9;
@@ -333,13 +350,7 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
     <div className="relative w-full" ref={containerRef}>
       {/* Contrôles de zoom */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
-        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleZoomIn} disabled={zoom >= MAX_ZOOM}>
-          <ZoomIn className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleZoomOut} disabled={zoom <= MIN_ZOOM}>
-          <ZoomOut className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleResetView}>
+        <Button variant="outline" size="icon" className="h-7 w-7 bg-card/90 backdrop-blur-sm border-border/50" onClick={handleResetView} aria-label="Réinitialiser" title="Réinitialiser">
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -360,7 +371,8 @@ const RelationshipGraph2D = ({ deceasedName, posts, interMemorialLinks }: Relati
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
-        onTouchEnd={handlePanEnd}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <svg
           viewBox={`${viewBoxMinX} ${viewBoxMinY} ${zoomedWidth} ${zoomedHeight}`}

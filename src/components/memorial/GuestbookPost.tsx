@@ -116,12 +116,12 @@ const GuestbookPost = ({
   const hasFlowerFervor = post.flowerCount > 5;
 
   return (
-    <article className="py-6 animate-fade-in">
+    <article className="py-4 animate-fade-in">
       {profileOpen && (
         <ContributorRelationalSheet postId={post.id} deceasedName={deceasedName} onClose={() => setProfileOpen(false)} />
       )}
       {/* Author info with avatar */}
-      <div className="flex items-start justify-between gap-4 mb-3">
+      <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-start gap-3">
           <AuthorAvatar
             avatarUrl={post.authorAvatarUrl}
@@ -172,18 +172,18 @@ const GuestbookPost = ({
       </div>
 
       {/* Message content */}
-      <p className="font-serif text-base leading-relaxed text-livreor-foreground italic mb-4">
+      <p className="font-serif text-base leading-relaxed text-livreor-foreground italic mb-3">
         &ldquo;{post.content}&rdquo;
       </p>
 
       {/* Photo thumbnails */}
       {post.photos.length > 0 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="flex gap-1.5 mb-3 flex-wrap">
           {post.photos.map((photo, index) => (
             <button
               key={index}
               onClick={() => openLightbox(index)}
-              className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-livreor-muted/20 rounded-sm cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-livreor-foreground/30 transition-all"
+              className="w-14 h-14 sm:w-16 sm:h-16 overflow-hidden bg-livreor-muted/10 rounded-sm cursor-pointer hover:opacity-80 transition-opacity border border-livreor-muted/20"
             >
               <Photo
                 src={photo}
@@ -197,7 +197,7 @@ const GuestbookPost = ({
       )}
 
       {/* Gesture buttons with icons and fervor effects */}
-      <div className="flex items-center gap-3 mt-4">
+      <div className="flex items-center gap-2 mt-3">
         {/* RIP — 1 post = 1 RIP (static) */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-primary/20 text-primary">
           <CrossIcon size={14} className="text-primary" />

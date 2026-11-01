@@ -166,19 +166,19 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
               <span>Publié Par •</span>
               <Link 
                 to={`/compte/${memorial.author.id}`} 
-                className="text-foreground hover:underline"
+                className="text-foreground hover:underline transition-colors"
               >
                 {memorial.author.name}
               </Link>
             </div>
 
-            <div className="premium-ornament mb-5" aria-hidden="true"><span className="text-xs">✦</span></div>
+            <div className="premium-ornament mb-4" aria-hidden="true"><span className="text-[10px]">✦</span></div>
             <p className="font-serif text-lg md:text-xl leading-relaxed text-foreground/85 mb-8 max-w-prose">
               {memorial.bio}
             </p>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Bouton Rédiger un hommage */}
               {user && !profileLoading && !roleLoading && isProfileComplete && !isAdminOrMod && (
                 <button
@@ -248,8 +248,8 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
             
             {/* Gesture Summary - Hommages reçus */}
             {gestureTotals && onGestureClick && (
-              <div className="mt-6">
-                <div className="h-px bg-champagne/35 mb-4" />
+              <div className="mt-5">
+                <div className="h-px bg-champagne/20 mb-3" />
                 <GestureSummary
                   totals={gestureTotals}
                   userHasPosted={userHasPosted || false}

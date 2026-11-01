@@ -122,7 +122,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName, targetMemorialId, allowe
     return (
       <Link
         to={memorialUrl(m)}
-        className="flex items-center gap-2 group min-w-0"
+        className="flex items-center gap-2 group min-w-0 transition-colors"
         title={`Voir le mémorial de ${name}`}
       >
         <span className="w-8 h-8 shrink-0">
@@ -181,7 +181,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName, targetMemorialId, allowe
   };
 
   return (
-    <div className="bg-muted/30 border border-border/60 p-5 rounded-sm">
+    <div className="bg-muted/20 border border-border/40 p-5 rounded-sm">
       <div className="flex items-center gap-2 mb-1">
         <Route className="w-4 h-4 text-foreground/60" />
         <h4 className="font-serif text-lg">Chemins relationnels</h4>
@@ -203,7 +203,7 @@ const RelationPathsPanel = ({ memorialId, deceasedName, targetMemorialId, allowe
                 Vers {displayName(fullName(memorial), isAuthenticated)}
               </p>
               {paths.map((p, idx) => (
-                <div key={p.nodeIds.join(">")} className="pl-2 border-l border-border/60">
+                <div key={p.nodeIds.join(">")} className="pl-2 border-l border-border/40">
                   {paths.length > 1 && (
                     <p className="text-[10px] font-sans text-muted-foreground mb-1">
                       Parcours {idx + 1} sur {paths.length}
