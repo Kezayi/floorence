@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import FinanceKPIs from '@/components/admin/finance/FinanceKPIs';
 import FinanceFilters from '@/components/admin/finance/FinanceFilters';
-import FinanceTable from '@/components/admin/finance/FinanceTable';
+import FinanceTable, { financeTypeLabel, financeOperatorLabel } from '@/components/admin/finance/FinanceTable';
 import FinanceChart from '@/components/admin/finance/FinanceChart';
 import OperatorHealthBar from '@/components/admin/finance/OperatorHealthBar';
 
@@ -117,7 +117,12 @@ const Finance = () => {
 
   const handleCSV = () => {
     if (filtered.length === 0) { toast.info('Aucune donnée à exporter'); return; }
-    exportToCSV(filtered, [
+    const rows = filtered.map(t => ({
+      ...t,
+      type_label: financeTypeLabel(t),
+      operator_label: financeOperatorLabel(t.operator),
+    }));
+    exportToCSV(rows, [
       { key: 'date_libreville', label: 'Date (WAT)' },
       { key: 'deceased_name_snapshot', label: 'Défunt' },
       { key: 'type_label', label: 'Type' },
