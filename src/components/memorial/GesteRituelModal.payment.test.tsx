@@ -43,3 +43,23 @@ it("refuses invalid numbers and sends the national 9-digit form", async () => {
  fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
  await waitFor(() => expect(confirm).toHaveBeenCalledWith("066123456"));
 });
+it("a confirmed Moov failure remains terminal and reopening never sends another debit", async () => {
+ mock.check.mockResolvedValue("failed");
+ const confirm = vi.fn().mockResolvedValue({ reference: "FLRMOOVFAILED" });
+ const done = vi.fn(); const close = vi.fn();
+ const props = { onOpenChange: close, itemType: "fleur" as const, postId: "post", onConfirm: confirm, onPaymentConfirmed: done };
+ const view = render(<GesteRituelModal open {...props} />);
+ fireEvent.change(screen.getByLabelText(/Numéro Airtel ou Moov/), { target: { value: "+24165108829" } });
+ fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+ await waitFor(() => expect(mock.check).toHaveBeenCalledWith("FLRMOOVFAILED"));
+ await waitFor(() => expect(screen.queryByRole("button", { name: /Payer/ })).toBeNull());
+ expect(confirm).toHaveBeenCalledWith("065108829");
+ expect(done).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole("button", { name: "Fermer" }));
+ expect(close).toHaveBeenCalledWith(false);
+ view.rerender(<GesteRituelModal open={false} {...props} />);
+ view.rerender(<GesteRituelModal open {...props} />);
+ await waitFor(() => expect(mock.check).toHaveBeenCalledTimes(2));
+ expect(confirm).toHaveBeenCalledTimes(1);
+ expect(done).not.toHaveBeenCalled();
+});
