@@ -303,6 +303,7 @@ const MemorialInner = () => {
   
   // State for locked relation (user's first post relation on this memorial)
   const [userLockedRelation, setUserLockedRelation] = useState<{ link: string; category: string } | undefined>(undefined);
+  const [relationLoading, setRelationLoading] = useState(true);
 
   // Fetch guestbook posts from Supabase
   const fetchGuestbookPosts = useCallback(async () => {
@@ -411,10 +412,14 @@ const MemorialInner = () => {
   useEffect(() => {
     if (!user?.id || !memorialData?.id || !isValidUUID(memorialData.id)) {
       setUserLockedRelation(undefined);
+      setRelationLoading(false);
       return;
     }
+    let cancelled = false;
+    setRelationLoading(true);
+    setUserLockedRelation(undefined);
     const fetchLockedRelation = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('guestbook_posts')
         .select('relation_category, relation_link')
         .eq('memorial_id', memorialData.id)
@@ -426,13 +431,20 @@ const MemorialInner = () => {
         .limit(1)
         .maybeSingle();
       
+      if (cancelled) return;
+      if (error) {
+        toast.error("Le lien déclaré n'a pas pu être vérifié. Rechargez la page avant de publier.");
+        return;
+      }
       if (data?.relation_link) {
         setUserLockedRelation({ link: data.relation_link, category: data.relation_category });
       } else {
         setUserLockedRelation(undefined);
       }
+      setRelationLoading(false);
     };
     fetchLockedRelation();
+    return () => { cancelled = true; };
   }, [user?.id, memorialData?.id]);
  
    // Realtime subscription for new posts
@@ -628,18 +640,7 @@ const MemorialInner = () => {
   const handleGesteConfirm = async (phone?: string) => {
     const { postId, itemType } = gesteModal;
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post) return;
-
-    const countKey = itemType === "cierge" ? "candleCount" : "flowerCount";
-    // GEST-01: indicative only; the server enforces the active quota.
-    if ((post.candleCount ?? 0) + (post.flowerCount ?? 0) >= 10) return;
-
-    const prevCount = post[countKey] ?? 0;
-
-    // Optimistic update for free mode
-    setGuestbookPosts(prev =>
-      prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount + 1 } : p)
-    );
+    if (!post) throw new Error("Hommage introuvable");
 
     if (isValidUUID(postId)) {
       try {
@@ -658,16 +659,13 @@ const MemorialInner = () => {
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        const label = itemType === "cierge" ? "Cierge allumé" : "Fleur déposée";
-        toast.success(`${label} avec succès`);
-      } catch (err: any) {
-        // Rollback
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount } : p)
-        );
-        toast.error(err.message || "Erreur lors du geste");
+        if (!data?.success || !data?.reference) throw new Error("Demande de paiement non confirmée");
+        return { reference: String(data.reference) };
+      } catch (err) {
+        throw err;
       }
     }
+    throw new Error("Cet hommage ne permet pas de paiement réel");
   };
 
   const handleAddCandle = (postId: string) => openGesteModal(postId, "cierge");
@@ -735,10 +733,13 @@ const MemorialInner = () => {
         } else {
           toast.error(response.error.message || "Erreur lors de la publication");
         }
-        return;
+        const context = response.error.context;
+        const detail = context instanceof Response ? await context.clone().json().catch(() => null) : null;
+        throw new Error(detail?.error || "L'hommage n'a pas pu être préparé. Aucun paiement n'a été demandé.");
       }
 
       if (response.data?.success) {
+        setUserLockedRelation({ link: data.relationLink, category: data.relationCategory });
         // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
         const createdPostId: string | undefined = response.data?.postId;
@@ -753,13 +754,13 @@ const MemorialInner = () => {
         }).catch(() => {});
         return { success: true, postId: createdPostId };
       } else if (response.data?.rateLimited) {
-        toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
+        throw new Error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
       } else {
-        toast.error(response.data?.error || "Erreur lors de la publication");
+        throw new Error(response.data?.error || "Erreur lors de la publication");
       }
     } catch (error) {
       console.error('Publish error:', error);
-      toast.error("Une erreur est survenue lors de la publication");
+      throw error;
     }
     return { success: false };
   };
@@ -984,6 +985,8 @@ const MemorialInner = () => {
                   defuntName={memorialData ? `${memorialData.first_name} ${memorialData.last_name}` : undefined}
                   onSubmit={handleSubmitPost}
                   lockedRelation={userLockedRelation}
+                  relationLoading={relationLoading}
+                  onPaymentConfirmed={fetchGuestbookPosts}
                 />
               </div>
                 </div>
@@ -1120,6 +1123,7 @@ const MemorialInner = () => {
         itemType={gesteModal.itemType}
         postId={gesteModal.postId}
         onConfirm={handleGesteConfirm}
+        onPaymentConfirmed={() => { void fetchGuestbookPosts(); toast.success("Paiement confirmé"); }}
       />
     </div>
   );

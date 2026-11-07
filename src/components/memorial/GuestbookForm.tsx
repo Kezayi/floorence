@@ -22,6 +22,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useMonetization } from "@/hooks/useMonetization";
+import { paymentError, type PaymentRequest } from "@/lib/tributePayment";
 
 interface GuestbookFormProps {
   memorialId?: string;
@@ -37,11 +38,13 @@ interface GuestbookFormProps {
     countryPublic?: boolean;
   }) => void | Promise<void | { success: boolean; postId?: string }>;
   lockedRelation?: { link: string; category: string };
+  relationLoading?: boolean;
+  onPaymentConfirmed?: () => void;
 }
 
 const MAX_PHOTOS = 3;
 
-const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: GuestbookFormProps) => {
+const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation, relationLoading = false, onPaymentConfirmed }: GuestbookFormProps) => {
   const { user } = useAuth();
   const { profile, isProfileComplete, loading: profileLoading } = useProfile();
   const { isAdminOrMod } = useAdminRole();
@@ -52,6 +55,10 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
   const [messageContent, setMessageContent] = useState("");
   const [selectedRelation, setSelectedRelation] = useState(lockedRelation?.link || "Ami(e) / Connaissance");
   const [selectedCategory, setSelectedCategory] = useState(lockedRelation?.category || "Socio-cœur");
+  // A late canonical read must override the initial editable defaults on EVERY submission.
+  const effectiveRelation = lockedRelation?.link || selectedRelation;
+  const effectiveCategory = lockedRelation?.category || selectedCategory;
+  const draftPostId = useRef<string>();
   const [photos, setPhotos] = useState<string[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -155,7 +162,11 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!selectedRelation) {
+    if (relationLoading) {
+      toast.error("Vérification du lien déclaré en cours. Veuillez patienter.");
+      return false;
+    }
+    if (!effectiveRelation) {
       newErrors.relation = "Veuillez sélectionner votre lien de parenté avec le défunt";
     }
     if (!messageContent.trim()) {
@@ -205,21 +216,22 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     const snapshot = {
       candleCount,
       flowerCount,
-      relation: selectedRelation,
+      relation: effectiveRelation,
       totalAmount,
     };
     
     try {
-      await onSubmit({
+      const result = await onSubmit({
         content: messageContent.trim(),
-        relationCategory: selectedCategory,
-        relationLink: selectedRelation,
+        relationCategory: effectiveCategory,
+        relationLink: effectiveRelation,
         photos,
         candleCount,
         flowerCount,
         countryCode: effectiveCountry,
         countryPublic: countryPublic && !!effectiveCountry,
       });
+      if (result && !result.success) throw new Error("La publication de l'hommage a échoué");
 
       setLastSubmittedData(snapshot);
 
@@ -238,21 +250,22 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
     }
   };
 
-  const handleEbillingConfirm = async (phone?: string) => {
-    console.log('[eBilling Confirm]', { phone, memorialId, defuntName, candleCount, flowerCount, totalAmount });
+  const handleEbillingConfirm = async (phone?: string): Promise<PaymentRequest> => {
     const snapshot = {
       candleCount,
       flowerCount,
-      relation: selectedRelation,
+      relation: effectiveRelation,
       totalAmount,
     };
 
     try {
       // 1. Submit the post first (it will be hidden via publish-tribute)
-      const submitResult = await onSubmit({
+      if (relationLoading) throw new Error("Vérification du lien déclaré en cours. Veuillez patienter.");
+      if (!memorialId) throw new Error("Mémorial introuvable");
+      const submitResult = draftPostId.current ? { success: true, postId: draftPostId.current } : await onSubmit({
         content: messageContent.trim(),
-        relationCategory: selectedCategory,
-        relationLink: selectedRelation,
+        relationCategory: effectiveCategory,
+        relationLink: effectiveRelation,
         photos,
         candleCount,
         flowerCount,
@@ -260,17 +273,17 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         countryPublic: countryPublic && !!effectiveCountry,
       });
       const createdPostId = submitResult && typeof submitResult === 'object' ? submitResult.postId : undefined;
-      if (!createdPostId) {
+      if (!createdPostId || !submitResult || !submitResult.success) {
         // publication failed — never initiate payment, never show success
-        throw new Error("publication_failed");
+        throw new Error("L'hommage n'a pas pu être préparé. Aucun paiement n'a été demandé.");
       }
+      draftPostId.current = createdPostId;
 
       // 2. Call the ebilling edge function to initiate payment with the operator
       if (memorialId && user) {
         const itemType = candleCount > 0 ? 'cierge' : 'fleur';
         const quantity = candleCount > 0 ? candleCount : flowerCount;
 
-        console.log('[eBilling] Calling edge function...', { memorialId, itemType, quantity, phone, createdPostId });
         const { data: ebillingData, error: ebillingErr } = await supabase.functions.invoke('ebilling', {
           body: {
             memorial_id: memorialId,
@@ -284,70 +297,18 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           },
         });
 
-        if (ebillingErr) {
-          console.error('[eBilling] Edge function error:', ebillingErr);
-          // Extract real error from FunctionsHttpError context
-          let errorMsg = 'Erreur inconnue';
-          try {
-            if (ebillingErr.context && typeof ebillingErr.context.json === 'function') {
-              const ctx = await ebillingErr.context.json();
-              errorMsg = ctx?.error || ctx?.message || JSON.stringify(ctx);
-            } else {
-              errorMsg = ebillingData?.error || ebillingErr.message || JSON.stringify(ebillingErr);
-            }
-          } catch {
-            errorMsg = ebillingData?.error || ebillingErr.message || 'Erreur de communication';
-          }
-          toast.error(`Erreur paiement : ${errorMsg}`, { duration: 10000 });
-          throw new Error("payment_failed");
-        } else if (ebillingData?.error) {
-          console.error('[eBilling] API error:', ebillingData);
-          const details = ebillingData.details || '';
-          const isHtml = details.includes('<!DOCTYPE') || details.includes('<html');
-          if (isHtml) {
-            toast.error("ERREUR CRITIQUE : L'opérateur renvoie une page HTML au lieu d'une réponse API. Vérifiez l'URL ou le Merchant ID.", { duration: 15000 });
-          } else {
-            toast.error(`Erreur Opérateur : ${ebillingData.error}`, { duration: 10000 });
-          }
-          throw new Error("payment_failed");
-        } else {
-          console.log('[eBilling] Edge function response:', ebillingData);
-
-          if (ebillingData?.success && ebillingData?.mode === 'gratuit') {
-            toast.success(ebillingData.message || "Geste offert avec succès");
-          } else if (ebillingData?.success && ebillingData?.ussd_push_sent) {
-            // USSD push was sent successfully — user needs to confirm on their phone
-            const operatorName = ebillingData.payment_system === 'MOOV_MONEY' ? 'Moov Money' : 'Airtel Money';
-            toast.info(
-              `Push USSD envoyé sur votre ${operatorName}. Tapez votre code secret pour confirmer le paiement.`,
-              { duration: 15000 }
-            );
-          } else if (ebillingData?.success && ebillingData?.checkout_url) {
-            // USSD push failed — redirect to eBilling web portal as fallback
-            console.log('[eBilling] USSD push failed, redirecting to portal:', ebillingData.checkout_url);
-            toast.info("Redirection vers le portail de paiement...", { duration: 5000 });
-            window.location.href = ebillingData.checkout_url;
-            return; // Don't clear form — user will navigate away
-          } else if (ebillingData?.success) {
-            toast.info(ebillingData.message || "Demande envoyée.", { duration: 10000 });
-          }
+        if (ebillingErr) throw await paymentError(ebillingErr, "Demande de paiement impossible");
+        if (ebillingData?.error) throw new Error(ebillingData.error);
+        if (!ebillingData?.success || typeof ebillingData.reference !== "string" || !ebillingData.reference) {
+          throw new Error("L'opérateur n'a pas confirmé la prise en charge du paiement.");
         }
+        setLastSubmittedData(snapshot);
+        toast.info("Demande transmise à l'opérateur. En attente de votre validation sur le téléphone.");
+        return { reference: ebillingData.reference };
       }
-
-      setLastSubmittedData(snapshot);
-      setMessageContent("");
-      setPhotos([]);
-      setCandleCount(0);
-      setFlowerCount(0);
-      setErrors({});
-      setShowEbillingModal(false);
-      setShowSuccessDialog(true);
+      throw new Error("Session expirée. Veuillez vous reconnecter.");
     } catch (error) {
       console.error('[eBilling Post Submit] error:', error);
-      const code = (error as Error)?.message;
-      if (code !== "payment_failed" && code !== "publication_failed") {
-        toast.error("Erreur lors de la publication après paiement");
-      }
       throw error; // keep modal open, no success popup
     }
   };
@@ -458,7 +419,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
               </p>
               <button
                 type="button"
-                onClick={() => { setCandleCount(0); setFlowerCount(1); }}
+                onClick={() => setFlowerCount(flowerCount + 1)}
                 className="flex-shrink-0 px-3 py-1 text-xs font-sans bg-[hsl(340,30%,92%)] text-[hsl(340,60%,45%)] rounded-sm hover:bg-[hsl(340,30%,88%)] transition-colors"
               >
                 + 1 Fleur
@@ -513,7 +474,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           {/* Gesture selectors — Precious buttons */}
           <div className="bg-white border border-[hsl(0,0%,88%)] rounded-sm p-6">
             <p className="text-muted-foreground text-sm mb-5 font-serif">
-              Accompagnez votre hommage d'un geste symbolique <span className="text-primary font-medium">(gratuit pendant la bêta)</span>
+              Accompagnez votre hommage de cierges et de fleurs
             </p>
             <div className="flex flex-wrap gap-8">
               {/* Candle — Precious amber */}
@@ -747,6 +708,12 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         totalAmount={totalAmount}
         priceCierge={priceCierge}
         priceFleur={priceFleur}
+        onPaymentConfirmed={() => {
+          draftPostId.current = undefined;
+          setMessageContent(""); setPhotos([]); setCandleCount(0); setFlowerCount(0); setErrors({});
+          setShowEbillingModal(false); setShowSuccessDialog(true);
+          onPaymentConfirmed?.();
+        }}
       />
     </>
   );

@@ -1,5 +1,8 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] Correction paiement hommage : lien scellé prioritaire même chargé tardivement, erreurs visibles, panier mixte, attente de confirmation serveur et réutilisation de référence ; 19 tests réussis, compilation automatique OK, fenêtre connectée desktop/mobile vérifiée sans débit. Aucune modification serveur ni publication.
+- [ ] Recette Airtel réelle : réception de la demande PIN et publication après débit à vérifier par le titulaire du téléphone ; la session de recette disponible est administrateur (dépôt interdit), aucun débit réel déclenché.
+
 - [ ] Fusion Premium : références SHA256 patch/ZIP validées ; fusion sélective des cinq composants, préserver RIBENGA-06 et les fonctions actuelles, vérifier zoom molette/pince et tests ; aucune publication, aucun changement serveur ou paiement.
 
 - [x] Complément FIC-01 : migration 0048 appliquée et trigger ALWAYS confirmé en base ; 71 tests UI/profil/ISP et SQL transactionnels jetables réussis ; recette navigateur fictive annulation/sauvegarde/lecture seule/édition autres champs réussie, compilation automatique OK. Aucune publication, Edge inchangées, données existantes/paiements intacts. CI distante non exécutée, recette hébergée réelle non effectuée.
