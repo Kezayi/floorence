@@ -27,7 +27,7 @@ Deno.test("payment number is sent in national 9-digit form (PVit rejects +241)",
   assertEquals(enteredPaymentMsisdn("+24166123456"), "066123456");
   assertEquals(enteredPaymentMsisdn("011234567"), null);
 });
-Deno.test("PVit reçoit le format international et le bon compte pour chaque opérateur sans débit réel", async () => {
+Deno.test("PVit reçoit le format national et le bon compte pour chaque opérateur sans débit réel", async () => {
   const originalFetch = globalThis.fetch;
   const cfg = resolvePvitConfig((k) => ({
     PVIT_ACCOUNT_AIRTEL: "TEST_AIRTEL_PHONE", PVIT_ACCOUNT_MOOV: "TEST_MOOV_PHONE",
@@ -43,12 +43,12 @@ Deno.test("PVit reçoit le format international et le bon compte pour chaque op�
     return Response.json({ status: "PENDING", reference_id: "TEST_TX" });
   };
   try {
-    for (const [phone, operator] of [["+24174123456", "AIRTEL_MONEY"], ["+24166123456", "MOOV_MONEY"]] as const) {
+    for (const [phone, operator] of [["+24174123456", "AIRTEL_MONEY"], ["+24165108829", "MOOV_MONEY"]] as const) {
       const result = await initiatePayment(cfg, { amount: 1400, reference: "TEST", msisdn: phone, operator, product: "Cierge1 Fleur1" });
       assertEquals(result.accepted, true);
     }
-    assertEquals(bodies.map((body) => [body.customer_account_number, body.merchant_operation_account_code]), [
-      ["074123456", "TEST_AIRTEL_PHONE"], ["066123456", "TEST_MOOV_PHONE"],
+    assertEquals(bodies.map((body) => [body.customer_account_number, body.merchant_operation_account_code, body.operator_code]), [
+      ["074123456", "TEST_AIRTEL_PHONE", "AIRTEL_MONEY"], ["065108829", "TEST_MOOV_PHONE", "MOOV_MONEY"],
     ]);
     let rejected = false;
     try {
@@ -64,6 +64,8 @@ Deno.test("only SUCCESS confirms a payment", () => {
   assertEquals(mapPvitStatus("SUCCESS"), "success");
   assertEquals(mapPvitStatus("PENDING"), "pending");
   assertEquals(mapPvitStatus("FAILED"), "failed");
+  assertEquals(mapPvitStatus("AMBIGUOUS"), "pending");
+  assertEquals(mapPvitStatus("UNKNOWN"), "pending");
 });
 Deno.test("each operator uses its own operation account", () => {
   const c = resolvePvitConfig((k) => ({ PVIT_ACCOUNT_AIRTEL: "ACC_A", PVIT_ACCOUNT_MOOV: "ACC_M" } as Record<string, string>)[k]);

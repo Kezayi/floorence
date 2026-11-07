@@ -45,6 +45,7 @@ const GesteRituelModal = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [paymentFailure, setPaymentFailure] = useState<string | null>(null);
+  const [paymentRejected, setPaymentRejected] = useState(false);
 
   // Fallback: use loaded price or 500 FCFA if still loading
   // PROMO-01-FIX1: gestures are always paid, whatever the global switch.
@@ -97,8 +98,8 @@ const GesteRituelModal = ({
 
   // Keep the reference on close: reopening checks the SAME transaction, never repeats the debit.
   useEffect(() => {
-    if (open && paymentReference) setUssdWaiting(true);
-  }, [open, paymentReference]);
+    if (open && paymentReference && !paymentRejected) setUssdWaiting(true);
+  }, [open, paymentReference, paymentRejected]);
 
   useEffect(() => {
     if (!open || !paymentReference) return;
@@ -115,7 +116,8 @@ const GesteRituelModal = ({
         }
         if (status === "failed") {
           setPaymentFailure("Paiement refusé ou annulé. Aucun succès n'a été confirmé.");
-          setUssdWaiting(false); setUssdTimeout(true);
+          setPaymentRejected(true);
+          setUssdWaiting(false); setUssdTimeout(false);
           return;
         }
         setPaymentFailure(null);
@@ -168,6 +170,7 @@ const GesteRituelModal = ({
 
     setSubmitting(true);
     setPaymentFailure(null);
+    setPaymentRejected(false);
     try {
       const { data: fresh } = await refetch();
       const currentlyMonetized = true; void fresh;
@@ -282,7 +285,7 @@ const GesteRituelModal = ({
           )}
 
           {/* USSD Vigilance Alert (paid mode, before payment) */}
-          {isMonetized && !ussdWaiting && !ussdTimeout && (
+          {isMonetized && !ussdWaiting && !ussdTimeout && !paymentRejected && (
             <div className="flex items-start gap-3 px-4 py-3 rounded-md border border-[hsl(var(--candle-glow)/0.4)] bg-[hsl(var(--candle-glow)/0.08)]">
               <Smartphone className="w-5 h-5 mt-0.5 shrink-0 text-[hsl(var(--candle-glow))]" />
               <p className="text-xs font-sans text-foreground/80 leading-relaxed">
@@ -308,7 +311,18 @@ const GesteRituelModal = ({
           )}
 
           {/* Timeout State */}
-          {ussdTimeout && (
+          {paymentRejected && (
+            <div className="space-y-3 py-4 text-center">
+              <p className="text-sm font-sans text-muted-foreground">
+                Référence : {paymentReference}
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+                Fermer
+              </Button>
+            </div>
+          )}
+
+          {ussdTimeout && !paymentRejected && (
             <div className="flex flex-col items-center gap-3 py-4">
               <AlertTriangle className="w-8 h-8 text-[hsl(var(--candle-glow))]" />
               <p className="text-sm font-sans font-medium text-center text-foreground">
@@ -343,7 +357,7 @@ const GesteRituelModal = ({
           )}
 
           {/* CTA - Hidden during waiting/timeout */}
-          {!ussdWaiting && !ussdTimeout && (
+          {!ussdWaiting && !ussdTimeout && !paymentRejected && (
             <>
               <Button
                 onClick={handleConfirm}
