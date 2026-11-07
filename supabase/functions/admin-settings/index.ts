@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { PROMO_SETTING_KEY, validatePromo } from "../_shared/obituaryPromo.ts";
 import { validateGesturePrice } from "../_shared/gestureRules.ts";
+import { PHOTO_FRAMING_KEY, validateFraming } from "../_shared/photoFraming.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,7 @@ const settingLabels: Record<string, string> = {
   notification_window: "Fenêtre mensuelle des notifications",
   obituary_free_campaign: "Campagne avis de décès offerts",
   gesture_max_per_tribute: "Maximum de gestes par hommage",
+  photo_framing: "Cadrage biométrique des portraits",
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -114,6 +116,18 @@ const handler = async (req: Request): Promise<Response> => {
       // GESTURES-UNLIMITED: the per-tribute quota no longer exists.
       return new Response(JSON.stringify({ error: "Aucune limite de gestes : réglage supprimé" }),
         { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    } else
+    if (key === PHOTO_FRAMING_KEY) {
+      const v = validateFraming(value);
+      if (!v.ok) {
+        return new Response(JSON.stringify({ error: v.error }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+      finalValue = v.value;
+      ({ error: updateError } = await supabaseAdmin.from("system_settings").upsert({
+        key, value: finalValue as any, description: "Cadrage biométrique des portraits de défunts",
+        updated_at: new Date().toISOString(), updated_by: user.id,
+      }, { onConflict: "key" }));
     } else
     if (key === PROMO_SETTING_KEY) {
       // PROMO-01: strictly validated, upserted (row may not exist yet).
