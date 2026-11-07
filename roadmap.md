@@ -1,6 +1,6 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] Portraits de défunts : retouches individuelles étendues, résolution adaptée au zoom, comparaison couleur/N&B, validation des réglages et recette sans modifier les portraits réels.
+- [x] Portraits de défunts : exposition, ombres, hautes lumières, chaleur, saturation, netteté, éclairage automatique réversible et cadrage par URL, photos secondaires sélectionnables, annuler/rétablir ; résolution adaptée au zoom sur page défunt. 29 tests PASS, Deno et compilation OK ; curseurs connectés, portrait public et mobile vérifiés sans écriture réelle. admin-settings déployée seule, rejet réel des réglages invalides (400) confirmé. Aucune publication du site ; sauvegarde valide non exercée pour préserver les réglages partagés.
 
 - [x] RIBENGA-CLÔTURE-01 : audit ciblé, corrections confirmées, 151 tests Vitest + 10 tests Edge isolés PASS, Deno du serveur réel PASS, compilation automatique OK, page/palette desktop/mobile synthétiques vérifiées ; rapport docs/conseil/RIBENGA-CLOTURE-01-RAPPORT.md. Aucune publication, aucun déploiement ni données réelles modifiées. Verdict PARTIAL.
 - [ ] RIBENGA-CLÔTURE-01 réception réelle : bloquée par absence d’environnement isolé (chaque recherche écrit historique/usage sur la base partagée) et preuve séparée du typecheck frontend indisponible ; fonction hébergée non déployée. FINAL interdit sans recette connectée/mobile réelle ; autres mandats ouverts ci-dessous non engagés ici.
