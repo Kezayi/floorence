@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
+import { adjustmentForImage } from "@/lib/photoCanon";
 
 /**
  * <Photo> — composant souverain (Norme AAA, Piliers 1 & 3).
@@ -77,6 +78,8 @@ const Photo = memo(
   }: PhotoProps) => {
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
+    const [canon, setCanon] = useState<{ brightness: number; contrast: number } | null>(null);
+    const deceased = tone === "memorial";
     const imgRef = useRef<HTMLImageElement>(null);
     const originalAttempted = useRef(false);
 
@@ -130,7 +133,11 @@ const Photo = memo(
               loading={priority ? "eager" : "lazy"}
               fetchPriority={lcp ? "high" : "auto"}
               decoding="async"
-              onLoad={() => setLoaded(true)}
+              crossOrigin={deceased ? "anonymous" : undefined}
+              onLoad={(e) => {
+                setLoaded(true);
+                if (deceased) setCanon(adjustmentForImage(e.currentTarget));
+              }}
               onError={handleError}
               className={cn(
                 "w-full h-full object-contain transition-opacity duration-700 motion-reduce:transition-none",
@@ -138,7 +145,10 @@ const Photo = memo(
                 tone === "memorial" && "photo-memorial",
                 imgClassName
               )}
-              style={{ objectFit: "contain" }}
+              style={{
+                objectFit: "contain",
+                ...(canon ? { ["--canon-b" as string]: canon.brightness, ["--canon-c" as string]: canon.contrast } : {}),
+              }}
             />
           </>
         ) : (
