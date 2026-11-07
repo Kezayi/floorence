@@ -6,7 +6,11 @@
 export const PHOTO_FRAMING_KEY = "photo_framing";
 
 export type FramingMode = "brut" | "biometrique";
-export interface FramingAdjust { scale: number; x: number; y: number }
+export interface FramingAdjust {
+  scale: number; x: number; y: number;
+  /** Multiplicateurs manuels d'éclairage, cumulés au canon automatique (1 = neutre). */
+  light?: number; contrast?: number;
+}
 export interface PhotoFramingSetting {
   mode: FramingMode;
   /** Réglages par URL de photo (source exacte). */
@@ -16,6 +20,9 @@ export interface PhotoFramingSetting {
 export const DEFAULT_FRAMING: PhotoFramingSetting = { mode: "brut", overrides: {} };
 export const SCALE_MIN = 1;
 export const SCALE_MAX = 2.5;
+export const LIGHT_MIN = 0.6;
+export const LIGHT_MAX = 1.6;
+export const isAdjusted = (a: FramingAdjust) => a.scale > 1 || (a.light ?? 1) !== 1 || (a.contrast ?? 1) !== 1;
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -33,7 +40,12 @@ export function validateFraming(value: unknown):
     if (!o || !isNum(o.scale) || !isNum(o.x) || !isNum(o.y)) return { ok: false, error: "Réglage de photo incomplet" };
     if (o.scale < SCALE_MIN || o.scale > SCALE_MAX) return { ok: false, error: "Agrandissement hors limites (1 à 2,5)" };
     if (o.x < 0 || o.x > 100 || o.y < 0 || o.y > 100) return { ok: false, error: "Point focal hors limites (0 à 100 %)" };
-    if (o.scale !== 1) overrides[url] = { scale: o.scale, x: o.x, y: o.y };
+    const light = o.light === undefined ? 1 : o.light;
+    const contrast = o.contrast === undefined ? 1 : o.contrast;
+    if (!isNum(light) || !isNum(contrast) || light < LIGHT_MIN || light > LIGHT_MAX || contrast < LIGHT_MIN || contrast > LIGHT_MAX)
+      return { ok: false, error: "Éclairage hors limites (0,6 à 1,6)" };
+    const adj: FramingAdjust = { scale: o.scale, x: o.x, y: o.y, light, contrast };
+    if (isAdjusted(adj)) overrides[url] = adj;
   }
   return { ok: true, value: { mode: v.mode, overrides } };
 }
@@ -42,5 +54,5 @@ export function validateFraming(value: unknown):
 export function framingFor(src: string | null | undefined, s: PhotoFramingSetting | null | undefined): FramingAdjust | null {
   if (!src || !s || s.mode !== "biometrique") return null;
   const a = s.overrides[src];
-  return a && a.scale > 1 ? a : null;
+  return a && isAdjusted(a) ? a : null;
 }

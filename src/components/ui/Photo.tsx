@@ -155,8 +155,11 @@ const Photo = memo(
               )}
               style={{
                 objectFit: "contain",
-                ...(frame ? { transform: `scale(${frame.scale})`, transformOrigin: `${frame.x}% ${frame.y}%` } : {}),
-                ...(canon ? { ["--canon-b" as string]: canon.brightness, ["--canon-c" as string]: canon.contrast } : {}),
+                ...(frame && frame.scale > 1 ? { transform: `scale(${frame.scale})`, transformOrigin: `${frame.x}% ${frame.y}%` } : {}),
+                ...(canon || frame ? {
+                  ["--canon-b" as string]: (canon?.brightness ?? 1) * (frame?.light ?? 1),
+                  ["--canon-c" as string]: (canon?.contrast ?? 1) * (frame?.contrast ?? 1),
+                } : {}),
               }}
             />
           </>
