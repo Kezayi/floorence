@@ -140,7 +140,7 @@ const PortraitCalibration = () => {
             ["Position verticale du visage", "y", 0, 100, 1, `${adj.y} %`],
             ["Luminosité", "light", LIGHT_MIN, LIGHT_MAX, 0.01, `${Math.round(((adj.light ?? 1) - 1) * 100)} %`],
             ["Contraste", "contrast", LIGHT_MIN, LIGHT_MAX, 0.01, `${Math.round(((adj.contrast ?? 1) - 1) * 100)} %`],
-            ["Exposition", "exposure", ...RETOUCH_LIMITS.exposure.slice(0, 2) as [number, number], 0.05, `${(adj.exposure ?? 0).toFixed(2)} EV`],
+            ["Exposition", "exposure", RETOUCH_LIMITS.exposure[0], RETOUCH_LIMITS.exposure[1], 0.05, `${(adj.exposure ?? 0).toFixed(2)} EV`],
             ["Ombres", "shadows", -0.5, 0.5, 0.01, `${Math.round((adj.shadows ?? 0) * 100)} %`],
             ["Hautes lumières", "highlights", -0.5, 0.5, 0.01, `${Math.round((adj.highlights ?? 0) * 100)} %`],
             ["Chaleur du noir et blanc", "warmth", 0, 0.5, 0.01, `${Math.round((adj.warmth ?? 0.18) * 100)} %`],

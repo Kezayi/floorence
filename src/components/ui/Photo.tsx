@@ -110,7 +110,9 @@ const Photo = memo(
     const resolution = deceased ? portraitResolution(targetWidth, targetHeight, frame, detail) : { width: targetWidth, height: targetHeight };
     const opts = { ...resolution, resize: "contain" as const };
     const optimizedSrc = src ? getOptimizedImageUrl(src, opts) : undefined;
-    const optimizedSrcSet = src ? getOptimizedSrcSet(src, opts) : undefined;
+    const optimizedSrcSet = src ? deceased && src.includes("/storage/v1/object/public/")
+      ? `${optimizedSrc} 1x, ${getOptimizedImageUrl(src, { ...opts, width: Math.min(2000, opts.width * 2), height: opts.height ? Math.min(2000, opts.height * 2) : undefined })} 2x`
+      : getOptimizedSrcSet(src, opts) : undefined;
 
     // Filet : si la transformation CDN échoue, retour au fichier original ; sinon repli.
     const handleError = useCallback(

@@ -31,7 +31,7 @@ describe("éclairage manuel", () => {
   it.each(["exposure", "shadows", "highlights", "warmth", "saturation", "sharpness"])("refuse une valeur non finie pour %s", (key) => {
     expect(validateFraming({ mode: "biometrique", overrides: { [URL]: { scale: 1, x: 50, y: 40, [key]: Infinity } } }).ok).toBe(false);
   });
-  it("rejette une collection de réglages nulle", () => {
+  it("accepte une collection absente comme réglage vide", () => {
     expect(validateFraming({ mode: "biometrique", overrides: null }).ok).toBe(true);
   });
   it("conserve un réglage d'éclairage seul (sans agrandissement)", () => {
