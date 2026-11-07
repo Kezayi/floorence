@@ -4,6 +4,7 @@
 //          PVIT_URL_CODE_REST, PVIT_CALLBACK_URL_CODE, PVIT_URL_CODE_STATUS (optional, status fallback).
 
 export const PVIT_API = "https://api.mypvit.pro";
+import { pvitIssue, paymentIssueText } from "./pvitErrors.ts";
 // Official PVit webhook source IPs.
 export const PVIT_WEBHOOK_IPS = ["176.31.65.18", "176.31.65.20", "176.31.65.21", "13.59.249.167"];
 
@@ -65,7 +66,7 @@ export async function getSecret(cfg: PvitConfig, account: string, force = false)
     body: new URLSearchParams({ operationAccountCode: account, password: cfg.password }),
   });
   const data = await res.json().catch(() => null) as { secret?: string; expires_in?: number } | null;
-  if (!res.ok || !data?.secret) throw new Error(`PVit renew-secret refusé (HTTP ${res.status})`);
+  if (!res.ok || !data?.secret) throw new Error(paymentIssueText(pvitIssue(data, res.status)));
   cache.set(account, { secret: data.secret, exp: Date.now() + (Number(data.expires_in) || 3600) * 1000 });
   return data.secret;
 }

@@ -5,6 +5,7 @@ import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
 import { getPvitConfig, enteredPaymentMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel } from "../_shared/pvit.ts";
+import { pvitIssue, paymentIssueText } from "../_shared/pvitErrors.ts";
 
 // PAY-PVIT: this function keeps its historical name "ebilling" as the stable client contract,
 // but the only operator behind it is now PVit v2 (production). eBilling is fully removed.
@@ -40,7 +41,7 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
   }
   const { data: tx } = await supabaseAdmin
     .from("payment_transactions")
-    .select("id, status, amount, metadata, ebilling_transaction_id")
+    .select("id, status, amount, metadata, ebilling_transaction_id, last_api_response")
     .eq("ebilling_reference", reference)
     .maybeSingle();
   if (!tx) return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
@@ -48,7 +49,8 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
   }
   if (tx.status === "failed") {
-    return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
+    const issue = pvitIssue(tx.last_api_response);
+    return new Response(JSON.stringify({ success: false, status: "failed", error_code: issue.code, message: paymentIssueText(issue, reference) }), { status: 200, headers: jsonHeaders });
   }
   const meta = (tx.metadata ?? {}) as Record<string, any>;
   const pvitId = meta.pvit_transaction_id || tx.ebilling_transaction_id;
@@ -62,12 +64,13 @@ async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Respons
     }
     if (st.state === "failed") {
       await markPaymentFailed(supabaseAdmin, tx.id);
-      return new Response(JSON.stringify({ success: false, status: "failed", payment_status: "FAILED", message: "Paiement refusé ou annulé. Veuillez réessayer." }), { status: 200, headers: jsonHeaders });
+      const issue = pvitIssue(st.raw);
+      return new Response(JSON.stringify({ success: false, status: "failed", payment_status: "FAILED", error_code: issue.code, message: paymentIssueText(issue, reference) }), { status: 200, headers: jsonHeaders });
     }
   }
   return new Response(JSON.stringify({
     success: false, status: tx.status, payment_status: "PENDING",
-    message: "Paiement en attente. Tapez votre code secret sur votre téléphone.",
+    message: "Paiement non confirmé. Si une demande officielle apparaît sur votre téléphone, saisissez votre PIN uniquement chez votre opérateur. Si vous n’avez rien reçu, conservez cette référence et vérifiez ce même paiement ; ne relancez pas de débit.",
   }), { status: 200, headers: jsonHeaders });
 }
 
@@ -397,7 +400,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (!push.accepted || !push.transactionId) {
       console.error(`[pvit] push refused ref=${ebillingRef} HTTP ${push.httpStatus}`);
       await supabaseAdmin.from("payment_transactions").insert({ ...baseRow, status: "failed", metadata: { ...baseMeta, error: push.data?.message || `http_${push.httpStatus}` } });
-      return new Response(JSON.stringify({ error: push.data?.message || "L'opérateur n'a pas accepté la demande de paiement. Réessayez." }), { status: 502, headers: jsonHeaders });
+      const issue = pvitIssue(push.data, push.httpStatus);
+      return new Response(JSON.stringify({ error: paymentIssueText(issue, ebillingRef), error_code: issue.code, reference: ebillingRef }), { status: 502, headers: jsonHeaders });
     }
 
     const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
@@ -442,7 +446,7 @@ const handler = async (req: Request): Promise<Response> => {
         requires_phone: true,
         ussd_push_sent: true,
         payment_system: operator,
-        message: `Demande envoyée sur votre ${operatorName}. Tapez votre code secret pour confirmer.`,
+        message: `Demande transmise à ${operatorName}, paiement non confirmé. Si l’opérateur affiche une demande sur votre téléphone, saisissez votre PIN dans cette demande uniquement, jamais sur Floorence.`,
       }),
       { status: 200, headers: jsonHeaders }
     );
@@ -450,7 +454,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("[pvit] UNHANDLED ERROR:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Une erreur est survenue" }),
+      JSON.stringify({ error: typeof error?.message === "string" && error.message.includes("(Code ") ? error.message : "La vérification ou l’envoi du paiement a rencontré un problème. Son résultat est inconnu : consultez vos transactions avant toute nouvelle demande." }),
       { status: 500, headers: jsonHeaders }
     );
   }

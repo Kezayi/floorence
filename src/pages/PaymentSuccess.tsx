@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { CheckCircle, Home, ArrowLeft, Loader2 } from "lucide-react";
+import { CheckCircle, AlertTriangle, Home, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { checkTributePayment } from "@/lib/tributePayment";
+import { checkTributePaymentDetail } from "@/lib/tributePayment";
 
 interface PendingTribute {
   content: string;
@@ -39,8 +39,8 @@ const PaymentSuccess = () => {
           if (pendingTribute.memorialId) setMemorialId(pendingTribute.memorialId);
         }
         setIsPublishing(true);
-        const status = await checkTributePayment(reference);
-        if (status !== "success") throw new Error(status === "failed" ? "Paiement refusé ou annulé." : "Paiement toujours en attente de confirmation.");
+        const { status, message } = await checkTributePaymentDetail(reference);
+        if (status !== "success") throw new Error(message);
         // Fulfillment is server-owned; never create a second tribute from browser storage.
         setIsPublished(true);
         sessionStorage.removeItem('pendingTribute');
@@ -69,10 +69,10 @@ const PaymentSuccess = () => {
               </div>
               <div className="space-y-4">
                 <h1 className="font-serif text-3xl font-medium">
-                  Publication en cours...
+                  Vérification du paiement…
                 </h1>
                 <p className="text-memorial-dark-muted text-lg">
-                  Votre hommage est en cours de publication. Veuillez patienter.
+                  Nous vérifions la confirmation de l’opérateur. Veuillez patienter.
                 </p>
               </div>
             </>
@@ -80,7 +80,7 @@ const PaymentSuccess = () => {
             <>
               <div className="flex justify-center">
                 <div className="w-20 h-20 rounded-full bg-destructive/20 flex items-center justify-center">
-                  <CheckCircle className="w-12 h-12 text-destructive" />
+                  <AlertTriangle className="w-12 h-12 text-destructive" />
                 </div>
               </div>
               <div className="space-y-4">

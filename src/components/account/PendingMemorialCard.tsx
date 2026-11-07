@@ -13,6 +13,7 @@ import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 import { formatDateFrench } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
+import { paymentError, checkTributePaymentDetail } from "@/lib/tributePayment";
 
 export interface PendingMemorial {
   id: string;
@@ -78,14 +79,13 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
     if (!lastTx?.ebilling_reference) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ebilling", {
-        body: { action: "check-status", reference: lastTx.ebilling_reference },
-      });
-      if (error) toast.error("Vérification impossible pour le moment");
-      else if (data?.status === "success") toast.success("Paiement confirmé — espace mémoriel publié");
-      else if (data?.status === "failed") toast.error("Le paiement a échoué. Vous pouvez réessayer.");
-      else toast.info("Paiement toujours en attente. Validez sur votre téléphone.");
+      const data = await checkTributePaymentDetail(lastTx.ebilling_reference);
+      if (data.status === "success") toast.success("Paiement confirmé — espace mémoriel publié");
+      else if (data.status === "failed") toast.error(data.message);
+      else toast.info(data.message);
       onChanged();
+    } catch (error) {
+      toast.error((await paymentError(error, "Vérification impossible ; ne relancez pas le paiement.")).message);
     } finally {
       setBusy(false);
     }
@@ -103,13 +103,13 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
         body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: clean },
       });
       if (error || !data?.success) {
-        let serverMsg: string | undefined = data?.error;
-        try { serverMsg = serverMsg ?? (await (error as { context?: Response })?.context?.json())?.error; } catch { /* ignore */ }
-        toast.error(serverMsg || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié.");
+        toast.error(error ? (await paymentError(error, "La demande n’a pas abouti. Vérifiez vos transactions avant de recommencer.")).message : data?.error || "La demande n’a pas abouti.");
       } else {
         toast.success(data?.message || "Paiement initié. Validez sur votre téléphone.");
       }
       onChanged();
+    } catch (error) {
+      toast.error((await paymentError(error, "La connexion au paiement a été interrompue. Vérifiez vos transactions avant de recommencer.")).message);
     } finally {
       setBusy(false);
     }
@@ -152,8 +152,8 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-muted-foreground flex-1 min-w-[12rem]">
               {isUnknown
-                ? `Paiement de ${lastTx!.amount.toLocaleString("fr-FR")} XAF non confirmé par l'opérateur. Nouvelle tentative bloquée pour éviter un double débit.`
-                : `Paiement en cours : ${lastTx!.amount.toLocaleString("fr-FR")} XAF. Validez sur votre téléphone, puis vérifiez.`}
+                ? `Paiement de ${lastTx?.amount.toLocaleString("fr-FR")} XAF non confirmé par l'opérateur. Nouvelle tentative bloquée pour éviter un double débit.`
+                : `Paiement en cours : ${lastTx?.amount.toLocaleString("fr-FR")} XAF. Saisissez votre PIN uniquement si votre opérateur vous le demande sur votre téléphone, puis vérifiez.`}
             </p>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={busy} onClick={checkStatus}>
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
