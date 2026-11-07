@@ -1,6 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] Clarification PIN Moov : vérifier le contrat RESTFUL et les preuves disponibles, distinguer demande acceptée et réception téléphone ; résoudre tout défaut confirmé sans débit automatique.
+- [x] Clarification PIN Moov : documentation REST/status/webhook vérifiée ; aucun accusé de réception PIN documenté. Indicateur erroné ussd_push_sent=true remplacé par null, payment_request_accepted=true et pin_prompt_received=null pour les nouvelles demandes, sans réécrire l’historique. 14 tests réussis, Deno OK ; ebilling seule déployée. Deux essais Moov restent FAILED/code 2000 ; aucun paiement déclenché.
+- [ ] Réception PIN Moov : régler/vérifier le solde du compte d’opération Moov puis effectuer une recette réelle ; si aucun PIN malgré absence du code 2000, faire confirmer le parcours Moov par PVit avec référence et heure. Aucune preuve de réception fournie par l’API documentée.
 
 - [x] UX paiement : tous les codes PVit publiés et le code 3024 observé traduits, codes inconnus sans diagnostic inventé ; raisons transmises aux gestes, création/reprise mémorial, assistance, résultat et finances ; PIN uniquement chez l’opérateur, réception jamais présumée. 27 tests réussis, Deno et aperçu OK, ebilling seule déployée ; vrai refus Moov/code 2000 affiché connecté sur ordinateur/mobile sans débit.
 
