@@ -640,18 +640,7 @@ const MemorialInner = () => {
   const handleGesteConfirm = async (phone?: string) => {
     const { postId, itemType } = gesteModal;
     const post = guestbookPosts.find(p => p.id === postId);
-    if (!post) return;
-
-    const countKey = itemType === "cierge" ? "candleCount" : "flowerCount";
-    // GEST-01: indicative only; the server enforces the active quota.
-    if ((post.candleCount ?? 0) + (post.flowerCount ?? 0) >= 10) return;
-
-    const prevCount = post[countKey] ?? 0;
-
-    // Optimistic update for free mode
-    setGuestbookPosts(prev =>
-      prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount + 1 } : p)
-    );
+    if (!post) throw new Error("Hommage introuvable");
 
     if (isValidUUID(postId)) {
       try {
@@ -670,16 +659,13 @@ const MemorialInner = () => {
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        const label = itemType === "cierge" ? "Cierge allumé" : "Fleur déposée";
-        toast.success(`${label} avec succès`);
-      } catch (err: any) {
-        // Rollback
-        setGuestbookPosts(prev =>
-          prev.map(p => p.id === postId ? { ...p, [countKey]: prevCount } : p)
-        );
-        toast.error(err.message || "Erreur lors du geste");
+        if (!data?.success || !data?.reference) throw new Error("Demande de paiement non confirmée");
+        return { reference: String(data.reference) };
+      } catch (err) {
+        throw err;
       }
     }
+    throw new Error("Cet hommage ne permet pas de paiement réel");
   };
 
   const handleAddCandle = (postId: string) => openGesteModal(postId, "cierge");
@@ -1137,6 +1123,7 @@ const MemorialInner = () => {
         itemType={gesteModal.itemType}
         postId={gesteModal.postId}
         onConfirm={handleGesteConfirm}
+        onPaymentConfirmed={() => { void fetchGuestbookPosts(); toast.success("Paiement confirmé"); }}
       />
     </div>
   );
