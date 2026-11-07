@@ -982,7 +982,7 @@ const MemorialInner = () => {
               <div ref={guestbookFormRef}>
                 <GuestbookForm
                   memorialId={memorialData?.id || ""}
-                  defuntName={memorialData ? `${memorialData.first_name} ${memorialData.last_name}` : undefined}
+                  defuntName={memorialData?.first_name && memorialData?.last_name ? `${memorialData.first_name} ${memorialData.last_name}` : undefined}
                   onSubmit={handleSubmitPost}
                   lockedRelation={userLockedRelation}
                   relationLoading={relationLoading}
