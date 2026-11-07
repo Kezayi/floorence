@@ -1,4 +1,4 @@
-import { Info, Flame, Flower2, FlaskConical } from "lucide-react";
+import { Info, Flame, Flower2 } from "lucide-react";
 import { CrossIcon } from "./MemorialIcons";
 import {
   Tooltip,
@@ -100,16 +100,6 @@ const GestureSummary = ({
               )}
             </button>
           </div>
-
-          {/* Mode Test LAB badge */}
-          {isMonetized && (
-            <div className="flex items-center justify-center mt-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider rounded-full bg-accent/20 text-accent-foreground border border-accent/30">
-                <FlaskConical className="w-3 h-3" />
-                Mode Test LAB — DigitechAfrica
-              </span>
-            </div>
-          )}
         </>
       )}
       
