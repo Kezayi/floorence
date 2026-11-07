@@ -167,8 +167,8 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
     }
 
-    // Fallback: if deceased_name missing, look it up
-    let resolvedDeceasedName = deceased_name || null;
+    // Fallback: if deceased_name missing or malformed (e.g. "undefined undefined"), look it up
+    let resolvedDeceasedName = deceased_name && !String(deceased_name).includes("undefined") ? deceased_name : null;
     if (!resolvedDeceasedName && memorial_id) {
       const { data: memData } = await supabaseAdmin
         .from("memorials")

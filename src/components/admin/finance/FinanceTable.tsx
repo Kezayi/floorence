@@ -27,7 +27,34 @@ interface Transaction {
   amount: number | null;
   status: string | null;
   ebilling_reference: string | null;
+  payment_type: string | null;
+  candle_count: number | null;
+  flower_count: number | null;
+  operator: string | null;
 }
+
+const typeLabels: Record<string, string> = {
+  cierge: 'Cierge',
+  fleur: 'Fleur',
+  cierge_fleur: 'Cierge + Fleur',
+  memorial: 'Mémorial',
+};
+
+const operatorLabels: Record<string, string> = {
+  AIRTEL_MONEY: 'Airtel Money',
+  MOOV_MONEY: 'Moov Money',
+};
+
+export const financeTypeLabel = (tx: Pick<Transaction, 'payment_type' | 'candle_count' | 'flower_count'>): string => {
+  const base = typeLabels[tx.payment_type ?? ''] ?? (tx.payment_type || '—');
+  if (tx.payment_type === 'cierge' && tx.candle_count) return `${base} ×${tx.candle_count}`;
+  if (tx.payment_type === 'fleur' && tx.flower_count) return `${base} ×${tx.flower_count}`;
+  if (tx.payment_type === 'cierge_fleur') return `${base} (${tx.candle_count ?? 0}+${tx.flower_count ?? 0})`;
+  return base;
+};
+
+export const financeOperatorLabel = (operator: string | null): string =>
+  operatorLabels[operator ?? ''] ?? (operator || '—');
 
 interface FinanceTableProps {
   transactions: Transaction[];
@@ -114,6 +141,8 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                 <TableRow>
                   <TableHead>Date (WAT)</TableHead>
                   <TableHead>Défunt</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Opérateur</TableHead>
                   <TableHead>Téléphone</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                   <TableHead>Statut</TableHead>
@@ -131,6 +160,8 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                         {tx.date_libreville ? format(new Date(tx.date_libreville), 'dd/MM/yyyy HH:mm', { locale: fr }) : '—'}
                       </TableCell>
                       <TableCell className="font-medium">{tx.deceased_name_snapshot || 'Non renseigné'}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">{financeTypeLabel(tx)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{financeOperatorLabel(tx.operator)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tx.payer_phone || 'Non renseigné'}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
                       <TableCell>
