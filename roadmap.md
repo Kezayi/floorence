@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [ ] Audit Moov Money : vérifier les refus PVit, le format national et le routage ; corriger uniquement les défauts confirmés, sans déclencher de débit.
+
 - [x] PVit : conversion automatique retirée ; saisie +241 obligatoire dans les gestes, la création et la reprise de paiement mémoriel, numéro international préservé à l’envoi ; 16 tests frontend et 9 tests PVit réussis sans débit, contrôle Deno OK, ebilling seule déployée. Paiement réel non vérifié.
 
 - [x] PVit : conversion automatique 06/07 remplacée à la demande du titulaire par la saisie internationale explicite ci-dessus.
