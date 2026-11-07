@@ -1,6 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] Audit Moov Money : vérifier les refus PVit, le format national et le routage ; corriger uniquement les défauts confirmés, sans déclencher de débit.
+- [x] Audit Moov Money : deux demandes acceptées puis FAILED/code 2000 en ~3 s ; numéro national, opérateur et compte Moov corrects. Contrôle connecté de la référence existante sans débit ; écran refus distinct de l'attente, pas de nouvelle demande à la réouverture ; 11 tests UI/numéro/statut et 9 tests PVit réussis.
+- [ ] Recette Moov réelle : code 2000 documenté par PVit comme solde insuffisant du compte d'opération ; titulaire doit vérifier/régulariser le compte Moov dans myPVit avant un nouveau paiement. Aucun débit déclenché par l'audit.
 
 - [x] PVit : conversion automatique retirée ; saisie +241 obligatoire dans les gestes, la création et la reprise de paiement mémoriel, numéro international préservé à l’envoi ; 16 tests frontend et 9 tests PVit réussis sans débit, contrôle Deno OK, ebilling seule déployée. Paiement réel non vérifié.
 
