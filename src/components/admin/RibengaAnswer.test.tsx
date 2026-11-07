@@ -93,6 +93,11 @@ describe("RIBENGA safe canonical citation presentation", () => {
     expect(container.textContent).not.toContain("mem:");
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+  it("ordinary Markdown cannot bypass the current public source lookup", () => {
+    show(`[Source privée](/memorial/private) et [${A}](https://example.org)`, []);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(api.from).not.toHaveBeenCalled();
+  });
   it("cas réel : **Charlotte Igouwe** en gras, casse différente, cliquable ; marqueur en cours de flux masqué", async () => {
     const { container } = show(`Selon **Charlotte Igouwe** [[mem:${A}]] et Paul TEST [[mem:${B.slice(0, 6)}`);
     const link = await screen.findByRole("link", { name: "Charlotte Igouwe" });
