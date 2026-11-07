@@ -120,6 +120,8 @@ const Finance = () => {
     exportToCSV(filtered, [
       { key: 'date_libreville', label: 'Date (WAT)' },
       { key: 'deceased_name_snapshot', label: 'Défunt' },
+      { key: 'type_label', label: 'Type' },
+      { key: 'operator_label', label: 'Opérateur' },
       { key: 'payer_phone', label: 'Téléphone' },
       { key: 'amount', label: 'Montant (XAF)' },
       { key: 'status', label: 'Statut' },
