@@ -22,6 +22,7 @@ import { DateMaskedInput } from "@/components/ui/DateMaskedInput";
 import { formatDateFrench } from "@/lib/dateUtils";
 import { useMonetization } from "@/hooks/useMonetization";
 import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
+import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -179,8 +180,14 @@ const CreateMemorial = () => {
   };
 
   const startMemorialPayment = async (memorial: { id: string; share_token?: string; slug: string }) => {
+    const enteredPhone = paymentPhone(payerPhone);
+    if (!enteredPhone) {
+      setErrors({ payerPhone: PAYMENT_PHONE_ERROR });
+      setIsSubmitting(false);
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("ebilling", {
-      body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: payerPhone.replace(/\s+/g, "") },
+      body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: enteredPhone },
     });
     if (error || !data?.success) {
       setPaymentState({ status: "failed", message: data?.error || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié." });
@@ -194,8 +201,8 @@ const CreateMemorial = () => {
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
-    if (requiresPaymentDisplay && !/^\+?\d{8,15}$/.test(payerPhone.replace(/\s+/g, ""))) {
-      setErrors({ payerPhone: "Numéro Mobile Money requis" });
+    if (requiresPaymentDisplay && !paymentPhone(payerPhone)) {
+      setErrors({ payerPhone: PAYMENT_PHONE_ERROR });
       return;
     }
 
@@ -870,11 +877,11 @@ const CreateMemorial = () => {
 
                      {requiresPaymentDisplay && !paymentState && (
                        <div className="mt-4">
-                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money</Label>
+                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money avec +241</Label>
                          <Input
                            id="memorial-payer-phone"
                            inputMode="tel"
-                           placeholder="24107XXXXXXX"
+                           placeholder="Ex: +24177123456"
                            value={payerPhone}
                            onChange={(e) => setPayerPhone(e.target.value)}
                            className="mt-1"

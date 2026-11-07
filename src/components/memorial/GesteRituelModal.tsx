@@ -6,6 +6,7 @@ import { Flame, Flower2, Loader2, AlertTriangle, Smartphone, HelpCircle } from "
 import { useMonetization } from "@/hooks/useMonetization";
 import { toast } from "@/hooks/use-toast";
 import { checkTributePayment, type PaymentRequest } from "@/lib/tributePayment";
+import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
 
 const FALLBACK_PRICE = 500;
 
@@ -64,8 +65,8 @@ const GesteRituelModal = ({
   // Compute validation reasons
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
-    if (isMonetized && !phone.trim()) {
-      errors.push("Numéro de téléphone requis");
+    if (isMonetized && !paymentPhone(phone)) {
+      errors.push(PAYMENT_PHONE_ERROR);
     }
     if (!postId) {
       errors.push("Aucun hommage sélectionné");
@@ -174,12 +175,10 @@ const GesteRituelModal = ({
 
       console.log("[GesteRituelModal] After refetch", { currentlyMonetized, currentPrice });
 
-      if (currentlyMonetized && !phone.trim()) {
-        console.warn("[GesteRituelModal] Phone missing after refetch in paid mode");
-        return;
-      }
+      const enteredPhone = paymentPhone(phone);
+      if (currentlyMonetized && !enteredPhone) throw new Error(PAYMENT_PHONE_ERROR);
 
-      const payment = await onConfirm(currentlyMonetized ? phone.trim() : undefined);
+      const payment = await onConfirm(currentlyMonetized ? enteredPhone ?? undefined : undefined);
       if (!payment || !payment.reference) throw new Error("Aucune référence de paiement reçue. La demande n'est pas confirmée.");
       setPaymentReference(payment.reference);
       setUssdWaiting(true); setElapsedSeconds(0); setUssdTimeout(false);
@@ -267,12 +266,13 @@ const GesteRituelModal = ({
           {isMonetized && (
             <div className="space-y-2">
               <label htmlFor="phone" className="text-sm font-sans text-muted-foreground">
-                Numéro de téléphone mobile (requis)
+                Numéro de téléphone mobile avec +241 (requis)
               </label>
               <Input
                 id="phone"
                 type="tel"
-                placeholder="Ex: 077 12 34 56"
+                placeholder="Ex: +24177123456"
+                aria-invalid={!!phone && !paymentPhone(phone)}
                 value={phone}
                 disabled={submitting || !!paymentReference}
                 onChange={(e) => setPhone(e.target.value)}
@@ -347,7 +347,7 @@ const GesteRituelModal = ({
             <>
               <Button
                 onClick={handleConfirm}
-                className={`w-full ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full ${isDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
