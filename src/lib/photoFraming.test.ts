@@ -18,3 +18,14 @@ describe("cadrage biométrique", () => {
     expect(validateFraming({ mode: "auto", overrides: {} }).ok).toBe(false);
   });
 });
+
+import { validateFraming as vf2, framingFor as ff2 } from "./photoFraming";
+describe("éclairage manuel", () => {
+  it("conserve un réglage d'éclairage seul (sans agrandissement)", () => {
+    const r = vf2({ mode: "biometrique", overrides: { "https://x/a.jpg": { scale: 1, x: 50, y: 40, light: 1.2, contrast: 1 } } });
+    expect(r.ok && ff2("https://x/a.jpg", r.value)?.light).toBe(1.2);
+  });
+  it("refuse une luminosité hors 0,6–1,6", () => {
+    expect(vf2({ mode: "biometrique", overrides: { "https://x/a.jpg": { scale: 1, x: 50, y: 40, light: 2 } } }).ok).toBe(false);
+  });
+});

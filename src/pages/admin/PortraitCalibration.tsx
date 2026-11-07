@@ -10,11 +10,11 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePhotoFraming, PHOTO_FRAMING_QUERY } from "@/hooks/usePhotoFraming";
-import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
+import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, LIGHT_MIN, LIGHT_MAX, isAdjusted, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
 
 interface Row { id: string; first_name: string; last_name: string; photo_url: string | null }
 const REFERENCE = "MBIGOU";
-const NEUTRAL: FramingAdjust = { scale: 1, x: 50, y: 40 };
+const NEUTRAL: FramingAdjust = { scale: 1, x: 50, y: 40, light: 1, contrast: 1 };
 
 const save = async (value: PhotoFramingSetting) => {
   const { data, error } = await supabase.functions.invoke("admin-settings", { body: { key: PHOTO_FRAMING_KEY, value } });
@@ -43,7 +43,7 @@ const PortraitCalibration = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (selected?.photo_url) setAdj(setting?.overrides[selected.photo_url] ?? NEUTRAL);
+    if (selected?.photo_url) setAdj({ ...NEUTRAL, ...(setting?.overrides[selected.photo_url] ?? {}) });
   }, [selected?.photo_url, setting]);
 
   const label = (r: Row) => `${r.first_name} ${r.last_name}`;
@@ -57,14 +57,14 @@ const PortraitCalibration = () => {
   };
   const current: PhotoFramingSetting = setting ?? { mode: "brut", overrides: {} };
 
-  const frameFor = (r?: Row) => preview === "brut" || !r ? null : r.id === selected?.id ? (adj.scale > 1 ? adj : null) : null;
+  const frameFor = (r?: Row) => preview === "brut" || !r ? null : r.id === selected?.id ? (isAdjusted(adj) ? adj : null) : null;
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
         <h1 className="font-serif text-3xl text-foreground">Étalonnage des portraits</h1>
         <p className="text-sm text-muted-foreground">
-          Harmonisez la taille des visages sur le portrait étalon. Le fichier d'origine n'est jamais modifié.
+          Harmonisez la taille des visages et l'éclairage sur le portrait étalon. Le fichier d'origine n'est jamais modifié.
         </p>
       </header>
 
@@ -122,17 +122,19 @@ const PortraitCalibration = () => {
             ["Agrandissement", "scale", SCALE_MIN, SCALE_MAX, 0.01, `${adj.scale.toFixed(2)}×`],
             ["Position horizontale du visage", "x", 0, 100, 1, `${adj.x} %`],
             ["Position verticale du visage", "y", 0, 100, 1, `${adj.y} %`],
+            ["Luminosité", "light", LIGHT_MIN, LIGHT_MAX, 0.01, `${Math.round(((adj.light ?? 1) - 1) * 100)} %`],
+            ["Contraste", "contrast", LIGHT_MIN, LIGHT_MAX, 0.01, `${Math.round(((adj.contrast ?? 1) - 1) * 100)} %`],
           ] as const).map(([lab, k, min, max, step, shown]) => (
             <div key={k} className="space-y-2">
               <div className="flex justify-between text-sm"><Label>{lab}</Label><span className="text-muted-foreground">{shown}</span></div>
-              <Slider min={min} max={max} step={step} value={[adj[k]]}
+              <Slider min={min} max={max} step={step} value={[adj[k] ?? 1]}
                 onValueChange={([v]) => { setPreview("biometrique"); setAdj((a) => ({ ...a, [k]: v })); }} />
             </div>
           ))}
           <div className="flex flex-wrap gap-3">
             <Button disabled={busy} onClick={() => {
               const overrides = { ...current.overrides };
-              if (adj.scale > 1) overrides[selected.photo_url!] = adj; else delete overrides[selected.photo_url!];
+              if (isAdjusted(adj)) overrides[selected.photo_url!] = adj; else delete overrides[selected.photo_url!];
               persist({ ...current, overrides }, `Réglage enregistré pour ${label(selected)}`);
             }}>Enregistrer ce réglage</Button>
             <Button variant="outline" disabled={busy} onClick={() => setAdj(NEUTRAL)}>Revenir à la photo entière</Button>
