@@ -1321,34 +1321,46 @@ export type Database = {
       backoffice_finance_audit: {
         Row: {
           amount: number | null
+          candle_count: number | null
           date_libreville: string | null
           deceased_name_snapshot: string | null
           ebilling_reference: string | null
+          flower_count: number | null
           id: string | null
           last_api_response: string | null
+          operator: string | null
           payer_phone: string | null
+          payment_type: string | null
           status: string | null
           user_id: string | null
         }
         Insert: {
           amount?: number | null
+          candle_count?: number | null
           date_libreville?: never
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
+          flower_count?: number | null
           id?: string | null
           last_api_response?: string | null
+          operator?: never
           payer_phone?: string | null
+          payment_type?: string | null
           status?: string | null
           user_id?: string | null
         }
         Update: {
           amount?: number | null
+          candle_count?: number | null
           date_libreville?: never
           deceased_name_snapshot?: string | null
           ebilling_reference?: string | null
+          flower_count?: number | null
           id?: string | null
           last_api_response?: string | null
+          operator?: never
           payer_phone?: string | null
+          payment_type?: string | null
           status?: string | null
           user_id?: string | null
         }
