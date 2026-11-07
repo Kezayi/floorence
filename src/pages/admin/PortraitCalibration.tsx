@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePhotoFraming, PHOTO_FRAMING_QUERY } from "@/hooks/usePhotoFraming";
-import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
+import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, LIGHT_MIN, LIGHT_MAX, isAdjusted, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
 
 interface Row { id: string; first_name: string; last_name: string; photo_url: string | null }
 const REFERENCE = "MBIGOU";
@@ -43,7 +43,7 @@ const PortraitCalibration = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (selected?.photo_url) setAdj(setting?.overrides[selected.photo_url] ?? NEUTRAL);
+    if (selected?.photo_url) setAdj({ ...NEUTRAL, ...(setting?.overrides[selected.photo_url] ?? {}) });
   }, [selected?.photo_url, setting]);
 
   const label = (r: Row) => `${r.first_name} ${r.last_name}`;
