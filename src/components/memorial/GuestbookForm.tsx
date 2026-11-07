@@ -299,6 +299,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             errorMsg = ebillingData?.error || ebillingErr.message || 'Erreur de communication';
           }
           toast.error(`Erreur paiement : ${errorMsg}`, { duration: 10000 });
+          throw new Error("payment_failed");
         } else if (ebillingData?.error) {
           console.error('[eBilling] API error:', ebillingData);
           const details = ebillingData.details || '';
@@ -308,6 +309,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
           } else {
             toast.error(`Erreur Opérateur : ${ebillingData.error}`, { duration: 10000 });
           }
+          throw new Error("payment_failed");
         } else {
           console.log('[eBilling] Edge function response:', ebillingData);
 
@@ -342,7 +344,11 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('[eBilling Post Submit] error:', error);
-      toast.error("Erreur lors de la publication après paiement");
+      const code = (error as Error)?.message;
+      if (code !== "payment_failed" && code !== "publication_failed") {
+        toast.error("Erreur lors de la publication après paiement");
+      }
+      throw error; // keep modal open, no success popup
     }
   };
 
