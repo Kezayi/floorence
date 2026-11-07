@@ -10,6 +10,9 @@ export interface FramingAdjust {
   scale: number; x: number; y: number;
   /** Multiplicateurs manuels d'éclairage, cumulés au canon automatique (1 = neutre). */
   light?: number; contrast?: number;
+  exposure?: number; shadows?: number; highlights?: number;
+  warmth?: number; saturation?: number; sharpness?: number;
+  autoLight?: boolean;
 }
 export interface PhotoFramingSetting {
   mode: FramingMode;
@@ -22,7 +25,13 @@ export const SCALE_MIN = 1;
 export const SCALE_MAX = 2.5;
 export const LIGHT_MIN = 0.6;
 export const LIGHT_MAX = 1.6;
-export const isAdjusted = (a: FramingAdjust) => a.scale > 1 || (a.light ?? 1) !== 1 || (a.contrast ?? 1) !== 1;
+export const RETOUCH_LIMITS = {
+  exposure: [-2, 2, 0], shadows: [-0.5, 0.5, 0], highlights: [-0.5, 0.5, 0],
+  warmth: [0, 0.5, 0.18], saturation: [0, 2, 1], sharpness: [0, 1, 0],
+} as const;
+export const isAdjusted = (a: FramingAdjust) => a.scale > 1 || (a.light ?? 1) !== 1 || (a.contrast ?? 1) !== 1
+  || a.autoLight === false || Object.entries(RETOUCH_LIMITS).some(([key, [, , neutral]]) =>
+    (a[key as keyof typeof RETOUCH_LIMITS] ?? neutral) !== neutral);
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -32,7 +41,7 @@ export function validateFraming(value: unknown):
   const v = value as Record<string, unknown>;
   if (v.mode !== "brut" && v.mode !== "biometrique") return { ok: false, error: "Mode de cadrage inconnu" };
   const raw = v.overrides ?? {};
-  if (typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "Réglages par photo invalides" };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "Réglages par photo invalides" };
   const overrides: Record<string, FramingAdjust> = {};
   for (const [url, a] of Object.entries(raw as Record<string, unknown>)) {
     if (!/^https:\/\//.test(url) || url.length > 1000) return { ok: false, error: "Adresse de photo invalide" };
@@ -45,6 +54,13 @@ export function validateFraming(value: unknown):
     if (!isNum(light) || !isNum(contrast) || light < LIGHT_MIN || light > LIGHT_MAX || contrast < LIGHT_MIN || contrast > LIGHT_MAX)
       return { ok: false, error: "Éclairage hors limites (0,6 à 1,6)" };
     const adj: FramingAdjust = { scale: o.scale, x: o.x, y: o.y, light, contrast };
+    for (const [key, [min, max, neutral]] of Object.entries(RETOUCH_LIMITS)) {
+      const n = o[key] ?? neutral;
+      if (!isNum(n) || n < min || n > max) return { ok: false, error: `Retouche ${key} hors limites` };
+      adj[key as keyof typeof RETOUCH_LIMITS] = n;
+    }
+    if (o.autoLight !== undefined && typeof o.autoLight !== "boolean") return { ok: false, error: "Correction automatique invalide" };
+    adj.autoLight = o.autoLight !== false;
     if (isAdjusted(adj)) overrides[url] = adj;
   }
   return { ok: true, value: { mode: v.mode, overrides } };

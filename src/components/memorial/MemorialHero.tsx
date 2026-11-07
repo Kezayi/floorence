@@ -103,9 +103,9 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                     tone="memorial"
                     fallbackName={memorial.name}
                     targetWidth={600}
-                    imgClassName="memorial-photo-grayscale"
-                    priority={index === 0}
-                    lcp={index === 0}
+                    detail
+                    priority={index === currentPhotoIndex}
+                    lcp={index === safeDefaultIndex}
                   />
                 </div>
               ))}
@@ -129,14 +129,6 @@ const MemorialHero = ({ memorial, onScrollToGuestbook, gestureTotals, userHasPos
                   pointer-events: auto;
                 }
 
-                .memorial-photo-grayscale {
-                  filter: grayscale(100%);
-                  transition: filter 0.8s ease-in-out;
-                }
-
-                .memorial-photo-slide.active:hover .memorial-photo-grayscale {
-                  filter: grayscale(0%);
-                }
               `}</style>
             </div>
           ) : (

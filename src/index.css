@@ -436,12 +436,13 @@
   /* Canon défunts (photoCanon.ts) : --canon-b / --canon-c fixés par image à l'affichage */
   .photo-memorial {
     /* Virage argentique chaud (tirage platine) : sépia 18 % au repos */
-    filter: grayscale(100%) sepia(18%) contrast(calc(var(--canon-c, 1) * 1.06)) brightness(calc(var(--canon-b, 1) * 0.96));
+    filter: var(--portrait-retouch, brightness(1)) grayscale(100%) sepia(var(--portrait-warmth, 0.18)) contrast(calc(var(--canon-c, 1) * 1.06)) brightness(calc(var(--canon-b, 1) * 0.96));
     transition: filter 0.8s ease-in-out, opacity 0.7s ease-out;
   }
-  .group:hover .photo-memorial,
-  .photo-memorial:hover {
-    filter: grayscale(0%) sepia(0%) contrast(var(--canon-c, 1)) brightness(var(--canon-b, 1));
+  .group:hover .photo-memorial:not([data-color-mode="rest"]),
+  .photo-memorial:hover:not([data-color-mode="rest"]),
+  .photo-memorial[data-color-mode="color"] {
+    filter: var(--portrait-retouch, brightness(1)) grayscale(0%) sepia(0%) saturate(var(--portrait-saturation, 1)) contrast(var(--canon-c, 1)) brightness(var(--canon-b, 1));
   }
 }
 
