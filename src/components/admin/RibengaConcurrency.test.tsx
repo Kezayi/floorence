@@ -39,8 +39,11 @@ describe.each(["page", "palette"])("RIBENGA %s concurrent questions", (surface) 
     await act(async () => { responses[1](response("Nouvelle réponse")); });
     expect(screen.getByText("Nouvelle réponse")).toBeInTheDocument();
   });
-  it("an empty or interrupted stream is an error, not an unexplained return to suggestions", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("data: [DONE]\n\n")));
+  it.each([
+    ["empty", "data: [DONE]\n\n"],
+    ["interrupted", `data: ${JSON.stringify({ choices: [{ delta: { content: "Réponse partielle" } }] })}\n\n`],
+  ])("an %s stream is an error, not a successful answer", async (_kind, stream) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(stream)));
     render(<MemoryRouter><QueryClientProvider client={new QueryClient()}>
       {surface === "page" ? <SocialIntelligence /> : <SocialSearchPalette externalOpen />}
     </QueryClientProvider></MemoryRouter>);
