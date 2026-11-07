@@ -99,7 +99,7 @@ export function RibengaAnswer({ content, candidates = [], sourceIds = [] }: {
       // Model-authored Markdown must not bypass source authorization through a local/absolute memorial URL.
       const memorialLink = /(?:^|\/)(?:memorial|m)\//i.test(href ?? "");
       const identifierLink = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(href ?? "");
-      if ((memorialLink && !allowedPaths.has(href ?? "")) || identifierLink || !children?.toString().trim()) return <>{children}</>;
+      if (((memorialLink || identifierLink) && !allowedPaths.has(href ?? "")) || !children?.toString().trim()) return <>{children}</>;
       return <a href={href}>{children}</a>;
     },
   }}>{content}</ReactMarkdown>;
