@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [ ] Correction paiement hommage : utiliser le lien scellé pour chaque dépôt, afficher les erreurs, attendre la confirmation de paiement sans faux succès ; vérifier le parcours PVit sans débit réel automatique.
+
 - [ ] Fusion Premium : références SHA256 patch/ZIP validées ; fusion sélective des cinq composants, préserver RIBENGA-06 et les fonctions actuelles, vérifier zoom molette/pince et tests ; aucune publication, aucun changement serveur ou paiement.
 
 - [x] Complément FIC-01 : migration 0048 appliquée et trigger ALWAYS confirmé en base ; 71 tests UI/profil/ISP et SQL transactionnels jetables réussis ; recette navigateur fictive annulation/sauvegarde/lecture seule/édition autres champs réussie, compilation automatique OK. Aucune publication, Edge inchangées, données existantes/paiements intacts. CI distante non exécutée, recette hébergée réelle non effectuée.
