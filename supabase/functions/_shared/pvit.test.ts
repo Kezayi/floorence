@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.190.0/testing/asserts.ts";
-import { normalizeMsisdn, detectOperator, mapPvitStatus, resolvePvitConfig, initiatePayment } from "./pvit.ts";
+import { normalizeMsisdn, enteredPaymentMsisdn, detectOperator, mapPvitStatus, resolvePvitConfig, initiatePayment } from "./pvit.ts";
 
 Deno.test("Airtel numbers (07…) route to AIRTEL_MONEY", () => {
   assertEquals(detectOperator("074 00 00 00"), "AIRTEL_MONEY");
@@ -15,15 +15,17 @@ Deno.test("invalid numbers are refused", () => {
   assertEquals(normalizeMsisdn("0741234567"), null);
   assertEquals(detectOperator("011234567"), null);
 });
-Deno.test("07 local devient +2417 sans double indicatif", () => {
+Deno.test("local normalization remains limited to operator detection", () => {
   for (const input of ["074123456", "+24174123456", "0024174123456", "24174123456", "07 41 23 456", "74123456"]) {
-    assertEquals(normalizeMsisdn(input), "+24174123456");
+    assertEquals(normalizeMsisdn(input), "074123456");
   }
 });
-Deno.test("06 local devient +2416 sans double indicatif", () => {
-  for (const input of ["066123456", "+24166123456", "0024166123456", "06 61 23 456"]) {
-    assertEquals(normalizeMsisdn(input), "+24166123456");
+Deno.test("explicit +241 is mandatory for payment without automatic conversion", () => {
+  for (const input of ["066123456", "074123456", "0024166123456", "24166123456"]) {
+    assertEquals(enteredPaymentMsisdn(input), null);
   }
+  assertEquals(enteredPaymentMsisdn("+24166123456"), "+24166123456");
+  assertEquals(enteredPaymentMsisdn("+241 74 12 34 56"), "+24174123456");
 });
 Deno.test("PVit reçoit le format international et le bon compte pour chaque opérateur sans débit réel", async () => {
   const originalFetch = globalThis.fetch;
@@ -41,13 +43,19 @@ Deno.test("PVit reçoit le format international et le bon compte pour chaque op�
     return Response.json({ status: "PENDING", reference_id: "TEST_TX" });
   };
   try {
-    for (const [phone, operator] of [["074123456", "AIRTEL_MONEY"], ["066123456", "MOOV_MONEY"]] as const) {
+    for (const [phone, operator] of [["+24174123456", "AIRTEL_MONEY"], ["+24166123456", "MOOV_MONEY"]] as const) {
       const result = await initiatePayment(cfg, { amount: 1400, reference: "TEST", msisdn: phone, operator, product: "Cierge1 Fleur1" });
       assertEquals(result.accepted, true);
     }
     assertEquals(bodies.map((body) => [body.customer_account_number, body.merchant_operation_account_code]), [
       ["+24174123456", "TEST_AIRTEL_PHONE"], ["+24166123456", "TEST_MOOV_PHONE"],
     ]);
+    let rejected = false;
+    try {
+      await initiatePayment(cfg, { amount: 1400, reference: "TEST", msisdn: "074123456", operator: "AIRTEL_MONEY", product: "Cierge1 Fleur1" });
+    } catch { rejected = true; }
+    assertEquals(rejected, true);
+    assertEquals(bodies.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }

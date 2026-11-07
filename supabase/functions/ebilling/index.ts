@@ -4,7 +4,7 @@ import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuc
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
-import { getPvitConfig, normalizeMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel } from "../_shared/pvit.ts";
+import { getPvitConfig, enteredPaymentMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel } from "../_shared/pvit.ts";
 
 // PAY-PVIT: this function keeps its historical name "ebilling" as the stable client contract,
 // but the only operator behind it is now PVit v2 (production). eBilling is fully removed.
@@ -364,11 +364,11 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(JSON.stringify({ error: check.error }), { status: 409, headers: jsonHeaders });
       }
     }
-    // ── PVit: normalize number + route operator ──
-    const msisdn = normalizeMsisdn(String(phone));
+    // Require explicit international entry; never add a country code.
+    const msisdn = enteredPaymentMsisdn(String(phone));
     const operator = msisdn ? detectOperator(msisdn) : null;
     if (!msisdn || !operator) {
-      return new Response(JSON.stringify({ error: "Numéro Airtel Money (07…) ou Moov Money (06…) invalide" }), { status: 400, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: "Saisissez le numéro avec +241, sans le 0 initial (ex. +24177123456)." }), { status: 400, headers: jsonHeaders });
     }
 
     // PVit caps `product` at 15 chars; the deceased name stays in our own transaction row.

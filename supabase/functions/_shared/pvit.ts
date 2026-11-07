@@ -11,20 +11,26 @@ export type PvitOperator = "AIRTEL_MONEY" | "MOOV_MONEY";
 type Env = (k: string) => string | undefined;
 const e = (env: Env, k: string) => (env(k) ?? "").trim().replace(/^\/+|\/+$/g, "");
 
-/** Normalizes a Gabon mobile MSISDN to +241XXXXXXXX. Returns null if invalid. */
+/** Local digits for operator detection only; never use this to rewrite a payment number. */
 export function normalizeMsisdn(raw: string): string | null {
   let d = (raw ?? "").replace(/\D/g, "");
   if (d.startsWith("00241")) d = d.slice(5);
-  else if (d.startsWith("241")) d = d.slice(3);
-  if (d.length === 9 && d.startsWith("0")) d = d.slice(1);
-  return /^[67]\d{7}$/.test(d) ? `+241${d}` : null;
+  else if (d.startsWith("241") && d.length > 9) d = d.slice(3);
+  if (d.length === 8) d = "0" + d;
+  return /^0\d{8}$/.test(d) ? d : null;
+}
+
+/** Require +241 to be entered explicitly; whitespace is presentation only. */
+export function enteredPaymentMsisdn(raw: string): string | null {
+  const entered = raw.trim().replace(/\s+/g, "");
+  return /^\+241[67]\d{7}$/.test(entered) ? entered : null;
 }
 
 /** Gabon prefixes: 07/74/76/77 = Airtel, 06/62/65/66 = Moov. */
 export function detectOperator(msisdn: string): PvitOperator | null {
   const normalized = normalizeMsisdn(msisdn);
-  if (normalized?.startsWith("+2417")) return "AIRTEL_MONEY";
-  if (normalized?.startsWith("+2416")) return "MOOV_MONEY";
+  if (normalized?.startsWith("07")) return "AIRTEL_MONEY";
+  if (normalized?.startsWith("06")) return "MOOV_MONEY";
   return null;
 }
 
@@ -86,7 +92,7 @@ export const newReference = () =>
 export async function initiatePayment(cfg: PvitConfig, p: {
   amount: number; reference: string; msisdn: string; operator: PvitOperator; product: string;
 }) {
-  const msisdn = normalizeMsisdn(p.msisdn);
+  const msisdn = enteredPaymentMsisdn(p.msisdn);
   if (!msisdn || detectOperator(msisdn) !== p.operator) {
     throw new Error("Numéro Mobile Money invalide ou opérateur incompatible");
   }

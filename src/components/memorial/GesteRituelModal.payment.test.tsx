@@ -8,7 +8,7 @@ beforeEach(() => { cleanup(); vi.clearAllMocks(); mock.refetch.mockResolvedValue
 it("shows a failed preparation inside the modal and never reports success", async () => {
  const done = vi.fn();
  render(<GesteRituelModal open onOpenChange={vi.fn()} itemType="cierge" postId="post" onConfirm={vi.fn().mockRejectedValue(new Error("Lien déclaré incompatible"))} onPaymentConfirmed={done} />);
- fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "077123456" } });
+ fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "+24177123456" } });
  fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Lien déclaré incompatible"));
  expect(mock.check).not.toHaveBeenCalled(); expect(done).not.toHaveBeenCalled();
@@ -17,7 +17,7 @@ it("pending payment never completes and reopening does not resend a debit", asyn
  const confirm = vi.fn().mockResolvedValue({ reference: "FLRTEST" }); const done = vi.fn(); const close = vi.fn();
  const props = { onOpenChange: close, itemType: "cierge" as const, postId: "post", onConfirm: confirm, onPaymentConfirmed: done };
  const view = render(<GesteRituelModal open {...props} />);
- fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "077123456" } });
+ fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "+24177123456" } });
  fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
  await waitFor(() => expect(mock.check).toHaveBeenCalledWith("FLRTEST"));
  expect(done).not.toHaveBeenCalled();
@@ -29,4 +29,17 @@ it("pending payment never completes and reopening does not resend a debit", asyn
  view.rerender(<GesteRituelModal open {...props} />);
  await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
  expect(confirm).toHaveBeenCalledTimes(1); expect(close).toHaveBeenCalledWith(false);
+});
+it("refuses local numbers and sends only the explicitly entered international number", async () => {
+ const confirm = vi.fn().mockResolvedValue({ reference: "EXPLICIT" });
+ render(<GesteRituelModal open onOpenChange={vi.fn()} itemType="cierge" postId="post" onConfirm={confirm} />);
+ const input = screen.getByLabelText(/Numéro de téléphone mobile/);
+ for (const local of ["077123456", "066123456"]) {
+   fireEvent.change(input, { target: { value: local } });
+   fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+   expect(confirm).not.toHaveBeenCalled();
+ }
+ fireEvent.change(input, { target: { value: "+24166123456" } });
+ fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+ await waitFor(() => expect(confirm).toHaveBeenCalledWith("+24166123456"));
 });
