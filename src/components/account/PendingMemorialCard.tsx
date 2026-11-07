@@ -12,6 +12,7 @@ import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 import { formatDateFrench } from "@/lib/dateUtils";
 import { toast } from "sonner";
+import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
 
 export interface PendingMemorial {
   id: string;
@@ -91,9 +92,9 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
   };
 
   const resume = async () => {
-    const clean = phone.replace(/\s+/g, "");
-    if (!/^\+?\d{8,15}$/.test(clean)) {
-      toast.error("Numéro Mobile Money requis");
+    const clean = paymentPhone(phone);
+    if (!clean) {
+      toast.error(PAYMENT_PHONE_ERROR);
       return;
     }
     setBusy(true);
@@ -164,12 +165,12 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
             <p className="text-sm text-muted-foreground">
               Montant de publication : {newPrice === null ? "…" : `${newPrice.toLocaleString("fr-FR")} XAF`} (vérifié au moment du paiement)
             </p>
-            <Label htmlFor={`resume-phone-${memorial.id}`} className="text-xs">Numéro Mobile Money</Label>
+            <Label htmlFor={`resume-phone-${memorial.id}`} className="text-xs">Numéro Mobile Money avec +241</Label>
             <div className="flex gap-2">
               <Input
                 id={`resume-phone-${memorial.id}`}
                 inputMode="tel"
-                placeholder="24107XXXXXXX"
+                placeholder="Ex: +24177123456"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
