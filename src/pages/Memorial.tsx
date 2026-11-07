@@ -303,6 +303,7 @@ const MemorialInner = () => {
   
   // State for locked relation (user's first post relation on this memorial)
   const [userLockedRelation, setUserLockedRelation] = useState<{ link: string; category: string } | undefined>(undefined);
+  const [relationLoading, setRelationLoading] = useState(true);
 
   // Fetch guestbook posts from Supabase
   const fetchGuestbookPosts = useCallback(async () => {
@@ -411,10 +412,14 @@ const MemorialInner = () => {
   useEffect(() => {
     if (!user?.id || !memorialData?.id || !isValidUUID(memorialData.id)) {
       setUserLockedRelation(undefined);
+      setRelationLoading(false);
       return;
     }
+    let cancelled = false;
+    setRelationLoading(true);
+    setUserLockedRelation(undefined);
     const fetchLockedRelation = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('guestbook_posts')
         .select('relation_category, relation_link')
         .eq('memorial_id', memorialData.id)
@@ -426,13 +431,20 @@ const MemorialInner = () => {
         .limit(1)
         .maybeSingle();
       
+      if (cancelled) return;
+      if (error) {
+        toast.error("Le lien déclaré n'a pas pu être vérifié. Rechargez la page avant de publier.");
+        return;
+      }
       if (data?.relation_link) {
         setUserLockedRelation({ link: data.relation_link, category: data.relation_category });
       } else {
         setUserLockedRelation(undefined);
       }
+      setRelationLoading(false);
     };
     fetchLockedRelation();
+    return () => { cancelled = true; };
   }, [user?.id, memorialData?.id]);
  
    // Realtime subscription for new posts
@@ -735,10 +747,13 @@ const MemorialInner = () => {
         } else {
           toast.error(response.error.message || "Erreur lors de la publication");
         }
-        return;
+        const context = response.error.context;
+        const detail = context instanceof Response ? await context.clone().json().catch(() => null) : null;
+        throw new Error(detail?.error || "L'hommage n'a pas pu être préparé. Aucun paiement n'a été demandé.");
       }
 
       if (response.data?.success) {
+        setUserLockedRelation({ link: data.relationLink, category: data.relationCategory });
         // Success — the form's own success modal handles the user feedback
         await fetchGuestbookPosts();
         const createdPostId: string | undefined = response.data?.postId;
@@ -753,13 +768,13 @@ const MemorialInner = () => {
         }).catch(() => {});
         return { success: true, postId: createdPostId };
       } else if (response.data?.rateLimited) {
-        toast.error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
+        throw new Error(response.data?.error || "Veuillez patienter un instant avant votre prochain hommage.");
       } else {
-        toast.error(response.data?.error || "Erreur lors de la publication");
+        throw new Error(response.data?.error || "Erreur lors de la publication");
       }
     } catch (error) {
       console.error('Publish error:', error);
-      toast.error("Une erreur est survenue lors de la publication");
+      throw error;
     }
     return { success: false };
   };
@@ -984,6 +999,8 @@ const MemorialInner = () => {
                   defuntName={memorialData ? `${memorialData.first_name} ${memorialData.last_name}` : undefined}
                   onSubmit={handleSubmitPost}
                   lockedRelation={userLockedRelation}
+                  relationLoading={relationLoading}
+                  onPaymentConfirmed={fetchGuestbookPosts}
                 />
               </div>
                 </div>

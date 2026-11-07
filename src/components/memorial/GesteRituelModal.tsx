@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Flame, Flower2, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
 import { toast } from "@/hooks/use-toast";
+import { checkTributePayment, type PaymentRequest } from "@/lib/tributePayment";
 
 const FALLBACK_PRICE = 500;
 
@@ -13,7 +14,8 @@ interface GesteRituelModalProps {
   onOpenChange: (open: boolean) => void;
   itemType: "cierge" | "fleur";
   postId: string;
-  onConfirm: (phone?: string) => Promise<void>;
+  onConfirm: (phone?: string) => Promise<PaymentRequest | void>;
+  onPaymentConfirmed?: () => void;
   candleCount?: number;
   flowerCount?: number;
   totalAmount?: number;
@@ -27,6 +29,7 @@ const GesteRituelModal = ({
   itemType,
   postId,
   onConfirm,
+  onPaymentConfirmed,
   candleCount = 0,
   flowerCount = 0,
   totalAmount: externalTotal,
@@ -39,6 +42,8 @@ const GesteRituelModal = ({
   const [ussdWaiting, setUssdWaiting] = useState(false);
   const [ussdTimeout, setUssdTimeout] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [paymentReference, setPaymentReference] = useState<string | null>(null);
+  const [paymentFailure, setPaymentFailure] = useState<string | null>(null);
 
   // Fallback: use loaded price or 500 FCFA if still loading
   // PROMO-01-FIX1: gestures are always paid, whatever the global switch.
@@ -68,7 +73,7 @@ const GesteRituelModal = ({
     return errors;
   }, [isMonetized, phone, postId]);
 
-  const isDisabled = submitting || validationErrors.length > 0;
+  const isDisabled = submitting || !!paymentReference || validationErrors.length > 0;
 
   // Log props when modal opens
   useEffect(() => {
@@ -89,7 +94,40 @@ const GesteRituelModal = ({
     }
   }, [open]);
 
-  // USSD timeout countdown (45s)
+  // Keep the reference on close: reopening checks the SAME transaction, never repeats the debit.
+  useEffect(() => {
+    if (open && paymentReference) setUssdWaiting(true);
+  }, [open, paymentReference]);
+
+  useEffect(() => {
+    if (!open || !paymentReference) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      try {
+        const status = await checkTributePayment(paymentReference);
+        if (cancelled) return;
+        if (status === "success") {
+          setPaymentReference(null); setUssdWaiting(false); setUssdTimeout(false);
+          onOpenChange(false); setPhone(""); onPaymentConfirmed?.();
+          return;
+        }
+        if (status === "failed") {
+          setPaymentFailure("Paiement refusé ou annulé. Aucun succès n'a été confirmé.");
+          setUssdWaiting(false); setUssdTimeout(true);
+          return;
+        }
+        setPaymentFailure(null);
+      } catch (error) {
+        if (!cancelled) setPaymentFailure(error instanceof Error ? error.message : "Vérification impossible. Le paiement reste en attente.");
+      }
+      if (!cancelled) timer = setTimeout(check, 5000);
+    };
+    void check();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [open, paymentReference, onPaymentConfirmed, onOpenChange]);
+
+  // The countdown is informational, not proof of failure. Status checks continue after it.
   useEffect(() => {
     if (!ussdWaiting) return;
     const interval = setInterval(() => {
@@ -113,7 +151,6 @@ const GesteRituelModal = ({
       postId,
       isMonetized,
       price,
-      phone: phone.trim() || "(vide)",
       validationErrors,
       submitting,
     });
@@ -129,6 +166,7 @@ const GesteRituelModal = ({
     }
 
     setSubmitting(true);
+    setPaymentFailure(null);
     try {
       const { data: fresh } = await refetch();
       const currentlyMonetized = true; void fresh;
@@ -141,14 +179,10 @@ const GesteRituelModal = ({
         return;
       }
 
-      // Enter USSD waiting state for paid mode
-      if (currentlyMonetized) {
-        setUssdWaiting(true);
-        setElapsedSeconds(0);
-        setUssdTimeout(false);
-      }
-
-      await onConfirm(currentlyMonetized ? phone.trim() : undefined);
+      const payment = await onConfirm(currentlyMonetized ? phone.trim() : undefined);
+      if (!payment?.reference) throw new Error("Aucune référence de paiement reçue. La demande n'est pas confirmée.");
+      setPaymentReference(payment.reference);
+      setUssdWaiting(true); setElapsedSeconds(0); setUssdTimeout(false);
 
       // In free mode, close immediately. In paid mode, keep modal open for USSD feedback.
       if (!currentlyMonetized) {
@@ -158,6 +192,9 @@ const GesteRituelModal = ({
     } catch (err) {
       console.error("[GesteRituelModal] Error during confirm:", err);
       setUssdWaiting(false);
+      const message = err instanceof Error ? err.message : "La demande de paiement a échoué. Veuillez réessayer.";
+      setPaymentFailure(message);
+      toast({ title: "Paiement non confirmé", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -182,6 +219,7 @@ const GesteRituelModal = ({
 
         {/* Allow interaction even while settings load — use fallback price */}
         <div className="space-y-4">
+          {paymentFailure && <p role="alert" className="text-sm text-destructive font-sans">{paymentFailure}</p>}
           {/* Price display — basket detail */}
           <div className="space-y-2">
             {hasBasket ? (
@@ -236,6 +274,7 @@ const GesteRituelModal = ({
                 type="tel"
                 placeholder="Ex: 077 12 34 56"
                 value={phone}
+                disabled={submitting || !!paymentReference}
                 onChange={(e) => setPhone(e.target.value)}
                 className="font-sans"
               />
@@ -260,7 +299,7 @@ const GesteRituelModal = ({
                 <Smartphone className="w-4 h-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[hsl(var(--candle-glow))]" />
               </div>
               <p className="text-sm font-sans font-medium text-center text-foreground">
-                Envoi de la demande USSD…
+                En attente de confirmation du paiement…
               </p>
               <p className="text-xs font-sans text-muted-foreground text-center">
                 Vérifiez votre téléphone • {45 - elapsedSeconds}s
@@ -276,7 +315,7 @@ const GesteRituelModal = ({
                 Aucune réponse reçue
               </p>
               <p className="text-xs font-sans text-muted-foreground text-center leading-relaxed">
-                Si vous n'avez pas reçu de notification, composez <span className="font-mono font-semibold">*155#</span> ou <span className="font-mono font-semibold">*126#</span> depuis votre téléphone pour valider manuellement.
+                Le paiement n'est pas confirmé. La vérification continue ; aucune nouvelle demande de débit ne sera envoyée.
               </p>
               <div className="flex gap-2 w-full">
                 <Button
@@ -289,7 +328,7 @@ const GesteRituelModal = ({
                   }}
                 >
                   <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
-                  Réessayer
+                  Vérifier le même paiement
                 </Button>
                 <Button
                   variant="ghost"
