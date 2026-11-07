@@ -1,7 +1,28 @@
 import { describe, it, expect } from "vitest";
-import { framingFor, validateFraming } from "./photoFraming";
+import { framingFor, validateFraming, propagatePortraitAdjustment } from "./photoFraming";
 
 const URL = "https://x.supabase.co/storage/v1/object/public/memorial-photos/a.jpg";
+
+describe("propagation depuis la deuxième photo", () => {
+  const photos = [URL, "https://x/second.jpg", "https://x/third.jpg"];
+  const adjustment = { scale: 1.8, x: 45, y: 38, light: 1.2, sharpness: 0.4 };
+  it("copie tous les réglages de la deuxième photo vers les photos du même défunt seulement", () => {
+    const unrelated = { scale: 1.1, x: 50, y: 40 };
+    const original = { mode: "biometrique" as const, overrides: { [photos[1]]: adjustment, "https://x/other.jpg": unrelated } };
+    const next = propagatePortraitAdjustment(original, photos, adjustment);
+    for (const url of photos) expect(next.overrides[url]).toEqual(adjustment);
+    expect(next.overrides["https://x/other.jpg"]).toEqual(unrelated);
+    expect(original.overrides).not.toHaveProperty(URL);
+  });
+  it("conserve des réglages indépendants après la copie", () => {
+    const next = propagatePortraitAdjustment({ mode: "brut", overrides: {} }, photos, adjustment);
+    next.overrides[URL].light = 0.8;
+    expect(next.overrides[photos[1]].light).toBe(1.2);
+    expect(next.overrides[photos[2]].light).toBe(1.2);
+    expect(adjustment.light).toBe(1.2);
+    expect(next.mode).toBe("brut");
+  });
+});
 
 describe("cadrage biométrique", () => {
   it("mode brut : aucun agrandissement même si un réglage existe", () => {
