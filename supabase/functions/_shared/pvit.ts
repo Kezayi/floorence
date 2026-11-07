@@ -9,6 +9,10 @@ import { pvitIssue, paymentIssueText } from "./pvitErrors.ts";
 export const PVIT_WEBHOOK_IPS = ["176.31.65.18", "176.31.65.20", "176.31.65.21", "13.59.249.167"];
 
 export type PvitOperator = "AIRTEL_MONEY" | "MOOV_MONEY";
+/** REST acceptance is not a receipt for the operator's PIN prompt. No such receipt is documented. */
+export function pvitAcceptanceEvidence() {
+  return { payment_request_accepted: true, pin_prompt_received: null, ussd_push_sent: null };
+}
 type Env = (k: string) => string | undefined;
 const e = (env: Env, k: string) => (env(k) ?? "").trim().replace(/^\/+|\/+$/g, "");
 

@@ -1,5 +1,11 @@
 import { assertEquals } from "https://deno.land/std@0.190.0/testing/asserts.ts";
-import { normalizeMsisdn, enteredPaymentMsisdn, detectOperator, mapPvitStatus, resolvePvitConfig, initiatePayment } from "./pvit.ts";
+import { normalizeMsisdn, enteredPaymentMsisdn, detectOperator, mapPvitStatus, resolvePvitConfig, initiatePayment, pvitAcceptanceEvidence } from "./pvit.ts";
+
+Deno.test("REST acceptance never proves an operator PIN prompt was sent or received", () => {
+  assertEquals(pvitAcceptanceEvidence(), {
+    payment_request_accepted: true, pin_prompt_received: null, ussd_push_sent: null,
+  });
+});
 
 Deno.test("Airtel numbers (07…) route to AIRTEL_MONEY", () => {
   assertEquals(detectOperator("074 00 00 00"), "AIRTEL_MONEY");

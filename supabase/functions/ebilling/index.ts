@@ -4,7 +4,7 @@ import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuc
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
-import { getPvitConfig, enteredPaymentMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel } from "../_shared/pvit.ts";
+import { getPvitConfig, enteredPaymentMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel, pvitAcceptanceEvidence } from "../_shared/pvit.ts";
 import { pvitIssue, paymentIssueText } from "../_shared/pvitErrors.ts";
 
 // PAY-PVIT: this function keeps its historical name "ebilling" as the stable client contract,
@@ -408,7 +408,7 @@ const handler = async (req: Request): Promise<Response> => {
       ...baseRow,
       status: "pending",
       ebilling_transaction_id: push.transactionId,
-      metadata: { ...baseMeta, pvit_transaction_id: push.transactionId, bill_id: push.transactionId, ussd_push_sent: true },
+      metadata: { ...baseMeta, pvit_transaction_id: push.transactionId, bill_id: push.transactionId, ...pvitAcceptanceEvidence() },
     });
     if (txError) {
       console.error("[pvit] Transaction insert error:", txError);
@@ -435,7 +435,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const operatorName = operator === "MOOV_MONEY" ? "Moov Money" : "Airtel Money";
     return new Response(
       JSON.stringify({
         success: true,
@@ -444,9 +443,9 @@ const handler = async (req: Request): Promise<Response> => {
         amount: totalAmount,
         unit_price: unitPrice,
         requires_phone: true,
-        ussd_push_sent: true,
+        ...pvitAcceptanceEvidence(),
         payment_system: operator,
-        message: `Demande transmise à ${operatorName}, paiement non confirmé. Si l’opérateur affiche une demande sur votre téléphone, saisissez votre PIN dans cette demande uniquement, jamais sur Floorence.`,
+        message: "PVit a accepté la demande de paiement. La réception d’une demande PIN sur votre téléphone n’est pas confirmée. Si une demande officielle apparaît, saisissez votre PIN uniquement chez votre opérateur, jamais sur Floorence. Si vous n’avez rien reçu, vérifiez ce même paiement sans relancer de débit.",
       }),
       { status: 200, headers: jsonHeaders }
     );
