@@ -266,12 +266,12 @@ const GesteRituelModal = ({
           {isMonetized && (
             <div className="space-y-2">
               <label htmlFor="phone" className="text-sm font-sans text-muted-foreground">
-                Numéro de téléphone mobile avec +241 (requis)
+                Numéro Airtel ou Moov Money (requis)
               </label>
               <Input
                 id="phone"
                 type="tel"
-                placeholder="Ex: +24177123456"
+                placeholder="Ex: 074 12 34 56"
                 aria-invalid={!!phone && !paymentPhone(phone)}
                 value={phone}
                 disabled={submitting || !!paymentReference}

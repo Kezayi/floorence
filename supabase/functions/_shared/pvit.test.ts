@@ -20,12 +20,12 @@ Deno.test("local normalization remains limited to operator detection", () => {
     assertEquals(normalizeMsisdn(input), "074123456");
   }
 });
-Deno.test("explicit +241 is mandatory for payment without automatic conversion", () => {
-  for (const input of ["066123456", "074123456", "0024166123456", "24166123456"]) {
-    assertEquals(enteredPaymentMsisdn(input), null);
+Deno.test("payment number is sent in national 9-digit form (PVit rejects +241)", () => {
+  for (const input of ["074698031", "74698031", "+24174698031", "0024174698031", "+241 74 69 80 31"]) {
+    assertEquals(enteredPaymentMsisdn(input), "074698031");
   }
-  assertEquals(enteredPaymentMsisdn("+24166123456"), "+24166123456");
-  assertEquals(enteredPaymentMsisdn("+241 74 12 34 56"), "+24174123456");
+  assertEquals(enteredPaymentMsisdn("+24166123456"), "066123456");
+  assertEquals(enteredPaymentMsisdn("011234567"), null);
 });
 Deno.test("PVit reçoit le format international et le bon compte pour chaque opérateur sans débit réel", async () => {
   const originalFetch = globalThis.fetch;
@@ -48,11 +48,11 @@ Deno.test("PVit reçoit le format international et le bon compte pour chaque op�
       assertEquals(result.accepted, true);
     }
     assertEquals(bodies.map((body) => [body.customer_account_number, body.merchant_operation_account_code]), [
-      ["+24174123456", "TEST_AIRTEL_PHONE"], ["+24166123456", "TEST_MOOV_PHONE"],
+      ["074123456", "TEST_AIRTEL_PHONE"], ["066123456", "TEST_MOOV_PHONE"],
     ]);
     let rejected = false;
     try {
-      await initiatePayment(cfg, { amount: 1400, reference: "TEST", msisdn: "074123456", operator: "AIRTEL_MONEY", product: "Cierge1 Fleur1" });
+      await initiatePayment(cfg, { amount: 1400, reference: "TEST", msisdn: "066123456", operator: "AIRTEL_MONEY", product: "Cierge1 Fleur1" });
     } catch { rejected = true; }
     assertEquals(rejected, true);
     assertEquals(bodies.length, 2);

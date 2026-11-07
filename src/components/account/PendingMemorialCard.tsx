@@ -165,12 +165,12 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
             <p className="text-sm text-muted-foreground">
               Montant de publication : {newPrice === null ? "…" : `${newPrice.toLocaleString("fr-FR")} XAF`} (vérifié au moment du paiement)
             </p>
-            <Label htmlFor={`resume-phone-${memorial.id}`} className="text-xs">Numéro Mobile Money avec +241</Label>
+            <Label htmlFor={`resume-phone-${memorial.id}`} className="text-xs">Numéro Mobile Money (Airtel ou Moov)</Label>
             <div className="flex gap-2">
               <Input
                 id={`resume-phone-${memorial.id}`}
                 inputMode="tel"
-                placeholder="Ex: +24177123456"
+                placeholder="Ex: 074 12 34 56"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />

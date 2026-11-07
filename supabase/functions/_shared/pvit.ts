@@ -20,10 +20,10 @@ export function normalizeMsisdn(raw: string): string | null {
   return /^0\d{8}$/.test(d) ? d : null;
 }
 
-/** Require +241 to be entered explicitly; whitespace is presentation only. */
+/** PVit rejects +241 (error 3024): send the national 9-digit form 06…/07…, any input form accepted. */
 export function enteredPaymentMsisdn(raw: string): string | null {
-  const entered = raw.trim().replace(/\s+/g, "");
-  return /^\+241[67]\d{7}$/.test(entered) ? entered : null;
+  const n = normalizeMsisdn(raw);
+  return n && /^0[67]\d{7}$/.test(n) ? n : null;
 }
 
 /** Gabon prefixes: 07/74/76/77 = Airtel, 06/62/65/66 = Moov. */

@@ -877,11 +877,11 @@ const CreateMemorial = () => {
 
                      {requiresPaymentDisplay && !paymentState && (
                        <div className="mt-4">
-                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money avec +241</Label>
+                         <Label htmlFor="memorial-payer-phone" className="text-xs">Numéro Mobile Money (Airtel ou Moov)</Label>
                          <Input
                            id="memorial-payer-phone"
                            inputMode="tel"
-                           placeholder="Ex: +24177123456"
+                           placeholder="Ex: 074 12 34 56"
                            value={payerPhone}
                            onChange={(e) => setPayerPhone(e.target.value)}
                            className="mt-1"
