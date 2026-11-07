@@ -260,8 +260,9 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
         countryPublic: countryPublic && !!effectiveCountry,
       });
       const createdPostId = submitResult && typeof submitResult === 'object' ? submitResult.postId : undefined;
-      if (submitResult && typeof submitResult === 'object' && submitResult.success === false) {
-        return; // publication failed — never initiate payment
+      if (!createdPostId) {
+        // publication failed — never initiate payment, never show success
+        throw new Error("publication_failed");
       }
 
       // 2. Call the ebilling edge function to initiate payment with the operator

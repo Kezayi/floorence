@@ -7,6 +7,7 @@ Deno.test("prix 0 refusé", () => assertEquals(validateGesturePrice({ amount: 0 
 Deno.test("devise non XAF refusée", () => assertEquals(validateGesturePrice({ amount: 700, currency: "XOF" }).ok, false));
 Deno.test("100 cierges acceptés", () => assertEquals(checkTributeGestures(100, 0).ok, true));
 Deno.test("200 fleurs acceptées", () => assertEquals(checkTributeGestures(0, 200).ok, true));
+Deno.test("1 cierge + 1 fleur acceptés ensemble", () => assertEquals(checkTributeGestures(1, 1).ok, true));
 Deno.test("hommage sans geste accepté", () => assertEquals(checkTributeGestures(0, 0).ok, true));
 Deno.test("quantité négative refusée", () => assertEquals(checkTributeGestures(-1, 0).ok, false));
 Deno.test("commande de 200 × 700 acceptée", () => assertEquals(checkGestureOrder(200, 700).ok, true));

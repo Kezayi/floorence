@@ -23,7 +23,7 @@ const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 /** Gestures declared when a tribute is created: one type per payment, any quantity. */
 export function checkTributeGestures(candles: number, flowers: number): Check<null> {
   if (!isCount(candles) || !isCount(flowers)) return { ok: false, error: "Quantité invalide" };
-  if (candles > 0 && flowers > 0) return { ok: false, error: "Un type de geste par paiement : ajoutez l'autre ensuite" };
+  // GESTURES-MIXED: candles AND flowers may be combined on one tribute (single basket payment).
   return { ok: true, value: null };
 }
 
