@@ -24,7 +24,7 @@ const CountryFlag = ({ code, className = "", size = "sm", fallback = false }: { 
       height={h}
       loading="lazy"
       onError={() => setBroken(true)}
-      className={`inline-block ${size === "md" ? "w-[27px] h-[18px]" : "w-6 h-4"} object-contain border border-border rounded-[2px] ${className}`}
+      className={`inline-block ${size === "md" ? "w-[27px] h-[18px]" : "w-6 h-4"} object-contain border border-border rounded-[2px] grayscale hover:grayscale-0 transition-[filter] duration-[600ms] ease-out motion-reduce:transition-none ${className}`}
     />
   );
 };
