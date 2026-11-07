@@ -10,8 +10,9 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePhotoFraming, PHOTO_FRAMING_QUERY } from "@/hooks/usePhotoFraming";
-import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, LIGHT_MIN, LIGHT_MAX, RETOUCH_LIMITS, isAdjusted, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
-import { Undo2, Redo2, RotateCcw, Save } from "lucide-react";
+import { PHOTO_FRAMING_KEY, SCALE_MAX, SCALE_MIN, LIGHT_MIN, LIGHT_MAX, RETOUCH_LIMITS, isAdjusted, propagatePortraitAdjustment, type FramingAdjust, type PhotoFramingSetting } from "@/lib/photoFraming";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Undo2, Redo2, RotateCcw, Save, Copy } from "lucide-react";
 
 interface Row { id: string; first_name: string; last_name: string; photo_url: string | null; photos: string[] | null }
 const REFERENCE = "MBIGOU";
@@ -67,6 +68,8 @@ const PortraitCalibration = () => {
     finally { setBusy(false); }
   };
   const current: PhotoFramingSetting = setting ?? { mode: "brut", overrides: {} };
+  const secondPhoto = photos[1];
+  const secondAdjustment = secondPhoto ? photoUrl === secondPhoto ? adj : current.overrides[secondPhoto] : undefined;
 
   const frameFor = (r?: Row) => preview === "brut" || !r ? null : r.id === selected?.id ? adj : undefined;
 
@@ -159,7 +162,27 @@ const PortraitCalibration = () => {
               const overrides = { ...current.overrides };
               if (isAdjusted(adj)) overrides[photoUrl] = adj; else delete overrides[photoUrl];
               persist({ ...current, overrides }, `Réglage enregistré pour ${label(selected)}`);
-            }}><Save className="w-4 h-4 mr-2" />Enregistrer ce réglage</Button>
+            }}><Save className="w-4 h-4 mr-2" />Enregistrer · Photo {photoIndex + 1}</Button>
+            {secondPhoto && <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={busy || !secondAdjustment} title={!secondAdjustment ? "Réglez et enregistrez d’abord la photo 2" : undefined}>
+                  <Copy className="w-4 h-4 mr-2" />Propager les réglages de la photo 2
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Harmoniser les {photos.length} photos de {label(selected)} ?</AlertDialogTitle>
+                  <AlertDialogDescription>Les réglages de la photo 2 remplaceront les réglages actuels des {photos.length} photos de ce défunt. Chaque photo restera modifiable séparément. Les originaux sont préservés.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => {
+                    if (!secondAdjustment) return;
+                    persist(propagatePortraitAdjustment(current, photos, secondAdjustment), `Réglages de la photo 2 copiés sur les ${photos.length} photos de ${label(selected)}`);
+                  }}>Propager</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>}
             <Button size="icon" variant="outline" title="Annuler" aria-label="Annuler" disabled={!history.length} onClick={() => { const last = history.at(-1); if (!last) return; setFuture((f) => [...f, adj]); setAdj(last); setHistory((h) => h.slice(0, -1)); }}><Undo2 className="w-4 h-4" /></Button>
             <Button size="icon" variant="outline" title="Rétablir" aria-label="Rétablir" disabled={!future.length} onClick={() => { const next = future.at(-1); if (!next) return; setHistory((h) => [...h, adj]); setAdj(next); setFuture((f) => f.slice(0, -1)); }}><Redo2 className="w-4 h-4" /></Button>
             <Button variant="outline" disabled={busy} onClick={() => change(NEUTRAL)}><RotateCcw className="w-4 h-4 mr-2" />Réinitialiser les retouches</Button>
