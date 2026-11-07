@@ -247,7 +247,7 @@ const handler = async (req: Request): Promise<Response> => {
           : "Le paiement précédent est en cours de vérification auprès de l'opérateur. Nouvelle tentative impossible pour éviter un double débit.";
         return new Response(JSON.stringify({ error, reference_status: s }), { status: 409, headers: jsonHeaders });
       }
-    } else if (item_type !== "cierge" && item_type !== "fleur") {
+    } else if (item_type !== "cierge" && item_type !== "fleur" && item_type !== "cierge_fleur") {
       return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: jsonHeaders });
     }
 
@@ -255,10 +255,12 @@ const handler = async (req: Request): Promise<Response> => {
     if (isMemorialPayment) {
       unitPrice = memorialPrice ?? undefined;
     } else {
+      // Mixed basket: nominal unit price = candle price; real total is recomputed from the basket below.
+      const priceKey = item_type === "cierge_fleur" ? "cierge" : item_type;
       const { data: priceData } = await supabaseAdmin
         .from("ritual_prices")
         .select("unit_price")
-        .eq("item_type", item_type)
+        .eq("item_type", priceKey)
         .single();
       unitPrice = priceData?.unit_price;
     }
@@ -273,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
     let totalAmount = unitPrice * quantity;
     let basket: { c: number; f: number } | null = null;
     const ebillingRef = newReference();
-    const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge" ? "Cierge" : "Fleur";
+    const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge_fleur" ? "Cierge + Fleur" : item_type === "cierge" ? "Cierge" : "Fleur";
     const memorialMeta = isMemorialPayment ? { memorial_id, memorial_category: memorialCategory } : {};
 
     console.log(`[pvit] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
@@ -332,7 +334,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: gPost } = await supabaseAdmin.from("guestbook_posts")
         .select("is_hidden, candle_count, flower_count").eq("id", post_id).maybeSingle();
       const { data: inFlightTxs } = await supabaseAdmin.from("payment_transactions")
-        .select("metadata").in("payment_type", ["cierge", "fleur"]).in("status", ["pending", "timeout"])
+        .select("metadata").in("payment_type", ["cierge", "fleur", "cierge_fleur"]).in("status", ["pending", "timeout"])
         .eq("metadata->>post_id", post_id);
       if ((inFlightTxs ?? []).length > 0) {
         return new Response(JSON.stringify({ error: "Un paiement de geste est déjà en cours pour cet hommage" }), { status: 409, headers: jsonHeaders });

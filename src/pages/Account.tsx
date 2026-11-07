@@ -662,7 +662,7 @@ const Account = () => {
                             const isFree = tx.amount === 0;
                             const statusLabel = tx.status === "SUCCESS" ? "Confirmé" : tx.status === "FAILED" ? "Échoué" : "En attente";
                             const statusColor = tx.status === "SUCCESS" ? "text-emerald-600" : tx.status === "FAILED" ? "text-destructive" : "text-amber-500";
-                            const itemLabel = tx.payment_type === "cierge" ? "Cierge" : tx.payment_type === "fleur" ? "Fleur" : tx.payment_type;
+                            const itemLabel = tx.payment_type === "cierge_fleur" ? "Cierge + Fleur" : tx.payment_type === "cierge" ? "Cierge" : tx.payment_type === "fleur" ? "Fleur" : tx.payment_type;
 
                             return (
                               <div key={tx.id} className="bg-card border border-border rounded-sm p-4">
@@ -671,6 +671,11 @@ const Account = () => {
                                     <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
                                       {tx.payment_type === "cierge" ? (
                                         <Flame className="w-4 h-4" style={{ color: 'hsl(var(--gesture-candle))' }} />
+                                      ) : tx.payment_type === "cierge_fleur" ? (
+                                        <span className="flex items-center gap-0.5">
+                                          <Flame className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gesture-candle))' }} />
+                                          <ChrysanthemumIcon size={13} />
+                                        </span>
                                       ) : (
                                         <ChrysanthemumIcon size={16} />
                                       )}
