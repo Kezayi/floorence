@@ -1,5 +1,7 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] PVit : 06/07 normalisés en +2416/+2417 à l’envoi, formats internationaux conservés et comptes opérateurs vérifiés ; 9 tests sans réseau réel réussis, contrôle Deno des 3 fonctions OK, ebilling seule déployée. Aucun débit déclenché ; recette téléphonique du correctif restant à confirmer.
+
 - [x] Correction paiement hommage : lien scellé prioritaire même chargé tardivement, erreurs visibles, panier mixte, attente de confirmation serveur et réutilisation de référence ; 19 tests réussis, compilation automatique OK, fenêtre connectée desktop/mobile vérifiée sans débit. Aucune modification serveur ni publication.
 - [ ] Recette Airtel réelle : réception de la demande PIN et publication après débit à vérifier par le titulaire du téléphone ; la session de recette disponible est administrateur (dépôt interdit), aucun débit réel déclenché.
 

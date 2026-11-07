@@ -11,19 +11,20 @@ export type PvitOperator = "AIRTEL_MONEY" | "MOOV_MONEY";
 type Env = (k: string) => string | undefined;
 const e = (env: Env, k: string) => (env(k) ?? "").trim().replace(/^\/+|\/+$/g, "");
 
-/** Normalizes a Gabon MSISDN to 9 local digits (0XXXXXXXX). Returns null if invalid. */
+/** Normalizes a Gabon mobile MSISDN to +241XXXXXXXX. Returns null if invalid. */
 export function normalizeMsisdn(raw: string): string | null {
   let d = (raw ?? "").replace(/\D/g, "");
   if (d.startsWith("00241")) d = d.slice(5);
-  else if (d.startsWith("241") && d.length > 9) d = d.slice(3);
-  if (d.length === 8) d = "0" + d;
-  return /^0\d{8}$/.test(d) ? d : null;
+  else if (d.startsWith("241")) d = d.slice(3);
+  if (d.length === 9 && d.startsWith("0")) d = d.slice(1);
+  return /^[67]\d{7}$/.test(d) ? `+241${d}` : null;
 }
 
 /** Gabon prefixes: 07/74/76/77 = Airtel, 06/62/65/66 = Moov. */
 export function detectOperator(msisdn: string): PvitOperator | null {
-  if (/^07/.test(msisdn)) return "AIRTEL_MONEY";
-  if (/^06/.test(msisdn)) return "MOOV_MONEY";
+  const normalized = normalizeMsisdn(msisdn);
+  if (normalized?.startsWith("+2417")) return "AIRTEL_MONEY";
+  if (normalized?.startsWith("+2416")) return "MOOV_MONEY";
   return null;
 }
 
@@ -85,6 +86,10 @@ export const newReference = () =>
 export async function initiatePayment(cfg: PvitConfig, p: {
   amount: number; reference: string; msisdn: string; operator: PvitOperator; product: string;
 }) {
+  const msisdn = normalizeMsisdn(p.msisdn);
+  if (!msisdn || detectOperator(msisdn) !== p.operator) {
+    throw new Error("Numéro Mobile Money invalide ou opérateur incompatible");
+  }
   const account = cfg.accounts[p.operator];
   const body = JSON.stringify({
     agent: "FLOORENCE",
@@ -92,7 +97,7 @@ export async function initiatePayment(cfg: PvitConfig, p: {
     reference: p.reference,
     service: "RESTFUL",
     callback_url_code: cfg.callbackCode,
-    customer_account_number: p.msisdn,
+    customer_account_number: msisdn,
     merchant_operation_account_code: account,
     transaction_type: "PAYMENT",
     owner_charge: "CUSTOMER",
