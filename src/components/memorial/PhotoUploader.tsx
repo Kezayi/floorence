@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Photo from "@/components/ui/Photo";
+import FaceGuide from "@/components/ui/FaceGuide";
 import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 
 interface PhotoUploaderProps {
@@ -198,6 +199,7 @@ interface PhotoUploaderProps {
               alt={`Photo ${index + 1}`}
               targetWidth={200}
             />
+            <FaceGuide lines={false} />
             {/* Enhancing overlay */}
             {enhancingIndex === index && (
               <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 text-white">
@@ -274,6 +276,12 @@ interface PhotoUploaderProps {
           </Button>
         )}
       </div>
+
+      {photos.length > 0 && (
+        <p className="text-xs font-sans text-muted-foreground">
+          Repère pointillé : idéalement, le visage remplit l'ovale (front en haut, menton en bas).
+        </p>
+      )}
 
       <input
         ref={fileInputRef}

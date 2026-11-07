@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Settings, MessageSquare, Users, BarChart3, Flower2, BookOpen,
-  History, Activity, Brain, Sparkles, Route, Banknote, Trash2, type LucideIcon,
+  History, Activity, Brain, Sparkles, Route, Banknote, Trash2, ScanFace, type LucideIcon,
 } from 'lucide-react';
 import { ADMIN_PREFIX } from './adminRoutes';
 
@@ -37,6 +37,7 @@ export const ADMIN_NAV: AdminNavPole[] = [
     items: [
       { to: `${ADMIN_PREFIX}/memoriaux`, icon: Flower2, label: 'Mémoriaux & fusions' },
       { to: `${ADMIN_PREFIX}/moderation`, icon: MessageSquare, label: 'Modération des hommages' },
+      { to: `${ADMIN_PREFIX}/portraits`, icon: ScanFace, label: 'Étalonnage des portraits', adminOnly: true },
       { to: `${ADMIN_PREFIX}/corbeille`, icon: Trash2, label: 'Corbeille', adminOnly: true },
     ],
   },
