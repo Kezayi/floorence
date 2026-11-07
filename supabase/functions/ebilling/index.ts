@@ -4,6 +4,11 @@ import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuc
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
+import { getPvitConfig, normalizeMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus } from "../_shared/pvit.ts";
+
+// PAY-PVIT: this function keeps its historical name "ebilling" as the stable client contract,
+// but the only operator behind it is now PVit v2 (production). eBilling is fully removed.
+// Columns ebilling_reference / ebilling_transaction_id hold the Floorence reference / PVit transaction id.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,76 +17,6 @@ const corsHeaders = {
 };
 
 const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
-
-// ── eBilling API Config (from official docs) ──
-// Base URL: https://lab.billing-easy.net/api/v1/merchant/
-// Auth: Basic Auth (Username:SharedKey)
-// Payment portal: https://test.billing-easy.net
-
-// ── G1-FIX4: explicit environment selection (lab by default) ──
-export const LAB_API_HOSTS = ["lab.billing-easy.net"];
-export const LAB_PORTAL_HOSTS = ["test.billing-easy.net"];
-const LAB_DEFAULT_API = "https://lab.billing-easy.net/api/v1/merchant";
-const LAB_DEFAULT_PORTAL = "https://test.billing-easy.net";
-
-function hostOf(url: string): string | null {
-  try { const u = new URL(url); return u.protocol === "https:" ? u.hostname.toLowerCase() : null; } catch { return null; }
-}
-function splitList(v: string | undefined): string[] {
-  return (v ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-}
-
-// G2-FIX2: Swagger v1 — merchant API lives under /api/v1/merchant. Accepts an origin
-// or a full merchant base; never appends the path twice.
-export function normalizeMerchantApiBase(raw: string | undefined): string {
-  const v = (raw ?? "").trim().replace(/\/+$/, "");
-  if (!v) return "";
-  return /\/api\/v1\/merchant$/i.test(v) ? v : `${v}/api/v1/merchant`;
-}
-
-export function resolveEbillingConfig(env: (k: string) => string | undefined) {
-  const rawEnv = (env("EBILLING_ENV") ?? "").trim().toLowerCase();
-  const mode: "lab" | "production" = rawEnv === "production" ? "production" : "lab";
-  const username = (env("EBILLING_USERNAME") ?? "").trim();
-  const sharedKey = (env("EBILLING_SHARED_KEY") ?? "").trim();
-  const callbackSecret = (env("EBILLING_CALLBACK_SECRET") ?? "").trim();
-  const rawBase = normalizeMerchantApiBase(env("EBILLING_BASE_URL"));
-  const rawPortal = (env("EBILLING_PORTAL_BASE_URL") ?? "").trim().replace(/\/+$/, "");
-  const errors: string[] = [];
-
-  let baseUrl: string;
-  let portalBaseUrl: string;
-  if (mode === "lab") {
-    baseUrl = rawBase || LAB_DEFAULT_API;
-    portalBaseUrl = rawPortal || LAB_DEFAULT_PORTAL;
-    const bh = hostOf(baseUrl); const ph = hostOf(portalBaseUrl);
-    if (!bh || !LAB_API_HOSTS.includes(bh)) errors.push("LAB: endpoint API hors liste LAB refusé");
-    if (!ph || !LAB_PORTAL_HOSTS.includes(ph)) errors.push("LAB: portail hors liste LAB refusé");
-  } else {
-    baseUrl = rawBase;
-    portalBaseUrl = rawPortal;
-    const allowedApi = splitList(env("EBILLING_PROD_ALLOWED_API_HOSTS"));
-    const allowedPortal = splitList(env("EBILLING_PROD_ALLOWED_PORTAL_HOSTS"));
-    if (!baseUrl) errors.push("PRODUCTION: EBILLING_BASE_URL manquant");
-    if (!portalBaseUrl) errors.push("PRODUCTION: EBILLING_PORTAL_BASE_URL manquant");
-    if (!username || !sharedKey) errors.push("PRODUCTION: identifiants marchands manquants");
-    if (!callbackSecret) errors.push("PRODUCTION: EBILLING_CALLBACK_SECRET manquant");
-    if (allowedApi.length === 0) errors.push("PRODUCTION: EBILLING_PROD_ALLOWED_API_HOSTS manquant");
-    if (allowedPortal.length === 0) errors.push("PRODUCTION: EBILLING_PROD_ALLOWED_PORTAL_HOSTS manquant");
-    const bh = baseUrl ? hostOf(baseUrl) : null; const ph = portalBaseUrl ? hostOf(portalBaseUrl) : null;
-    if (baseUrl && (!bh || !allowedApi.includes(bh) || LAB_API_HOSTS.includes(bh))) errors.push("PRODUCTION: endpoint API non autorisé");
-    if (portalBaseUrl && (!ph || !allowedPortal.includes(ph) || LAB_PORTAL_HOSTS.includes(ph))) errors.push("PRODUCTION: portail non autorisé");
-  }
-  return { mode, username, sharedKey, baseUrl, portalBaseUrl, errors, ok: errors.length === 0 };
-}
-
-function getEbillingConfig() {
-  return resolveEbillingConfig((k) => Deno.env.get(k));
-}
-
-function buildBasicAuth(username: string, sharedKey: string): string {
-  return "Basic " + btoa(`${username}:${sharedKey}`);
-}
 
 function initClients(authHeader: string) {
   const supabaseUser = createClient(
@@ -97,158 +32,49 @@ function initClients(authHeader: string) {
   return { supabaseUser, supabaseAdmin };
 }
 
-// ── CHECK-STATUS: Query invoice by bill_id ──
-// Uses: GET {baseUrl}/e_bills/{bill_id} OR we store bill_id in metadata
-// Fallback: We query using the ebilling_reference stored as external_reference
+// ── CHECK-STATUS: local state first, then PVit status API (no debit) ──
 async function handleCheckStatus(body: any, supabaseAdmin: any): Promise<Response> {
   const { reference } = body;
   if (!reference) {
     return new Response(JSON.stringify({ error: "Référence manquante" }), { status: 400, headers: jsonHeaders });
   }
-
-  const { data: tx, error: txErr } = await supabaseAdmin
+  const { data: tx } = await supabaseAdmin
     .from("payment_transactions")
-    .select("id, status, ebilling_reference, memorial_id, metadata, last_api_response, ebilling_transaction_id")
+    .select("id, status, amount, metadata, ebilling_transaction_id")
     .eq("ebilling_reference", reference)
-    .single();
-
-  if (txErr || !tx) {
-    return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
-  }
-
+    .maybeSingle();
+  if (!tx) return new Response(JSON.stringify({ error: "Transaction introuvable" }), { status: 404, headers: jsonHeaders });
   if (tx.status === "success") {
     return new Response(JSON.stringify({ success: true, already_confirmed: true, status: "success" }), { status: 200, headers: jsonHeaders });
   }
   if (tx.status === "failed") {
     return new Response(JSON.stringify({ success: false, status: "failed", message: "Cette transaction a échoué définitivement" }), { status: 200, headers: jsonHeaders });
   }
-
-  // We need the bill_id to query the invoice status
-  const metadata = tx.metadata as Record<string, any> | null;
-  const billId = metadata?.bill_id || tx.ebilling_transaction_id;
-
-  if (!billId) {
-    console.log(`[ebilling:check-status] ref=${reference} → no bill_id stored, cannot query status`);
-    return new Response(JSON.stringify({
-      success: false,
-      status: tx.status,
-      payment_status: "NO_BILL_ID",
-      message: "Aucun identifiant de facture eBilling. Le paiement n'a peut-être pas été initié correctement.",
-    }), { status: 200, headers: jsonHeaders });
-  }
-
-  const { username, sharedKey, baseUrl, ok: envOk, mode: envMode, errors: envErrors } = getEbillingConfig();
-  if (!envOk) {
-    console.error(`[ebilling:check-status] BLOCKED env=${envMode}: ${envErrors.join(" | ")}`);
-    return new Response(JSON.stringify({ error: "Configuration de paiement invalide pour l'environnement actif" }), { status: 500, headers: jsonHeaders });
-  }
-
-  if (!username || !sharedKey) {
-    return new Response(JSON.stringify({ error: "Configuration eBilling manquante (credentials)" }), { status: 500, headers: jsonHeaders });
-  }
-
-  try {
-    // Query invoice status: the eBilling guide doesn't have a dedicated status endpoint,
-    // but the SHAP API has GET /query-invoice/{bill_id}
-    // We'll try the e_bills endpoint first
-    const queryUrl = `${baseUrl}/e_bills/${billId}`;
-    console.log(`[ebilling:check-status] Querying ${queryUrl} for bill_id=${billId}`);
-
-    const response = await fetch(queryUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": buildBasicAuth(username, sharedKey),
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const rawText = await response.text();
-    console.log(`[ebilling:check-status] HTTP ${response.status}, raw: ${rawText.substring(0, 500)}`);
-
-    let data: any;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      console.error("[ebilling:check-status] Non-JSON response");
-      return new Response(JSON.stringify({
-        success: false,
-        status: tx.status,
-        message: `Réponse non-JSON de l'opérateur (HTTP ${response.status})`,
-      }), { status: 200, headers: jsonHeaders });
+  const meta = (tx.metadata ?? {}) as Record<string, any>;
+  const pvitId = meta.pvit_transaction_id || tx.ebilling_transaction_id;
+  const st = await checkPvitStatus(getPvitConfig(), pvitId, meta.pvit_account);
+  if (st) {
+    await supabaseAdmin.from("payment_transactions")
+      .update({ last_api_response: st.raw, last_sync_at: new Date().toISOString() }).eq("id", tx.id);
+    if (st.state === "success" && (Number.isNaN(st.amount) || st.amount === null || st.amount >= tx.amount)) {
+      const r = await finalizePaymentSuccess(supabaseAdmin, { txId: tx.id, reference, channel: "check-status", ebillingTransactionId: pvitId });
+      return new Response(JSON.stringify({ success: true, status: "success", already_confirmed: !r.claimed, message: "Paiement confirmé" }), { status: 200, headers: jsonHeaders });
     }
-
-    // Save API response
-    await supabaseAdmin
-      .from("payment_transactions")
-      .update({ last_api_response: JSON.stringify(data), last_sync_at: new Date().toISOString() })
-      .eq("ebilling_reference", reference);
-
-    // Check state from e_bill response
-    const billState = (data?.e_bill?.state || data?.data?.state || data?.state || "").toLowerCase();
-
-    if (billState === "paid" || billState === "success" || billState === "completed") {
-      // G1-FIX2: shared atomic success pipeline
-      const result = await finalizePaymentSuccess(supabaseAdmin, {
-        txId: tx.id,
-        reference,
-        channel: "check-status",
-        ebillingTransactionId: data?.e_bill?.bill_id || data?.data?.bill_id || billId,
-      });
-
-      return new Response(JSON.stringify({
-        success: true,
-        status: "success",
-        already_confirmed: !result.claimed,
-        message: "Transaction validée et hommage publié",
-      }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (billState === "ready" || billState === "pending") {
-      return new Response(JSON.stringify({
-        success: false,
-        status: tx.status,
-        payment_status: "NOT_INITIATED",
-        message: "Paiement en attente. Tapez votre code secret sur votre téléphone.",
-      }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (billState === "expired" || billState === "cancelled" || billState === "failed") {
+    if (st.state === "failed") {
       await markPaymentFailed(supabaseAdmin, tx.id);
-
-      return new Response(JSON.stringify({
-        success: false,
-        status: "failed",
-        payment_status: billState.toUpperCase(),
-        message: `Paiement ${billState}. Veuillez réessayer.`,
-      }), { status: 200, headers: jsonHeaders });
+      return new Response(JSON.stringify({ success: false, status: "failed", payment_status: "FAILED", message: "Paiement refusé ou annulé. Veuillez réessayer." }), { status: 200, headers: jsonHeaders });
     }
-
-    console.log(`[ebilling:check-status] ref=${reference} → unknown state: ${billState}`);
-    return new Response(JSON.stringify({
-      success: false,
-      status: tx.status,
-      payment_status: billState || "UNKNOWN",
-      message: "Statut inconnu, réessayez dans quelques instants.",
-    }), { status: 200, headers: jsonHeaders });
-
-  } catch (apiError) {
-    console.error("[ebilling:check-status] API error:", apiError);
-    return new Response(JSON.stringify({
-      success: false,
-      status: tx.status,
-      message: `Erreur: ${(apiError as Error).message || "Impossible de vérifier le statut"}`,
-    }), { status: 200, headers: jsonHeaders });
   }
+  return new Response(JSON.stringify({
+    success: false, status: tx.status, payment_status: "PENDING",
+    message: "Paiement en attente. Tapez votre code secret sur votre téléphone.",
+  }), { status: 200, headers: jsonHeaders });
 }
 
 // ── G1-FIX9: stale memorial payment resolution ──
-// Rules: a real pending always carries a bill_id (inserted only after bill creation).
-//  - pending > 30 min, no bill_id → never reached the operator → local closure
-//    (status timeout + metadata.local_closure='no_operator_bill'), retry allowed.
-//  - pending/timeout > 30 min with bill_id → ask the operator (GET, no debit):
-//    paid → atomic fulfillment; failed/expired/cancelled → failed (retry allowed);
-//    anything else → timeout, status unknown, retry stays BLOCKED.
+//  - pending > 30 min without PVit id → never reached the operator → local closure, retry allowed.
+//  - with PVit id → ask PVit (GET, no debit): success → fulfillment; failed → failed;
+//    unknown → timeout, retry stays BLOCKED (avoid double debit).
 export const STALE_MS = 30 * 60 * 1000;
 
 export function isBlockingMemorialTx(t: { status: string; metadata?: any }): boolean {
@@ -269,39 +95,25 @@ async function resolveStaleMemorialPayments(supabaseAdmin: any, memorialId: stri
   for (const tx of stale ?? []) {
     const meta = (tx.metadata ?? {}) as Record<string, any>;
     if (meta.local_closure === "no_operator_bill") continue;
-    const billId = meta.bill_id || tx.ebilling_transaction_id;
+    const pvitId = meta.pvit_transaction_id || tx.ebilling_transaction_id;
     const now = new Date().toISOString();
-    if (!billId) {
+    if (!pvitId) {
       await supabaseAdmin.from("payment_transactions")
         .update({ status: "timeout", updated_at: now, metadata: { ...meta, local_closure: "no_operator_bill", local_closed_at: now } })
         .eq("id", tx.id).in("status", ["pending", "timeout"]);
-      console.log(`[ebilling:stale] ref=${tx.ebilling_reference} → local closure (no bill_id)`);
       continue;
     }
-    const { username, sharedKey, baseUrl, ok } = getEbillingConfig();
-    let state = "";
-    if (ok && username && sharedKey) {
-      try {
-        const r = await fetch(`${baseUrl}/e_bills/${billId}`, {
-          method: "GET",
-          headers: { "Authorization": buildBasicAuth(username, sharedKey), "Accept": "application/json" },
-        });
-        const d = JSON.parse(await r.text());
-        state = (d?.e_bill?.state || d?.data?.state || d?.state || "").toLowerCase();
-      } catch (e) {
-        console.error(`[ebilling:stale] ref=${tx.ebilling_reference} operator query failed`, e);
-      }
-    }
-    if (state === "paid" || state === "success" || state === "completed") {
-      await finalizePaymentSuccess(supabaseAdmin, { txId: tx.id, reference: tx.ebilling_reference, channel: "reconciliation", ebillingTransactionId: billId });
-    } else if (state === "expired" || state === "cancelled" || state === "failed") {
+    const st = await checkPvitStatus(getPvitConfig(), pvitId, meta.pvit_account);
+    const state = st?.state ?? "";
+    if (state === "success") {
+      await finalizePaymentSuccess(supabaseAdmin, { txId: tx.id, reference: tx.ebilling_reference, channel: "reconciliation", ebillingTransactionId: pvitId });
+    } else if (state === "failed") {
       await markPaymentFailed(supabaseAdmin, tx.id);
     } else if (tx.status === "pending") {
       await supabaseAdmin.from("payment_transactions")
         .update({ status: "timeout", updated_at: now, metadata: { ...meta, operator_status: state || "unknown", operator_checked_at: now } })
         .eq("id", tx.id).eq("status", "pending");
     }
-    console.log(`[ebilling:stale] ref=${tx.ebilling_reference} operator_state=${state || "unknown"}`);
   }
 }
 
@@ -312,17 +124,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { username, sharedKey, baseUrl, portalBaseUrl, ok: envOk, mode: envMode, errors: envErrors } = getEbillingConfig();
-
-    if (!username || !sharedKey) {
-      console.error("[ebilling] FATAL: Missing EBILLING_USERNAME or EBILLING_SHARED_KEY");
-      return new Response(
-        JSON.stringify({ error: "Configuration serveur incomplète: identifiants eBilling manquants" }),
-        { status: 500, headers: jsonHeaders }
-      );
+    const pvit = getPvitConfig();
+    if (!pvit.ok) {
+      console.error(`[pvit] FATAL: configuration incomplète (${pvit.missing.join(", ")})`);
+      return new Response(JSON.stringify({ error: "Configuration de paiement incomplète" }), { status: 500, headers: jsonHeaders });
     }
-
-    console.log(`[EBILLING] Base URL détectée: ${baseUrl}`);
 
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
@@ -337,8 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const body = await req.json();
-    console.log("[EBILLING] Payload reçu:", JSON.stringify(body));
-
+    
     // ── ROUTE: check-status ──
     if (body.action === "check-status") {
       // G1-FIX8: only the transaction owner (or an admin) may query/advance a transaction.
@@ -373,8 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (memData) {
         resolvedDeceasedName = `${memData.first_name} ${memData.last_name}`.trim();
       }
-      console.log(`[ebilling] Fallback name lookup: ${resolvedDeceasedName}`);
-    }
+          }
 
     // Server-side truth: check monetization mode
     const { data: monetizationSetting } = await supabaseAdmin
@@ -467,11 +271,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
     const totalAmount = unitPrice * quantity;
-    const ebillingRef = `FLR-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const ebillingRef = newReference();
     const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge" ? "Cierge" : "Fleur";
     const memorialMeta = isMemorialPayment ? { memorial_id, memorial_category: memorialCategory } : {};
 
-    console.log(`[ebilling] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
+    console.log(`[pvit] mode=${isMonetized ? "payant" : "gratuit"}, item=${item_type}, qty=${quantity}, price=${unitPrice}`);
 
     // PROMO-01-FIX1: no free branch — candles, flowers and obituaries are always billed at their active price.
 
@@ -541,200 +345,44 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(JSON.stringify({ error: check.error }), { status: 409, headers: jsonHeaders });
       }
     }
-
-    // ── ENVIRONMENT GUARD (G1-FIX4: explicit EBILLING_ENV) ──
-    if (!envOk) {
-      console.error(`[ebilling] BLOCKED env=${envMode}: ${envErrors.join(" | ")}`);
-      return new Response(
-        JSON.stringify({ error: "Configuration de paiement invalide pour l'environnement actif. Transaction bloquée par sécurité." }),
-        { status: 400, headers: jsonHeaders }
-      );
+    // ── PVit: normalize number + route operator ──
+    const msisdn = normalizeMsisdn(String(phone));
+    const operator = msisdn ? detectOperator(msisdn) : null;
+    if (!msisdn || !operator) {
+      return new Response(JSON.stringify({ error: "Numéro Airtel Money (07…) ou Moov Money (06…) invalide" }), { status: 400, headers: jsonHeaders });
     }
 
-    // ── STEP 1: Create e_bill (invoice) ──
-    // POST https://lab.billing-easy.net/api/v1/merchant/e_bills
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const CALLBACK_SECRET = Deno.env.get("EBILLING_CALLBACK_SECRET") ?? "";
-    const callbackUrl = `${supabaseUrl}/functions/v1/ebilling-callback?secret=${encodeURIComponent(CALLBACK_SECRET)}`;
-    const paymentSuccessUrl = `https://floorence.lovable.app/paiement-succes?reference=${ebillingRef}`;
-
-    const createBillUrl = `${baseUrl}/e_bills`;
-    const createBillPayload = {
-      payer_msisdn: phone,
-      payer_email: user.email || "client@floorence.com",
-      payer_name: resolvedDeceasedName ? `${isMemorialPayment ? "Mémorial" : "Hommage"} - ${resolvedDeceasedName}` : "Hommage Floorence",
-      amount: totalAmount.toString(),
-      external_reference: ebillingRef,
-      short_description: `${itemLabel} x${quantity} - Floorence`,
-      expiry_period: "30",
-    };
-
-    console.log(`[ebilling] Creating bill at: ${createBillUrl}`);
-    console.log(`[ebilling] Payload:`, JSON.stringify(createBillPayload));
-
-    const billResponse = await fetch(createBillUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": buildBasicAuth(username, sharedKey),
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-      body: JSON.stringify(createBillPayload),
-    });
-
-    const rawBillText = await billResponse.text();
-    console.log(`[ebilling] Create bill HTTP ${billResponse.status}, raw: ${rawBillText.substring(0, 500)}`);
-
-    let billData: any;
-    try {
-      billData = JSON.parse(rawBillText);
-    } catch {
-      console.error("[ebilling] Non-JSON response from create bill API");
-      // Record failed transaction
-      await supabaseAdmin.from("payment_transactions").insert({
-        user_id: user.id,
-        memorial_id,
-        amount: totalAmount,
-        currency: "XAF",
-        payment_type: item_type,
-        status: "failed",
-        ebilling_reference: ebillingRef,
-        payer_phone: phone,
-        deceased_name_snapshot: resolvedDeceasedName,
-        candle_count: item_type === "cierge" ? quantity : 0,
-        flower_count: item_type === "fleur" ? quantity : 0,
-        last_api_response: rawBillText.substring(0, 500),
-        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: "non_json_response" },
-      });
-
-      return new Response(
-        JSON.stringify({
-          error: `L'opérateur a renvoyé une réponse invalide (HTTP ${billResponse.status}). Vérifiez la configuration eBilling.`,
-          details: rawBillText.substring(0, 200),
-        }),
-        { status: 502, headers: jsonHeaders }
-      );
-    }
-
-    // Check for API errors
-    if (billData?.error_code || billData?.error) {
-      console.error("[ebilling] API error:", JSON.stringify(billData));
-      await supabaseAdmin.from("payment_transactions").insert({
-        user_id: user.id,
-        memorial_id,
-        amount: totalAmount,
-        currency: "XAF",
-        payment_type: item_type,
-        status: "failed",
-        ebilling_reference: ebillingRef,
-        payer_phone: phone,
-        deceased_name_snapshot: resolvedDeceasedName,
-        last_api_response: JSON.stringify(billData),
-        metadata: { ...memorialMeta, mode: "payant", quantity, unit_price: unitPrice, error: billData.error_description || billData.error },
-      });
-
-      return new Response(
-        JSON.stringify({
-          error: `Erreur eBilling: ${billData.error_description || billData.error || "Erreur inconnue"}`,
-          error_code: billData.error_code,
-        }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
-    // Extract bill_id from response
-    const billId = billData?.e_bill?.bill_id || billData?.bill_id;
-    if (!billId) {
-      console.error("[ebilling] No bill_id in response:", JSON.stringify(billData));
-      return new Response(
-        JSON.stringify({ error: "L'opérateur n'a pas retourné d'identifiant de facture (bill_id)" }),
-        { status: 502, headers: jsonHeaders }
-      );
-    }
-
-    console.log(`[ebilling] Bill created: bill_id=${billId}`);
-
-    // ── STEP 2: Send USSD Push ──
-    // Detect operator from phone number (Gabon):
-    // 07x = Airtel Money ("airtelmoney")
-    // 06x = Moov Money ("moovmoney4")
-    const cleanPhone = phone.replace(/\s+/g, "").replace(/^\+241/, "");
-    let paymentSystemName = "airtelmoney"; // default
-    if (cleanPhone.startsWith("06")) {
-      paymentSystemName = "moovmoney4";
-    } else if (cleanPhone.startsWith("07")) {
-      paymentSystemName = "airtelmoney";
-    }
-
-    const ussdPushUrl = `${baseUrl}/e_bills/${billId}/ussd_push`;
-    const ussdPayload = {
-      payer_msisdn: phone,
-      payment_system_name: paymentSystemName,
-    };
-
-    console.log(`[ebilling] Sending USSD push to ${ussdPushUrl}`, JSON.stringify(ussdPayload));
-
-    let ussdSuccess = false;
-    let ussdData: any = null;
-
-    try {
-      const ussdResponse = await fetch(ussdPushUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": buildBasicAuth(username, sharedKey),
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-        body: JSON.stringify(ussdPayload),
-      });
-
-      const rawUssdText = await ussdResponse.text();
-      console.log(`[ebilling] USSD push HTTP ${ussdResponse.status}, raw: ${rawUssdText.substring(0, 500)}`);
-
-      try {
-        ussdData = JSON.parse(rawUssdText);
-      } catch {
-        ussdData = { raw: rawUssdText.substring(0, 300) };
-      }
-
-      ussdSuccess = ussdResponse.ok && (ussdData?.message === "Accepted" || ussdData?.success);
-    } catch (ussdErr) {
-      console.error("[ebilling] USSD push error:", ussdErr);
-      ussdData = { error: (ussdErr as Error).message };
-    }
-
-    // Record pending transaction with bill_id in metadata
-    const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
+    const product = `${itemLabel} x${quantity}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`;
+    const push = await initiatePayment(pvit, { amount: totalAmount, reference: ebillingRef, msisdn, operator, product });
+    const baseRow = {
       user_id: user.id,
       memorial_id,
       amount: totalAmount,
       currency: "XAF",
       payment_type: item_type,
-      status: "pending",
       ebilling_reference: ebillingRef,
-      ebilling_transaction_id: billId,
-      payer_phone: phone,
+      payer_phone: msisdn,
       deceased_name_snapshot: resolvedDeceasedName,
       candle_count: item_type === "cierge" ? quantity : 0,
       flower_count: item_type === "fleur" ? quantity : 0,
-      last_api_response: JSON.stringify({ bill: billData, ussd: ussdData }),
-      metadata: {
-        ...memorialMeta,
-        mode: "payant",
-        quantity,
-        unit_price: unitPrice,
-        phone,
-        post_id: post_id || null,
-        bill_id: billId,
-        payment_system: paymentSystemName,
-        ussd_push_sent: ussdSuccess,
-      },
-    });
+      last_api_response: push.raw,
+    };
+    const baseMeta = { ...memorialMeta, gateway: "pvit", mode: "payant", quantity, unit_price: unitPrice, phone: msisdn, post_id: post_id || null, operator, pvit_account: push.account };
 
+    if (!push.accepted || !push.transactionId) {
+      console.error(`[pvit] push refused ref=${ebillingRef} HTTP ${push.httpStatus}`);
+      await supabaseAdmin.from("payment_transactions").insert({ ...baseRow, status: "failed", metadata: { ...baseMeta, error: push.data?.message || `http_${push.httpStatus}` } });
+      return new Response(JSON.stringify({ error: push.data?.message || "L'opérateur n'a pas accepté la demande de paiement. Réessayez." }), { status: 502, headers: jsonHeaders });
+    }
+
+    const { error: txError } = await supabaseAdmin.from("payment_transactions").insert({
+      ...baseRow,
+      status: "pending",
+      ebilling_transaction_id: push.transactionId,
+      metadata: { ...baseMeta, pvit_transaction_id: push.transactionId, bill_id: push.transactionId, ussd_push_sent: true },
+    });
     if (txError) {
-      console.error("[ebilling] Transaction insert error:", txError);
+      console.error("[pvit] Transaction insert error:", txError);
       throw txError;
     }
 
@@ -750,7 +398,7 @@ const handler = async (req: Request): Promise<Response> => {
         .is("payment_reference", null)
         .select("id");
       if (linkErr || !linked || linked.length === 0) {
-        console.error("[ebilling] Tribute link failed (race or invalid):", linkErr);
+        console.error("[pvit] Tribute link failed (race or invalid):", linkErr);
         await supabaseAdmin.from("payment_transactions")
           .update({ status: "failed", updated_at: new Date().toISOString() })
           .eq("ebilling_reference", ebillingRef);
@@ -758,9 +406,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Build fallback checkout URL (portal redirect) in case USSD push fails
-    const checkoutUrl = `${portalBaseUrl}?invoice=${billId}&redirect_url=${encodeURIComponent(paymentSuccessUrl)}`;
-
+    const operatorName = operator === "MOOV_MONEY" ? "Moov Money" : "Airtel Money";
     return new Response(
       JSON.stringify({
         success: true,
@@ -769,20 +415,15 @@ const handler = async (req: Request): Promise<Response> => {
         amount: totalAmount,
         unit_price: unitPrice,
         requires_phone: true,
-        bill_id: billId,
-        ussd_push_sent: ussdSuccess,
-        payment_system: paymentSystemName,
-        checkout_url: checkoutUrl,
-        ebilling_response: billData,
-        message: ussdSuccess
-          ? `Push USSD envoyé sur votre ${paymentSystemName === "airtelmoney" ? "Airtel Money" : "Moov Money"}. Tapez votre code secret pour confirmer.`
-          : `Facture créée. Finalisez votre paiement via le portail eBilling.`,
+        ussd_push_sent: true,
+        payment_system: operator,
+        message: `Demande envoyée sur votre ${operatorName}. Tapez votre code secret pour confirmer.`,
       }),
       { status: 200, headers: jsonHeaders }
     );
 
   } catch (error: any) {
-    console.error("[ebilling] UNHANDLED ERROR:", error);
+    console.error("[pvit] UNHANDLED ERROR:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Une erreur est survenue" }),
       { status: 500, headers: jsonHeaders }

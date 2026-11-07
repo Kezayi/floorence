@@ -18,7 +18,7 @@ type Admin = any;
 export interface FinalizeInput {
   txId: string;
   reference: string;
-  channel: "callback" | "check-status" | "reconciliation";
+  channel: "callback" | "pvit-webhook" | "check-status" | "reconciliation";
   ebillingTransactionId?: string | null;
   lastApiResponse?: string | null;
   skipCertificate?: boolean;

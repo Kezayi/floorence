@@ -123,7 +123,7 @@ const Finance = () => {
       { key: 'payer_phone', label: 'Téléphone' },
       { key: 'amount', label: 'Montant (XAF)' },
       { key: 'status', label: 'Statut' },
-      { key: 'ebilling_reference', label: 'Réf. eBilling' },
+      { key: 'ebilling_reference', label: 'Référence' },
     ], 'transactions-floorence');
     toast.success(`${filtered.length} transactions exportées`);
   };

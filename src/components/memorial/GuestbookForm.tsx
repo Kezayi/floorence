@@ -314,7 +314,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation }: Gue
             toast.success(ebillingData.message || "Geste offert avec succès");
           } else if (ebillingData?.success && ebillingData?.ussd_push_sent) {
             // USSD push was sent successfully — user needs to confirm on their phone
-            const operatorName = ebillingData.payment_system === 'moovmoney4' ? 'Moov Money' : 'Airtel Money';
+            const operatorName = ebillingData.payment_system === 'MOOV_MONEY' ? 'Moov Money' : 'Airtel Money';
             toast.info(
               `Push USSD envoyé sur votre ${operatorName}. Tapez votre code secret pour confirmer le paiement.`,
               { duration: 15000 }
