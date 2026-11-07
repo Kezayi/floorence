@@ -24,3 +24,11 @@ Deno.test("each operator uses its own operation account", () => {
   assertEquals(c.accounts.MOOV_MONEY, "ACC_M");
   assertEquals(c.ok, false);
 });
+Deno.test("product label never exceeds PVit's 15-char limit", async () => {
+  const { pvitProductLabel } = await import("./pvit.ts");
+  assertEquals(pvitProductLabel("mixte", 2, 2), "Cierge2 Fleur2");
+  assertEquals(pvitProductLabel("cierge", 3), "Cierge x3");
+  for (const l of [pvitProductLabel("mixte", 999, 999), pvitProductLabel("fleur", 0, 123456789), pvitProductLabel("memorial")]) {
+    assertEquals(l.length <= 15, true);
+  }
+});
