@@ -69,6 +69,15 @@ async function withSecret(cfg: PvitConfig, account: string, call: (s: string) =>
   return r;
 }
 
+/** PVit rejects `product` longer than 15 chars (CONSTRAINT_VIOLATION 8000). */
+export const PVIT_PRODUCT_MAX = 15;
+export function pvitProductLabel(kind: "memorial" | "cierge" | "fleur" | "mixte", candles = 0, flowers = 0): string {
+  const label = kind === "memorial" ? "Memorial"
+    : kind === "mixte" ? `Cierge${candles} Fleur${flowers}`
+    : kind === "cierge" ? `Cierge x${candles}` : `Fleur x${flowers}`;
+  return label.length <= PVIT_PRODUCT_MAX ? label : (kind === "mixte" ? `C${candles} F${flowers}` : label).slice(0, PVIT_PRODUCT_MAX);
+}
+
 /** Short alphanumeric merchant reference (PVit-friendly). */
 export const newReference = () =>
   `FLR${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -89,7 +98,7 @@ export async function initiatePayment(cfg: PvitConfig, p: {
     owner_charge: "CUSTOMER",
     owner_charge_operator: "CUSTOMER",
     operator_code: p.operator,
-    product: p.product.slice(0, 60),
+    product: p.product.slice(0, PVIT_PRODUCT_MAX),
     free_info: "Floorence",
   });
   const res = await withSecret(cfg, account, (s) => fetch(`${PVIT_API}/v2/${cfg.restCode}/rest`, {

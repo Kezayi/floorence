@@ -4,7 +4,7 @@ import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuc
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
 import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
-import { getPvitConfig, normalizeMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus } from "../_shared/pvit.ts";
+import { getPvitConfig, normalizeMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel } from "../_shared/pvit.ts";
 
 // PAY-PVIT: this function keeps its historical name "ebilling" as the stable client contract,
 // but the only operator behind it is now PVit v2 (production). eBilling is fully removed.
@@ -371,9 +371,11 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Numéro Airtel Money (07…) ou Moov Money (06…) invalide" }), { status: 400, headers: jsonHeaders });
     }
 
+    // PVit caps `product` at 15 chars; the deceased name stays in our own transaction row.
     const product = basket && basket.c > 0 && basket.f > 0
-      ? `Cierge x${basket.c} + Fleur x${basket.f}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`
-      : `${itemLabel} x${quantity}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`;
+      ? pvitProductLabel("mixte", basket.c, basket.f)
+      : isMemorialPayment ? pvitProductLabel("memorial")
+      : item_type === "cierge" ? pvitProductLabel("cierge", quantity, 0) : pvitProductLabel("fleur", 0, quantity);
     const push = await initiatePayment(pvit, { amount: totalAmount, reference: ebillingRef, msisdn, operator, product });
     const baseRow = {
       user_id: user.id,
