@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { checkTributePaymentDetail, paymentError } from "@/lib/tributePayment";
 
 interface PendingPaymentBannerProps {
   memorialId: string;
@@ -54,15 +55,13 @@ const PendingPaymentBanner = ({ memorialId, onPaymentConfirmed }: PendingPayment
 
     const silentCheck = async () => {
       try {
-        const { data } = await supabase.functions.invoke("ebilling", {
-          body: { action: "check-status", reference: pendingTx.ebilling_reference },
-        });
+        const data = await checkTributePaymentDetail(pendingTx.ebilling_reference ?? "");
 
-        if (data?.success) {
+        if (data.status === "success") {
           toast.success("Paiement confirmé ! Votre hommage est maintenant visible.");
           await resolvePayment();
-        } else if (data?.payment_status === "NOT_INITIATED") {
-          setStatusHint("not_initiated");
+        } else {
+          setStatusHint(data.message);
         }
       } catch {
         // Silent — don't disturb user
@@ -78,37 +77,18 @@ const PendingPaymentBanner = ({ memorialId, onPaymentConfirmed }: PendingPayment
     if (!pendingTx.ebilling_reference) return;
     setRetrying(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ebilling", {
-        body: { action: "check-status", reference: pendingTx.ebilling_reference },
-      });
-
-      if (error) {
-        toast.error("Erreur lors de la vérification");
-        return;
-      }
-
-      if (data?.success) {
+      const data = await checkTributePaymentDetail(pendingTx.ebilling_reference);
+      if (data.status === "success") {
         toast.success("Paiement confirmé ! Votre hommage est maintenant visible.");
         await resolvePayment();
       } else {
-        // No checkout URL redirect needed — the USSD flow doesn't use redirects
-        // The user should validate on their phone
-
-        if (data?.payment_status === "NOT_INITIATED") {
-          setStatusHint("not_initiated");
-          toast.info(
-            "Paiement en attente. Tapez votre code secret sur votre téléphone. Si vous n'avez rien reçu, cliquez sur Réessayer.",
-            { duration: 10000 }
-          );
-        } else {
-          toast.info(
-            "Le paiement n'est pas encore confirmé. Réessayez dans quelques instants.",
-            { duration: 8000 }
-          );
-        }
+        setStatusHint(data.message);
+        if (data.status === "failed") toast.error(data.message, { duration: 10000 });
+        else toast.info(data.message, { duration: 10000 });
       }
-    } catch {
-      toast.error("Erreur réseau");
+    } catch (error) {
+      const message = (await paymentError(error, "Vérification impossible ; ne relancez pas de débit.")).message;
+      setStatusHint(message); toast.error(message);
     } finally {
       setRetrying(false);
     }
@@ -138,15 +118,15 @@ const PendingPaymentBanner = ({ memorialId, onPaymentConfirmed }: PendingPayment
           ) : (
             <RefreshCw className="w-3.5 h-3.5" />
           )}
-          Réessayer
+          Vérifier
         </Button>
       </div>
 
-      {statusHint === "not_initiated" && (
+      {statusHint && (
         <div className="flex items-start gap-2 pl-8">
           <Phone className="w-3.5 h-3.5 shrink-0 text-muted-foreground mt-0.5" />
           <p className="text-xs font-sans text-muted-foreground">
-            Tapez votre code secret sur votre téléphone pour valider. Si vous n'avez rien reçu, cliquez sur <strong>Réessayer</strong>.
+            {statusHint}
           </p>
         </div>
       )}

@@ -1,6 +1,7 @@
 
 - Payments go only through PVit v2 via `_shared/pvit.ts` (no fallback gateway): the client-facing function keeps the name `ebilling` as a stable contract, operator account is chosen by MSISDN prefix, X-Secret is renewed on demand, and confirmation comes from `pvit-webhook` (official IPs, dynamic ack echo) or the status API, always through `fulfill_payment_success` — one idempotent fulfillment path.
 - Customer numbers are normalized once at the shared PVit boundary to the national 9-digit form PVit accepts; operator detection uses the same normalization — PVit rejects +241 (3024).
+- PVit error translations live in the pure shared `pvitErrors` dictionary, consumed by billing and browser error handling; status detail must retain the translated reason and code — prevents divergent explanations and raw provider output.
 - Gesture prices: system_settings (candle_price/flower_price) is the only writable source, edited via the audited admin-settings function; ritual_prices is a DB-trigger mirror read by billing — keeps one price grid with audit trail.
 
 - Payment cron jobs: expiry runs in-DB (`expire_orphan_stale_transactions`, orphans without bill_id only); reconciliation worker requires vault-held `x-cron-token` or service-role key — no anon key in cron, no public trigger.

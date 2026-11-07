@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Flame, Flower2, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
 import { toast } from "@/hooks/use-toast";
-import { checkTributePayment, type PaymentRequest } from "@/lib/tributePayment";
+import { checkTributePaymentDetail, type PaymentRequest } from "@/lib/tributePayment";
 import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
 
 const FALLBACK_PRICE = 500;
@@ -107,7 +107,7 @@ const GesteRituelModal = ({
     let timer: ReturnType<typeof setTimeout>;
     const check = async () => {
       try {
-        const status = await checkTributePayment(paymentReference);
+        const { status, message } = await checkTributePaymentDetail(paymentReference);
         if (cancelled) return;
         if (status === "success") {
           setPaymentReference(null); setUssdWaiting(false); setUssdTimeout(false);
@@ -115,7 +115,7 @@ const GesteRituelModal = ({
           return;
         }
         if (status === "failed") {
-          setPaymentFailure("Paiement refusé ou annulé. Aucun succès n'a été confirmé.");
+          setPaymentFailure(message);
           setPaymentRejected(true);
           setUssdWaiting(false); setUssdTimeout(false);
           return;
@@ -289,7 +289,7 @@ const GesteRituelModal = ({
             <div className="flex items-start gap-3 px-4 py-3 rounded-md border border-[hsl(var(--candle-glow)/0.4)] bg-[hsl(var(--candle-glow)/0.08)]">
               <Smartphone className="w-5 h-5 mt-0.5 shrink-0 text-[hsl(var(--candle-glow))]" />
               <p className="text-xs font-sans text-foreground/80 leading-relaxed">
-                <span className="font-semibold">Préparez votre téléphone :</span> Une demande de confirmation apparaîtra sur votre écran dans quelques secondes. Gardez-le <span className="font-semibold">déverrouillé</span>.
+                <span className="font-semibold">Préparez votre téléphone :</span> Si l’opérateur accepte la demande, il pourra vous demander votre PIN sur votre téléphone. Ne saisissez jamais votre PIN sur Floorence.
               </p>
             </div>
           )}
@@ -305,7 +305,7 @@ const GesteRituelModal = ({
                 En attente de confirmation du paiement…
               </p>
               <p className="text-xs font-sans text-muted-foreground text-center">
-                Vérifiez votre téléphone • {45 - elapsedSeconds}s
+                Demande transmise, réception sur votre téléphone non confirmée • {45 - elapsedSeconds}s
               </p>
             </div>
           )}

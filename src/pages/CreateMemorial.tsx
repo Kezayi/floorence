@@ -23,6 +23,7 @@ import { formatDateFrench } from "@/lib/dateUtils";
 import { useMonetization } from "@/hooks/useMonetization";
 import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
+import { paymentError, checkTributePaymentDetail } from "@/lib/tributePayment";
 
 type MemorialType = "RECENT" | "PAST" | null;
 type Step = 1 | 2 | 3 | 4;
@@ -163,19 +164,24 @@ const CreateMemorial = () => {
   const pollPayment = async (reference: string, memorial: { share_token?: string; slug: string }) => {
     for (let i = 0; i < 36; i++) {
       await new Promise((r) => setTimeout(r, 5000));
-      const { data } = await supabase.functions.invoke("ebilling", { body: { action: "check-status", reference } });
+      let data;
+      try { data = await checkTributePaymentDetail(reference); }
+      catch (error) {
+        setPaymentState({ status: "pending", reference, message: error instanceof Error ? error.message : "Vérification impossible ; ne relancez pas le paiement." });
+        continue;
+      }
       if (data?.status === "success") {
         toast.success("Paiement confirmé — espace mémoriel publié");
         goToMemorial(memorial);
         return;
       }
-      if (data?.status === "failed" || data?.status === "expired" || data?.status === "cancelled") {
+      if (data?.status === "failed") {
         setPaymentState({ status: "failed", reference, message: data?.message });
         setIsSubmitting(false);
         return;
       }
     }
-    setPaymentState({ status: "timeout", reference, message: "Délai dépassé. Votre espace reste non publié ; vous pouvez réessayer." });
+    setPaymentState({ status: "timeout", reference, message: "Le paiement n’est pas confirmé. Votre espace reste non publié. Vérifiez cette référence dans votre compte ; ne relancez pas de débit tant que son résultat est inconnu." });
     setIsSubmitting(false);
   };
 
@@ -190,7 +196,8 @@ const CreateMemorial = () => {
       body: { memorial_id: memorial.id, item_type: "memorial", quantity: 1, phone: enteredPhone },
     });
     if (error || !data?.success) {
-      setPaymentState({ status: "failed", message: data?.error || "Le paiement n'a pas pu être initié. Votre espace n'est pas publié." });
+      const issue = error ? await paymentError(error, "La demande de paiement n’a pas abouti. Vérifiez vos transactions avant de recommencer.") : new Error(data?.error || "La demande de paiement n’a pas abouti.");
+      setPaymentState({ status: "failed", message: issue.message });
       setIsSubmitting(false);
       return;
     }

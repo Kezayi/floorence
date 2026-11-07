@@ -9,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { checkTributePaymentDetail, paymentError } from '@/lib/tributePayment';
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
   success: { label: 'Succès', variant: 'default' },
@@ -72,41 +73,23 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
   const handleCheckStatus = async (reference: string) => {
     setCheckingRef(reference);
     try {
-      const { data, error } = await supabase.functions.invoke('ebilling', {
-        body: { action: 'check-status', reference },
-      });
-
-      if (error) {
-        toast.error(`Erreur lors de la vérification: ${error.message || JSON.stringify(error)}`);
-        console.error("[check-status] invoke error:", error);
-        return;
-      }
-
-      if (data?.success) {
+      const data = await checkTributePaymentDetail(reference);
+      if (data.status === 'success') {
         toast.success(data.message || "Transaction validée et hommage publié");
         queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
       } else {
-        // Specific message for NOT_INITIATED status
-        if (data?.payment_status === "NOT_INITIATED") {
-          toast.info(
-            "Le client n'a pas encore validé l'étape de paiement chez l'opérateur. Attendez que le client finalise sur son téléphone.",
-            { duration: 12000 }
-          );
-        } else {
-          const apiResponse = data?.last_api_response || data?.raw_response;
-          const detail = apiResponse ? `\nErreur Opérateur : ${JSON.stringify(apiResponse).substring(0, 200)}` : '';
-          toast.warning(`${data?.message || "Le paiement n'est toujours pas confirmé"}${detail}`, { duration: 10000 });
-        }
+        if (data.status === 'failed') toast.error(data.message, { duration: 12000 });
+        else toast.warning(data.message, { duration: 10000 });
       }
     } catch (err) {
       console.error("[check-status] error:", err);
-      toast.error("Erreur réseau lors de la vérification");
+      toast.error((await paymentError(err, "Connexion interrompue pendant la vérification ; ne relancez pas de débit.")).message);
     } finally {
       setCheckingRef(null);
     }
   };
 
-  const canCheck = (status: string | null) => status === 'pending' || status === 'timeout';
+  const canCheck = (status: string | null) => status === 'pending' || status === 'timeout' || status === 'failed';
 
   return (
     <Card className="bg-card shadow-sm border-border/50">
