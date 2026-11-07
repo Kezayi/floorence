@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Flame, Flower2, FlaskConical, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
+import { Flame, Flower2, Loader2, AlertTriangle, Smartphone, HelpCircle } from "lucide-react";
 import { useMonetization } from "@/hooks/useMonetization";
 import { toast } from "@/hooks/use-toast";
 
@@ -325,16 +325,6 @@ const GesteRituelModal = ({
                 </p>
               )}
             </>
-          )}
-
-          {/* Mode Test LAB badge */}
-          {isMonetized && !ussdWaiting && !ussdTimeout && (
-            <div className="flex items-center justify-center pt-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider rounded-full bg-accent/20 text-accent-foreground border border-accent/30">
-                <FlaskConical className="w-3 h-3" />
-                Mode Test LAB — DigitechAfrica
-              </span>
-            </div>
           )}
         </div>
       </DialogContent>
