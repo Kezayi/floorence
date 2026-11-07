@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Search, Loader2, History, Clock, ChevronLeft, X, Brain } from "lucide-react";
 import { RibengaAnswer } from "@/components/admin/RibengaAnswer";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +72,10 @@ async function streamQuestion(
       if (line.startsWith(":") || line.trim() === "") continue;
       if (!line.startsWith("data: ")) continue;
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") return;
+      if (jsonStr === "[DONE]") {
+        if (!fullText.trim()) throw new Error("Réponse du moteur vide ou interrompue. Réessayez.");
+        return;
+      }
       let parsed;
       try { parsed = JSON.parse(jsonStr); } catch { continue; }
       if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
@@ -86,7 +89,7 @@ async function streamQuestion(
           continue;
         }
         const content = parsed.choices?.[0]?.delta?.content;
-        if (content) {
+        if (typeof content === "string" && content) {
           fullText += content;
           onDelta(fullText);
         }
@@ -96,6 +99,7 @@ async function streamQuestion(
       }
     }
   }
+  throw new Error("Réponse du moteur vide ou interrompue. Réessayez.");
 }
 
 function timeAgo(dateStr: string): string {
@@ -165,6 +169,7 @@ const SocialIntelligence = () => {
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [context, setContext] = useState<AdminMemorialContext[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -193,11 +198,18 @@ const SocialIntelligence = () => {
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setContext, setSourceIds, controller.signal);
-    } catch (e: any) {
-      if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
+      const current = () => abortRef.current === controller && !controller.signal.aborted;
+      await streamQuestion(q,
+        (text) => { if (current()) setAnswer(text); },
+        (meta) => { if (current()) setContext(meta); },
+        (ids, links) => { if (current()) setSourceIds(ids, links); }, controller.signal);
+    } catch (e: unknown) {
+      if (abortRef.current === controller && !controller.signal.aborted) {
+        setError(e instanceof Error ? e.message : "Erreur réseau");
+        setSourceIds([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (abortRef.current === controller && !controller.signal.aborted) setIsLoading(false);
     }
   }, []);
 
@@ -349,7 +361,7 @@ const SocialIntelligence = () => {
             {(answer || isLoading) && (
               <div>
                 <StyledAnswer content={answer} isStreaming={isLoading} candidates={context} sourceIds={sourceIds} />
-                {answer && !isLoading && <AdminRelationExplanation key={asked} candidates={context} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
+                {answer && !isLoading && !error && <AdminRelationExplanation key={asked} candidates={context} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
               </div>
             )}
 

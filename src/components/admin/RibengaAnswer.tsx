@@ -12,6 +12,7 @@ interface MarkdownNode {
 
 const marker = /\[\[\s*mem\s*:\s*([^\]\r\n]*)(?:\]\]?)?/gi;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidText = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 interface Destination { name: string; url: string }
 const norm = (v: string) => v.normalize("NFC").toLocaleLowerCase("fr").replace(/\s+/g, " ");
 
@@ -22,7 +23,7 @@ function citationPlugin(destinations: Map<string, Destination>) {
       const output: MarkdownNode[] = [];
       for (const child of parent.children ?? []) {
         if (child.type !== "text") {
-          if (child.value) child.value = child.value.replace(marker, "");
+          if (child.value) child.value = child.value.replace(marker, "").replace(uuidText, "");
           walk(child, insideLink || child.type === "link" || child.type === "linkReference");
           output.push(child);
           continue;
@@ -59,7 +60,7 @@ function citationPlugin(destinations: Map<string, Destination>) {
         }
         // Streaming: an unfinished marker at the end is never shown to the reader.
         const tail = text.slice(cursor).replace(/\[\[\s*(m(e(m(\s*:[^\]\r\n]*)?)?)?)?$/i, "");
-        if (tail) output.push({ type: "text", value: tail });
+        if (tail) output.push({ type: "text", value: tail.replace(uuidText, "") });
       }
       if (parent.children) parent.children = output;
     };
@@ -92,5 +93,14 @@ export function RibengaAnswer({ content, candidates = [], sourceIds = [] }: {
     const name = metadata?.name?.trim() || `${memorial.first_name} ${memorial.last_name}`.trim();
     if (name && path) destinations.set(memorial.id.toLowerCase(), { name, url: path });
   }
-  return <ReactMarkdown skipHtml remarkPlugins={[citationPlugin(destinations)]}>{content}</ReactMarkdown>;
+  const allowedPaths = new Set([...destinations.values()].map((d) => d.url));
+  return <ReactMarkdown skipHtml remarkPlugins={[citationPlugin(destinations)]} components={{
+    a: ({ href, children }) => {
+      // Model-authored Markdown must not bypass source authorization through a local/absolute memorial URL.
+      const memorialLink = /(?:^|\/)(?:memorial|m)\//i.test(href ?? "");
+      const identifierLink = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(href ?? "");
+      if ((memorialLink && !allowedPaths.has(href ?? "")) || identifierLink || !children?.toString().trim()) return <>{children}</>;
+      return <a href={href}>{children}</a>;
+    },
+  }}>{content}</ReactMarkdown>;
 }

@@ -16,7 +16,10 @@ function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; 
         .or(`and(memorial_id_1.eq.${a},memorial_id_2.eq.${b}),and(memorial_id_1.eq.${b},memorial_id_2.eq.${a})`);
       if (error) throw error;
       const rows = data ?? [];
-      const statements = describeDeclared(rows, a, b).map((s) => ({ ...s, part: declaredParticiple(rows.find((r) => r.id === s.relationId)!, a) }));
+      const statements = describeDeclared(rows, a, b).map((s) => {
+        const original = rows.find((r) => r.id === s.relationId);
+        return { ...s, part: original ? declaredParticiple(original, a) : "déclaré(e)" };
+      });
       if (!statements.length) return { statements, counts: new Map<string, number>() };
       const { data: c, error: ce } = await supabase.rpc("get_relation_confirmation_counts", { p_relation_ids: statements.map((s) => s.relationId) });
       return { statements, counts: ce ? null : new Map((c ?? []).map((r) => [r.relation_id, Number(r.confirmations)])) };
@@ -25,7 +28,8 @@ function DeclaredBetween({ a, b, nameA, nameB, oriented = false }: { a: string; 
   });
   if (q.isLoading) return <p role="status" className="text-xs text-muted-foreground">Lecture des liens déclarés…</p>;
   if (q.isError) return <p role="alert" className="text-xs text-destructive">Liens déclarés indisponibles.</p>;
-  const { statements, counts } = q.data!;
+  if (!q.data) return <p role="alert" className="text-xs text-destructive">Liens déclarés indisponibles.</p>;
+  const { statements, counts } = q.data;
   if (!statements.length) return <p className="text-xs text-muted-foreground">Aucun lien direct déclaré entre {nameA} et {nameB}.</p>;
   return (
     <>
@@ -111,8 +115,9 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
   const hidden = cited.length - citedVisible.length;
   const pairs = citedPairs(citedVisible);
   const tributes = readTributeLinks(tributeLinks, citedVisible);
-  const personPair = resolvePersonDeceasedPair(question, citedVisible.map((id) => byId.get(id)!), tributes);
-  const asked = resolveQuestionPair(question, citedVisible.map((id) => byId.get(id)!));
+  const sourcedMemorials = visible.filter((m) => citedVisible.includes(m.id.toLowerCase()));
+  const personPair = resolvePersonDeceasedPair(question, sourcedMemorials, tributes);
+  const asked = resolveQuestionPair(question, sourcedMemorials);
   const nameOf = (id: string) => { const m = byId.get(id); return m ? `${m.first_name} ${m.last_name}` : "Source non disponible"; };
 
   const status = (text: string) => <p role="status" className="text-sm text-muted-foreground">{text}</p>;
@@ -176,7 +181,7 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
                       onChange={(e) => { setFromId(e.target.value); setToId(""); }}
                       className="w-full min-w-0 border border-border rounded-md bg-background p-2 text-sm">
                       <option value="">Choisir une source</option>
-                      {visible.map((m) => <option key={m.id} value={m.id}>{m.first_name} {m.last_name} · {m.id.slice(-6)}</option>)}
+                      {visible.map((m, index) => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}{visible.filter((other) => other.first_name === m.first_name && other.last_name === m.last_name).length > 1 ? ` · Source ${index + 1}` : ""}</option>)}
                     </select>
                   </label>
                   <label className="text-xs text-foreground space-y-1">
@@ -185,7 +190,7 @@ export function AdminRelationExplanation({ candidates, sourceIds = [], extraTool
                       onChange={(e) => setToId(e.target.value)}
                       className="w-full min-w-0 border border-border rounded-md bg-background p-2 text-sm disabled:opacity-60">
                       <option value="">Choisir une destination</option>
-                      {visible.filter((m) => m.id !== fromId).map((m) => <option key={m.id} value={m.id}>{m.first_name} {m.last_name} · {m.id.slice(-6)}</option>)}
+                      {visible.filter((m) => m.id !== fromId).map((m) => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}{visible.filter((other) => other.first_name === m.first_name && other.last_name === m.last_name).length > 1 ? ` · Source ${visible.indexOf(m) + 1}` : ""}</option>)}
                     </select>
                   </label>
                 </div>
