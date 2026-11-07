@@ -368,7 +368,7 @@ const handler = async (req: Request): Promise<Response> => {
     const msisdn = enteredPaymentMsisdn(String(phone));
     const operator = msisdn ? detectOperator(msisdn) : null;
     if (!msisdn || !operator) {
-      return new Response(JSON.stringify({ error: "Saisissez le numéro avec +241, sans le 0 initial (ex. +24177123456)." }), { status: 400, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: "Numéro Airtel ou Moov invalide (ex. 074 12 34 56)." }), { status: 400, headers: jsonHeaders });
     }
 
     // PVit caps `product` at 15 chars; the deceased name stays in our own transaction row.
