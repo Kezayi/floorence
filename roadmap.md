@@ -1,6 +1,6 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
-- [ ] UX paiement : traduire tous les codes PVit documentés et les erreurs inconnues, transmettre les raisons aux écrans et préciser la saisie PIN uniquement chez l'opérateur ; tests sans débit.
+- [x] UX paiement : tous les codes PVit publiés et le code 3024 observé traduits, codes inconnus sans diagnostic inventé ; raisons transmises aux gestes, création/reprise mémorial, assistance, résultat et finances ; PIN uniquement chez l’opérateur, réception jamais présumée. 27 tests réussis, Deno et aperçu OK, ebilling seule déployée ; vrai refus Moov/code 2000 affiché connecté sur ordinateur/mobile sans débit.
 
 - [x] Audit Moov Money : deux demandes acceptées puis FAILED/code 2000 en ~3 s ; numéro national, opérateur et compte Moov corrects. Contrôle connecté de la référence existante sans débit ; écran refus distinct de l'attente, pas de nouvelle demande à la réouverture ; 11 tests UI/numéro/statut et 9 tests PVit réussis.
 - [ ] Recette Moov réelle : code 2000 documenté par PVit comme solde insuffisant du compte d'opération ; titulaire doit vérifier/régulariser le compte Moov dans myPVit avant un nouveau paiement. Aucun débit déclenché par l'audit.
