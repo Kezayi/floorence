@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checkTributePayment } from "@/lib/tributePayment";
 
 interface PendingTribute {
   content: string;
@@ -28,62 +29,23 @@ const PaymentSuccess = () => {
 
   useEffect(() => {
     const publishPendingTribute = async () => {
-      // Check for pending tribute in sessionStorage
+      setIsPublished(false); setError(null);
+      if (!reference) { setError("Référence absente : aucun paiement ne peut être confirmé."); return; }
       const pendingTributeData = sessionStorage.getItem('pendingTribute');
-      
-      if (!pendingTributeData) {
-        // No pending tribute, just show success
-        setIsPublished(true);
-        return;
-      }
-
       try {
-        const pendingTribute: PendingTribute = JSON.parse(pendingTributeData);
-        
-        // Store the memorial ID for the return button
-        if (pendingTribute.memorialId) {
-          setMemorialId(pendingTribute.memorialId);
+        if (pendingTributeData) {
+          const pendingTribute: PendingTribute = JSON.parse(pendingTributeData);
+          if (pendingTribute.reference !== reference) throw new Error("La référence ne correspond pas à cet hommage.");
+          if (pendingTribute.memorialId) setMemorialId(pendingTribute.memorialId);
         }
-        
-        // Verify the reference matches
-        if (reference && pendingTribute.reference !== reference) {
-          // Reference mismatch — silently ignore
-          sessionStorage.removeItem('pendingTribute');
-          setIsPublished(true);
-          return;
-        }
-
         setIsPublishing(true);
-
-        // Call the edge function to publish the tribute
-        const { data, error: publishError } = await supabase.functions.invoke('publish-tribute', {
-          body: {
-            paymentReference: pendingTribute.reference,
-            memorialId: pendingTribute.memorialId,
-            content: pendingTribute.content,
-            relationCategory: pendingTribute.relationCategory,
-            photos: pendingTribute.photos,
-            candleCount: pendingTribute.candleCount,
-            flowerCount: pendingTribute.flowerCount
-          }
-        });
-
-        if (publishError) {
-          console.error('Error publishing tribute:', publishError);
-          setError('Une erreur est survenue lors de la publication de votre hommage.');
-          toast.error('Erreur lors de la publication');
-        } else {
-          toast.success('Votre hommage a été publié avec succès !');
-          setIsPublished(true);
-        }
-
-        // Clear the pending tribute regardless of outcome
+        const status = await checkTributePayment(reference);
+        if (status !== "success") throw new Error(status === "failed" ? "Paiement refusé ou annulé." : "Paiement toujours en attente de confirmation.");
+        // Fulfillment is server-owned; never create a second tribute from browser storage.
+        setIsPublished(true);
         sessionStorage.removeItem('pendingTribute');
-        
       } catch (err) {
-        console.error('Error processing pending tribute:', err);
-        setError('Une erreur est survenue.');
-        sessionStorage.removeItem('pendingTribute');
+        setError(err instanceof Error ? err.message : "Vérification du paiement impossible.");
       } finally {
         setIsPublishing(false);
       }
@@ -123,13 +85,13 @@ const PaymentSuccess = () => {
               </div>
               <div className="space-y-4">
                 <h1 className="font-serif text-3xl font-medium">
-                  Paiement réussi
+                  Paiement non confirmé
                 </h1>
                 <p className="text-memorial-dark-muted text-lg">
                   {error}
                 </p>
                 <p className="text-sm text-memorial-dark-muted">
-                  Votre paiement a bien été enregistré. Veuillez contacter le support si le problème persiste.
+                  Aucun succès ne sera annoncé avant confirmation de l'opérateur.
                 </p>
                 {reference && (
                   <p className="text-sm text-memorial-dark-muted">
@@ -148,12 +110,12 @@ const PaymentSuccess = () => {
 
               <div className="space-y-4">
                 <h1 className="font-serif text-3xl font-medium">
-                  {isPublished ? "Hommage publié !" : "Paiement réussi"}
+                  {isPublished ? "Paiement confirmé" : "Vérification du paiement"}
                 </h1>
                 <p className="text-memorial-dark-muted text-lg">
                   {isPublished 
-                    ? "Votre hommage a été publié avec succès. Merci pour votre contribution."
-                    : "Votre paiement a été traité avec succès."
+                    ? "Votre paiement est confirmé. Merci pour votre contribution."
+                    : "En attente de confirmation du paiement."
                   }
                 </p>
                 {reference && (

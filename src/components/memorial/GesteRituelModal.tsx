@@ -180,7 +180,7 @@ const GesteRituelModal = ({
       }
 
       const payment = await onConfirm(currentlyMonetized ? phone.trim() : undefined);
-      if (!payment?.reference) throw new Error("Aucune référence de paiement reçue. La demande n'est pas confirmée.");
+      if (!payment || !payment.reference) throw new Error("Aucune référence de paiement reçue. La demande n'est pas confirmée.");
       setPaymentReference(payment.reference);
       setUssdWaiting(true); setElapsedSeconds(0); setUssdTimeout(false);
 

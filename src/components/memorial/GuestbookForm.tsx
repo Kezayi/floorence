@@ -273,7 +273,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation, relat
         countryPublic: countryPublic && !!effectiveCountry,
       });
       const createdPostId = submitResult && typeof submitResult === 'object' ? submitResult.postId : undefined;
-      if (!createdPostId || !submitResult?.success) {
+      if (!createdPostId || !submitResult || !submitResult.success) {
         // publication failed — never initiate payment, never show success
         throw new Error("L'hommage n'a pas pu être préparé. Aucun paiement n'a été demandé.");
       }
