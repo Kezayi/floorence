@@ -1,0 +1,32 @@
+import { beforeEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import GesteRituelModal from "./GesteRituelModal";
+const mock = vi.hoisted(() => ({ check: vi.fn(), refetch: vi.fn() }));
+vi.mock("@/lib/tributePayment", () => ({ checkTributePayment: mock.check }));
+vi.mock("@/hooks/useMonetization", () => ({ useMonetization: () => ({ data: { prices: { cierge: 700, fleur: 700 } }, refetch: mock.refetch }) }));
+beforeEach(() => { cleanup(); vi.clearAllMocks(); mock.refetch.mockResolvedValue({ data: {} }); mock.check.mockResolvedValue("pending"); });
+it("shows a failed preparation inside the modal and never reports success", async () => {
+ const done = vi.fn();
+ render(<GesteRituelModal open onOpenChange={vi.fn()} itemType="cierge" postId="post" onConfirm={vi.fn().mockRejectedValue(new Error("Lien déclaré incompatible"))} onPaymentConfirmed={done} />);
+ fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "077123456" } });
+ fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+ await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Lien déclaré incompatible"));
+ expect(mock.check).not.toHaveBeenCalled(); expect(done).not.toHaveBeenCalled();
+});
+it("pending payment never completes and reopening does not resend a debit", async () => {
+ const confirm = vi.fn().mockResolvedValue({ reference: "FLRTEST" }); const done = vi.fn(); const close = vi.fn();
+ const props = { onOpenChange: close, itemType: "cierge" as const, postId: "post", onConfirm: confirm, onPaymentConfirmed: done };
+ const view = render(<GesteRituelModal open {...props} />);
+ fireEvent.change(screen.getByLabelText(/Numéro de téléphone mobile/), { target: { value: "077123456" } });
+ fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+ await waitFor(() => expect(mock.check).toHaveBeenCalledWith("FLRTEST"));
+ expect(done).not.toHaveBeenCalled();
+ view.rerender(<GesteRituelModal open={false} {...props} />);
+ view.rerender(<GesteRituelModal open {...props} />);
+ expect(confirm).toHaveBeenCalledTimes(1);
+ mock.check.mockResolvedValue("success");
+ view.rerender(<GesteRituelModal open={false} {...props} />);
+ view.rerender(<GesteRituelModal open {...props} />);
+ await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+ expect(confirm).toHaveBeenCalledTimes(1); expect(close).toHaveBeenCalledWith(false);
+});
