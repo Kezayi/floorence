@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import GesteRituelModal from "./GesteRituelModal";
 const mock = vi.hoisted(() => ({ check: vi.fn(), refetch: vi.fn() }));
-vi.mock("@/lib/tributePayment", () => ({ checkTributePayment: mock.check }));
+vi.mock("@/lib/tributePayment", () => ({ checkTributePaymentDetail: async (...args: unknown[]) => ({ status: await mock.check(...args), message: "Le compte marchand Floorence a un solde insuffisant. Code 2000." }) }));
 vi.mock("@/hooks/useMonetization", () => ({ useMonetization: () => ({ data: { prices: { cierge: 700, fleur: 700 } }, refetch: mock.refetch }) }));
 beforeEach(() => { cleanup(); vi.clearAllMocks(); mock.refetch.mockResolvedValue({ data: {} }); mock.check.mockResolvedValue("pending"); });
 it("shows a failed preparation inside the modal and never reports success", async () => {
