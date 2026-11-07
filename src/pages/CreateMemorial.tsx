@@ -64,7 +64,9 @@ const CreateMemorial = () => {
     ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
     : null;
   const promoDisplay = displayCategory === "future" && !!systemSettings && isObituaryPromoActive(systemSettings.obituary_free_campaign);
-  const requiresPaymentDisplay = !promoDisplay && (displayPrice ?? 0) > 0;
+  // MON-02: free mode (BO switch off) waives memorial publication, mirroring create-memorial.
+  const isMonetized = monetization?.isMonetized ?? false;
+  const requiresPaymentDisplay = isMonetized && !promoDisplay && (displayPrice ?? 0) > 0;
 
 
 
@@ -854,7 +856,9 @@ const CreateMemorial = () => {
                                ? `${displayPrice.toLocaleString("fr-FR")} XAF`
                                : promoDisplay
                                  ? `0 XAF — publication de l'avis offerte (au lieu de ${(displayPrice ?? 0).toLocaleString("fr-FR")} XAF). Cierges et fleurs restent payants.`
-                                 : "Publication offerte"}
+                                 : !isMonetized
+                                   ? "0 XAF — publication offerte (Mode Gratuit). Cierges et fleurs restent payants."
+                                   : "Publication offerte"}
                          </p>
                       </div>
                      </div>
