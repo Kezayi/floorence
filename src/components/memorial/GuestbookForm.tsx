@@ -281,7 +281,7 @@ const GuestbookForm = ({ memorialId, defuntName, onSubmit, lockedRelation, relat
 
       // 2. Call the ebilling edge function to initiate payment with the operator
       if (memorialId && user) {
-        const itemType = candleCount > 0 ? 'cierge' : 'fleur';
+        const itemType = candleCount > 0 && flowerCount > 0 ? 'cierge_fleur' : candleCount > 0 ? 'cierge' : 'fleur';
         const quantity = candleCount > 0 ? candleCount : flowerCount;
 
         const { data: ebillingData, error: ebillingErr } = await supabase.functions.invoke('ebilling', {
