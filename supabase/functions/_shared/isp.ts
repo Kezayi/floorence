@@ -109,10 +109,11 @@ const normText = (s: string) => normName(s).replace(/[^\p{L}\p{N} ]/gu, " ").rep
 /** Memorial concerned by the question: named uniquely, or the only one with facts; otherwise null (ambiguous). */
 export function targetIspMemorial(question: string, facts: IspFact[], names: Map<string, string>): string | null {
   const ids = [...new Set(facts.map((f) => f.memorial_id))];
-  if (ids.length === 1) return ids[0];
   const q = ` ${normText(question)} `;
-  const named = ids.filter((id) => { const n = normText(names.get(id) ?? ""); return n.length > 0 && q.includes(` ${n} `); });
-  return named.length === 1 ? named[0] : null;
+  // Resolve explicit targets against ALL visible memorials, including those without facts.
+  const named = [...names.keys()].filter((id) => { const n = normText(names.get(id) ?? ""); return n.length > 0 && q.includes(` ${n} `); });
+  if (named.length) return named.length === 1 ? named[0] : null;
+  return ids.length === 1 ? ids[0] : null;
 }
 
 export interface IspSummary { memorial_id: string; evaluated: number; calculable: number; non_calculable: number; above_threshold: number; T: number | null; max: number | null; leaders: string[] }

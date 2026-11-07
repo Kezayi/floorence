@@ -14,6 +14,14 @@ export function tributeLinks(posts: readonly PostRow[], memorialIds: readonly st
   const cited = new Set(memorialIds);
   const groups = new Map<string, { memorial_id: string; author: string; accounts: Set<string>; anon: boolean; links: Set<string> }>();
   const seenAccount = new Set<string>();
+  const namesByAccount = new Map<string, Set<string>>();
+  for (const p of posts) {
+    if (!p.user_id || !cited.has(p.memorial_id)) continue;
+    const key = `${p.memorial_id}|${p.user_id}`;
+    const names = namesByAccount.get(key) ?? new Set<string>();
+    names.add(norm(p.author_name ?? ""));
+    namesByAccount.set(key, names);
+  }
   for (const p of [...posts].sort(byDate)) {
     if (!cited.has(p.memorial_id) || !p.author_name?.trim()) continue;
     const key = `${p.memorial_id}|${norm(p.author_name)}`;
@@ -26,7 +34,10 @@ export function tributeLinks(posts: readonly PostRow[], memorialIds: readonly st
   }
   return [...groups.values()].filter((g) => g.links.size > 0).slice(0, 300).map((g) => ({
     memorial_id: g.memorial_id, author: g.author,
-    identity: g.accounts.size === 1 && !g.anon ? "unique" : "ambiguous",
+    identity: g.accounts.size === 1 && !g.anon && [...g.accounts].every((id) => {
+      const names = namesByAccount.get(`${g.memorial_id}|${id}`);
+      return names?.size === 1 && !names.has("");
+    }) ? "unique" : "ambiguous",
     links: [...g.links],
   }));
 }

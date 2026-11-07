@@ -1,5 +1,8 @@
 # Bilan MVP Premium — travaux restants, non engagés
 
+- [x] RIBENGA-CLÔTURE-01 : audit ciblé, corrections confirmées, 151 tests Vitest + 10 tests Edge isolés PASS, Deno du serveur réel PASS, compilation automatique OK, page/palette desktop/mobile synthétiques vérifiées ; rapport docs/conseil/RIBENGA-CLOTURE-01-RAPPORT.md. Aucune publication, aucun déploiement ni données réelles modifiées. Verdict PARTIAL.
+- [ ] RIBENGA-CLÔTURE-01 réception réelle : bloquée par absence d’environnement isolé (chaque recherche écrit historique/usage sur la base partagée) et preuve séparée du typecheck frontend indisponible ; fonction hébergée non déployée. FINAL interdit sans recette connectée/mobile réelle ; autres mandats ouverts ci-dessous non engagés ici.
+
 - [x] Clarification PIN Moov : documentation REST/status/webhook vérifiée ; aucun accusé de réception PIN documenté. Indicateur erroné ussd_push_sent=true remplacé par null, payment_request_accepted=true et pin_prompt_received=null pour les nouvelles demandes, sans réécrire l’historique. 14 tests réussis, Deno OK ; ebilling seule déployée. Deux essais Moov restent FAILED/code 2000 ; aucun paiement déclenché.
 - [ ] Réception PIN Moov : régler/vérifier le solde du compte d’opération Moov puis effectuer une recette réelle ; si aucun PIN malgré absence du code 2000, faire confirmer le parcours Moov par PVit avec référence et heure. Aucune preuve de réception fournie par l’API documentée.
 

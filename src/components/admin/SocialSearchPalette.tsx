@@ -77,7 +77,10 @@ async function streamQuestion(
       if (line.startsWith(":") || line.trim() === "") continue;
       if (!line.startsWith("data: ")) continue;
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") return;
+      if (jsonStr === "[DONE]") {
+        if (!fullText.trim()) throw new Error("Réponse du moteur vide ou interrompue. Réessayez.");
+        return;
+      }
       let parsed;
       try { parsed = JSON.parse(jsonStr); } catch { continue; }
       if (parsed.type === "error") throw new Error(parsed.error || "Sources indisponibles");
@@ -95,7 +98,7 @@ async function streamQuestion(
           continue;
         }
         const content = parsed.choices?.[0]?.delta?.content;
-        if (content) {
+        if (typeof content === "string" && content) {
           fullText += content;
           onDelta(fullText);
         }
@@ -105,6 +108,7 @@ async function streamQuestion(
       }
     }
   }
+  throw new Error("Réponse du moteur vide ou interrompue. Réessayez.");
 }
 
 function timeAgo(dateStr: string): string {
@@ -150,6 +154,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
   const [memorialMeta, setMemorialMeta] = useState<AdminMemorialContext[]>([]);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -206,15 +211,24 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
     setSourceIds([]);
     setUsage(null);
 
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await streamQuestion(q, setAnswer, setMemorialMeta, setSourceIds, setUsage, controller.signal);
-    } catch (e: any) {
-      if (e.name !== "AbortError") setError(e.message || "Erreur réseau");
+      const current = () => abortRef.current === controller && !controller.signal.aborted;
+      await streamQuestion(q,
+        (text) => { if (current()) setAnswer(text); },
+        (meta) => { if (current()) setMemorialMeta(meta); },
+        (ids, links) => { if (current()) setSourceIds(ids, links); },
+        (data) => { if (current()) setUsage(data); }, controller.signal);
+    } catch (e: unknown) {
+      if (abortRef.current === controller && !controller.signal.aborted) {
+        setError(e instanceof Error ? e.message : "Erreur réseau");
+        setSourceIds([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (abortRef.current === controller && !controller.signal.aborted) setIsLoading(false);
     }
   }, []);
 
@@ -384,7 +398,7 @@ const SocialSearchPalette = ({ externalOpen, onExternalOpenChange }: SocialSearc
                       )}
                     </div>
 
-                    {!isLoading && <AdminRelationExplanation key={asked} candidates={memorialMeta} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
+                    {!isLoading && !error && <AdminRelationExplanation key={asked} candidates={memorialMeta} sourceIds={sourceIds} tributeLinks={tributeLinks} question={asked} />}
 
                     {/* Token usage badge */}
                     {usage && !isLoading && (
