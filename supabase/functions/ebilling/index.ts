@@ -270,7 +270,8 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const totalAmount = unitPrice * quantity;
+    let totalAmount = unitPrice * quantity;
+    let basket: { c: number; f: number } | null = null;
     const ebillingRef = newReference();
     const itemLabel = isMemorialPayment ? "Publication mémorial" : item_type === "cierge" ? "Cierge" : "Fleur";
     const memorialMeta = isMemorialPayment ? { memorial_id, memorial_category: memorialCategory } : {};
@@ -338,9 +339,27 @@ const handler = async (req: Request): Promise<Response> => {
       }
       const c = gPost?.candle_count ?? 0, f = gPost?.flower_count ?? 0;
       // GESTURES-UNLIMITED: no business quantity limit; only the operator ceiling per payment.
-      const check = tributeLink && !(item_type === "cierge" ? c === quantity && f === 0 : f === quantity && c === 0)
-        ? { ok: false as const, error: "Gestes non conformes à l'hommage" }
-        : checkGestureOrder(quantity, unitPrice);
+      let check: { ok: boolean; error?: string };
+      if (tributeLink) {
+        // GESTURES-MIXED: a new tribute may carry candles AND flowers; one payment for the whole basket.
+        const bc = Number(candle_count ?? (item_type === "cierge" ? quantity : 0));
+        const bf = Number(flower_count ?? (item_type === "fleur" ? quantity : 0));
+        if (c !== bc || f !== bf || c + f < 1) {
+          check = { ok: false, error: "Gestes non conformes à l'hommage" };
+        } else {
+          const { data: prices } = await supabaseAdmin.from("ritual_prices").select("item_type, unit_price").in("item_type", ["cierge", "fleur"]);
+          const pc = prices?.find((p: any) => p.item_type === "cierge")?.unit_price;
+          const pf = prices?.find((p: any) => p.item_type === "fleur")?.unit_price;
+          if ((c > 0 && !(pc > 0)) || (f > 0 && !(pf > 0))) {
+            return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
+          }
+          totalAmount = c * (pc ?? 0) + f * (pf ?? 0);
+          basket = { c, f };
+          check = checkGestureOrder(1, totalAmount);
+        }
+      } else {
+        check = checkGestureOrder(quantity, unitPrice);
+      }
       if (!check.ok) {
         return new Response(JSON.stringify({ error: check.error }), { status: 409, headers: jsonHeaders });
       }
@@ -352,7 +371,9 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Numéro Airtel Money (07…) ou Moov Money (06…) invalide" }), { status: 400, headers: jsonHeaders });
     }
 
-    const product = `${itemLabel} x${quantity}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`;
+    const product = basket && basket.c > 0 && basket.f > 0
+      ? `Cierge x${basket.c} + Fleur x${basket.f}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`
+      : `${itemLabel} x${quantity}${resolvedDeceasedName ? " - " + resolvedDeceasedName : ""}`;
     const push = await initiatePayment(pvit, { amount: totalAmount, reference: ebillingRef, msisdn, operator, product });
     const baseRow = {
       user_id: user.id,
@@ -363,11 +384,11 @@ const handler = async (req: Request): Promise<Response> => {
       ebilling_reference: ebillingRef,
       payer_phone: msisdn,
       deceased_name_snapshot: resolvedDeceasedName,
-      candle_count: item_type === "cierge" ? quantity : 0,
-      flower_count: item_type === "fleur" ? quantity : 0,
+      candle_count: basket ? basket.c : item_type === "cierge" ? quantity : 0,
+      flower_count: basket ? basket.f : item_type === "fleur" ? quantity : 0,
       last_api_response: push.raw,
     };
-    const baseMeta = { ...memorialMeta, gateway: "pvit", mode: "payant", quantity, unit_price: unitPrice, phone: msisdn, post_id: post_id || null, operator, pvit_account: push.account };
+    const baseMeta = { ...memorialMeta, gateway: "pvit", mode: "payant", quantity, unit_price: unitPrice, ...(basket ? { basket } : {}), phone: msisdn, post_id: post_id || null, operator, pvit_account: push.account };
 
     if (!push.accepted || !push.transactionId) {
       console.error(`[pvit] push refused ref=${ebillingRef} HTTP ${push.httpStatus}`);
