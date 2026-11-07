@@ -2,6 +2,8 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { getOptimizedImageUrl, getOptimizedSrcSet } from "@/lib/imageUrl";
 import { adjustmentForImage } from "@/lib/photoCanon";
+import { framingFor, type FramingAdjust } from "@/lib/photoFraming";
+import { usePhotoFraming } from "@/hooks/usePhotoFraming";
 
 /**
  * <Photo> — composant souverain (Norme AAA, Piliers 1 & 3).
@@ -36,6 +38,8 @@ export interface PhotoProps {
   className?: string;
   imgClassName?: string;
   sizes?: string;
+  /** Banc d'essai : force un cadrage (null = brut). Absent = réglage publié. */
+  framing?: FramingAdjust | null;
 }
 
 const VARIANT_CONTAINER: Record<PhotoVariant, string> = {
@@ -75,11 +79,15 @@ const Photo = memo(
     className,
     imgClassName,
     sizes,
+    framing,
   }: PhotoProps) => {
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
     const [canon, setCanon] = useState<{ brightness: number; contrast: number } | null>(null);
     const deceased = tone === "memorial";
+    const { data: framingSetting } = usePhotoFraming();
+    // Cadrage biométrique : override explicite (banc d'essai) sinon réglage publié.
+    const frame = deceased ? (framing !== undefined ? framing : framingFor(src, framingSetting)) : null;
     const imgRef = useRef<HTMLImageElement>(null);
     const originalAttempted = useRef(false);
 
@@ -147,6 +155,7 @@ const Photo = memo(
               )}
               style={{
                 objectFit: "contain",
+                ...(frame ? { transform: `scale(${frame.scale})`, transformOrigin: `${frame.x}% ${frame.y}%` } : {}),
                 ...(canon ? { ["--canon-b" as string]: canon.brightness, ["--canon-c" as string]: canon.contrast } : {}),
               }}
             />
