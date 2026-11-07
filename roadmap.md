@@ -5,7 +5,7 @@
 - [x] PVit : conversion automatique 06/07 remplacée à la demande du titulaire par la saisie internationale explicite ci-dessus.
 
 - [x] Correction paiement hommage : lien scellé prioritaire même chargé tardivement, erreurs visibles, panier mixte, attente de confirmation serveur et réutilisation de référence ; 19 tests réussis, compilation automatique OK, fenêtre connectée desktop/mobile vérifiée sans débit. Aucune modification serveur ni publication.
-- [ ] Recette Airtel réelle : réception de la demande PIN et publication après débit à vérifier par le titulaire du téléphone ; la session de recette disponible est administrateur (dépôt interdit), aucun débit réel déclenché.
+- [x] Recette Airtel réelle réussie par le titulaire : paiement 1 400 XAF (1 cierge + 1 fleur) confirmé côté PVit (transaction PAY0711261409799, référence FLRMW6KEPWOLZ9Z) à 15:35:22 UTC, hommage publié et visible (approuvé, non masqué, 1 cierge + 1 fleur) rattaché à cette référence, aucun doublon ; tentatives antérieures en échec sans hommage lié.
 
 - [ ] Fusion Premium : références SHA256 patch/ZIP validées ; fusion sélective des cinq composants, préserver RIBENGA-06 et les fonctions actuelles, vérifier zoom molette/pince et tests ; aucune publication, aucun changement serveur ou paiement.
 
@@ -36,4 +36,4 @@
 Le mandat Chantier 2 inclut la compression et les svh ciblés ; RIBENGA/RAGet et les autres travaux restent hors périmètre.
 
 Contraintes : préserver paiements, Memorial Master et droits Voir+ ; aucune publication ; aucun verdict PASS sans preuve.- [x] PVit v2 (production) : seule passerelle ; eBilling retiré ; webhook `pvit-webhook`, vérification de statut, tests opérateurs.
-- [ ] PVit — bloqué côté myPVit : vider la liste d'IP autorisées (185.158.133.1 refuse nos appels), URL callback → fonction pvit-webhook, (callback et code statut faits).
+- [x] PVit — déblocage myPVit effectué : aucune IP active (185.158.133.1 et 51.79.68.133 inactives), callback vers pvit-webhook, code statut RQOUBT41PJUQALTT enregistré ; paiement réel confirmé en production.
