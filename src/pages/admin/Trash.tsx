@@ -173,9 +173,9 @@ const AdminTrash = () => {
 
   const isLoading = memorialsQuery.isLoading || postsQuery.isLoading || templatesQuery.isLoading;
 
-  const pagedMemorials = usePagedList(memorialsQuery.data ?? EMPTY_M);
-  const pagedPosts = usePagedList(postsQuery.data ?? EMPTY_P);
-  const pagedTemplates = usePagedList(templatesQuery.data ?? EMPTY_T);
+  const pagedMemorials = usePagedList(memorialsQuery.data ?? []);
+  const pagedPosts = usePagedList(postsQuery.data ?? []);
+  const pagedTemplates = usePagedList(templatesQuery.data ?? []);
 
   return (
     <div className="p-6 md:p-8 space-y-6">
