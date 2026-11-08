@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { finalizePaymentSuccess, markPaymentFailed } from "../_shared/paymentSuccess.ts";
 import { classifyMemorial, readMemorialPrice } from "../_shared/memorialPricing.ts";
-import { isPromoActive, PROMO_SETTING_KEY } from "../_shared/obituaryPromo.ts";
 import { checkGestureOrder } from "../_shared/gestureRules.ts";
 import { getPvitConfig, enteredPaymentMsisdn, detectOperator, newReference, initiatePayment, checkPvitStatus, pvitProductLabel, pvitAcceptanceEvidence } from "../_shared/pvit.ts";
 import { pvitIssue, paymentIssueText } from "../_shared/pvitErrors.ts";
@@ -223,14 +222,8 @@ const handler = async (req: Request): Promise<Response> => {
       if (memorialPrice === null) {
         return new Response(JSON.stringify({ error: "Tarif indisponible, réessayez plus tard" }), { status: 503, headers: jsonHeaders });
       }
-      // PROMO-01-FIX1: the global switch no longer makes obituaries free; only price 0 or an active campaign does.
-      let promoActiveNow = false;
-      if (cls.category === "future" && memorialPrice > 0) {
-        const { data: promoRow } = await supabaseAdmin.from("system_settings").select("value").eq("key", PROMO_SETTING_KEY).maybeSingle();
-        promoActiveNow = isPromoActive(promoRow?.value ?? null);
-      }
       // MON-02: free mode waives memorial publication only (never candles/flowers).
-      if (memorialPrice === 0 || promoActiveNow || !isMonetized) {
+      if (memorialPrice === 0 || !isMonetized) {
         return new Response(JSON.stringify({ error: "Aucun paiement requis pour ce mémorial" }), { status: 409, headers: jsonHeaders });
       }
       // G1-FIX9: resolve stale attempts (>30 min) before deciding; never invent an operator status.

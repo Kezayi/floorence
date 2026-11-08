@@ -273,58 +273,6 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* PROMO-01 — Free obituary publication campaign */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Campagne : avis de décès offerts</CardTitle>
-            <CardDescription>
-              Publication gratuite des avis de décès, portée mondiale. Les cierges et fleurs restent toujours payants.
-              Chaque modification est tracée dans le Journal d'audit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{promoActive ? 'Campagne activée' : 'Campagne désactivée'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {settings && isObituaryPromoActive(settings.obituary_free_campaign)
-                    ? 'En cours : les nouveaux avis sont publiés à 0 XAF'
-                    : 'Aucune gratuité en cours'}
-                </p>
-              </div>
-              <Switch checked={promoActive} onCheckedChange={setPromoActive} aria-label="Activer la campagne" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="promo-start">Date de début</Label>
-                <Input id="promo-start" type="date" value={promoStart} onChange={(e) => setPromoStart(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="promo-days">Durée (jours)</Label>
-                <Input id="promo-days" type="number" min={1} value={promoDays} onChange={(e) => setPromoDays(parseInt(e.target.value) || 1)} />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Date de fin : {promoEnd ? promoEnd.toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—'} (exclue)
-            </p>
-            <div className="space-y-1">
-              <Label>Motif</Label>
-              <RadioGroup value={promoReason} onValueChange={setPromoReason}>
-                {Object.entries(PROMO_REASON_LABELS).map(([v, l]) => (
-                  <div key={v} className="flex items-center space-x-2">
-                    <RadioGroupItem value={v} id={`promo-${v}`} />
-                    <Label htmlFor={`promo-${v}`} className="cursor-pointer font-normal">{l}</Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-            <Button onClick={handleSavePromo} disabled={updateSetting.isPending}>
-              {updateSetting.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Enregistrer la campagne
-            </Button>
-          </CardContent>
-        </Card>
-
         {/* Notification Configuration */}
         <Card>
           <CardHeader>

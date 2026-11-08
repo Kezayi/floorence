@@ -2,7 +2,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 import { classifyMemorial, readMemorialPrice } from '../_shared/memorialPricing.ts'
-import { isPromoActive, PROMO_SETTING_KEY } from '../_shared/obituaryPromo.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -199,17 +198,10 @@ serve(async (req) => {
     const { data: monetization } = await supabaseAdmin
       .from('global_settings').select('value_bool').eq('key', 'is_monetized').maybeSingle()
     const isMonetized = monetization?.value_bool ?? false
-    // PROMO-01: obituary (future category) free campaign, evaluated server-side now.
-    let promoApplied = false
-    let promoValue: unknown = null
-    if (category === 'future' && price > 0) {
-      const { data: promoRow } = await supabaseAdmin
-        .from('system_settings').select('value').eq('key', PROMO_SETTING_KEY).maybeSingle()
-      promoValue = promoRow?.value ?? null
-      promoApplied = isPromoActive(promoValue)
-    }
+    // MON-03 (Option A): is_monetized is the single switch for memorial publication price; gestures never waived.
+    const promoApplied = false
     // MON-02: free mode (is_monetized=false) waives memorial publication; gestures are never waived.
-    const appliedPrice = (promoApplied || !isMonetized) ? 0 : price
+    const appliedPrice = !isMonetized ? 0 : price
     const requiresPayment = appliedPrice > 0
 
     const slug = await generateSecureSlug(supabase, data.firstName, data.lastName)
@@ -260,15 +252,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Erreur lors de la création de l\'espace mémoriel' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    }
-
-    if (promoApplied) {
-      await supabaseAdmin.from('audit_logs').insert({
-        action_type: 'obituary_promo_applied',
-        performed_by: user.id,
-        performed_by_email: user.email,
-        details: { memorial_id: memorial.id, normal_price: price, applied_price: 0, currency: 'XAF', campaign: promoValue },
-      })
     }
 
     console.log(`[create-memorial] ${memorial.id} category=${category} price=${price} applied=${appliedPrice} promo=${promoApplied} published=${!requiresPayment}`)
