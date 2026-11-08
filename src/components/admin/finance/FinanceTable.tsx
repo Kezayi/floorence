@@ -20,7 +20,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   timeout: { label: 'Expiré', variant: 'outline', className: 'text-muted-foreground border-muted-foreground/30 bg-muted/50' },
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 25;
 
 interface Transaction {
   id: string | null;

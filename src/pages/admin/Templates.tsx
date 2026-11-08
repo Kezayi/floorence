@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, BookOpen, BarChart3, Pencil } from "lucide-react";
@@ -121,7 +123,8 @@ const AdminTemplates = () => {
     if (filterTone !== "all" && t.tone !== filterTone) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     return true;
-  });
+  });  const pagedTemplates = usePagedList(filtered);
+
 
   const topUsed = [...templates].sort((a, b) => b.usage_count - a.usage_count).slice(0, 5);
 
@@ -224,7 +227,7 @@ const AdminTemplates = () => {
               </TableCell>
             </TableRow>
           ) : (
-            filtered.map((t) => (
+            pagedTemplates.items.map((t) => (
               <TableRow key={t.id} className={!t.is_active ? "opacity-50" : ""}>
                 <TableCell className="font-serif text-sm max-w-xs">
                   <span className="line-clamp-2">{t.content}</span>
@@ -277,6 +280,7 @@ const AdminTemplates = () => {
           )}
         </TableBody>
       </Table>
+      {filtered.length > 25 && <AdminPagination {...pagedTemplates.pagination} />}
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -302,8 +304,8 @@ const Analytics = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.topMemorials.map((m, i) => (
-                  <TableRow key={m.memorial_name + i}>
+                {pagedTop.items.map((m, i) => (
+                  <TableRow key={m.memorial_name + i}>{/* rang global */}
                     <TableCell className="font-medium text-muted-foreground">
                       {i + 1}
                     </TableCell>
@@ -321,6 +323,7 @@ const Analytics = () => {
                 ))}
               </TableBody>
             </Table>
+            {(data?.topMemorials.length ?? 0) > 25 && <AdminPagination {...pagedTop.pagination} />}
           ) : (
             <p className="text-center text-muted-foreground py-8">
               Aucun mémorial avec des gestes pour le moment

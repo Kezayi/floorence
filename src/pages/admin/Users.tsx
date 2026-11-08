@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -218,6 +220,7 @@ const Users = () => {
       return true;
     });
   }, [usersData?.users, filters.debouncedSearch, filters.dateFrom, filters.dateTo]);
+  const pagedUsers = usePagedList(filteredUsers);
 
   const getRoleBadges = (roles: string[]) => {
     if (roles.length === 0) return null;
@@ -342,7 +345,7 @@ const Users = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
+                {pagedUsers.items.map((user) => (
                   <TableRow key={user.id} className={isBanned(user) ? 'opacity-60 bg-destructive/5' : ''}>
                     <TableCell>
                       <div>
@@ -459,6 +462,7 @@ const Users = () => {
                 ))}
               </TableBody>
             </Table>
+            {filteredUsers.length > 25 && <AdminPagination {...pagedUsers.pagination} />}
           )}
 
           {/* Pagination */}
