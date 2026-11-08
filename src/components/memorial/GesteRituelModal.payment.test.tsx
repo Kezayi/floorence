@@ -36,7 +36,8 @@ it("refuses invalid numbers and sends the national 9-digit form", async () => {
  const input = screen.getByLabelText(/Numéro Airtel ou Moov/);
  for (const local of ["011234567", "+33123456789"]) {
    fireEvent.change(input, { target: { value: local } });
-   fireEvent.click(screen.getByRole("button", { name: /Payer/ })); fireEvent.click(await screen.findByRole("button", { name: "Confirmer le paiement" }));
+   fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+   expect(screen.queryByRole("button", { name: "Confirmer le paiement" })).toBeNull();
    expect(confirm).not.toHaveBeenCalled();
  }
  fireEvent.change(input, { target: { value: "+24166123456" } });
