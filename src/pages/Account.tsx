@@ -644,7 +644,7 @@ const Account = () => {
                                 </div>
                               </div>
                             );
-                          }){pagedPosts.totalPages > 1 && <AdminPagination {...pagedPosts.pagination} pageSizeOptions={[10, 25, 50]} />}</>
+                          })}{pagedPosts.totalPages > 1 && <AdminPagination {...pagedPosts.pagination} pageSizeOptions={[10, 25, 50]} />}</>
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore laissé d'hommage
@@ -701,7 +701,7 @@ const Account = () => {
                                 </div>
                               </div>
                             );
-                          }){pagedTx.totalPages > 1 && <AdminPagination {...pagedTx.pagination} pageSizeOptions={[10, 25, 50]} />}</>
+                          })}{pagedTx.totalPages > 1 && <AdminPagination {...pagedTx.pagination} pageSizeOptions={[10, 25, 50]} />}</>
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore effectué de geste rituel
