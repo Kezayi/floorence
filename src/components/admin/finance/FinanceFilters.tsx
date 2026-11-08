@@ -17,7 +17,25 @@ const STATUS_OPTIONS = [
   { value: 'timeout', label: 'Expiré' },
 ] as const;
 
+const OPERATOR_OPTIONS = [
+  { value: 'all', label: 'Tous opérateurs' },
+  { value: 'AIRTEL_MONEY', label: 'Airtel Money' },
+  { value: 'MOOV_MONEY', label: 'Moov Money' },
+] as const;
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'Tous actes' },
+  { value: 'cierge', label: 'Cierge' },
+  { value: 'fleur', label: 'Fleur' },
+  { value: 'cierge_fleur', label: 'Panier mixte' },
+  { value: 'memorial', label: 'Mémorial' },
+] as const;
+
 interface FinanceFiltersProps {
+  operatorFilter: string;
+  onOperatorChange: (v: string) => void;
+  typeFilter: string;
+  onTypeChange: (v: string) => void;
   searchQuery: string;
   onSearchChange: (v: string) => void;
   statusFilter: string;
@@ -30,6 +48,7 @@ const FinanceFilters = ({
   searchQuery, onSearchChange,
   statusFilter, onStatusChange,
   dateRange, onDateRangeChange,
+  operatorFilter, onOperatorChange, typeFilter, onTypeChange,
 }: FinanceFiltersProps) => {
   const hasDateFilter = dateRange?.from || dateRange?.to;
 
@@ -55,6 +74,24 @@ const FinanceFilters = ({
             className="cursor-pointer select-none transition-colors"
             onClick={() => onStatusChange(opt.value)}
           >
+            {opt.label}
+          </Badge>
+        ))}
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap" aria-label="Opérateur">
+        {OPERATOR_OPTIONS.map(opt => (
+          <Badge key={opt.value} variant={operatorFilter === opt.value ? 'default' : 'outline'}
+            className="cursor-pointer select-none transition-colors" onClick={() => onOperatorChange(opt.value)}>
+            {opt.label}
+          </Badge>
+        ))}
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap" aria-label="Type d'acte">
+        {TYPE_OPTIONS.map(opt => (
+          <Badge key={opt.value} variant={typeFilter === opt.value ? 'default' : 'outline'}
+            className="cursor-pointer select-none transition-colors" onClick={() => onTypeChange(opt.value)}>
             {opt.label}
           </Badge>
         ))}
