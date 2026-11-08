@@ -26,6 +26,8 @@ interface MemorialGestureRow {
   unique_contributors: number;
 }
 
+const EMPTY: never[] = [];
+
 const Analytics = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-analytics-behavioral'],
@@ -181,6 +183,8 @@ const Analytics = () => {
     { key: 'unique_contributors', label: 'Contributeurs' },
   ];
 
+  const pagedTop = usePagedList(data?.topMemorials ?? EMPTY);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -305,9 +309,9 @@ const Analytics = () => {
               </TableHeader>
               <TableBody>
                 {pagedTop.items.map((m, i) => (
-                  <TableRow key={m.memorial_name + i}>{/* rang global */}
+                  <TableRow key={m.memorial_name + i}>
                     <TableCell className="font-medium text-muted-foreground">
-                      {i + 1}
+                      {(pagedTop.page - 1) * pagedTop.pagination.pageSize + i + 1}
                     </TableCell>
                     <TableCell className="font-medium">{m.memorial_name}</TableCell>
                     <TableCell className="text-center">{m.total_posts}</TableCell>
