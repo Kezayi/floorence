@@ -71,7 +71,7 @@ const Users = () => {
   const [newAdminRole, setNewAdminRole] = useState<'admin' | 'moderator'>('admin');
   const { filters, updateFilter } = useAdminFilters();
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 25;
 
   // Fetch users from edge function
   const { data: usersData, isLoading, error: usersError, refetch } = useQuery({

@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -171,6 +173,10 @@ const AdminTrash = () => {
 
   const isLoading = memorialsQuery.isLoading || postsQuery.isLoading || templatesQuery.isLoading;
 
+  const pagedMemorials = usePagedList(memorialsQuery.data ?? []);
+  const pagedPosts = usePagedList(postsQuery.data ?? []);
+  const pagedTemplates = usePagedList(templatesQuery.data ?? []);
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* Fil d'Ariane — Norme AAA Pilier 7B */}
@@ -229,7 +235,7 @@ const AdminTrash = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (memorialsQuery.data ?? []).map((m) => (
+                  pagedMemorials.items.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">
                         {m.first_name} {m.last_name}
@@ -243,6 +249,7 @@ const AdminTrash = () => {
                 )}
               </TableBody>
             </Table>
+            {pagedMemorials.totalCount > 25 && <AdminPagination {...pagedMemorials.pagination} />}
           </TabsContent>
 
           <TabsContent value="posts" className="mt-4">
@@ -263,7 +270,7 @@ const AdminTrash = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (postsQuery.data ?? []).map((p) => (
+                  pagedPosts.items.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.author_name}</TableCell>
                       <TableCell className="max-w-md truncate text-muted-foreground">{p.content}</TableCell>
@@ -274,6 +281,7 @@ const AdminTrash = () => {
                 )}
               </TableBody>
             </Table>
+            {pagedPosts.totalCount > 25 && <AdminPagination {...pagedPosts.pagination} />}
           </TabsContent>
 
           <TabsContent value="templates" className="mt-4">
@@ -294,7 +302,7 @@ const AdminTrash = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (templatesQuery.data ?? []).map((t) => (
+                  pagedTemplates.items.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell className="max-w-md truncate">{t.content}</TableCell>
                       <TableCell className="text-muted-foreground">{t.category}</TableCell>
@@ -305,6 +313,7 @@ const AdminTrash = () => {
                 )}
               </TableBody>
             </Table>
+            {pagedTemplates.totalCount > 25 && <AdminPagination {...pagedTemplates.pagination} />}
           </TabsContent>
         </Tabs>
       )}

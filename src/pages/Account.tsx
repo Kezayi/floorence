@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import ResidenceCountrySelect from "@/components/memorial/ResidenceCountrySelect";
 import CivilitySelect from "@/components/account/CivilitySelect";
 import { canCompleteIdentity, isCivility, type Civility } from '../../supabase/functions/_shared/civility';
@@ -257,6 +259,9 @@ const Account = () => {
 
 
   // Show loading state
+  const pagedPosts = usePagedList(myPosts, 10);
+  const pagedTx = usePagedList(myTransactions, 10);
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -535,7 +540,7 @@ const Account = () => {
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                           </div>
                         ) : myPosts.length > 0 ? (
-                          myPosts.map((post) => {
+                          <>{pagedPosts.items.map((post) => {
                             const memorialName = post.memorial 
                               ? `${post.memorial.first_name} ${post.memorial.last_name}`
                               : "Mémorial";
@@ -639,7 +644,7 @@ const Account = () => {
                                 </div>
                               </div>
                             );
-                          })
+                          })}{pagedPosts.totalPages > 1 && <AdminPagination {...pagedPosts.pagination} pageSizeOptions={[10, 25, 50]} />}</>
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore laissé d'hommage
@@ -656,7 +661,7 @@ const Account = () => {
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                           </div>
                         ) : myTransactions.length > 0 ? (
-                          myTransactions.map((tx) => {
+                          <>{pagedTx.items.map((tx) => {
                             const meta = tx.metadata as Record<string, any> | null;
                             const mode = meta?.mode || "inconnu";
                             const isFree = tx.amount === 0;
@@ -696,7 +701,7 @@ const Account = () => {
                                 </div>
                               </div>
                             );
-                          })
+                          })}{pagedTx.totalPages > 1 && <AdminPagination {...pagedTx.pagination} pageSizeOptions={[10, 25, 50]} />}</>
                         ) : (
                           <p className="text-muted-foreground font-serif py-8 text-center">
                             Vous n'avez pas encore effectué de geste rituel

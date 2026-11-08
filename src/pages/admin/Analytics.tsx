@@ -1,3 +1,5 @@
+import AdminPagination from '@/components/admin/AdminPagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +25,8 @@ interface MemorialGestureRow {
   total_gestures: number;
   unique_contributors: number;
 }
+
+const EMPTY: never[] = [];
 
 const Analytics = () => {
   const { data, isLoading } = useQuery({
@@ -179,6 +183,8 @@ const Analytics = () => {
     { key: 'unique_contributors', label: 'Contributeurs' },
   ];
 
+  const pagedTop = usePagedList(data?.topMemorials ?? EMPTY);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -191,9 +197,9 @@ const Analytics = () => {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h2 className="font-serif text-2xl text-foreground">
             Analytics Comportemental
-          </h1>
+          </h2>
           <p className="text-muted-foreground mt-1">
             Engagement des familles et intensité des gestes symboliques
           </p>
@@ -289,6 +295,7 @@ const Analytics = () => {
         </CardHeader>
         <CardContent>
           {data?.topMemorials && data.topMemorials.length > 0 ? (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -302,10 +309,10 @@ const Analytics = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.topMemorials.map((m, i) => (
+                {pagedTop.items.map((m, i) => (
                   <TableRow key={m.memorial_name + i}>
                     <TableCell className="font-medium text-muted-foreground">
-                      {i + 1}
+                      {(pagedTop.page - 1) * pagedTop.pagination.pageSize + i + 1}
                     </TableCell>
                     <TableCell className="font-medium">{m.memorial_name}</TableCell>
                     <TableCell className="text-center">{m.total_posts}</TableCell>
@@ -321,6 +328,8 @@ const Analytics = () => {
                 ))}
               </TableBody>
             </Table>
+            {(data?.topMemorials.length ?? 0) > 25 && <AdminPagination {...pagedTop.pagination} />}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-8">
               Aucun mémorial avec des gestes pour le moment
