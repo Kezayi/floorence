@@ -50,3 +50,6 @@ Le mandat Chantier 2 inclut la compression et les svh ciblés ; RIBENGA/RAGet et
 
 Contraintes : préserver paiements, Memorial Master et droits Voir+ ; aucune publication ; aucun verdict PASS sans preuve.- [x] PVit v2 (production) : seule passerelle ; eBilling retiré ; webhook `pvit-webhook`, vérification de statut, tests opérateurs.
 - [x] PVit — déblocage myPVit effectué : aucune IP active (185.158.133.1 et 51.79.68.133 inactives), callback vers pvit-webhook, code statut RQOUBT41PJUQALTT enregistré ; paiement réel confirmé en production.
+
+- [ ] Pagination FO/BO partout où nécessaire (inventaire puis mise en œuvre).
+- [ ] Réorganisation du Back-Office sans redondances (plan à valider).
