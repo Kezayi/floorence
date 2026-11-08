@@ -2,7 +2,6 @@ import Photo from "@/components/ui/Photo";
 import { preparePhotoUpload } from "@/lib/preparePhotoUpload";
 import GeoLandsFields from "@/components/memorial/GeoLandsFields";
 import { EMPTY_GEO, normalizeGeo, type GeoLands } from "@/lib/geoLands";
-import { isObituaryPromoActive } from "@/lib/obituaryPromo";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
@@ -65,10 +64,9 @@ const CreateMemorial = () => {
   const displayPrice = systemSettings && displayCategory
     ? (displayCategory === "future" ? systemSettings.memorial_price_future.amount : systemSettings.memorial_price_past.amount)
     : null;
-  const promoDisplay = displayCategory === "future" && !!systemSettings && isObituaryPromoActive(systemSettings.obituary_free_campaign);
   // MON-02: free mode (BO switch off) waives memorial publication, mirroring create-memorial.
   const isMonetized = monetization?.isMonetized ?? false;
-  const requiresPaymentDisplay = isMonetized && !promoDisplay && (displayPrice ?? 0) > 0;
+  const requiresPaymentDisplay = isMonetized && (displayPrice ?? 0) > 0;
 
 
 
@@ -868,8 +866,6 @@ const CreateMemorial = () => {
                              ? "Tarif en cours de chargement…"
                              : requiresPaymentDisplay
                                ? `${displayPrice.toLocaleString("fr-FR")} XAF`
-                               : promoDisplay
-                                 ? `0 XAF — publication de l'avis offerte (au lieu de ${(displayPrice ?? 0).toLocaleString("fr-FR")} XAF). Cierges et fleurs restent payants.`
                                  : !isMonetized
                                    ? "0 XAF — publication offerte (Mode Gratuit). Cierges et fleurs restent payants."
                                    : "Publication offerte"}
