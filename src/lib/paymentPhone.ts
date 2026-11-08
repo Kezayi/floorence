@@ -8,3 +8,10 @@ export function paymentPhone(raw: string): string | null {
 }
 
 export const PAYMENT_PHONE_ERROR = "Numéro Airtel ou Moov invalide (ex. 074 12 34 56).";
+
+/** Operator shown to the payer, derived from the same normalization as billing (06 = Moov, 07 = Airtel). */
+export function paymentOperatorLabel(raw: string): "Airtel Money" | "Moov Money" | null {
+  const p = paymentPhone(raw);
+  if (!p) return null;
+  return p.startsWith("07") ? "Airtel Money" : "Moov Money";
+}
