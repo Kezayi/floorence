@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useParams } from "react-router-dom";
+import { useParams }  from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,8 +41,6 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const AdminModeration = lazy(() => import("./pages/admin/Moderation"));
 const AdminMemorials = lazy(() => import("./pages/admin/Memorials"));
-const AdminStatistics = lazy(() => import("./pages/admin/Statistics"));
-const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
@@ -137,12 +135,12 @@ const App = () => (
                   } />
                   <Route path={`${ADMIN_PREFIX}/statistiques`} element={
                     <RequireAdmin>
-                      <AdminLayout><AdminStatistics /></AdminLayout>
+                      <Navigate to={`${ADMIN_PREFIX}?vue=activite`} replace />
                     </RequireAdmin>
                   } />
                   <Route path={`${ADMIN_PREFIX}/analytics`} element={
                     <RequireAdmin requireAdmin>
-                      <AdminLayout><AdminAnalytics /></AdminLayout>
+                      <Navigate to={`${ADMIN_PREFIX}?vue=memoriaux`} replace />
                     </RequireAdmin>
                   } />
                   <Route path={`${ADMIN_PREFIX}/utilisateurs`} element={
