@@ -22,6 +22,7 @@ import { formatDateFrench } from "@/lib/dateUtils";
 import { useMonetization } from "@/hooks/useMonetization";
 import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
+import PaymentConfirmDialog from "@/components/payment/PaymentConfirmDialog";
 import { paymentError, checkTributePaymentDetail } from "@/lib/tributePayment";
 
 type MemorialType = "RECENT" | "PAST" | null;
@@ -58,6 +59,7 @@ const CreateMemorial = () => {
   // G1-FIX7: active tariff for the computed category (server re-checks everything).
   const { data: monetization } = useMonetization();
   const [payerPhone, setPayerPhone] = useState("");
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
   const [createdMemorial, setCreatedMemorial] = useState<{ id: string; slug: string; share_token?: string } | null>(null);
   const [paymentState, setPaymentState] = useState<{ status: "pending" | "failed" | "timeout"; reference?: string; message?: string; checkoutUrl?: string } | null>(null);
   const displayCategory = classifyMemorialForDisplay(formData.deathDate, formData.funeralDate);
@@ -201,6 +203,16 @@ const CreateMemorial = () => {
     }
     setPaymentState({ status: "pending", reference: data.reference, message: data.message, checkoutUrl: data.checkout_url });
     pollPayment(data.reference, memorial);
+  };
+
+  const requestSubmit = () => {
+    if (isSubmitting) return;
+    if (requiresPaymentDisplay) {
+      if (!paymentPhone(payerPhone)) { setErrors({ payerPhone: PAYMENT_PHONE_ERROR }); return; }
+      setConfirmPayOpen(true);
+      return;
+    }
+    void handleSubmit();
   };
 
   const handleSubmit = async () => {
@@ -1029,7 +1041,7 @@ const CreateMemorial = () => {
                       Retour
                     </button>
                     <button 
-                      onClick={handleSubmit} 
+                      onClick={requestSubmit} 
                       className="btn-memorial" 
                        disabled={isSubmitting}
                     >
@@ -1051,6 +1063,14 @@ const CreateMemorial = () => {
       </main>
 
       <Footer />
+      <PaymentConfirmDialog
+        open={confirmPayOpen}
+        onOpenChange={setConfirmPayOpen}
+        purpose={`Publication de l'espace de ${formData.name.trim() || "la personne défunte"}`}
+        amount={displayPrice ?? 0}
+        phone={payerPhone}
+        onConfirm={() => { setConfirmPayOpen(false); void handleSubmit(); }}
+      />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import { classifyMemorialForDisplay } from "@/lib/memorialPricing";
 import { formatDateFrench } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
+import PaymentConfirmDialog from "@/components/payment/PaymentConfirmDialog";
 import { paymentError, checkTributePaymentDetail } from "@/lib/tributePayment";
 
 export interface PendingMemorial {
@@ -89,6 +90,12 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
     } finally {
       setBusy(false);
     }
+  };
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requestResume = () => {
+    if (!paymentPhone(phone)) { toast.error(PAYMENT_PHONE_ERROR); return; }
+    setConfirmOpen(true);
   };
 
   const resume = async () => {
@@ -174,13 +181,22 @@ const PendingMemorialCard = ({ memorial, lastTx, onChanged }: Props) => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
-              <Button size="sm" disabled={busy || !newPrice} onClick={resume}>
+              <Button size="sm" disabled={busy || !newPrice} onClick={requestResume}>
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Reprendre le paiement"}
               </Button>
             </div>
           </div>
         )}
       </div>
+
+      <PaymentConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        purpose={`Publication de l'espace de ${name}`}
+        amount={newPrice ?? 0}
+        phone={phone}
+        onConfirm={() => { setConfirmOpen(false); void resume(); }}
+      />
 
       <Dialog open={preview} onOpenChange={setPreview}>
         <DialogContent className="max-w-lg">

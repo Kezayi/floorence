@@ -6,7 +6,7 @@ import { Flame, Flower2, Loader2, AlertTriangle, Smartphone, HelpCircle } from "
 import { useMonetization } from "@/hooks/useMonetization";
 import { toast } from "@/hooks/use-toast";
 import { checkTributePaymentDetail, type PaymentRequest } from "@/lib/tributePayment";
-import { paymentPhone, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
+import { paymentPhone, paymentOperatorLabel, PAYMENT_PHONE_ERROR } from "@/lib/paymentPhone";
 
 const FALLBACK_PRICE = 500;
 
@@ -46,6 +46,7 @@ const GesteRituelModal = ({
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [paymentFailure, setPaymentFailure] = useState<string | null>(null);
   const [paymentRejected, setPaymentRejected] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   // Fallback: use loaded price or 500 FCFA if still loading
   // PROMO-01-FIX1: gestures are always paid, whatever the global switch.
@@ -116,6 +117,7 @@ const GesteRituelModal = ({
         }
         if (status === "failed") {
           setPaymentFailure(message);
+      setReviewing(false);
           setPaymentRejected(true);
           setUssdWaiting(false); setUssdTimeout(false);
           return;
@@ -146,6 +148,20 @@ const GesteRituelModal = ({
     }, 1000);
     return () => clearInterval(interval);
   }, [ussdWaiting]);
+
+  const handleReview = () => {
+    if (isDisabled) { void handleConfirm(); return; }
+    if (isMonetized && !paymentPhone(phone)) {
+      toast({ title: "Action impossible", description: PAYMENT_PHONE_ERROR, variant: "destructive" });
+      return;
+    }
+    setPaymentFailure(null);
+    setReviewing(true);
+  };
+
+  const gestureSummary = hasBasket
+    ? [candleCount > 0 ? `${candleCount} cierge${candleCount > 1 ? "s" : ""}` : null, flowerCount > 0 ? `${flowerCount} fleur${flowerCount > 1 ? "s" : ""}` : null].filter(Boolean).join(" + ")
+    : `1 ${label.toLowerCase()}`;
 
   const handleConfirm = async () => {
     // Debug log: always fires, even if validation would block
@@ -277,7 +293,7 @@ const GesteRituelModal = ({
                 placeholder="Ex: 074 12 34 56"
                 aria-invalid={!!phone && !paymentPhone(phone)}
                 value={phone}
-                disabled={submitting || !!paymentReference}
+                disabled={submitting || reviewing || !!paymentReference}
                 onChange={(e) => setPhone(e.target.value)}
                 className="font-sans"
               />
@@ -357,10 +373,29 @@ const GesteRituelModal = ({
           )}
 
           {/* CTA - Hidden during waiting/timeout */}
-          {!ussdWaiting && !ussdTimeout && !paymentRejected && (
+          {reviewing && !paymentReference && !ussdWaiting && !ussdTimeout && !paymentRejected && (
+            <section aria-label="Confirmation du paiement" className="space-y-3 rounded-md border border-border p-4">
+              <h3 className="font-serif text-base font-semibold">Vérifiez avant de payer</h3>
+              <dl className="space-y-2 text-sm font-sans">
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Geste</dt><dd className="text-right font-medium">{gestureSummary}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Opérateur</dt><dd className="text-right font-medium">{paymentOperatorLabel(phone) ?? "—"}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Numéro débité</dt><dd className="text-right font-medium">{paymentPhone(phone)}</dd></div>
+                <div className="flex justify-between gap-4 border-t border-border pt-2"><dt className="font-medium">Montant</dt><dd className="text-right font-serif text-lg font-bold">{displayTotal} XAF</dd></div>
+              </dl>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" disabled={submitting} onClick={() => setReviewing(false)}>Modifier</Button>
+                <Button className={`flex-1 ${submitting ? "opacity-60" : ""}`} onClick={handleConfirm}>
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  Confirmer le paiement
+                </Button>
+              </div>
+            </section>
+          )}
+
+          {!reviewing && !ussdWaiting && !ussdTimeout && !paymentRejected && (
             <>
               <Button
-                onClick={handleConfirm}
+                onClick={isMonetized ? handleReview : handleConfirm}
                 className={`w-full ${isDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {submitting ? (
