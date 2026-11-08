@@ -1,6 +1,6 @@
 import {
-  LayoutDashboard, Settings, MessageSquare, Users, BarChart3, Flower2, BookOpen,
-  History, Activity, Brain, Sparkles, Route, Banknote, Trash2, ScanFace, type LucideIcon,
+  LayoutDashboard, Settings, MessageSquare, Users, Flower2, BookOpen,
+  History, Brain, Sparkles, Route, Banknote, Trash2, ScanFace, type LucideIcon,
 } from 'lucide-react';
 import { ADMIN_PREFIX } from './adminRoutes';
 
@@ -27,8 +27,6 @@ export const ADMIN_NAV: AdminNavPole[] = [
     items: [
       { to: ADMIN_PREFIX, icon: LayoutDashboard, label: 'Tableau de bord', end: true },
       { to: `${ADMIN_PREFIX}/finances`, icon: Banknote, label: 'Transactions', adminOnly: true },
-      { to: `${ADMIN_PREFIX}/statistiques`, icon: BarChart3, label: 'Statistiques d’activité' },
-      { to: `${ADMIN_PREFIX}/analytics`, icon: Activity, label: 'Analyses par mémorial', adminOnly: true },
     ],
   },
   {

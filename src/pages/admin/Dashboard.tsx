@@ -9,10 +9,20 @@ import TabClassement from '@/components/admin/dashboard/TabClassement';
 import BusinessCockpit from '@/components/admin/dashboard/BusinessCockpit';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import TabImpact from '@/components/admin/dashboard/TabImpact';
+import { lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+const Statistics = lazy(() => import('./Statistics'));
+const Analytics = lazy(() => import('./Analytics'));
+const VIEWS = ['ensemble', 'activite', 'memoriaux'] as const;
 
 const Dashboard = () => {
   const { data: dashStats, isLoading: dashLoading, error: dashError, refetch: refetchDash } = useDashboardStats();
   const { isAdmin } = useAdminRole();
+  const [params, setParams] = useSearchParams();
+  const raw = params.get('vue');
+  const view = VIEWS.includes(raw as typeof VIEWS[number]) && (raw !== 'memoriaux' || isAdmin) ? raw! : 'ensemble';
+  const setView = (v: string) => setParams(v === 'ensemble' ? {} : { vue: v }, { replace: true });
 
   if (dashLoading) return <DashboardSkeleton />;
 
@@ -50,6 +60,15 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground mt-1">Ce qui demande une décision, puis l'état de l'activité.</p>
       </header>
 
+      <Tabs value={view} onValueChange={setView} className="w-full">
+        <TabsList className="h-11 mb-6 bg-ivory border border-champagne/30 p-1">
+          <TabsTrigger value="ensemble" className={tabCls}>Vue d’ensemble</TabsTrigger>
+          <TabsTrigger value="activite" className={tabCls}>Activité</TabsTrigger>
+          {isAdmin && <TabsTrigger value="memoriaux" className={tabCls}>Par mémorial</TabsTrigger>}
+        </TabsList>
+        <TabsContent value="activite"><Suspense fallback={<DashboardSkeleton />}><Statistics /></Suspense></TabsContent>
+        {isAdmin && <TabsContent value="memoriaux"><Suspense fallback={<DashboardSkeleton />}><Analytics /></Suspense></TabsContent>}
+        <TabsContent value="ensemble">
       {dashStats && <BusinessCockpit stats={dashStats} isAdmin={isAdmin} />}
 
       <section aria-label="Analyses approfondies">
@@ -65,6 +84,8 @@ const Dashboard = () => {
           <TabsContent value="impact">{dashStats && <TabImpact stats={dashStats} />}</TabsContent>
         </Tabs>
       </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

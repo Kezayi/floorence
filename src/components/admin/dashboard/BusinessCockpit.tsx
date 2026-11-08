@@ -95,7 +95,7 @@ const BusinessCockpit = ({ stats, isAdmin }: { stats: DashboardStats; isAdmin: b
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Tile label="Mémoriaux enregistrés" value={fmt(stats.realMemorials)} hint={`${fmt(stats.demoMemorials)} de démonstration`} to={`${P}/memoriaux`} />
           <Tile label="Hommages visibles" value={fmt(stats.visiblePosts)} hint={`${fmt(stats.totalPosts)} au total`} to={`${P}/moderation`} />
-          <Tile label="Hommages cette semaine" value={fmt(stats.postsLastWeek)} hint={deltaTxt} to={`${P}/statistiques`} />
+          <Tile label="Hommages cette semaine" value={fmt(stats.postsLastWeek)} hint={deltaTxt} to={`${P}?vue=activite`} />
           <Tile label="Comptes utilisateurs" value={fmt(stats.totalUsers)} to={isAdmin ? `${P}/utilisateurs` : undefined} />
         </div>
       </Section>
