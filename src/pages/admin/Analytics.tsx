@@ -295,6 +295,7 @@ const Analytics = () => {
         </CardHeader>
         <CardContent>
           {data?.topMemorials && data.topMemorials.length > 0 ? (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -328,6 +329,7 @@ const Analytics = () => {
               </TableBody>
             </Table>
             {(data?.topMemorials.length ?? 0) > 25 && <AdminPagination {...pagedTop.pagination} />}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-8">
               Aucun mémorial avec des gestes pour le moment

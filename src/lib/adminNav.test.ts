@@ -7,10 +7,10 @@ const LEGACY = ['', '/memoriaux', '/moderation', '/finances',
   '/utilisateurs', '/parametres', '/historique'].map((s) => P + s);
 
 describe('BO-01 navigation', () => {
-  it('garde les 12 entrées dans le menu', () => {
+  it('garde les 13 entrées dans le menu', () => {
     const all = ADMIN_NAV.flatMap((p) => p.items.map((i) => i.to));
     for (const r of LEGACY) expect(all).toContain(r);
-    expect(all).toHaveLength(12);
+    expect(all).toHaveLength(13);
   });
   it('a 4 pôles', () => expect(ADMIN_NAV).toHaveLength(4));
   it('pôles dans l’ordre demandé, tableau de bord en tête', () => {
