@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { DollarSign, Loader2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { DollarSign, Loader2, ChevronLeft, ChevronRight, RefreshCw, Receipt } from 'lucide-react';
+import { failureIssue } from '@/lib/financeAudit';
+import { openPaymentReceipt } from '@/lib/paymentReceipt';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +34,7 @@ interface Transaction {
   candle_count: number | null;
   flower_count: number | null;
   operator: string | null;
+  last_api_response?: string | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -149,6 +152,10 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                       <TableCell className="text-right font-mono font-medium">{(tx.amount || 0).toLocaleString()} XAF</TableCell>
                       <TableCell>
                         <Badge variant={st.variant} className={st.className}>{st.label}</Badge>
+                        {(() => { const issue = failureIssue(tx); return issue ? (
+                          <p className="text-xs text-muted-foreground mt-1 max-w-[260px] leading-snug" title={issue.message}>
+                            <span className="font-mono">Code {issue.code}</span> · {issue.message}
+                          </p>) : null; })()}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">{tx.ebilling_reference?.slice(0, 12) || '—'}</TableCell>
                       <TableCell className="text-center">
@@ -166,6 +173,14 @@ const FinanceTable = ({ transactions, isLoading, page, onPageChange }: FinanceTa
                               <RefreshCw className="w-3.5 h-3.5" />
                             )}
                             Vérifier
+                          </Button>
+                        ) : tx.status === 'success' && tx.ebilling_reference ? (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                            onClick={() => openPaymentReceipt({
+                              reference: tx.ebilling_reference!, amount: tx.amount || 0, date: tx.date_libreville || new Date(),
+                              deceased: tx.deceased_name_snapshot, typeLabel: financeTypeLabel(tx), operator: financeOperatorLabel(tx.operator),
+                            }) || toast.error("Autorisez les fenêtres pour afficher le reçu.")}>
+                            <Receipt className="w-3.5 h-3.5" />Reçu
                           </Button>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>

@@ -6,12 +6,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { subDays, startOfDay, endOfDay, subHours, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { operatorHealth } from '@/lib/financeAudit';
 
 interface Transaction {
   id: string | null;
   date_libreville: string | null;
   status: string | null;
   amount: number | null;
+  operator: string | null;
 }
 
 interface OperatorHealthBarProps {
@@ -61,6 +63,10 @@ const OperatorHealthBar = ({ transactions, onFilterIncidents }: OperatorHealthBa
     return { conversionRate, volume24h, timeouts3h, chartData };
   }, [transactions]);
 
+  const perOperator = useMemo(
+    () => ['AIRTEL_MONEY', 'MOOV_MONEY'].map(op => operatorHealth(transactions, op)),
+    [transactions]);
+
   const rateColor = metrics.conversionRate >= 70
     ? 'text-emerald-500'
     : metrics.conversionRate >= 50
@@ -90,6 +96,27 @@ const OperatorHealthBar = ({ transactions, onFilterIncidents }: OperatorHealthBa
           <AlertTriangle className="w-4 h-4" />
           Rapport d'incidents
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {perOperator.map(h => (
+          <Card key={h.operator} className={`shadow-sm ${h.outage ? 'border-destructive/30 bg-destructive/5' : 'border-border/50'}`}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Santé {h.operator === 'AIRTEL_MONEY' ? 'Airtel Money' : 'Moov Money'}
+              </CardTitle>
+              {h.outage ? <AlertTriangle className="w-5 h-5 text-destructive" /> : <CheckCircle className="w-5 h-5 text-muted-foreground" />}
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${h.outage ? 'text-destructive' : ''}`}>{h.rate === null ? '—' : `${h.rate}%`}</div>
+              <p className={`text-xs mt-1 ${h.outage ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                {h.outage
+                  ? `Panne probable : ${h.consecutiveFailures} échecs consécutifs`
+                  : h.total === 0 ? 'Aucune transaction terminée' : `${h.success} réussies sur ${h.total}`}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

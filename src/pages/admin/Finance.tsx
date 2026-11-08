@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { filterAudit } from '@/lib/financeAudit';
+import { paymentError } from '@/lib/tributePayment';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Download, FileText } from 'lucide-react';
@@ -24,6 +27,10 @@ const Finance = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [page, setPage] = useState(0);
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const [operatorFilter, setOperatorFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [reconciling, setReconciling] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['admin-finance-transactions'],
@@ -89,11 +96,28 @@ const Finance = () => {
       });
     }
 
-    return result;
-  }, [transactions, debouncedSearch, statusFilter, dateRange]);
+    return filterAudit(result, operatorFilter, typeFilter);
+  }, [transactions, debouncedSearch, statusFilter, dateRange, operatorFilter, typeFilter]);
 
   // Reset page when filters change
-  useMemo(() => { setPage(0); }, [debouncedSearch, statusFilter, dateRange]);
+  useMemo(() => { setPage(0); }, [debouncedSearch, statusFilter, dateRange, operatorFilter, typeFilter]);
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('payment-reconciliation', { body: {} });
+      if (error) throw error;
+      const results: { result: string }[] = data?.results ?? [];
+      const n = (k: string) => results.filter(r => r.result === k).length;
+      if (!data?.checked) toast.info("Aucune transaction en attente à vérifier.");
+      else toast.success(`${data.checked} vérifiées : ${n('reconciled')} régularisées, ${n('failed')} confirmées en échec, ${n('still_pending')} toujours en attente${n('status_unavailable') ? `, ${n('status_unavailable')} sans réponse PVit` : ''}.`, { duration: 12000 });
+      queryClient.invalidateQueries({ queryKey: ['admin-finance-transactions'] });
+    } catch (err) {
+      toast.error((await paymentError(err, "La vérification groupée n'a pas abouti. Aucun débit n'a été relancé.")).message);
+    } finally {
+      setReconciling(false);
+    }
+  };
 
   // Chart data
   const chartData = useMemo(() => {
@@ -148,7 +172,11 @@ const Finance = () => {
           <h1 className="text-2xl font-bold">Supervision Financière</h1>
           <p className="text-muted-foreground text-sm">Suivi des transactions et revenus en temps réel</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="default" size="sm" onClick={handleReconcile} disabled={reconciling} className={reconciling ? 'opacity-60' : ''}>
+            {reconciling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Forcer la réconciliation PVit
+          </Button>
           <Button variant="outline" size="sm" onClick={handleCSV}>
             <Download className="w-4 h-4 mr-2" />CSV
           </Button>
@@ -180,6 +208,10 @@ const Finance = () => {
         onStatusChange={setStatusFilter}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
+        operatorFilter={operatorFilter}
+        onOperatorChange={setOperatorFilter}
+        typeFilter={typeFilter}
+        onTypeChange={setTypeFilter}
       />
 
       <FinanceTable

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { CheckCircle, AlertTriangle, Home, ArrowLeft, Loader2 } from "lucide-react";
+import { CheckCircle, AlertTriangle, Home, ArrowLeft, Loader2, Receipt } from "lucide-react";
+import { openPaymentReceipt } from "@/lib/paymentReceipt";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -128,6 +129,21 @@ const PaymentSuccess = () => {
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            {isPublished && reference && (
+              <Button variant="outline" className="gap-2" onClick={async () => {
+                const { data } = await supabase.from('payment_transactions')
+                  .select('amount, created_at, deceased_name_snapshot, payment_type, candle_count, flower_count')
+                  .eq('ebilling_reference', reference).eq('status', 'success').maybeSingle();
+                if (!data) { toast.error("Reçu indisponible pour cette référence."); return; }
+                const parts = [data.candle_count ? `Cierge ×${data.candle_count}` : '', data.flower_count ? `Fleur ×${data.flower_count}` : ''].filter(Boolean);
+                const ok = openPaymentReceipt({ reference, amount: data.amount, date: data.created_at,
+                  deceased: data.deceased_name_snapshot, typeLabel: parts.join(' + ') || (data.payment_type === 'memorial' ? 'Mémorial' : null) });
+                if (!ok) toast.error("Autorisez les fenêtres pour afficher le reçu.");
+              }}>
+                <Receipt className="w-4 h-4" />
+                Télécharger le reçu
+              </Button>
+            )}
             {memorialId && isPublished && (
               <Button
                 asChild
