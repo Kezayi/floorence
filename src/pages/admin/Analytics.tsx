@@ -191,9 +191,9 @@ const Analytics = () => {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h2 className="font-serif text-2xl text-foreground">
             Analytics Comportemental
-          </h1>
+          </h2>
           <p className="text-muted-foreground mt-1">
             Engagement des familles et intensité des gestes symboliques
           </p>

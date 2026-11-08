@@ -162,7 +162,7 @@ const Statistics = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-foreground mb-8">Statistiques</h1>
+      <h2 className="font-serif text-2xl text-foreground mb-6">Activité</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat) => (
