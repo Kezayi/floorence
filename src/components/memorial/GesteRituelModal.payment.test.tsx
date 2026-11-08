@@ -63,4 +63,14 @@ it("a confirmed Moov failure remains terminal and reopening never sends another 
  await waitFor(() => expect(mock.check).toHaveBeenCalledTimes(2));
  expect(confirm).toHaveBeenCalledTimes(1);
  expect(done).not.toHaveBeenCalled();
+});it("shows amount, gesture and operator before any debit", async () => {
+ const confirm = vi.fn().mockResolvedValue({ reference: "R" });
+ render(<GesteRituelModal open onOpenChange={vi.fn()} itemType="cierge" postId="post" onConfirm={confirm} candleCount={2} flowerCount={1} priceCierge={700} priceFleur={700} />);
+ fireEvent.change(screen.getByLabelText(/Numéro Airtel ou Moov/), { target: { value: "074123456" } });
+ fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+ const s = await screen.findByRole("region", { name: "Confirmation du paiement" });
+ expect(s).toHaveTextContent("2 cierges + 1 fleur");
+ expect(s).toHaveTextContent("Airtel Money");
+ expect(s).toHaveTextContent("2100 XAF");
+ expect(confirm).not.toHaveBeenCalled();
 });
