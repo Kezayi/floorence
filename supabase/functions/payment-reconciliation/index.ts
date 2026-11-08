@@ -40,6 +40,17 @@ serve(async (req: Request) => {
     const { data: ok } = await supabaseAdmin.rpc("verify_reconciliation_token", { p_token: cronToken });
     authorized = ok === true;
   }
+  // FIN-OPS-03: Back-Office manual trigger — signed-in admin verified server-side via has_role.
+  if (!authorized && bearer && bearer !== srk) {
+    const userClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: `Bearer ${bearer}` } }, auth: { persistSession: false } });
+    const { data: { user } } = await userClient.auth.getUser();
+    if (user) {
+      const { data: isAdmin } = await userClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      authorized = isAdmin === true;
+      if (!authorized) return deny("Accès refusé - Admin requis", 403);
+    }
+  }
   if (!authorized) return cronToken || bearer ? deny("Accès refusé", 403) : deny("Non autorisé", 401);
 
   try {
